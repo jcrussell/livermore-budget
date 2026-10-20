@@ -4,9 +4,9 @@
  * the template calls boot(). It reads the page's department config, fetches
  * the column the year control names, and draws every department as a bar of
  * its funding rows, split by the fund group each row's fund hangs from, and
- * the chosen department's two blocks of pp.85-125 as tables under the bars:
- * the funds that pay it, and what it spends under each object heading over
- * every division the config files under it.
+ * the chosen department's two blocks of pp.85-125 as two sides of bars
+ * drawn by the ledger form: the funds that pay it, and what it spends under
+ * each object heading over every division the config files under it.
  *
  * Its arithmetic is sums of cited cents, unions of cited ids, and one row's
  * share of its side's sum. A fund's group is the funding schedule's parent
@@ -15,8 +15,11 @@
  * and never computed here.
  */
 
+import * as core from "./core.js";
 import { rank } from "./glance.js";
 import { configOf, dollars, hashFields, hashValue, selectYear, share, wireYearSelect, yearKey } from "./format.js";
+import { LEDGER } from "./ledger.js";
+import { clone, hideTip, showTip, tileShare } from "./sides.js";
 
 /** @typedef {{doc_id: string, pages: number[]}} Locator */
 /** @typedef {{id: string, label: string, cents: number, factIds: string[], locators: Locator[]}} Row */
@@ -160,7 +163,7 @@ export function departmentFigures(column, config, departmentId) {
   const fundRows = rowsBy(fundLinks, nodes, "from").map((r) => {
     const l = fundLinks.find((/** @type {any} */ x) => nodes[x.from].id === r.id);
     const group = parentOf.get(l.from) || "";
-    return { ...r, kind: String(l.kind), group: String(labelOf.get(group) || group) };
+    return { ...r, kind: String(l.kind), groupId: String(group), group: String(labelOf.get(group) || group) };
   });
   // Whether a spending row is an expenditure is its links' kind, as Go
   // declares it; a kind the page does not name, or two on one row, is refused.
@@ -174,16 +177,10 @@ export function departmentFigures(column, config, departmentId) {
     }
     return { ...r, transfer: SPENDING_TRANSFER[kind] };
   });
-  const cells = spendLinks.map((/** @type {any} */ l) => ({
-    division: String(nodes[l.to].id), divisionLabel: String(nodes[l.to].label),
-    id: String(nodes[l.from].id), label: String(nodes[l.from].label),
-    cents: Number(l.value_cents), factIds: [...l.fact_ids], locators: unionLocators([], l.locators),
-  })).sort((/** @type {any} */ a, /** @type {any} */ b) =>
-    divisions.indexOf(a.division) - divisions.indexOf(b.division) || b.cents - a.cents);
   return {
     department: dept,
     funding: { rows: fundRows, sum: sumOf(fundRows) },
-    spending: { rows: objectRows, sum: sumOf(objectRows), cells },
+    spending: { rows: objectRows, sum: sumOf(objectRows) },
   };
 }
 
@@ -268,190 +265,141 @@ export function departmentBars(column, config) {
 }
 
 /**
- * The page-text link of one cited page, or undefined where the config has none.
- * @param {any} config
- * @param {string} docId
- * @param {number} page
+ * @typedef {{tier: number, heading: string, tree: {roots: core.SideTile[], cents: number, size: number}}} DeptSide
  */
-function pageText(config, docId, page) {
-  const d = config.docs[docId];
-  const p = d && d.pages[String(page)];
-  return p && p.text ? String(p.text) : undefined;
+
+/**
+ * One row of a side as a flat tile LEDGER draws: no parent, nothing under
+ * it and nothing to open, its figure and citations the row's.
+ * @param {Row} r
+ * @param {string} label
+ * @returns {core.SideTile}
+ */
+function tileOf(r, label) {
+  return {
+    id: r.id, label, tier: 0, parent: "", derived: false, contra: "",
+    cents: r.cents, size: Math.abs(r.cents), fact_ids: [...r.factIds],
+    locators: r.locators.map((l) => ({ doc_id: l.doc_id, pages: [...l.pages] })),
+    splits: [], open: "", children: null,
+  };
 }
 
 /**
- * A link per page a row cites, each to that page's extracted text.
- * @param {Document} doc
- * @param {Locator[]} locators
- * @param {any} config
+ * A department's two sides as LEDGER draws them: where its money comes from,
+ * a tile per fund, and where it goes, a tile per object heading, each side's
+ * figure the sum of its tiles. A fund the schedule calls internal service,
+ * and a heading Go declares a transfer, say so in their label.
+ * @param {ReturnType<typeof departmentFigures>} f
+ * @returns {{funding: DeptSide, spending: DeptSide}}
  */
-function pageLinks(doc, locators, config) {
-  const td = doc.createElement("td");
-  for (const loc of locators) {
-    for (const p of loc.pages) {
-      if (td.childNodes.length) td.append(", ");
-      const href = pageText(config, loc.doc_id, p);
-      if (!href) {
-        td.append(`p${p}`);
-        continue;
-      }
-      const a = doc.createElement("a");
-      a.href = href;
-      a.title = `Read on page ${p}`;
-      a.textContent = `p${p}`;
-      td.append(a);
-    }
-  }
-  return td;
+export function departmentSides(f) {
+  /** @param {string} heading @param {core.SideTile[]} roots @returns {DeptSide} */
+  const side = (heading, roots) => ({
+    tier: 0, heading,
+    tree: { roots, cents: roots.reduce((a, t) => a + t.cents, 0), size: roots.reduce((a, t) => a + t.size, 0) },
+  });
+  return {
+    funding: side("Where its money comes from", f.funding.rows.map((r) =>
+      tileOf(r, r.label + (r.kind === "internal_service" ? " (internal service)" : "")))),
+    spending: side("Where its money goes", f.spending.rows.map((r) =>
+      tileOf(r, r.label + (r.transfer ? " (not an expenditure)" : "")))),
+  };
 }
 
 /**
- * An amount cell carrying the cents and fact ids it shows, linked to the page
- * text of its first cited page.
- * @param {Document} doc
- * @param {{cents: number, factIds: string[], locators: Locator[]}} r
- * @param {any} config
- */
-function amountCell(doc, r, config) {
-  const td = doc.createElement("td");
-  td.className = "num";
-  td.dataset.cents = String(r.cents);
-  td.dataset.factIds = r.factIds.join(" ");
-  const first = r.locators[0];
-  const href = first && pageText(config, first.doc_id, first.pages[0]);
-  if (href) {
-    const a = doc.createElement("a");
-    a.href = href;
-    a.title = `Read on page ${first.pages[0]}`;
-    a.textContent = dollars(r.cents);
-    td.append(a);
-  } else {
-    td.textContent = dollars(r.cents);
-  }
-  return td;
-}
-
-/**
- * @param {Document} doc
- * @param {string} text
- * @param {string} [className]
- */
-function cell(doc, text, className) {
-  const td = doc.createElement("td");
-  if (className) td.className = className;
-  td.textContent = text;
-  return td;
-}
-
-/**
- * A row's heading cell.
- * @param {Document} doc
- * @param {string} text
- */
-function rowHead(doc, text) {
-  const th = doc.createElement("th");
-  th.scope = "row";
-  th.textContent = text;
-  return th;
-}
-
-/**
- * The row closing a side: our sum of the rows above, never the department's
- * total.
- * @param {Document} doc
- * @param {{cents: number, factIds: string[]}} sum
- * @param {number} before cells before the amount, the heading among them
- * @param {number} after cells after it
- */
-function sumRow(doc, sum, before, after) {
-  const tr = doc.createElement("tr");
-  tr.dataset.sum = "ours";
-  tr.append(rowHead(doc, "Our sum of the rows above"));
-  for (let i = 1; i < before; i++) tr.append(cell(doc, ""));
-  const td = cell(doc, dollars(sum.cents), "num");
-  td.dataset.cents = String(sum.cents);
-  td.dataset.factIds = sum.factIds.join(" ");
-  tr.append(td);
-  for (let i = 0; i < after; i++) tr.append(cell(doc, ""));
-  return tr;
-}
-
-/**
- * Draws one department of one column into the page, and returns its figures.
+ * Draws one department of one column into the page: its two sides through
+ * LEDGER on one scale, the longest bar of either filling its track, each
+ * side's ◇ sum under its heading. A fund's bar wears its fund group's hue
+ * from the legend `groups` names; a heading's bar wears none, and a
+ * transfer's is marked as not an expenditure. Returns the figures and the
+ * sides drawn.
  * @param {Document} doc
  * @param {any} config
  * @param {any} column
  * @param {{year: string, department: string}} st
+ * @param {Group[]} [groups] the legend departmentBars ranked over the column
  */
-export function render(doc, config, column, st) {
+export function render(doc, config, column, st, groups = []) {
   const f = departmentFigures(column, config, st.department);
+  const sides = departmentSides(f);
   const year = config.years.find((/** @type {any} */ y) => y.path === st.year);
   const heading = doc.getElementById("department-heading");
   if (heading) heading.textContent = `${f.department.label}, ${year ? year.lede : st.year}`;
 
   const tie = doc.getElementById("department-tie");
-  const side = year && year.sides.find((/** @type {any} */ s) => s.department === st.department);
-  if (tie) tie.textContent = !side ? "" : side.ties ? tie.dataset.ties || "" : (tie.dataset.held || "") + side.reason;
+  const held = year && year.sides.find((/** @type {any} */ s) => s.department === st.department);
+  if (tie) tie.textContent = !held ? "" : held.ties ? tie.dataset.ties || "" : (tie.dataset.held || "") + held.reason;
 
-  const funding = doc.querySelector("#funding-table tbody");
-  if (funding) {
-    funding.replaceChildren();
-    for (const r of f.funding.rows) {
-      const tr = doc.createElement("tr");
-      tr.dataset.id = r.id;
-      const th = rowHead(doc, r.label);
-      if (r.kind === "internal_service") {
-        const em = doc.createElement("em");
-        em.textContent = " (internal service)";
-        th.append(em);
-      }
-      tr.append(th, cell(doc, r.group), amountCell(doc, r, config),
-        cell(doc, share(r.cents, f.funding.sum.cents), "num"), pageLinks(doc, r.locators, config));
-      funding.append(tr);
-    }
-    funding.append(sumRow(doc, f.funding.sum, 2, 2));
+  /** @type {Map<string, string>} the tip's extra line, by tile id */
+  const notes = new Map();
+  /** @type {Map<string, number>} a fund bar's hue, by tile id */
+  const hue = new Map();
+  for (const r of f.funding.rows) {
+    if (r.group) notes.set(r.id, `Fund group: ${r.group}`);
+    const g = groups.find((x) => (x.id ? x.id === r.groupId : x.members.includes(r.group)));
+    hue.set(r.id, g ? g.rank : 0);
   }
-
-  const spending = doc.querySelector("#spending-table tbody");
-  if (spending) {
-    spending.replaceChildren();
-    for (const r of f.spending.rows) {
-      const tr = doc.createElement("tr");
-      tr.dataset.id = r.id;
-      tr.append(rowHead(doc, r.label + (r.transfer ? " (not an expenditure)" : "")), amountCell(doc, r, config),
-        cell(doc, share(r.cents, f.spending.sum.cents), "num"), pageLinks(doc, r.locators, config));
-      spending.append(tr);
-    }
-    spending.append(sumRow(doc, f.spending.sum, 1, 2));
+  const transfer = new Set(f.spending.rows.filter((r) => r.transfer).map((r) => r.id));
+  for (const id of transfer) {
+    notes.set(id, "Not an expenditure: money moved to another of the city's own funds. The page prints it inside the division's sum, so it is inside this side's.");
   }
-  const transfers = doc.getElementById("transfers-says");
-  if (transfers) transfers.hidden = !f.spending.rows.some((r) => r.transfer);
-
-  const divisions = doc.querySelector("#division-table tbody");
-  if (divisions) {
-    divisions.replaceChildren();
-    for (const c of f.spending.cells) {
-      const tr = doc.createElement("tr");
-      tr.dataset.id = c.division + " " + c.id;
-      tr.append(rowHead(doc, c.divisionLabel), cell(doc, c.label), amountCell(doc, c, config),
-        pageLinks(doc, c.locators, config));
-      divisions.append(tr);
+  const largest = Math.max(1, ...[sides.funding, sides.spending].flatMap((s) => s.tree.roots.map((r) => r.size)));
+  /** @type {import("./sides.js").DrawContext} */
+  const ctx = {
+    doc,
+    scale: 1 / largest,
+    toggle: () => {},
+    tip: (e, tile, side) => {
+      showTip(doc, e, /** @type {core.SideTile} */ (tile), /** @type {any} */ (side));
+      const note = notes.get(tile.id);
+      const tip = doc.getElementById("tooltip");
+      if (!note || !tip) return;
+      const el = doc.createElement("div");
+      el.className = "tip-meta";
+      el.textContent = note;
+      tip.insertBefore(el, tip.querySelector(".facts"));
+    },
+    hide: () => hideTip(doc),
+    share: tileShare,
+    clone: (id) => clone(doc, id),
+  };
+  for (const [key, side] of /** @type {[string, DeptSide][]} */ (Object.entries(sides))) {
+    const section = /** @type {HTMLElement | null} */ (doc.querySelector(`section.department-side[data-side="${key}"]`));
+    if (!section) throw new Error(`the page has no section for the ${key} side`);
+    const total = section.querySelector(".sides-total");
+    if (total) total.textContent = `◇ our sum of the ${side.tree.roots.length} bars on this side: ${dollars(side.tree.cents)}`;
+    LEDGER.draw(section, /** @type {any} */ (side), ctx);
+    for (const li of Array.from(section.querySelectorAll("li.bar-row"))) {
+      const el = /** @type {HTMLElement} */ (li);
+      const id = el.dataset.id || "";
+      el.dataset.rank = String(key === "funding" ? hue.get(id) || 0 : 0);
+      if (key === "spending" && transfer.has(id)) el.dataset.transfer = "true";
     }
   }
-  return f;
+  const says = doc.getElementById("transfers-says");
+  if (says) says.hidden = transfer.size === 0;
+  return { ...f, sides };
 }
 
 /**
- * Clones one of the page's templates.
+ * Empties both sides, their sums and the heading over them, so no
+ * department's bars stand under a year select naming another column.
  * @param {Document} doc
- * @param {string} id
- * @returns {HTMLElement}
  */
-function clone(doc, id) {
-  const tmpl = doc.getElementById(id);
-  const el = tmpl && "content" in tmpl ? /** @type {HTMLTemplateElement} */ (tmpl).content.firstElementChild : null;
-  if (!el) throw new Error(`the page carries no <template id="${id}"> to clone`);
-  return /** @type {HTMLElement} */ (el.cloneNode(true));
+function clearSides(doc) {
+  for (const section of Array.from(doc.querySelectorAll("section.department-side"))) {
+    const figure = /** @type {HTMLElement | null} */ (section.querySelector("figure.sides-figure"));
+    if (figure) {
+      figure.replaceChildren();
+      figure.hidden = true;
+    }
+    const total = section.querySelector(".sides-total");
+    if (total) total.textContent = "";
+  }
+  const heading = doc.getElementById("department-heading");
+  if (heading) heading.textContent = "This department could not be drawn";
+  const tie = doc.getElementById("department-tie");
+  if (tie) tie.textContent = "";
 }
 
 /**
@@ -625,9 +573,11 @@ export async function boot(win = globalThis.window) {
   /** @type {{year: string, department: string} | null} */
   let asked = null;
   let barsOf = "";
-  // The view whose tables are drawn, as hashOf names it: the open bar toggles
-  // over its own department's tables only.
-  let tablesOf = "";
+  // The view whose sides are drawn, as hashOf names it: the open bar toggles
+  // over its own department's sides only.
+  let sidesOf = "";
+  /** @type {Group[]} the legend of barsOf's column, whose hues a fund's bar wears */
+  let groups = [];
   let longest = "";
   let open = true;
   /**
@@ -645,15 +595,17 @@ export async function boot(win = globalThis.window) {
       if (ticket !== shown) return undefined;
       if (barsOf !== st.year) {
         barsOf = "";
-        const { bars } = drawBars(doc, config, col, st.year);
+        const drawn = drawBars(doc, config, col, st.year);
+        const { bars } = drawn;
+        groups = drawn.groups;
         longest = bars.length ? bars[0].id : config.departments[0].id;
         barsOf = st.year;
       }
       const view = { year: st.year, department: st.department || longest };
       if (deptSelect) deptSelect.value = view.department;
-      tablesOf = "";
-      render(doc, config, col, view);
-      tablesOf = hashOf(view);
+      sidesOf = "";
+      render(doc, config, col, view, groups);
+      sidesOf = hashOf(view);
       current = view;
       asked = null;
       open = true;
@@ -662,6 +614,8 @@ export async function boot(win = globalThis.window) {
     } catch (e) {
       if (ticket !== shown) return undefined;
       asked = null;
+      // Sides render refused are not left standing as another view's.
+      if (!sidesOf) clearSides(doc);
       // The bars drawn are barsOf's year's, whichever view asked for them.
       if (barsOf) current = { year: barsOf, department: current.department };
       if (current.year) selectYear(doc, yearKey(current.year));
@@ -682,13 +636,13 @@ export async function boot(win = globalThis.window) {
     });
   };
   const list = doc.getElementById("department-list");
-  // The open bar's link to its tables scrolls by script: followed as a
+  // The open bar's link to its sides scrolls by script: followed as a
   // fragment it would fire popstate, and restore() would read a hash naming
   // no view and open the newest year's longest bar in place of this one.
   /** @param {Event} e */
-  const toTables = (e) => {
+  const toSides = (e) => {
     const target = /** @type {any} */ (e.target);
-    const link = target && target.closest ? target.closest(".department-to-tables") : null;
+    const link = target && target.closest ? target.closest(".department-to-sides") : null;
     if (!link || !list || !list.contains(link)) return false;
     e.preventDefault();
     const heading = doc.getElementById("department-heading");
@@ -701,7 +655,7 @@ export async function boot(win = globalThis.window) {
     const row = target && target.closest ? target.closest(".department-row") : null;
     const li = row && row.parentElement;
     if (!li || !li.dataset.department || li.parentElement !== list) return;
-    if (li.dataset.department === current.department && barsOf === current.year && tablesOf === hashOf(current)) {
+    if (li.dataset.department === current.department && barsOf === current.year && sidesOf === hashOf(current)) {
       open = !open;
       openBar(doc, current.department, open);
       return;
@@ -710,7 +664,7 @@ export async function boot(win = globalThis.window) {
   };
   if (list) {
     list.addEventListener("click", (e) => {
-      if (!toTables(e)) activate(e);
+      if (!toSides(e)) activate(e);
     });
     list.addEventListener("keydown", (e) => {
       const ke = /** @type {KeyboardEvent} */ (e);

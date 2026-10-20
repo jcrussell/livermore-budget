@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{.Title}}</title>
-<meta name="description" content="Every City of Livermore department as a bar, longest first, split by the fund groups that pay for it; open one for what it spends under each object heading, every fund together, and which funds pay for it, each figure linked to the Budget Book page it was read from.">
+<meta name="description" content="Every City of Livermore department as a bar, longest first, split by the fund groups that pay for it; open one for what it spends under each object heading, every fund together, and which funds pay for it, as two sides of bars, each figure naming the Budget Book page it was read from.">
 <meta name="color-scheme" content="light dark">
 <link rel="stylesheet" href="style.css">
 {{template "theme-stamp"}}
@@ -40,8 +40,9 @@
   <p class="department-bars-how">
     Each bar is a department, longest first, on the one scale the longest sets,
     split by the group of funds that pays for it. Click a department, or press
-    Enter or Space on it, to open its fund groups and to show its two blocks
-    of the Budget Book below the bars, with the page each cell was read from.
+    Enter or Space on it, to open its fund groups and to show below the bars
+    where its money comes from and where it goes, each bar naming the Budget
+    Book page its figure was read from.
   </p>
   <ul class="department-legend" id="department-legend" aria-label="Fund groups, largest across every department first"></ul>
   <ol class="department-list" id="department-list"></ol>
@@ -65,67 +66,56 @@
 
 <div class="department-sides">
 
-<section class="department-side" aria-labelledby="funding-heading">
-  <h4 id="funding-heading">Who pays for it</h4>
+<section class="sides-side department-side" data-side="funding" aria-labelledby="funding-heading">
+  <h4 id="funding-heading">Where its money comes from</h4>
   <p id="funding-says">
     Read from the department's <strong>Department Funding Sources</strong> block,
-    the lower half of its page in the Budget Book (pp.85-125): one row per fund.
+    the lower half of its page in the Budget Book (pp.85-125): one bar per fund.
     <strong>Each figure is one fund's share</strong> of the department, not its
-    whole cost. The General Fund row is the General Fund's share alone; every other
-    row is a fund the city keeps apart from it.
+    whole cost. The General Fund bar is the General Fund's share alone; every other
+    bar is a fund the city keeps apart from it, wearing its fund group's colour.
   </p>
   <p id="internal-service-says">
     A fund marked <em>internal service</em> is one the city fills by charging its own
     departments, so the money it pays here was first charged to another department
     and is counted in that department's cost as well.
   </p>
-  <div class="table-scroll">
-    <table class="department-table" id="funding-table">
-      <thead><tr><th scope="col">Fund</th><th scope="col">Fund group</th><th scope="col" class="num">Amount</th><th scope="col" class="num">Share ◇</th><th scope="col">Page</th></tr></thead>
-      <tbody></tbody>
-    </table>
-  </div>
+  <p class="sides-total subtle"></p>
+  <figure class="sides-figure" hidden></figure>
 </section>
 
-<section class="department-side" aria-labelledby="spending-heading">
-  <h4 id="spending-heading">What it spends, every fund together</h4>
+<section class="sides-side department-side" data-side="spending" aria-labelledby="spending-heading">
+  <h4 id="spending-heading">Where its money goes</h4>
   <p id="spending-says">
     Read from the department's <strong>Expenditures by Category</strong> block, the
-    upper half of the same page: what each of its divisions spends under each object
+    upper half of the same page: what its divisions spend under each object
     heading, whatever fund pays. <strong>Each figure is the whole department's
     cost</strong> under that heading, summed over every division the page prints
     under the department.
   </p>
   <p id="transfers-says" hidden>
     <strong>Transfers Out</strong> is money moved to another of the city's own funds,
-    not spent on anything. The page prints it inside the division's total, so it is
-    inside this side's sum too.
+    not spent on anything, and its bar is hatched. The page prints it inside the
+    division's total, so it is inside this side's sum too.
   </p>
-  <div class="table-scroll">
-    <table class="department-table" id="spending-table">
-      <thead><tr><th scope="col">Object heading</th><th scope="col" class="num">Amount</th><th scope="col" class="num">Share ◇</th><th scope="col">Pages</th></tr></thead>
-      <tbody></tbody>
-    </table>
-  </div>
-  <h5>By division, as printed</h5>
-  <div class="table-scroll">
-    <table class="department-table" id="division-table">
-      <thead><tr><th scope="col">Division</th><th scope="col">Object heading</th><th scope="col" class="num">Amount</th><th scope="col">Page</th></tr></thead>
-      <tbody></tbody>
-    </table>
-  </div>
+  <p class="sides-total subtle"></p>
+  <figure class="sides-figure" hidden></figure>
 </section>
 
 </div>
 
 </div>
 
+<div class="tooltip" id="tooltip" role="status" aria-live="polite" hidden></div>
+
 <p class="subtle">
-  Every amount links to the extracted text of the page it was read from. A row
-  marked <em>our sum</em> adds the cited rows above it and is ours, not the city's:
-  the page prints a department total of its own, which this site has not read as a
-  figure, so neither sum is presented as the department's total. A share marked ◇
-  is ours too: one row as a percentage of its side's sum.
+  Both sides are drawn on one scale, the longest bar of either filling its track.
+  Point at a bar, or focus it, for the pages its figure was read from; the
+  <a href="provenance.html">Sources and data</a> page lists every cited page.
+  A sum marked ◇ adds the cited bars of its side and is ours, not the city's:
+  the page prints a department total of its own, which this site has not read as
+  a figure, so neither sum is presented as the department's total. A share
+  marked ◇ is ours too: one bar as a percentage of its side's sum.
 </p>
 
 {{- template "caveats-line" .CaveatsHere}}
@@ -134,9 +124,11 @@
 
 {{template "footer" .}}
 
-<template id="department-bar"><li class="department-bar"><div class="department-row" role="button" tabindex="0" aria-expanded="false"><span class="department-name"></span><span class="department-track"></span><span class="department-value"></span></div><div class="department-detail" hidden><ul class="department-groups"></ul><a class="department-to-tables" href="#department-heading">Its two blocks, cell by cell, below the bars</a></div></li></template>
+<template id="department-bar"><li class="department-bar"><div class="department-row" role="button" tabindex="0" aria-expanded="false"><span class="department-name"></span><span class="department-track"></span><span class="department-value"></span></div><div class="department-detail" hidden><ul class="department-groups"></ul><a class="department-to-sides" href="#department-heading">Where its money comes from and goes, below the bars</a></div></li></template>
 <template id="department-seg"><span class="department-seg"></span></template>
 <template id="department-key"><li><span class="department-swatch" aria-hidden="true"></span><span class="department-key-name"></span></li></template>
+<template id="ledger-list"><ol class="ledger-list"></ol></template>
+<template id="ledger-row"><li class="bar-row" tabindex="0"><span class="bar-label"></span><span class="bar-track"><span class="bar-fill"></span></span><span class="bar-value"></span><span class="bar-share subtle"></span></li></template>
 <template id="department-group"><li><span class="department-swatch" aria-hidden="true"></span><span class="department-group-name"></span><span class="department-group-value"></span><span class="department-group-share"></span></li></template>
 
 <!-- department.js runs nothing on import, so boot() is called here. -->

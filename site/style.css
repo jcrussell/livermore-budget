@@ -1812,15 +1812,12 @@ noscript p {
   min-width: 0;
 }
 
-.department-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.department-table tr[data-sum] th,
-.department-table tr[data-sum] td {
-  border-top: 2px solid var(--border);
-  font-weight: 600;
+/* A department's two sides are the ledger form's bars (ledger.js); a fund's
+   bar wears its fund group's hue, the legend's sixth among them, and a
+   transfer's is hatched as not an expenditure. */
+.department-side .bar-row[data-rank="6"] .bar-fill { background: var(--glance-6); }
+.department-side .bar-row[data-transfer] .bar-fill {
+  background: repeating-linear-gradient(45deg, var(--ink-2) 0 2px, var(--surface-1) 2px 6px);
 }
 
 /* The bars wear the glance page's ordinal ramp by their fund group's rank. */
@@ -1946,7 +1943,7 @@ noscript p {
   font-size: 14px;
   color: var(--ink-2);
 }
-.department-to-tables {
+.department-to-sides {
   display: inline-block;
   margin-left: calc(15em + 12px);
   font-size: 14px;
@@ -1976,7 +1973,7 @@ noscript p {
     order: 3;
   }
   .department-groups,
-  .department-to-tables {
+  .department-to-sides {
     margin-left: 0;
   }
 }
@@ -2107,8 +2104,9 @@ noscript p {
 
 /* end the glance page */
 
-/* ledger.html, the sides page. Only its rules go in this block. The ranks
-   wear the glance page's ordinal ramp. */
+/* ledger.html, the sides page, whose bars department.html draws too. Only
+   their rules go in this block. The ranks wear the glance page's ordinal
+   ramp. */
 .sides-how {
   max-width: var(--measure);
   color: var(--ink-2);

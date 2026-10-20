@@ -15,6 +15,7 @@ delete globalThis.FISC_CONFIG;
 delete globalThis.d3;
 const domless = typeof globalThis.document === "undefined";
 const mod = await import(pathToFileURL(path.join(HERE, "department.js")).href);
+const { dollars } = await import(pathToFileURL(path.join(HERE, "format.js")).href);
 
 /** The pinned page and the config cut out of it. */
 function departmentPage() {
@@ -45,15 +46,19 @@ async function booted(hash, over = {}) {
   return { ...browser, config };
 }
 
-/** The text of every cell of one table body, row by row. */
-function rowsOf(document, id) {
-  return [...document.querySelectorAll(`#${id} tbody tr`)].map((tr) => [...tr.children].map((c) => c.textContent));
+/** The bars drawn on one side, `funding` or `spending`, as plain values. */
+function drawnOf(document, side) {
+  return [...document.querySelectorAll(`section.department-side[data-side="${side}"] li.bar-row`)].map((li) => ({
+    id: li.dataset.id, cents: Number(li.dataset.cents), label: li.querySelector(".bar-label").textContent,
+    width: parseFloat(li.querySelector(".bar-fill").style.width), rank: li.dataset.rank,
+    transfer: li.dataset.transfer === "true",
+  }));
 }
 
 test("department.js imports with no page config, no d3 and no DOM, and exports only its functions", () => {
   assert.ok(domless, "nothing installed a DOM before the import");
   assert.deepEqual(Object.keys(mod).sort(),
-    ["boot", "departmentBars", "departmentFigures", "drawBars", "hashOf", "openBar", "parseHash",
+    ["boot", "departmentBars", "departmentFigures", "departmentSides", "drawBars", "hashOf", "openBar", "parseHash",
       "readConfig", "render"]);
 });
 
@@ -78,7 +83,6 @@ describe("a department's two sides are sums of the links the column draws into i
           assert.equal(new Set(part.rows.flatMap((r) => r.factIds)).size, part.sum.factIds.length, `${stem} ${d.id} ${side}`);
           for (const id of part.sum.factIds) seen[side].set(id, (seen[side].get(id) || 0) + 1);
         }
-        assert.equal(f.spending.cells.reduce((a, c) => a + c.cents, 0), f.spending.sum.cents, `${stem} ${d.id} cells`);
         transfers += f.spending.rows.filter((r) => r.transfer).length;
       }
       for (const side of ["funding", "spending"]) {
@@ -124,8 +128,8 @@ describe("a spending row is a transfer because its links say so", () => {
     assert.equal(rowOf(column, works, id).transfer, true, "the row read its id, not its kind");
     const { document } = installBrowser({ html: departmentPage().html });
     mod.render(document, config, column, { year: "fy2026-adopted.json", department: works });
-    const heads = rowsOf(document, "spending-table").map((r) => r[0]);
-    assert.ok(heads.includes("Wages & Benefits (not an expenditure)"), `no labelled row: ${heads.join(", ")}`);
+    const heads = drawnOf(document, "spending").filter((b) => b.transfer).map((b) => b.label);
+    assert.deepEqual(heads, ["Wages & Benefits (not an expenditure)"]);
     assert.equal(document.getElementById("transfers-says").hidden, false);
   });
 
@@ -157,10 +161,10 @@ describe("a spending row is a transfer because its links say so", () => {
     assert.throws(() => mod.departmentFigures(column, config, works), /draws expenditure\/wages-and-benefits as (external and internal_transfer|internal_transfer and external), /);
   });
 
-  // Mutation: drop the tables check from activate's toggle, and the second
+  // Mutation: drop the sides check from activate's toggle, and the second
   // and third clicks on the refused department close and then open its bar
-  // over police's tables.
-  test("a department whose tables are refused opens no bar over another's tables, however often it is clicked", async () => {
+  // over police's sides.
+  test("a department whose sides are refused opens no bar over another's sides, however often it is clicked", async () => {
     const { html } = departmentPage();
     const browser = installBrowser({ html });
     browser.window.location.hash = "#y=fy2024-actual&d=department/police-department";
@@ -202,8 +206,9 @@ describe("a spending row is a transfer because its links say so", () => {
   });
 
   // Mutation: drop the catch's move of the view to barsOf's year in show,
-  // and the click on a bar drawn from FY 2023-24 opens it in FY 2026-27.
-  test("after a year switch draws the bars and refuses the tables, a click on a bar opens it in the bars' year", async () => {
+  // and the click on a bar drawn from FY 2023-24 opens it in FY 2026-27;
+  // drop clearSides from that catch and FY 2026-27's bars stay drawn.
+  test("after a year switch draws the bars and refuses the sides, a click on a bar opens it in the bars' year", async () => {
     const { document, window } = await booted("#y=fy2027-adopted&d=" + works,
       { "fy2024-actual": { doc: edited("fy2024-actual", "transfers/out", (l) => { delete l.kind; }) } });
     const year = document.getElementById("year-select");
@@ -211,6 +216,11 @@ describe("a spending row is a transfer because its links say so", () => {
     year.dispatchEvent(new window.Event("change"));
     await settle();
     const refused = document.getElementById("department-refusal") !== null;
+    // The refused view's sides are cleared, not left as FY 2026-27's under a
+    // year select naming FY 2023-24.
+    assert.deepEqual({ funding: drawnOf(document, "funding").length, spending: drawnOf(document, "spending").length,
+      heading: document.getElementById("department-heading").textContent },
+    { funding: 0, spending: 0, heading: "This department could not be drawn" });
     document.querySelector('#department-list > li[data-department="department/police-department"] .department-row')
       .dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
     await settle();
@@ -251,35 +261,59 @@ describe("the page over the pinned columns", () => {
     assert.equal(document.getElementById("department-select").value, longest);
   });
 
-  test("every amount links to the text of a page its figure cites, and carries the fact ids it shows", async () => {
-    const { document, config } = await booted("#y=fy2026-adopted&d=department/administrative-services");
-    const texts = new Set(Object.values(config.docs).flatMap((d) => Object.values(d.pages).map((p) => p.text)));
-    const cells = [...document.querySelectorAll(".department-table td.num[data-cents]")];
-    assert.ok(cells.length > 0);
-    for (const td of cells) {
-      assert.ok(td.dataset.factIds.length > 0, `an amount cell ${td.textContent} cites no fact`);
-      if (td.closest("tr").dataset.sum) continue;
-      const a = td.querySelector("a");
-      assert.ok(a && texts.has(a.getAttribute("href")), `${td.textContent} links to no cited page's text`);
-      assert.match(a.title, /^Read on page \d+$/);
-    }
-  });
-
-  test("a side's closing row is our sum, and nothing on either side is called a total", async () => {
-    const { document } = await booted("#y=fy2027-adopted&d=department/police-department");
-    for (const id of ["funding-table", "spending-table"]) {
-      const rows = [...document.querySelectorAll(`#${id} tbody tr`)];
-      const last = rows.at(-1);
-      assert.equal(last.dataset.sum, "ours", `${id} closes on no sum row`);
-      assert.equal(last.querySelector("th").textContent, "Our sum of the rows above");
-      const summed = rows.slice(0, -1).reduce((a, tr) => a + Number(tr.querySelector("td.num[data-cents]").dataset.cents), 0);
-      assert.equal(Number(last.querySelector("td.num").dataset.cents), summed, `${id}'s sum is not its rows'`);
-    }
-    for (const id of ["funding-table", "spending-table", "division-table"]) {
-      for (const row of rowsOf(document, id)) {
-        assert.ok(!row.some((c) => /total/i.test(c)), `${id} calls something a total: ${row.join(" | ")}`);
+  // Mutation: drop one row's tile in departmentSides, and each side's drawn
+  // sum stops being the figures' sum: red, naming the side.
+  for (const [stem, dept] of [["fy2024-actual", "department/public-works"], ["fy2026-adopted", "department/administrative-services"],
+    ["fy2027-adopted", "department/police-department"]]) {
+    test(`${stem} ${dept}: each side's drawn bars sum to the side, under a ◇ caption, on one scale, and nothing is called a total`, async (t) => {
+      const { document, config } = await booted(`#y=${stem}&d=${dept}`);
+      const f = mod.departmentFigures(columnFixture(stem), config, dept);
+      const widest = [];
+      for (const side of ["funding", "spending"]) {
+        const bars = drawnOf(document, side);
+        assert.ok(bars.length > 0, `${side}: no bar drawn`);
+        assert.equal(bars.reduce((a, x) => a + x.cents, 0), f[side].sum.cents, `${side}: the drawn bars do not sum to the side`);
+        assert.deepEqual(bars.map((x) => x.id), f[side].rows.map((r) => r.id), `${side}: a row drawn twice, or none`);
+        const caption = document.querySelector(`section.department-side[data-side="${side}"] .sides-total`).textContent;
+        assert.ok(caption.startsWith("◇ our sum of the ") && caption.endsWith(dollars(f[side].sum.cents)), `${side}: ${caption}`);
+        assert.ok(!bars.some((x) => /total/i.test(x.label)), `${side} calls a bar a total`);
+        widest.push(Math.max(...bars.map((x) => x.width)));
+        t.diagnostic(`${side}: ${bars.length} bars summing to ${f[side].sum.cents} cents, widest ${widest.at(-1)}%`);
       }
+      // One scale: the longest bar of either side fills its track, and the
+      // other side's longest is drawn against it.
+      assert.equal(Math.max(...widest), 100);
+      const big = Math.max(...["funding", "spending"].flatMap((side) => f[side].rows.map((r) => Math.abs(r.cents))));
+      for (const side of ["funding", "spending"]) {
+        for (const x of drawnOf(document, side)) {
+          assert.ok(Math.abs(x.width - Math.max(100 * Math.abs(x.cents) / big, 0.25)) < 1e-3, `${side} ${x.id}: ${x.width}% off the shared scale`);
+        }
+      }
+    });
+  }
+
+  // Mutation: return an empty locators list from tileOf, and every tip's
+  // pages are empty: red, naming the bar.
+  test("every drawn bar carries the locators it sums, and its tip names their pages", async () => {
+    const { document, window, config } = await booted("#y=fy2026-adopted&d=department/administrative-services");
+    const f = mod.departmentFigures(columnFixture("fy2026-adopted"), config, "department/administrative-services");
+    const want = new Map([...f.funding.rows, ...f.spending.rows].map((r) => [r.id, r.locators.flatMap((l) => l.pages.map((p) => `p${p}`))]));
+    const rows = [...document.querySelectorAll("section.department-side li.bar-row")];
+    assert.ok(rows.length > 0);
+    for (const li of rows) {
+      li.dispatchEvent(new window.Event("pointerenter"));
+      const tip = document.getElementById("tooltip");
+      const pages = tip.querySelector(".facts").textContent;
+      const id = li.dataset.id;
+      assert.ok(want.get(id).length > 0, `${id} cites no page`);
+      assert.deepEqual(pages.split(/[,;] /), want.get(id), `${id}: the tip names other pages`);
+      assert.equal(tip.hidden, false);
+      li.dispatchEvent(new window.Event("pointerleave"));
     }
+    // A fund's tip names its group.
+    const fund = document.querySelector('section.department-side[data-side="funding"] li.bar-row');
+    fund.dispatchEvent(new window.Event("pointerenter"));
+    assert.match(document.getElementById("tooltip").textContent, /Fund group: /);
   });
 
   test("whether the two sides tie is the config's declaration, printed and not computed", async () => {
@@ -295,23 +329,41 @@ describe("the page over the pinned columns", () => {
     assert.equal(tie2.textContent, tie2.dataset.ties);
   });
 
+  // Mutation: drop the transfer mark in render, and the hatched arm goes
+  // red; drop the label's suffix in departmentSides and the label arm does.
   test("Transfers Out is drawn as not an expenditure, inside the sum, with its own sentence", async () => {
-    const { document } = await booted("#y=fy2024-actual&d=department/public-works");
-    const rows = rowsOf(document, "spending-table");
-    assert.ok(rows.some((r) => r[0] === "Transfers Out (not an expenditure)"), "no Transfers Out row");
+    const { document, window } = await booted("#y=fy2024-actual&d=department/public-works");
+    const bars = drawnOf(document, "spending");
+    assert.deepEqual(bars.filter((x) => x.transfer).map((x) => [x.id, x.label, x.rank]),
+      [["transfers/out", "Transfers Out (not an expenditure)", "0"]]);
+    assert.ok(bars.filter((x) => !x.transfer).every((x) => !/not an expenditure/.test(x.label)));
     assert.equal(document.getElementById("transfers-says").hidden, false);
+    const li = document.querySelector('section.department-side[data-side="spending"] li.bar-row[data-id="transfers/out"]');
+    li.dispatchEvent(new window.Event("pointerenter"));
+    assert.match(document.getElementById("tooltip").textContent, /Not an expenditure: money moved to another of the city's own funds/);
 
     const later = await booted("#y=fy2026-adopted&d=department/public-works");
     assert.equal(later.document.getElementById("transfers-says").hidden, true,
       "the Transfers Out sentence shows in a column with no such row");
+    assert.deepEqual(drawnOf(later.document, "spending").filter((x) => x.transfer), []);
   });
 
-  test("a fund the schedule calls internal service is marked so, beside the sentences that say what each row is", async () => {
-    const { document } = await booted("#y=fy2026-adopted&d=department/administrative-services");
-    const heads = [...document.querySelectorAll("#funding-table tbody th")].map((th) => th.textContent);
-    assert.ok(heads.some((h) => h.endsWith(" (internal service)")), `no row marked internal service: ${heads.join(", ")}`);
+  // Mutation: give every fund bar rank 0 in render, and the hue arm goes red.
+  test("a fund the schedule calls internal service is marked so, and each fund's bar wears its group's hue", async () => {
+    const { document, config } = await booted("#y=fy2026-adopted&d=department/administrative-services");
+    const bars = drawnOf(document, "funding");
+    assert.ok(bars.some((x) => x.label.endsWith(" (internal service)")), `no bar marked internal service: ${bars.map((x) => x.label).join(", ")}`);
+    const { groups } = mod.departmentBars(columnFixture("fy2026-adopted"), config);
+    const rows = mod.departmentFigures(columnFixture("fy2026-adopted"), config, "department/administrative-services").funding.rows;
+    for (const x of bars) {
+      const r = rows.find((y) => y.id === x.id);
+      const g = groups.find((y) => (y.id ? y.id === r.groupId : y.members.includes(r.group)));
+      assert.equal(x.rank, String(g.rank), `${x.id} wears another group's hue`);
+    }
+    assert.ok(bars.some((x) => x.rank !== "0"), "no fund bar wears a hue");
+    assert.ok(drawnOf(document, "spending").every((x) => x.rank === "0"), "a spending bar wears a fund group's hue");
     assert.match(document.getElementById("internal-service-says").textContent, /charging its own\s+departments/);
-    assert.match(document.getElementById("funding-says").textContent, /General Fund row is the General Fund's share alone/);
+    assert.match(document.getElementById("funding-says").textContent, /General Fund bar is the General Fund's share alone/);
     assert.match(document.getElementById("spending-says").textContent, /whole department's\s+cost/);
   });
 });
@@ -479,7 +531,7 @@ describe("every department is a bar of the funds that pay for it", () => {
   });
 });
 
-// One view: the hash's department is the open bar and the tables' department.
+// One view: the hash's department is the open bar and the sides' department.
 //
 // Mutation: drop openBar's call from show in boot and every test here goes
 // red; drop the toggle branch from activate and a second click selects
@@ -487,11 +539,11 @@ describe("every department is a bar of the funds that pay for it", () => {
 // redraw the bars only on the first column and the year switch does; open
 // the config's first department where the hash names none and the opening
 // arm does.
-describe("opening a bar chooses its department for the tables and the hash", () => {
+describe("opening a bar chooses its department for the sides and the hash", () => {
   const rowOf = (document, id) => document.querySelector(`#department-list > li[data-department="${id}"] .department-row`);
   const openIds = (document) => barsOf(document).filter((b) => b.expanded === "true").map((b) => b.id);
 
-  test("the opening view opens the longest bar, the first, and names it in the hash and the tables", async () => {
+  test("the opening view opens the longest bar, the first, and names it in the hash and the sides", async () => {
     const { document, window, config } = await booted("");
     const first = barsOf(document)[0].id;
     assert.notEqual(first, config.departments[0].id, "the config's first department is the longest, so the arm is never drawn");
@@ -499,14 +551,14 @@ describe("opening a bar chooses its department for the tables and the hash", () 
     assert.equal(window.location.hash, `#y=${config.years.at(-1).path.replace(/\.json$/, "")}&d=${first}`);
     assert.equal(document.getElementById("department-select").value, first);
     const label = config.departments.find((d) => d.id === first).label;
-    assert.ok(document.getElementById("department-heading").textContent.startsWith(label + ", "), "the tables are not the open bar's");
+    assert.ok(document.getElementById("department-heading").textContent.startsWith(label + ", "), "the sides are not the open bar's");
     const li = document.querySelector(`#department-list > li[data-department="${first}"]`);
-    assert.equal(li.querySelector(".department-detail a.department-to-tables").getAttribute("href"), "#department-heading");
+    assert.equal(li.querySelector(".department-detail a.department-to-sides").getAttribute("href"), "#department-heading");
     assert.equal(barsOf(document).filter((b) => !b.hidden).length, 1);
   });
 
   test("a click on a bar opens it, closes the other, and names it in the hash and the select", async () => {
-    const { document, window } = await booted("#y=fy2026-adopted&d=department/public-works");
+    const { document, window, config } = await booted("#y=fy2026-adopted&d=department/public-works");
     assert.deepEqual(openIds(document), ["department/public-works"]);
     rowOf(document, "department/police-department").dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
     await settle();
@@ -514,7 +566,9 @@ describe("opening a bar chooses its department for the tables and the hash", () 
     assert.equal(window.location.hash, "#y=fy2026-adopted&d=department/police-department");
     assert.equal(document.getElementById("department-select").value, "department/police-department");
     assert.match(document.getElementById("department-heading").textContent, /^Police Department, /);
-    assert.ok(document.querySelector('#funding-table tbody tr[data-id="fund/100"]'), "the tables are not police's");
+    const police = mod.departmentFigures(columnFixture("fy2026-adopted"), config, "department/police-department");
+    assert.deepEqual(drawnOf(document, "funding").map((x) => x.id), police.funding.rows.map((r) => r.id), "the funding bars are not police's");
+    assert.deepEqual(drawnOf(document, "spending").map((x) => x.id), police.spending.rows.map((r) => r.id), "the spending bars are not police's");
 
     // A second click closes it and keeps the department.
     rowOf(document, "department/police-department").dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
@@ -606,12 +660,12 @@ describe("opening a bar chooses its department for the tables and the hash", () 
 // Mutation: list.addEventListener("click", activate) in place of the
 // toTables branch and the link is followed as a fragment, whose popstate
 // reopens the newest year's longest bar.
-describe("the open bar's link to its tables keeps the view", () => {
+describe("the open bar's link to its sides keeps the view", () => {
   test("from an older year and a chosen department, the link changes neither the year, the department nor the hash", async () => {
     const { document, window } = await booted("#y=fy2024-actual&d=department/public-works");
     const hash = window.location.hash;
-    const link = document.querySelector('#department-list > li[data-department="department/public-works"] a.department-to-tables');
-    assert.ok(link !== null, "the open bar carries no link to its tables");
+    const link = document.querySelector('#department-list > li[data-department="department/public-works"] a.department-to-sides');
+    assert.ok(link !== null, "the open bar carries no link to its sides");
     const e = new window.MouseEvent("click", { bubbles: true, cancelable: true });
     link.dispatchEvent(e);
     await settle();

@@ -125,7 +125,7 @@ func TestDepartmentPageCarriesItsMembershipAndItsTies(t *testing.T) {
 		`id="sources-view"`,
 		`<option value="department/police-department">Police Department</option>`,
 		// The two sentences a reader is owed in the page body.
-		"The General Fund row is the General Fund's share alone",
+		"The General Fund bar is the General Fund's share alone",
 		"A fund marked <em>internal service</em> is one the city fills by charging its own\n    departments",
 		"<strong>Each figure is one fund's share</strong>",
 		"<strong>Each figure is the whole department's\n    cost</strong>",
