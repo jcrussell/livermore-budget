@@ -176,9 +176,10 @@ categories:
           the Budget Book line does not, so binding the two is OUR reading
           rather than the city's wording. It rests on position: this is the
           first revenue line of ACFR p41's General Fund statement, where
-          pp.127-140 print Property Taxes. It cannot rest on arithmetic -- the
-          two documents cover different years on different bases, so they share
-          no cell to reconcile.
+          pp.127-140 print Property Taxes. Arithmetic does not settle it: p41's
+          audited year shares no cell with the Budget Book, and ACFR p121's
+          "Property taxes", which does share FY2024-25 revised, is pp.127-140's
+          figure less 50,000 (fisc-e5l3).
         note: >-
           ACFR p41, not a Budget Book page.
       #@cite p0168 (ACFR) "Property Taxes and special assessments (1)   $ 46,106,890"

@@ -57,6 +57,11 @@ func p121Fact(id string, kind vocab.Kind, category string, cents int64) fact.Fac
 	return f
 }
 
+func withSign(f fact.Fact, s vocab.Sign) fact.Fact {
+	f.Sign = s
+	return f
+}
+
 // p121Column is one column of p121's shape: revenue less expenditure is the
 // excess, and the excess plus the two transfers, the out leg printed
 // negative, is the net change.
@@ -66,7 +71,7 @@ func p121Column(change int64) []fact.Fact {
 		p121Fact("ge", vocab.KindExpenditure, "fire", 200),
 		p121Fact("gx", vocab.KindFundBalance, categoryExcessOfRevenues, 300),
 		p121Fact("gti", vocab.KindTransferIn, "transfers/in", 40),
-		p121Fact("gto", vocab.KindTransferOut, "transfers/out", -90),
+		withSign(p121Fact("gto", vocab.KindTransferOut, "transfers/out", -90), vocab.SignNetted),
 		p121Fact("gc", vocab.KindFundBalance, structure.CategoryFundBalanceChange, change),
 	}
 }
@@ -93,6 +98,48 @@ func TestTheFlowsAreHeldToThePrintedChange(t *testing.T) {
 	if res.Status != StatusFail || len(res.Findings) != 1 ||
 		!strings.Contains(res.Findings[0].Detail, "no transfer line") {
 		t.Fatalf("status = %s, findings %v; want the missing transfers named", res.Status, res.Findings)
+	}
+}
+
+// TestTheFlowsArmRefusesWhatItCannotSum is each way the arm declines to
+// guess: a change printed twice, a change dropped beside printed transfers,
+// and an out leg printed as a positive magnitude.
+func TestTheFlowsArmRefusesWhatItCannotSum(t *testing.T) {
+	t.Parallel()
+	without := func(id string) []fact.Fact {
+		var out []fact.Fact
+		for _, f := range p121Column(250) {
+			if f.ID != id {
+				out = append(out, f)
+			}
+		}
+		return out
+	}
+	positive := p121Column(250)
+	for i := range positive {
+		if positive[i].ID == "gto" {
+			positive[i].Sign = vocab.SignPositive
+			positive[i].AmountCents = 90
+		}
+	}
+	for _, tt := range []struct {
+		name  string
+		facts []fact.Fact
+		want  string
+	}{
+		{"a change printed twice", append(p121Column(250),
+			p121Fact("gc2", vocab.KindFundBalance, structure.CategoryFundBalanceChange, 0)),
+			"publishes the net change line 2 times"},
+		{"a change dropped", without("gc"), "prints transfers and no net change"},
+		{"an out leg printed positive", positive, "prints a transfer out as a positive magnitude"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			res := runExcessIdentity(t, tt.facts)
+			if res.Status != StatusFail || len(res.Findings) != 1 ||
+				!strings.Contains(res.Findings[0].Detail, tt.want) {
+				t.Fatalf("status = %s, findings %v; want one containing %q", res.Status, res.Findings, tt.want)
+			}
+		})
 	}
 }
 

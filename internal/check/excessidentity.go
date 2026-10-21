@@ -62,7 +62,8 @@ func (*excessOfRevenuesIdentity) Full() bool { return false }
 func (*excessOfRevenuesIdentity) Description() string {
 	return "in the ACFR's ten-year Changes in Fund Balances schedule and its General Fund " +
 		"budgetary comparison, total revenues minus total expenditures equals the printed " +
-		"excess row, per column, exactly"
+		"excess row, and where a column prints its net change, the excess plus the transfers " +
+		"equals it, per column, exactly; an excess line at any other scope is a finding"
 }
 
 // excessScopes are the schedules printing an excess line, each one fund scope:
@@ -96,6 +97,7 @@ func (*excessOfRevenuesIdentity) Run(_ context.Context, s *Subject) (Result, err
 	change := map[excessColumn]excessSide{}
 	excessID := map[excessColumn]string{}
 	duplicated := map[excessColumn]bool{}
+	unsummed := map[excessColumn]bool{}
 	var order []excessColumn
 	seen := map[excessColumn]bool{}
 	var findings []Finding
@@ -105,6 +107,13 @@ func (*excessOfRevenuesIdentity) Run(_ context.Context, s *Subject) (Result, err
 			seen[k] = true
 			order = append(order, k)
 		}
+	}
+	add := func(m map[excessColumn]excessSide, k excessColumn, f *fact.Fact) {
+		note(k)
+		side := m[k]
+		side.cents += amount.Cents(f.AmountCents)
+		side.rows++
+		m[k] = side
 	}
 	for _, f := range s.Facts {
 		if !slices.Contains(excessScopes, f.Scope) {
@@ -132,27 +141,20 @@ func (*excessOfRevenuesIdentity) Run(_ context.Context, s *Subject) (Result, err
 			excess[k] = excessSide{amount.Cents(f.AmountCents), 1}
 			excessID[k] = f.ID
 		case f.Kind == vocab.KindRevenue:
-			note(k)
-			side := rev[k]
-			side.cents += amount.Cents(f.AmountCents)
-			side.rows++
-			rev[k] = side
+			add(rev, k, &f)
 		case f.Kind == vocab.KindExpenditure:
-			note(k)
-			side := exp[k]
-			side.cents += amount.Cents(f.AmountCents)
-			side.rows++
-			exp[k] = side
+			add(exp, k, &f)
+		case f.Kind == vocab.KindTransferOut && f.Sign != vocab.SignNetted:
+			// The flows are summed as printed, which nets only an out leg the
+			// page prints negative.
+			findings = append(findings, finding(f.ID,
+				"%s prints a transfer out as a positive magnitude (sign %q), and the flows "+
+					"are summed as printed, so this column's flows are not held to its change", k, f.Sign))
+			unsummed[k] = true
 		case f.Kind == vocab.KindTransferIn || f.Kind == vocab.KindTransferOut:
-			side := transfers[k]
-			side.cents += amount.Cents(f.AmountCents)
-			side.rows++
-			transfers[k] = side
+			add(transfers, k, &f)
 		case f.Category == structure.CategoryFundBalanceChange:
-			side := change[k]
-			side.cents += amount.Cents(f.AmountCents)
-			side.rows++
-			change[k] = side
+			add(change, k, &f)
 		}
 	}
 
@@ -199,7 +201,10 @@ func (*excessOfRevenuesIdentity) Run(_ context.Context, s *Subject) (Result, err
 				excess[k].cents-(rev[k].cents-exp[k].cents)))
 		}
 		switch c := change[k]; {
-		case c.rows == 0:
+		case c.rows == 0 && transfers[k].rows > 0:
+			findings = append(findings, finding(excessID[k],
+				"%s prints transfers and no net change, so the flows have nothing to equal", k))
+		case c.rows == 0, unsummed[k]:
 		case c.rows > 1:
 			findings = append(findings, finding(excessID[k],
 				"%s publishes the net change line %d times; the flows have no single "+

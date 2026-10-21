@@ -789,8 +789,9 @@ rules:
   # Original and Final budgeted amounts, Actual Amounts Budgetary Basis, and a
   # Variance column, one rule per printed block, each declaring the four
   # columns. Variance is skipped: it is the difference of two figures already
-  # published, Actual less Final on the revenue, transfer and net change lines
-  # and Final less Actual on the expenditure lines, and no figure of the fund.
+  # published, Actual less Final on the revenue, transfer, excess and net change
+  # lines and Final less Actual on the expenditure lines, and no figure of the
+  # fund.
   # The Actual column is basis actual: p121 is Required Supplementary
   # Information, outside the auditor's opinion, and on the budgetary basis,
   # where p41 is GAAP.
@@ -810,8 +811,8 @@ rules:
     total_row: "Total Revenues"
     note: >-
       The nine revenue lines, tying to the printed Total Revenues in the
-      three columns read. The page prints no Contributions from outside sources line,
-      which p41 does at 0.00.
+      three columns read. The page prints no Contributions from outside
+      sources line, where p41 prints one with a dash for FY2024-25.
     parts:
       - page: 121
         # "REVENUES" first occurs inside the page title, "SCHEDULE OF

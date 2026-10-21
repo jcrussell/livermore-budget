@@ -267,6 +267,17 @@ func TestAYearOnSeveralBasesAloneCarriesNothing(t *testing.T) {
 	wantFail(t, runBalance(t, &fundBalanceIdentity{}, build(80_001)), "FY2025 actual")
 }
 
+// TestAYearOnTwoBasesAfterAYearHasNoSingleBeginning is the arm's other half:
+// FY2027 printed on two bases after FY2026 leaves no one beginning to carry
+// FY2026's ending into.
+func TestAYearOnTwoBasesAfterAYearHasNoSingleBeginning(t *testing.T) {
+	t.Parallel()
+	revised := fund101
+	revised.year, revised.basis = 2027, vocab.BasisRevised
+	facts := append(twoYears(120_000), revised.facts(byFundRow())...)
+	wantFail(t, runBalance(t, &fundBalanceIdentity{}, facts), "prints FY2027 on 2 bases")
+}
+
 func TestACarryForwardBreakFails(t *testing.T) {
 	t.Parallel()
 	wantFail(t, runBalance(t, &fundBalanceIdentity{}, twoYears(120_001)),
