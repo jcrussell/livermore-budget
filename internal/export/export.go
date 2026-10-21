@@ -944,9 +944,9 @@ func Prepare(o Options) (*plan, error) {
 	}
 
 	// The marker goes down first, before anything that can fail. A run that
-	// dies midway then leaves a directory that --clean recognises as ours;
-	// writing it last would dead-end the retry, because index.html is not
-	// there either and SafeCleanDir would refuse to touch the debris.
+	// dies midway then leaves a directory that RefuseForeignDir recognises as
+	// ours; writing it last would dead-end the retry, because the debris would
+	// be a non-empty directory with no marker.
 	if err := add(MarkerName, []byte("fisc export\n")); err != nil {
 		return nil, err
 	}

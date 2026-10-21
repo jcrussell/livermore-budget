@@ -178,9 +178,9 @@ money appears at more than one grain across scopes: `revenue-by-fund` and
 figures may only be added within one. `fisc verify` is what asserts the
 relationships between scopes; this file publishes the inputs.
 
-**`fisc export --output .` would put `dist/facts/` beside the repository's real
-`facts/`.** The whole site would land in the tree in that case, so it is not a
-new hazard, but the collision of names is worth knowing before you try it.
+**The site's `facts/` shares its name with the repository's.** `fisc export
+--output .` is refused, as is any non-empty directory no earlier export
+marked, so the two cannot land in one tree.
 
 ## What checks it
 

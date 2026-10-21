@@ -9,10 +9,9 @@ import (
 
 // MarkerName is the sentinel file `fisc export` writes at the very start
 // of a run to mark the output directory as fisc's, and therefore safe to
-// clean. index.html is written last, so a run that fails midway would
-// otherwise leave a non-empty tree with no index.html — which SafeCleanDir
-// refuses to delete, dead-ending the retry. The early marker keeps a partial
-// export recoverable with --clean.
+// write into and to clean. It goes down first so a run that fails midway
+// still leaves a directory RefuseForeignDir accepts, keeping a partial export
+// recoverable with --clean.
 const MarkerName = ".fisc-export"
 
 // ResolveOutputDir abs-resolves a user-supplied output directory, follows
@@ -50,46 +49,48 @@ func ResolveOutputDir(outputDir string) (string, error) {
 	return resolved, nil
 }
 
-// RefuseSourceDir refuses an output directory that holds source files, which
-// a generated site never does. Writing a site into one replaces whatever of
-// its files share a name with an asset -- `--output site` overwrites
-// site/app.js with the embedded copy -- and leaves index.html and the marker
-// beside site/embed.go, which a later --clean would then accept and delete.
-// A directory that does not exist yet holds nothing and is not refused.
-func RefuseSourceDir(dir string) error {
-	if looksLikeSource(dir) {
-		return fmt.Errorf("output directory %q holds source files; refusing to write a site into it", dir)
+// RefuseForeignDir refuses an output directory fisc does not own: one that
+// exists, holds anything, and carries no MarkerName. Export writes only into a
+// directory that is missing, empty, or marked by an earlier export, because
+// writing anywhere else leaves the marker beside files fisc did not write, and
+// a later --clean would take the marker at its word and delete them --
+// `fisc export -o data` followed by `--clean` would remove the PDFs and the
+// extracted pages. An unreadable directory is refused rather than assumed
+// empty.
+func RefuseForeignDir(dir string) error {
+	info, err := os.Stat(dir)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
 	}
-	return nil
-}
-
-// looksLikeSource reports whether dir holds files a build produced from a
-// human's work rather than files a generator wrote.
-func looksLikeSource(dir string) bool {
+	if err != nil {
+		return fmt.Errorf("stat %q: %w", dir, err)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("output path %q exists but is not a directory", dir)
+	}
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return false
+		return fmt.Errorf("read output dir: %w", err)
+	}
+	if len(entries) == 0 {
+		return nil
 	}
 	for _, e := range entries {
-		if e.IsDir() {
-			continue
-		}
-		switch filepath.Ext(e.Name()) {
-		case ".go", ".tmpl", ".mod", ".sum":
-			return true
+		if e.Name() == MarkerName && e.Type().IsRegular() {
+			return nil
 		}
 	}
-	return false
+	return fmt.Errorf(
+		"output directory %q is not empty and carries no %s marker from an earlier export; refusing to write a site into it",
+		dir, MarkerName)
 }
 
-// SafeCleanDir removes outputDir and recreates it empty, but only when the
-// directory is empty or looks like one fisc generated — one holding either a
-// finished site's index.html or the MarkerName sentinel. It refuses to
-// delete a non-empty directory with neither, so `fisc export --clean -o
-// ~/documents` cannot wipe the documents. The path is canonicalised and
-// screened by ResolveOutputDir first.
+// SafeCleanDir removes outputDir and recreates it empty, but only when
+// RefuseForeignDir accepts it, so `fisc export --clean -o ~/documents`
+// cannot wipe the documents. The path is canonicalised and screened by
+// ResolveOutputDir first.
 //
-// Checking the sentinel means reading the directory before removing it, so
+// Checking the marker means reading the directory before removing it, so
 // this is a read-then-RemoveAll rather than a bare RemoveAll. The TOCTOU
 // window that opens is worth the guard for a single-user CLI: the failure it
 // prevents is unrecoverable data loss, and the failure it admits requires
@@ -99,47 +100,14 @@ func SafeCleanDir(outputDir string) error {
 	if err != nil {
 		return err
 	}
-
-	info, err := os.Stat(resolved)
-	if errors.Is(err, os.ErrNotExist) {
-		// #nosec G301 -- the caller is building a web root; 0750 would hide
-		// the published site from a server running as another user.
-		return os.MkdirAll(resolved, 0o755)
+	if err := RefuseForeignDir(resolved); err != nil {
+		return err
 	}
-	if err != nil {
-		return fmt.Errorf("stat %q: %w", resolved, err)
-	}
-	if !info.IsDir() {
-		return fmt.Errorf("output path %q exists but is not a directory", resolved)
-	}
-
-	if serr := RefuseSourceDir(resolved); serr != nil {
-		return serr
-	}
-
-	entries, err := os.ReadDir(resolved)
-	if err != nil {
-		return fmt.Errorf("read output dir: %w", err)
-	}
-	if len(entries) > 0 {
-		managed := false
-		for _, e := range entries {
-			if e.Name() == "index.html" || e.Name() == MarkerName {
-				managed = true
-				break
-			}
-		}
-		if !managed {
-			return fmt.Errorf(
-				"output directory %q is not empty and does not look like a generated site (no index.html and no %s marker); refusing to delete it",
-				resolved, MarkerName)
-		}
-	}
-
 	if err := os.RemoveAll(resolved); err != nil {
 		return fmt.Errorf("clean output dir: %w", err)
 	}
-	// #nosec G301 -- as above.
+	// #nosec G301 -- the caller is building a web root; 0750 would hide
+	// the published site from a server running as another user.
 	return os.MkdirAll(resolved, 0o755)
 }
 

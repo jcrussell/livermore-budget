@@ -2711,48 +2711,102 @@ func TestValidateBrowseURLRedactsPassword(t *testing.T) {
 	}
 }
 
-// An export into a source directory overwrites the sources that share a name
-// with an asset, with or without --clean, so Validate refuses it before
+// An export into a directory fisc does not own -- `-o data`, `-o site` --
+// leaves its marker beside files it did not write, and a later --clean would
+// delete them, so Validate refuses it, with or without --clean, before
 // anything is written.
 //
-// Mutation: drop the RefuseSourceDir call from Validate and both cases go red
-// with "got nil error, want a refusal of a directory holding source".
-func TestNewCmdExportRefusesASourceDirectory(t *testing.T) {
-	for _, extra := range [][]string{nil, {"--clean"}} {
-		t.Run(strings.Join(append([]string{"--output", "<source>"}, extra...), " "), func(t *testing.T) {
+// Mutation: drop the RefuseForeignDir call from Validate and every case goes
+// red with "got nil error, want a refusal of a directory fisc does not own".
+func TestNewCmdExportRefusesADirectoryItDoesNotOwn(t *testing.T) {
+	const edit = "// a local edit\n"
+	dirs := map[string]map[string]string{
+		"yaml-and-subdir": {"sources.yaml": "documents: []\n", "pdf/keep.txt": "x"},
+		"source":          {"embed.go": "package site\n", "app.js": edit},
+	}
+	for name, seed := range dirs {
+		for _, extra := range [][]string{nil, {"--clean"}} {
+			t.Run(strings.Join(append([]string{name}, extra...), " "), func(t *testing.T) {
+				dir := t.TempDir()
+				for rel, body := range seed {
+					path := filepath.Join(dir, filepath.FromSlash(rel))
+					if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+						t.Fatalf("seed %s: %v", rel, err)
+					}
+					if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+						t.Fatalf("seed %s: %v", rel, err)
+					}
+				}
+				io, _, _, _ := iostreams.Test()
+				f := &cmdutil.Factory{IOStreams: io, RepoRoot: func() (string, error) { return "", nil }}
+				ran := false
+				cmd := NewCmdExport(f, func(*Options) error { ran = true; return nil })
+				cmd.SetArgs(append([]string{"--output", dir}, extra...))
+				cmd.SetOut(os.Stderr)
+				cmd.SetErr(os.Stderr)
+				err := cmd.Execute()
+
+				if err == nil {
+					t.Fatal("got nil error, want a refusal of a directory fisc does not own")
+				}
+				var flagErr *cmdutil.FlagError
+				if !errors.As(err, &flagErr) {
+					t.Errorf("got %T, want a *cmdutil.FlagError so the runner exits 2", err)
+				}
+				if !strings.Contains(err.Error(), "carries no") {
+					t.Errorf("got error %q, want it to say the directory carries no marker", err)
+				}
+				if ran {
+					t.Error("the run function was reached")
+				}
+				for rel, body := range seed {
+					if b, rerr := os.ReadFile(filepath.Join(dir, filepath.FromSlash(rel))); rerr != nil || string(b) != body {
+						t.Errorf("%s = %q, %v; want it left alone", rel, b, rerr)
+					}
+				}
+				if _, serr := os.Stat(filepath.Join(dir, export.MarkerName)); serr == nil {
+					t.Error("the marker was written")
+				}
+			})
+		}
+	}
+}
+
+// Validate accepts the directories export may write into: missing, empty,
+// and one an earlier export marked.
+func TestNewCmdExportAcceptsADirectoryItOwns(t *testing.T) {
+	cases := map[string]func(t *testing.T) string{
+		"missing": func(t *testing.T) string { return filepath.Join(t.TempDir(), "site") },
+		"empty":   func(t *testing.T) string { return t.TempDir() },
+		"marked": func(t *testing.T) string {
 			dir := t.TempDir()
-			const edit = "// a local edit\n"
-			for name, body := range map[string]string{"embed.go": "package site\n", "app.js": edit} {
-				if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o600); err != nil {
+			for _, name := range []string{export.MarkerName, "index.html"} {
+				if err := os.WriteFile(filepath.Join(dir, name), []byte("x"), 0o600); err != nil {
 					t.Fatalf("seed %s: %v", name, err)
 				}
 			}
-			io, _, _, _ := iostreams.Test()
-			f := &cmdutil.Factory{IOStreams: io, RepoRoot: func() (string, error) { return "", nil }}
-			ran := false
-			cmd := NewCmdExport(f, func(*Options) error { ran = true; return nil })
-			cmd.SetArgs(append([]string{"--output", dir}, extra...))
-			cmd.SetOut(os.Stderr)
-			cmd.SetErr(os.Stderr)
-			err := cmd.Execute()
-
-			if err == nil {
-				t.Fatal("got nil error, want a refusal of a directory holding source")
-			}
-			var flagErr *cmdutil.FlagError
-			if !errors.As(err, &flagErr) {
-				t.Errorf("got %T, want a *cmdutil.FlagError so the runner exits 2", err)
-			}
-			if !strings.Contains(err.Error(), "holds source files") {
-				t.Errorf("got error %q, want it to say the directory holds source", err)
-			}
-			if ran {
-				t.Error("the run function was reached")
-			}
-			if b, rerr := os.ReadFile(filepath.Join(dir, "app.js")); rerr != nil || string(b) != edit {
-				t.Errorf("app.js = %q, %v; want the local edit left alone", b, rerr)
-			}
-		})
+			return dir
+		},
+	}
+	for name, mk := range cases {
+		for _, extra := range [][]string{nil, {"--clean"}} {
+			t.Run(strings.Join(append([]string{name}, extra...), " "), func(t *testing.T) {
+				dir := mk(t)
+				io, _, _, _ := iostreams.Test()
+				f := &cmdutil.Factory{IOStreams: io, RepoRoot: func() (string, error) { return "", nil }}
+				ran := false
+				cmd := NewCmdExport(f, func(*Options) error { ran = true; return nil })
+				cmd.SetArgs(append([]string{"--output", dir}, extra...))
+				cmd.SetOut(os.Stderr)
+				cmd.SetErr(os.Stderr)
+				if err := cmd.Execute(); err != nil {
+					t.Fatalf("got %v, want the directory accepted", err)
+				}
+				if !ran {
+					t.Error("the run function was not reached")
+				}
+			})
+		}
 	}
 }
 

@@ -56,7 +56,7 @@ func TestSafeCleanDirRefusesADirectoryItDidNotWrite(t *testing.T) {
 	if err == nil {
 		t.Fatal("got nil error, want a refusal to delete")
 	}
-	if !strings.Contains(err.Error(), "refusing to delete") {
+	if !strings.Contains(err.Error(), "refusing") {
 		t.Errorf("got error %q, want it to say it is refusing", err)
 	}
 	if _, serr := os.Stat(keep); serr != nil {
@@ -65,14 +65,14 @@ func TestSafeCleanDirRefusesADirectoryItDidNotWrite(t *testing.T) {
 }
 
 func TestSafeCleanDirEmptiesASiteItRecognises(t *testing.T) {
-	cases := map[string]string{
-		"a finished site":  "index.html",
-		"a partial export": export.MarkerName,
+	cases := map[string][]string{
+		"a finished site":  {export.MarkerName, "index.html", "stale.json"},
+		"a partial export": {export.MarkerName, "stale.json"},
 	}
-	for name, sentinel := range cases {
+	for name, files := range cases {
 		t.Run(name, func(t *testing.T) {
 			dir := t.TempDir()
-			for _, f := range []string{sentinel, "stale.json"} {
+			for _, f := range files {
 				if err := os.WriteFile(filepath.Join(dir, f), []byte("x"), 0o600); err != nil {
 					t.Fatalf("seed: %v", err)
 				}
@@ -159,26 +159,68 @@ func TestWritableDir(t *testing.T) {
 	}
 }
 
-// TestSafeCleanDirRefusesASourceDirectory covers the path that actually lost
-// files: `fisc export -o site` drops index.html and the marker beside
-// site/embed.go, so the marker check accepts the directory on the NEXT run
-// and RemoveAll takes the Go package with it. A generated site contains no source, so any source is the signal.
-func TestSafeCleanDirRefusesASourceDirectory(t *testing.T) {
-	dir := t.TempDir()
-	for _, name := range []string{"embed.go", "index.html", export.MarkerName} {
-		if err := os.WriteFile(filepath.Join(dir, name), []byte("x"), 0o600); err != nil {
-			t.Fatalf("seed %s: %v", name, err)
-		}
+// TestRefuseForeignDir: export writes only into a directory that is
+// missing, empty, or carries the marker. A directory holding anything else
+// -- `fisc export -o data` names one holding YAML and subdirectories, and
+// `-o site` one holding Go -- is refused, and so is one holding a finished
+// site's index.html with no marker, since nothing but the marker says fisc
+// wrote it.
+//
+// Mutation: make RefuseForeignDir return nil for any directory and every
+// refused case goes red with "got nil error, want a refusal"; make the
+// marker loop match nothing and the marker cases go red with "want the
+// directory accepted".
+func TestRefuseForeignDir(t *testing.T) {
+	cases := []struct {
+		name   string
+		files  []string
+		dirs   []string
+		refuse bool
+	}{
+		{name: "a YAML file and a subdirectory", files: []string{"sources.yaml"}, dirs: []string{"pdf"}, refuse: true},
+		{name: "source files", files: []string{"embed.go", "app.js"}, refuse: true},
+		{name: "an index.html with no marker", files: []string{"index.html"}, refuse: true},
+		{name: "a directory named like the marker", dirs: []string{export.MarkerName}, refuse: true},
+		{name: "empty"},
+		{name: "a partial export", files: []string{export.MarkerName}},
+		{name: "a finished export", files: []string{export.MarkerName, "index.html"}, dirs: []string{"data"}},
 	}
-
-	err := export.SafeCleanDir(dir)
-	if err == nil {
-		t.Fatal("SafeCleanDir on a directory holding .go files = nil error, want a refusal")
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			for _, f := range tc.files {
+				if err := os.WriteFile(filepath.Join(dir, f), []byte("x"), 0o600); err != nil {
+					t.Fatalf("seed %s: %v", f, err)
+				}
+			}
+			for _, d := range tc.dirs {
+				if err := os.Mkdir(filepath.Join(dir, d), 0o750); err != nil {
+					t.Fatalf("seed %s: %v", d, err)
+				}
+			}
+			err := export.RefuseForeignDir(dir)
+			switch {
+			case tc.refuse && err == nil:
+				t.Fatal("got nil error, want a refusal")
+			case tc.refuse && !strings.Contains(err.Error(), "carries no "+export.MarkerName):
+				t.Errorf("got error %q, want it to name the missing marker", err)
+			case !tc.refuse && err != nil:
+				t.Errorf("got %v, want the directory accepted", err)
+			}
+			if !tc.refuse {
+				return
+			}
+			if cerr := export.SafeCleanDir(dir); cerr == nil {
+				t.Error("SafeCleanDir accepted a directory RefuseForeignDir refuses")
+			}
+			for _, f := range append(tc.files, tc.dirs...) {
+				if _, serr := os.Stat(filepath.Join(dir, f)); serr != nil {
+					t.Errorf("%s was removed: %v", f, serr)
+				}
+			}
+		})
 	}
-	if !strings.Contains(err.Error(), "source") {
-		t.Errorf("error %q does not say why it refused", err)
-	}
-	if _, serr := os.Stat(filepath.Join(dir, "embed.go")); serr != nil {
-		t.Errorf("the source file was removed anyway: %v", serr)
+	if err := export.RefuseForeignDir(filepath.Join(t.TempDir(), "missing")); err != nil {
+		t.Errorf("missing directory: %v", err)
 	}
 }

@@ -86,8 +86,8 @@ type Options struct {
 	// after validation it is absolute and symlink-resolved.
 	OutputDir string
 
-	// Clean empties OutputDir first. It refuses to empty a directory that
-	// does not look like a generated site; see export.SafeCleanDir.
+	// Clean empties OutputDir first. Validate has already refused a
+	// directory fisc does not own; see export.RefuseForeignDir.
 	Clean bool
 
 	// SourceBrowseURL cites the committed page text at a remote — a forge's
@@ -125,7 +125,7 @@ func (o *Options) Validate() error {
 	if err != nil {
 		return cmdutil.FlagErrorf("%s", err)
 	}
-	if err := export.RefuseSourceDir(resolved); err != nil {
+	if err := export.RefuseForeignDir(resolved); err != nil {
 		return cmdutil.FlagErrorf("%s", err)
 	}
 	if err := export.WritableDir(resolved); err != nil {
@@ -196,12 +196,15 @@ refuse to do from a file:// URL — serve the directory over HTTP to look at it.
 Self-contained includes the provenance: the committed text of every page the
 projection cites is copied into the site, so both citation classes resolve
 without reaching a forge. Pass --source-browse-url to cite a browsable copy of
-the repository instead.`,
+the repository instead.
+
+It writes only into a directory that is missing, empty, or marked by an
+earlier export; any other directory is refused before anything is written.`,
 		Example: `  # Write the site to dist/ and read it in a browser
   fisc export
   python3 -m http.server -d dist 8000
 
-  # Refresh the committed site directory
+  # Refresh an earlier export, dropping files it no longer writes
   fisc export --output build/site --clean
 
   # Cite the extracted page text on a forge instead of shipping it
@@ -218,8 +221,8 @@ the repository instead.`,
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.OutputDir, "output", "o", defaultOutputDir, "Directory to write the site into")
-	cmd.Flags().BoolVar(&opts.Clean, "clean", false, "Empty the output directory first (refuses anything that is not a generated site)")
+	cmd.Flags().StringVarP(&opts.OutputDir, "output", "o", defaultOutputDir, "Directory to write the site into (missing, empty, or an earlier export)")
+	cmd.Flags().BoolVar(&opts.Clean, "clean", false, "Empty the output directory first")
 	cmd.Flags().StringVar(&opts.SourceBrowseURL, "source-browse-url", "",
 		"Cite the extracted page text at this base URL instead of shipping it in the site (e.g. "+export.DefaultSourceBrowseURL+")")
 
