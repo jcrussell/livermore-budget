@@ -1,8 +1,9 @@
 // Package project turns facts into the JSON documents the site renders.
 //
-// One projection is one file under <output>/data/, so `fisc export -o dist`
-// writes dist/data/sankey.json and `fisc export -o site` writes
-// site/data/sankey.json: one code path, one layout. The browser fetches the
+// A projection is published in the output directory, whichever directory
+// --output names: inside the column it folds into,
+// <output>/fy<year>-<basis>.json, or as <output>/data/<stem>.json where it
+// states no column. The browser fetches the
 // file; it is never inlined into the page, because a provenance document you
 // cannot curl on its own is not much of an audit trail.
 //

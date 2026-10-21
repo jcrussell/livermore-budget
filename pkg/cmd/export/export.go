@@ -124,6 +124,9 @@ func (o *Options) Validate() error {
 	if err != nil {
 		return cmdutil.FlagErrorf("%s", err)
 	}
+	if err := export.RefuseSourceDir(resolved); err != nil {
+		return cmdutil.FlagErrorf("%s", err)
+	}
 	if err := export.WritableDir(resolved); err != nil {
 		return cmdutil.FlagErrorf("%s", err)
 	}

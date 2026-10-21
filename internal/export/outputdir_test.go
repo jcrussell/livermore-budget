@@ -160,10 +160,9 @@ func TestWritableDir(t *testing.T) {
 }
 
 // TestSafeCleanDirRefusesASourceDirectory covers the path that actually lost
-// files: `fisc export -o site` (which this command's Example once suggested)
-// drops index.html and the marker beside site/embed.go, so the marker check
-// accepts the directory on the NEXT run and RemoveAll takes the Go package
-// with it. A generated site contains no source, so any source is the signal.
+// files: `fisc export -o site` drops index.html and the marker beside
+// site/embed.go, so the marker check accepts the directory on the NEXT run
+// and RemoveAll takes the Go package with it. A generated site contains no source, so any source is the signal.
 func TestSafeCleanDirRefusesASourceDirectory(t *testing.T) {
 	dir := t.TempDir()
 	for _, name := range []string{"embed.go", "index.html", export.MarkerName} {

@@ -50,15 +50,21 @@ func ResolveOutputDir(outputDir string) (string, error) {
 	return resolved, nil
 }
 
+// RefuseSourceDir refuses an output directory that holds source files, which
+// a generated site never does. Writing a site into one replaces whatever of
+// its files share a name with an asset -- `--output site` overwrites
+// site/app.js with the embedded copy -- and leaves index.html and the marker
+// beside site/embed.go, which a later --clean would then accept and delete.
+// A directory that does not exist yet holds nothing and is not refused.
+func RefuseSourceDir(dir string) error {
+	if looksLikeSource(dir) {
+		return fmt.Errorf("output directory %q holds source files; refusing to write a site into it", dir)
+	}
+	return nil
+}
+
 // looksLikeSource reports whether dir holds files a build produced from a
 // human's work rather than files a generator wrote.
-//
-// The marker sentinel makes a directory reusable, but it cannot tell an
-// exported site from a source directory that was once exported into: after one
-// run, `--output site` leaves index.html and the marker beside site/embed.go,
-// and the NEXT --clean deletes the Go package. That happened to be spelled out
-// in this command's own Example. A generated site contains no source, so the
-// presence of any is the signal.
 func looksLikeSource(dir string) bool {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -107,8 +113,8 @@ func SafeCleanDir(outputDir string) error {
 		return fmt.Errorf("output path %q exists but is not a directory", resolved)
 	}
 
-	if looksLikeSource(resolved) {
-		return fmt.Errorf("output directory %q holds source files; refusing to delete", resolved)
+	if serr := RefuseSourceDir(resolved); serr != nil {
+		return serr
 	}
 
 	entries, err := os.ReadDir(resolved)

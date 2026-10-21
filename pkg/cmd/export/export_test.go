@@ -2709,3 +2709,48 @@ func TestValidateBrowseURLRedactsPassword(t *testing.T) {
 		t.Errorf("error %q repeats the password", err)
 	}
 }
+
+// An export into a source directory overwrites the sources that share a name
+// with an asset, with or without --clean, so Validate refuses it before
+// anything is written.
+//
+// Mutation: drop the RefuseSourceDir call from Validate and both cases go red
+// with "got nil error, want a refusal of a directory holding source".
+func TestNewCmdExportRefusesASourceDirectory(t *testing.T) {
+	for _, extra := range [][]string{nil, {"--clean"}} {
+		t.Run(strings.Join(append([]string{"--output", "<source>"}, extra...), " "), func(t *testing.T) {
+			dir := t.TempDir()
+			const edit = "// a local edit\n"
+			for name, body := range map[string]string{"embed.go": "package site\n", "app.js": edit} {
+				if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o600); err != nil {
+					t.Fatalf("seed %s: %v", name, err)
+				}
+			}
+			io, _, _, _ := iostreams.Test()
+			f := &cmdutil.Factory{IOStreams: io, RepoRoot: func() (string, error) { return "", nil }}
+			ran := false
+			cmd := NewCmdExport(f, func(*Options) error { ran = true; return nil })
+			cmd.SetArgs(append([]string{"--output", dir}, extra...))
+			cmd.SetOut(os.Stderr)
+			cmd.SetErr(os.Stderr)
+			err := cmd.Execute()
+
+			if err == nil {
+				t.Fatal("got nil error, want a refusal of a directory holding source")
+			}
+			var flagErr *cmdutil.FlagError
+			if !errors.As(err, &flagErr) {
+				t.Errorf("got %T, want a *cmdutil.FlagError so the runner exits 2", err)
+			}
+			if !strings.Contains(err.Error(), "holds source files") {
+				t.Errorf("got error %q, want it to say the directory holds source", err)
+			}
+			if ran {
+				t.Error("the run function was reached")
+			}
+			if b, rerr := os.ReadFile(filepath.Join(dir, "app.js")); rerr != nil || string(b) != edit {
+				t.Errorf("app.js = %q, %v; want the local edit left alone", b, rerr)
+			}
+		})
+	}
+}
