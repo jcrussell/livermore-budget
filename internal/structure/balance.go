@@ -97,6 +97,8 @@ func FundBalances() []Balance {
 		// p41 prints its Transfers (out) negative, so its flows are not
 		// SourcesUses' terms as signed.
 		{Scope: ScopeACFRGeneralFundSummary, Lines: identity},
+		// p121 prints its Transfers (out) negative too.
+		{Scope: ScopeACFRGeneralFundBudgetActual, Lines: identity},
 		{
 			Scope: ScopeFundBalancesByFund,
 			Lines: []Line{

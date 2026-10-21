@@ -3,21 +3,23 @@ package check
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // categoryExcessOfRevenues is the printed subtotal this identity recomputes.
 const categoryExcessOfRevenues = "fund-balance/excess-of-revenues"
 
-// excessOfRevenuesIdentity asserts that in the ACFR's ten-year Changes in Fund
-// Balances schedule, total revenues minus total expenditures equals the printed
-// Excess of Revenues over (under) expenditures, per column, at zero tolerance.
+// excessOfRevenuesIdentity asserts that in each of excessScopes, total revenues
+// minus total expenditures equals the printed Excess of Revenues over (under)
+// expenditures, per column, at zero tolerance.
 //
 // This is the schedule's corroboration tie, and it is a check rather than a
 // build-time total because all three terms are published facts: the city prints
@@ -25,7 +27,9 @@ const categoryExcessOfRevenues = "fund-balance/excess-of-revenues"
 // checked against a figure the document states rather than against our own sum.
 // Measured off p168 before the check was written: the identity holds in all ten
 // columns, 2016's 149,526,096 - 114,652,048 = 34,874,048 through 2025's
-// 221,212,743 - 186,516,649 = 34,696,094.
+// 221,212,743 - 186,516,649 = 34,696,094. ACFR p121 holds it in all three
+// columns, the original budget's 146,975,502 - 144,228,303 = 2,747,199 among
+// them.
 //
 // WHAT IT WITNESSES that the two per-block printed totals cannot: cross-block
 // column agreement. Each block's total_row ties a column against its own rows,
@@ -48,20 +52,26 @@ func (*excessOfRevenuesIdentity) ID() string { return "excess-of-revenues-identi
 func (*excessOfRevenuesIdentity) Tier() int  { return 1 }
 func (*excessOfRevenuesIdentity) Full() bool { return false }
 func (*excessOfRevenuesIdentity) Description() string {
-	return "in the ACFR's ten-year Changes in Fund Balances schedule, total revenues minus " +
-		"total expenditures equals the printed excess row, per column, exactly"
+	return "in the ACFR's ten-year Changes in Fund Balances schedule and its General Fund " +
+		"budgetary comparison, total revenues minus total expenditures equals the printed " +
+		"excess row, per column, exactly"
 }
 
-// excessColumn is one column of the schedule: one (fiscal year, basis) pair at
-// the scope. The fund dimension is deliberately absent — the schedule is all
-// governmental funds combined and its facts carry no fund group.
+// excessScopes are the schedules printing an excess line, each one fund scope:
+// pp.168-169 all governmental funds combined, p121 the General Fund alone.
+var excessScopes = []string{project.ChangesScope, structure.ScopeACFRGeneralFundBudgetActual}
+
+// excessColumn is one column of a schedule: one (fiscal year, basis) pair at
+// one of excessScopes. The fund dimension is deliberately absent — each scope
+// is a single fund scope.
 type excessColumn struct {
+	scope         string
 	year, through int
 	basis         vocab.Basis
 }
 
 func (k excessColumn) String() string {
-	return project.ChangesScope + " " + fact.BandLabel(k.year, k.through, k.basis)
+	return k.scope + " " + fact.BandLabel(k.year, k.through, k.basis)
 }
 
 // excessSide is what one column accumulated from one side of the identity.
@@ -87,10 +97,10 @@ func (*excessOfRevenuesIdentity) Run(_ context.Context, s *Subject) (Result, err
 		}
 	}
 	for _, f := range s.Facts {
-		if f.Scope != project.ChangesScope {
+		if !slices.Contains(excessScopes, f.Scope) {
 			continue
 		}
-		k := excessColumn{f.FiscalYear, fact.BandOf(&f), f.Basis}
+		k := excessColumn{f.Scope, f.FiscalYear, fact.BandOf(&f), f.Basis}
 		switch {
 		case f.Category == categoryExcessOfRevenues:
 			note(k)
@@ -169,8 +179,8 @@ func (*excessOfRevenuesIdentity) Run(_ context.Context, s *Subject) (Result, err
 		subjects: len(order),
 		unit:     "columns",
 		held: fmt.Sprintf("%d columns of %q, each with total revenues minus total "+
-			"expenditures equal to the printed excess to the cent", complete, project.ChangesScope),
-		nothing:  fmt.Sprintf("no fact is in scope %q", project.ChangesScope),
+			"expenditures equal to the printed excess to the cent", complete, excessScopes),
+		nothing:  fmt.Sprintf("no fact is in scope %q", excessScopes),
 		findings: findings,
 	}.result(), nil
 }

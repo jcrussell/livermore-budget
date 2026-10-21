@@ -2004,6 +2004,8 @@ categories:
       by us.
     source_note: >-
       ACFR p168, not a Budget Book page. The label wraps over three lines, so
-      the mapping anchors on its fragments. excess-of-revenues-identity
-      (internal/check) recomputes this row from the same statement's revenue
-      and expenditure facts, per column.
+      the mapping anchors on its fragments. ACFR p121 prints the same line
+      for the General Fund as "EXCESS (DEFICIENCY) OF REVENUES / OVER
+      EXPENDITURES", over two. excess-of-revenues-identity (internal/check)
+      recomputes this row from the same statement's revenue and expenditure
+      facts, per column.

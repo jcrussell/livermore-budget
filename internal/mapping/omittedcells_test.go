@@ -281,8 +281,6 @@ func TestParseRefusesABadOmittedCell(t *testing.T) {
 		{"a header over two columns", with(blankPair, `column_headers: ["FY B", "FY C", "TOTAL"]`,
 			`column_headers: ["FY C", "FY C", "TOTAL"]`),
 			`"FY C" heads more than one of this part's columns`},
-		{"a skipped column", pair(`          - {label: "Beta", column: "TOTAL", note: n}` + "\n"),
-			`"TOTAL" is a skipped column`},
 		{"declared twice", pair(blankEntry + blankEntry), `"Beta" under "FY C" is declared twice`},
 		{"a row another page prints", with(blankPair, `{label: "Beta", category: taxes/sales}`,
 			`{label: "Beta", category: taxes/sales, page: 1}`),
@@ -312,6 +310,33 @@ func TestParseRefusesABadOmittedCell(t *testing.T) {
 				t.Fatalf("got %v, want an error containing %q", err, tt.want)
 			}
 		})
+	}
+}
+
+// TestABlankUnderASkippedColumnIsReadAndNoOmission is ACFR p121's shape: a
+// row that prints nothing under the column the rule skips. The row's other
+// figures are read, and the blank is no Omission, since a skipped column's
+// year and basis name a cell a read column publishes.
+func TestABlankUnderASkippedColumnIsReadAndNoOmission(t *testing.T) {
+	src := strings.Replace(blankPair, blankEntry,
+		`          - {label: "Beta", column: "TOTAL", note: "printed blank"}`+"\n", 1)
+	pages := blankPairPages()
+	pages[2] = strings.Replace(pages[2], fmt.Sprintf("%10s%10s%10s\n", "40", "", "40"),
+		fmt.Sprintf("%10s%10s%10s\n", "40", "7", ""), 1)
+	p, cells, omissions, err := readBlank(t, src, pages, 1)
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	want := []placedCell{
+		{"Alpha", "FY B", "10", 1000}, {"Alpha", "FY C", "20", 2000}, {"Alpha", "TOTAL", "30", 3000},
+		{"Beta", "FY B", "40", 4000}, {"Beta", "FY C", "7", 700},
+		{"Gamma", "FY B", "-", 0}, {"Gamma", "FY C", "5", 500}, {"Gamma", "TOTAL", "5", 500},
+	}
+	if diff := cmp.Diff(want, placedCells(p, cells)); diff != "" {
+		t.Errorf("cells (-want +got):\n%s", diff)
+	}
+	if len(omissions) != 0 {
+		t.Errorf("omissions = %d, want none: a skipped column's blank is no fact's cell", len(omissions))
 	}
 }
 

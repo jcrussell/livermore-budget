@@ -478,7 +478,9 @@ func (r *Resolver) readPart(rule *Rule, p *Part) ([]Value, []Omission, error) {
 // Omissions is the cells a part declares the page leaves blank, in row order.
 // It reads the declaration alone, so a caller with no page in hand gets what
 // Values would, and internal/check reads its blanks from here and matches
-// nothing of its own.
+// nothing of its own. A blank under a skipped column is left out: it is no
+// fact's cell, and its column's year and basis name a cell a read column
+// publishes.
 func Omissions(rule *Rule, p *Part) []Omission {
 	if len(p.OmittedCells) == 0 {
 		return nil
@@ -489,7 +491,7 @@ func Omissions(rule *Rule, p *Part) []Omission {
 	var out []Omission
 	for i, row := range rule.Rows {
 		for c := range p.ColumnHeaders {
-			if p.blank[row.Identity()][c] {
+			if p.blank[row.Identity()][c] && !p.Columns[c].Skip {
 				out = append(out, Omission{Row: row, RowIndex: i, Page: p.Page,
 					ColumnIndex: c, Header: headerAt(p, c)})
 			}

@@ -783,3 +783,176 @@ rules:
       - {label: "Total other financing", label_tail: "sources (uses)", skip: true}
       - {label: "Net change in", label_tail: "fund balances", skip: true}
       - {label: "percentage of noncapital", label_tail: "expenditures", quantity: percentage}
+
+  # --------------------------------------------------------------------------
+  # p121, the General Fund's budgetary comparison schedule for FY2024-25:
+  # Original and Final budgeted amounts, Actual Amounts Budgetary Basis, and a
+  # Variance column. Five rules over one page, one per kind, each declaring the
+  # four columns. Variance is skipped: it is Actual less Final, a difference of
+  # two figures already published, and no figure of the fund.
+  #
+  # The columns name no fund group, so each takes the scope as its column path,
+  # as a single-fund schedule does. Named `general`, the Actual column would be
+  # p41's series again, the same lines printed for the same year, and p41 rounds
+  # them to $10,000. Nor are they fund 100's: the Budget Book's fund 100 begins
+  # FY2024-25 at 14,740,780, and p121 at 92,047,744.
+  - id: acfr-p0121-gf-budget-revenues
+    kind: revenue
+    basis: audited
+    scope: acfr-general-fund-budget-actual
+    grain: category
+    units: dollars
+    total_row: "Total Revenues"
+    note: >-
+      The nine revenue lines, tying to the printed Total Revenues in all four
+      columns. The page prints no Contributions from outside sources line,
+      which p41 does at 0.00.
+    parts:
+      - page: 121
+        # "REVENUES" first occurs inside the page title, "SCHEDULE OF
+        # REVENUES, EXPENDITURES AND CHANGES IN FUND BALANCES".
+        section: "REVENUES"
+        section_ordinal: 2
+        stop_at: "Total Revenues"
+        column_headers: ["Original", "Final", "Budgetary Basis", "(Negative)"]
+        columns:
+          - {fiscal_year: 2025, basis: adopted}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2025, basis: audited}
+          - {fiscal_year: 2025, skip: true}
+    rows:
+      - {label: "Property taxes", category: taxes/property}
+      - {label: "Sales taxes", category: taxes/sales}
+      - {label: "Other taxes", category: taxes/other}
+      - {label: "Licenses and permits", category: licenses-and-permits}
+      - {label: "Intergovernmental", category: intergovernmental}
+      - {label: "Fines and forfeitures", category: fines-and-forfeitures}
+      - {label: "Charges for current services", category: charges-for-services}
+      - {label: "Use of money and property", category: use-of-money-and-property}
+      - {label: "Miscellaneous", category: miscellaneous-revenue}
+
+  # --------------------------------------------------------------------------
+  - id: acfr-p0121-gf-budget-expenditures
+    kind: expenditure
+    basis: audited
+    scope: acfr-general-fund-budget-actual
+    grain: category
+    units: dollars
+    total_row: "Total Expenditurs"
+    note: >-
+      The fourteen expenditure lines on the ACFR's function axis, tying to the
+      printed total in all four columns. The total's label is the page's own
+      misspelling, quoted as printed. The five General Government divisions
+      carry no department, as on p41 and for the reason
+      data/taxonomy.yaml's general-government entry gives.
+    parts:
+      - page: 121
+        # First inside the page title, third inside "OVER EXPENDITURES".
+        section: "EXPENDITURES"
+        section_ordinal: 2
+        stop_at: "Total Expenditurs"
+        headings: ["Current:", "General Government:", "Debt service:"]
+        column_headers: ["Original", "Final", "Budgetary Basis", "(Negative)"]
+        columns:
+          - {fiscal_year: 2025, basis: adopted}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2025, basis: audited}
+          - {fiscal_year: 2025, skip: true}
+    rows:
+      - {label: "City Council", category: general-government}
+      - {label: "City Manager", category: general-government}
+      - {label: "City Attorney", category: general-government}
+      - {label: "Administrative Services", category: general-government}
+      - {label: "General Services", category: general-government}
+      - {label: "Fire", category: fire}
+      - {label: "Police", category: police}
+      - {label: "Public Works", category: public-works-function}
+      - {label: "Community Development", category: community-development-function}
+      - {label: "Economic Development", category: economic-development}
+      - {label: "Library", category: library-function}
+      - {label: "Capital Outlay", category: capital-outlay}
+      - {label: "Principal", category: debt-services}
+      - {label: "Interest and fiscal charges", category: debt-services}
+
+  # --------------------------------------------------------------------------
+  - id: acfr-p0121-gf-budget-excess-of-revenues
+    kind: fund_balance
+    basis: audited
+    scope: acfr-general-fund-budget-actual
+    grain: category
+    units: dollars
+    note: >-
+      The schedule's own subtotal, wrapped over two lines with its figures on
+      the second. No total_row: it is one printed line.
+    parts:
+      - page: 121
+        section: "EXCESS (DEFICIENCY) OF REVENUES"
+        stop_at: "OTHER FINANCING SOURCES (USES)"
+        column_headers: ["Original", "Final", "Budgetary Basis", "(Negative)"]
+        columns:
+          - {fiscal_year: 2025, basis: adopted}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2025, basis: audited}
+          - {fiscal_year: 2025, skip: true}
+    rows:
+      - {label: "OVER EXPENDITURES", category: fund-balance/excess-of-revenues}
+
+  # --------------------------------------------------------------------------
+  - id: acfr-p0121-gf-budget-other-financing-sources
+    kind: transfer_in
+    basis: audited
+    scope: acfr-general-fund-budget-actual
+    grain: category
+    units: dollars
+    total_row: "Total Other Financing Sources (Uses)"
+    note: >-
+      The two transfer lines, tying to the printed total in all four columns.
+      The second row overrides the kind to transfer_out, as p41's does.
+    parts:
+      - page: 121
+        section: "OTHER FINANCING SOURCES (USES)"
+        stop_at: "Total Other Financing Sources (Uses)"
+        column_headers: ["Original", "Final", "Budgetary Basis", "(Negative)"]
+        columns:
+          - {fiscal_year: 2025, basis: adopted}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2025, basis: audited}
+          - {fiscal_year: 2025, skip: true}
+    rows:
+      - {label: "Transfers in", category: transfers/in}
+      - {label: "Transfers (out)", category: transfers/out, kind: transfer_out, sign: netted}
+
+  # --------------------------------------------------------------------------
+  - id: acfr-p0121-gf-budget-fund-balances
+    kind: fund_balance
+    basis: audited
+    scope: acfr-general-fund-budget-actual
+    grain: category
+    units: dollars
+    note: >-
+      The three fund-balance lines the schedule closes with. No total_row: a
+      fund balance is a stock and the page never adds these together;
+      fund-balance-identity asserts beginning + change = ending per column.
+      The rows above them are the other-financing-sources rule's, skipped here
+      so no printed figure is cited twice.
+    parts:
+      - page: 121
+        section: "OTHER FINANCING SOURCES (USES)"
+        # Only the RSI note line and the page number follow the block.
+        stop_at: "\n\n"
+        omitted_cells:
+          - {label: "Fund balance-beginning", column: "(Negative)", note: "the page prints the line's three balances and nothing under Variance, a column of differences a balance has none of"}
+          - {label: "Fund balance-ending", column: "(Negative)", note: "the page prints the line's three balances and nothing under Variance, a column of differences a balance has none of"}
+        column_headers: ["Original", "Final", "Budgetary Basis", "(Negative)"]
+        columns:
+          - {fiscal_year: 2025, basis: adopted}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2025, basis: audited}
+          - {fiscal_year: 2025, skip: true}
+    rows:
+      - {label: "Transfers in", skip: true}
+      - {label: "Transfers (out)", skip: true}
+      - {label: "Total Other Financing Sources (Uses)", skip: true}
+      - {label: "Net change in fund balance", category: fund-balance/change}
+      - {label: "Fund balance-beginning", category: fund-balance/beginning}
+      - {label: "Fund balance-ending", category: fund-balance/ending}

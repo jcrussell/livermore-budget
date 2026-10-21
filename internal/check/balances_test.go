@@ -238,6 +238,20 @@ func TestAYearOnTwoBasesHasNoSingleEnding(t *testing.T) {
 	wantFail(t, runBalance(t, &fundBalanceIdentity{}, facts), "prints FY2026 on 2 bases")
 }
 
+// TestAYearOnSeveralBasesAloneCarriesNothing is ACFR p121's shape: one year
+// printed on three bases and no year beside it, so no ending is carried and
+// each basis is held to its own identity.
+func TestAYearOnSeveralBasesAloneCarriesNothing(t *testing.T) {
+	t.Parallel()
+	var facts []fact.Fact
+	for _, b := range []vocab.Basis{vocab.BasisAdopted, vocab.BasisRevised, vocab.BasisAudited} {
+		at := fund101
+		at.basis = b
+		facts = append(facts, at.facts(byFundRow())...)
+	}
+	wantPass(t, runBalance(t, &fundBalanceIdentity{}, facts), 3)
+}
+
 func TestACarryForwardBreakFails(t *testing.T) {
 	t.Parallel()
 	wantFail(t, runBalance(t, &fundBalanceIdentity{}, twoYears(120_001)),

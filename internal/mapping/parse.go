@@ -1343,8 +1343,7 @@ func resolveOmittedCells(r *Rule, p *Part, errf errFunc) error {
 
 // validateOmittedCells holds each omitted_cells entry, resolved by
 // resolveOmittedCells, to naming one cell the part reads: one row, by
-// namesOneRow, that the part prints, under a column the part does not skip,
-// leaving the row a figure to print.
+// namesOneRow, that the part prints, leaving the row a figure to print.
 func validateOmittedCells(r *Rule, p *Part,
 	namesOneRow func(field string, j int, o Row, notARow string) error, errf errFunc) error {
 	if len(p.OmittedCells) == 0 {
@@ -1380,19 +1379,14 @@ func validateOmittedCells(r *Rule, p *Part,
 		}
 		// Counted over the columns the row still PRINTS, skipped ones
 		// included: a blank is a claim about the page, and a row printing no
-		// figure leaves the read nothing to end on. A skipped column can never
-		// be declared blank, so its figure is one the read still demands.
-		// Budget Book p81 prints its 2046-2050 and 2051-2055 lines with a
-		// figure under Grand Total alone, which the rule skips.
+		// figure leaves the read nothing to end on. Budget Book p81 prints its
+		// 2046-2050 and 2051-2055 lines with a figure under Grand Total alone,
+		// which the rule skips. A skipped column may be declared blank: ACFR
+		// p121 prints its fund balances with nothing under the Variance column
+		// the rule skips.
 		printed := 0
-		for c, col := range p.Columns {
-			switch {
-			case p.blank[id][c] && col.Skip:
-				return hint.With(
-					errf(r.ID, field, "%q is a skipped column", p.ColumnHeaders[c].Text),
-					"a skipped column yields no figure to be absent; no page needs a "+
-						"blank declared there yet, so the read refuses one")
-			case !p.blank[id][c]:
+		for c := range p.Columns {
+			if !p.blank[id][c] {
 				printed++
 			}
 		}

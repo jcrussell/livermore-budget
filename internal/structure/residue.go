@@ -52,8 +52,47 @@ func BudgetBookResidue() []Residue {
 			"schedule through 2055, by fund type and by year or five-year band: projected, " +
 			"never an appropriation, and no other schedule prints their axis. Each column " +
 			"ties to the schedule's own printed Total",
-	}}, append(cipProjectListingResidue(), fundBalancesByFundResidue()...)...)
+	}}, append(append(cipProjectListingResidue(), fundBalancesByFundResidue()...),
+		acfrBudgetActualResidue()...)...)
 }
+
+// acfrBudgetActualResidue is ACFR p121, every kind of every rule reading it.
+func acfrBudgetActualResidue() []Residue {
+	var out []Residue
+	for _, r := range []struct {
+		rule  string
+		kinds []vocab.Kind
+	}{
+		{"acfr-p0121-gf-budget-revenues", []vocab.Kind{vocab.KindRevenue}},
+		{"acfr-p0121-gf-budget-expenditures", []vocab.Kind{vocab.KindExpenditure}},
+		{"acfr-p0121-gf-budget-excess-of-revenues", []vocab.Kind{vocab.KindFundBalance}},
+		{"acfr-p0121-gf-budget-other-financing-sources", []vocab.Kind{vocab.KindTransferIn, vocab.KindTransferOut}},
+		{"acfr-p0121-gf-budget-fund-balances", []vocab.Kind{vocab.KindFundBalance}},
+	} {
+		for _, kind := range r.kinds {
+			out = append(out, Residue{
+				Scope:  ScopeACFRGeneralFundBudgetActual,
+				Rule:   r.rule,
+				Kind:   kind,
+				Reason: acfrBudgetActualResidueReason,
+			})
+		}
+	}
+	return out
+}
+
+// acfrBudgetActualResidueReason is why ACFR p121 sits in no cut. A comparison
+// is held to the coarser side's columns, and no Budget Book schedule prints
+// FY2024-25 adopted or audited, so as a cut p121 would hold the Budget Book to
+// two columns it never prints.
+const acfrBudgetActualResidueReason = "ACFR p121 prints the General Fund's FY2024-25 original " +
+	"budget, final budget and actual side by side, on a function axis for expenditure, and no " +
+	"Budget Book schedule prints FY2024-25 adopted or audited. Its final budget revenues are the " +
+	"Budget Book's FY2024-25 revised General Fund revenues in seven of nine lines, Total Revenues " +
+	"148,800,148 in both; property taxes 60,571,418 and use of money and property 7,287,501 are " +
+	"p127's 60,621,418 and p129's 7,237,501 with 50,000 moved between them, and its transfers in, " +
+	"905,500, are not p192's 914,206. Its actual is p41's FY2024-25, which p41 rounds to $10,000. " +
+	"Each column ties to the schedule's own printed totals"
 
 // fundBalancesByFundResidue is pp.186-209's Capital Improvement Program
 // Funds block, every kind of every rule reading it.

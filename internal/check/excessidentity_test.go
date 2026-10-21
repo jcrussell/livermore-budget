@@ -7,6 +7,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
@@ -44,6 +45,32 @@ func runExcessIdentity(t *testing.T, facts []fact.Fact) Result {
 		t.Fatalf("Run: %v", err)
 	}
 	return res
+}
+
+// TestExcessIdentityHoldsEachScopeApart is ACFR p121 beside pp.168-169: the
+// General Fund's column is held to its own rows, and a General Fund excess
+// wrong against them fails even where the combined schedule's column ties.
+func TestExcessIdentityHoldsEachScopeApart(t *testing.T) {
+	t.Parallel()
+	gf := func(id string, kind vocab.Kind, category string, cents int64) fact.Fact {
+		f := excessFact(id, kind, category, 2016, cents)
+		f.Scope = structure.ScopeACFRGeneralFundBudgetActual
+		return f
+	}
+	facts := append(excessBaseline(),
+		gf("gr", vocab.KindRevenue, "taxes/property", 500),
+		gf("ge", vocab.KindExpenditure, "fire", 200),
+		gf("gx", vocab.KindFundBalance, categoryExcessOfRevenues, 300))
+	if res := runExcessIdentity(t, facts); res.Status != StatusPass || res.Subjects != 3 {
+		t.Fatalf("status = %s over %d (%s), want pass over 3 columns", res.Status, res.Subjects, res.Summary)
+	}
+	facts[len(facts)-1].AmountCents++
+	res := runExcessIdentity(t, facts)
+	if res.Status != StatusFail || len(res.Findings) != 1 ||
+		!strings.Contains(res.Findings[0].Detail, structure.ScopeACFRGeneralFundBudgetActual) {
+		t.Fatalf("status = %s, findings %v; want one finding naming the General Fund scope",
+			res.Status, res.Findings)
+	}
 }
 
 func TestExcessIdentityHoldsOverTheBaseline(t *testing.T) {

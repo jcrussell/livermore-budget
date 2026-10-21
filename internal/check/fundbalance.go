@@ -230,8 +230,10 @@ func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 // many a declared exception holds apart. A break is declared in
 // structure.BalanceExceptions or is a finding.
 //
-// A series printing one year on two bases has no single ending to carry, and
-// is a finding rather than a guess at which basis follows which.
+// A series printing one year on two bases, beside a year it carries to or
+// from, has no single ending to carry, and is a finding rather than a guess at
+// which basis follows which. With no neighbouring year there is nothing to
+// carry: ACFR p121 prints FY2025 alone, on three bases.
 func carryForward(balances map[structure.BalanceAt]*balance, order []structure.BalanceAt,
 	exceptions []structure.BalanceException) (tie, heldApart int, findings []Finding) {
 	years := map[string]map[int][]structure.BalanceAt{}
@@ -258,7 +260,9 @@ func carryForward(balances map[structure.BalanceAt]*balance, order []structure.B
 		}
 		sort.Ints(ys)
 		for _, y := range ys {
-			if ks := years[s][y]; len(ks) > 1 {
+			_, before := years[s][y-1]
+			_, after := years[s][y+1]
+			if ks := years[s][y]; len(ks) > 1 && (before || after) {
 				ambiguous = true
 				findings = append(findings, finding(ks[0].String(),
 					"%s prints FY%d on %d bases, so it has no single ending to carry forward", s, y, len(ks)))
