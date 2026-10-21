@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -149,6 +150,15 @@ func validateBrowseURL(raw string) error {
 	}
 	if u.Host == "" {
 		return fmt.Errorf("%q has no host", raw)
+	}
+	// Each citation appends a repository path to the base, so a query or a
+	// fragment would sit in front of the path, and an empty one is still a
+	// "?" or a "#" there: url.URL keeps no flag for an empty fragment.
+	if u.RawQuery != "" || u.ForceQuery {
+		return fmt.Errorf("%q carries a query; every citation appends a path to the base, which would land after it", raw)
+	}
+	if strings.Contains(raw, "#") {
+		return fmt.Errorf("%q carries a fragment; every citation appends a path to the base, which would land after it", raw)
 	}
 	return nil
 }

@@ -213,6 +213,26 @@ func TestNewCmdExportFlags(t *testing.T) {
 			args:    []string{"--source-browse-url", "https:///blob/main"},
 			wantErr: "has no host",
 		},
+		{
+			name:    "browse url with a query",
+			args:    []string{"--source-browse-url", "https://example.test/blob/main?plain=1"},
+			wantErr: "carries a query",
+		},
+		{
+			name:    "browse url with an empty query",
+			args:    []string{"--source-browse-url", "https://example.test/blob/main?"},
+			wantErr: "carries a query",
+		},
+		{
+			name:    "browse url with a fragment",
+			args:    []string{"--source-browse-url", "https://example.test/blob/main#top"},
+			wantErr: "carries a fragment",
+		},
+		{
+			name:    "browse url with an empty fragment",
+			args:    []string{"--source-browse-url", "https://example.test/blob/main#"},
+			wantErr: "carries a fragment",
+		},
 		{name: "positional args", args: []string{"dist"}, wantErr: `unknown command "dist"`},
 	}
 	for _, tc := range cases {
