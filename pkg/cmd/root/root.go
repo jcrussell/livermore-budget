@@ -4,6 +4,8 @@
 package root
 
 import (
+	"strings"
+
 	"github.com/spf13/cobra"
 
 	"github.com/jcrussell/livermore-budget/internal/build"
@@ -79,5 +81,32 @@ committed artifacts, so it needs neither Python nor the source PDFs.`,
 	cmd.AddCommand(verifycmd.NewCmdVerify(f, nil))
 	cmd.AddCommand(exportcmd.NewCmdExport(f, nil))
 
+	refuseUnknownHelpTopics(cmd)
+
 	return cmd
+}
+
+// refuseUnknownHelpTopics makes `fisc help <typo>` a usage error. cobra's own
+// help command reports an unknown topic only when Find fails, and root's Find
+// never does: with Args set it returns root and the typo as a leftover
+// argument, so cobra prints root's help and exits 0. Even its unknown-topic
+// branch prints to stdout and returns no error.
+//
+// It wraps cobra's help command rather than replacing it, so the help text
+// and its shell completion stay cobra's.
+func refuseUnknownHelpTopics(root *cobra.Command) {
+	root.InitDefaultHelpCmd()
+	help, _, err := root.Find([]string{"help"})
+	if err != nil || help == root || help.Run == nil {
+		return // TestUnknownHelpTopicExitsTwo is what notices
+	}
+	show := help.Run
+	help.Run = nil
+	help.RunE = func(c *cobra.Command, args []string) error {
+		if _, rest, ferr := c.Root().Find(args); ferr != nil || len(rest) > 0 {
+			return cmdutil.FlagErrorf("unknown help topic %q", strings.Join(args, " "))
+		}
+		show(c, args)
+		return nil
+	}
 }

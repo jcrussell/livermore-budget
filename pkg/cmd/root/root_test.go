@@ -58,6 +58,54 @@ func TestUnknownCommandExitsTwo(t *testing.T) {
 	}
 }
 
+// TestUnknownHelpTopicExitsTwo is the same class of defect one level down:
+// root's Find returns root for any leftover argument, so cobra's help command
+// printed root's help for a typo and exited 0.
+//
+// Mutation: drop refuseUnknownHelpTopics from NewCmdRoot and the typo cases
+// go red with exit 0 and root's help on stdout.
+func TestUnknownHelpTopicExitsTwo(t *testing.T) {
+	for _, args := range [][]string{{"help", "biuld"}, {"help", "export", "biuld"}} {
+		t.Run(strings.Join(args, " "), func(t *testing.T) {
+			ios, _, out, errOut := iostreams.Test()
+			if got := fisccmd.Run(NewCmdRoot(newTestFactory(t, ios)), args, ios); got != 2 {
+				t.Errorf("got exit code %d, want 2", got)
+			}
+			if !strings.Contains(errOut.String(), "unknown help topic") {
+				t.Errorf("got stderr %q, want it to report an unknown help topic", errOut)
+			}
+			if out.Len() != 0 {
+				t.Errorf("got stdout %q, want nothing", out)
+			}
+		})
+	}
+}
+
+// TestHelpTopicsStillPrintHelp keeps the wrapper from refusing what cobra's
+// help command answers.
+func TestHelpTopicsStillPrintHelp(t *testing.T) {
+	cases := []struct {
+		args []string
+		want string
+	}{
+		{[]string{"help"}, "Data commands"},
+		{[]string{"help", "export"}, "fisc export [flags]"},
+		{[]string{"help", "verify"}, "fisc verify"},
+		{[]string{"help", "help"}, "Help provides help"},
+	}
+	for _, tc := range cases {
+		t.Run(strings.Join(tc.args, " "), func(t *testing.T) {
+			ios, _, out, errOut := iostreams.Test()
+			if got := fisccmd.Run(NewCmdRoot(newTestFactory(t, ios)), tc.args, ios); got != 0 {
+				t.Errorf("got exit code %d, want 0 (stderr %q)", got, errOut)
+			}
+			if !strings.Contains(out.String(), tc.want) {
+				t.Errorf("got stdout %q, want it to contain %q", out, tc.want)
+			}
+		})
+	}
+}
+
 // TestNoArgsPrintsHelp confirms the bare invocation is still friendly.
 func TestNoArgsPrintsHelp(t *testing.T) {
 	ios, _, out, _ := iostreams.Test()
