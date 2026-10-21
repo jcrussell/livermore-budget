@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"sort"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
@@ -201,7 +202,8 @@ func revenueSchedulePublishedTwiceCaveat() Caveat {
 // paragraphs under one anchor of which a reader sees whichever the browser finds
 // first, and an [Caveat.AppliesTo] entry naming nothing simply never marks
 // anything. None of them stops a page rendering, so none would be found by a
-// page that rendered.
+// page that rendered. Nor does a tracker id in a summary or a text: it prints
+// as a pointer the reader cannot follow, in place of the decision it names.
 //
 // nodes IS THE DOCUMENT'S OWN NODE IDS, and passing it is what makes AppliesTo a
 // checkable claim rather than a hopeful one. A mistyped id is the worst of the
@@ -222,6 +224,11 @@ func validateCaveats(caveats []Caveat, nodes map[string]struct{}) error {
 		case c.Text == "":
 			return fmt.Errorf("caveat %q has no text, so its summary summarises nothing", c.ID)
 		}
+		for _, prose := range []string{c.Summary, c.Text} {
+			if id := trackerID.FindString(prose); id != "" {
+				return fmt.Errorf("caveat %q prints the tracker id %q; a reader cannot open the tracker, so say what it decided instead", c.ID, id)
+			}
+		}
 		if _, dup := seen[c.ID]; dup {
 			return fmt.Errorf("caveat id %q is used twice in one document; an id is a published URL fragment and two paragraphs cannot share one", c.ID)
 		}
@@ -237,6 +244,10 @@ func validateCaveats(caveats []Caveat, nodes map[string]struct{}) error {
 	}
 	return nil
 }
+
+// trackerID matches a bead id, which names work in a tracker no reader of
+// the site can open.
+var trackerID = regexp.MustCompile(`fisc-[a-z0-9]+`)
 
 // nodeIDs is the set [ValidateCaveats] checks AppliesTo against.
 func nodeIDs(nodes []Node) map[string]struct{} {

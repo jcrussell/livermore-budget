@@ -67,6 +67,16 @@ func TestValidateCaveatsRefusesEveryShapeThatWouldRender(t *testing.T) {
 			nodes, "used twice in one document",
 		},
 		{
+			"a tracker id in the text",
+			[]Caveat{{ID: "a", Summary: "s", Text: "Which figure to publish is open (fisc-av0w).", AppliesTo: []string{}}},
+			nodes, `prints the tracker id "fisc-av0w"`,
+		},
+		{
+			"a tracker id in the summary",
+			[]Caveat{{ID: "a", Summary: "Neither block is published (fisc-ig9h).", Text: "t", AppliesTo: []string{}}},
+			nodes, `prints the tracker id "fisc-ig9h"`,
+		},
+		{
 			"applies to a node the document does not carry",
 			[]Caveat{{ID: "a", Summary: "s", Text: "t", AppliesTo: []string{"fund-group/nope"}}},
 			nodes, "which this document does not carry",

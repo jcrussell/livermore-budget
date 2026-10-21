@@ -68,8 +68,8 @@ func TestContestedTotalsReadTheirFiguresOffTheException(t *testing.T) {
 	want := contestedTotal{
 		Exception: c.Exception, Column: Column{FiscalYear: p.Year, Basis: "adopted"},
 		FundGroup: p.Coords[structure.AxisFundGroup],
-		Published: p.Against.Cents, Elsewhere: p.Cut.Cents, Bead: e.Bead,
-		SpinePages: c.SpinePages, Row: c.Row, PrintedBy: c.PrintedBy, ImpliedBy: c.ImpliedBy,
+		Published: p.Against.Cents, Elsewhere: p.Cut.Cents,
+		SpinePages: c.SpinePages, Row: c.Row, PrintedBy: c.PrintedBy, ImpliedBy: c.ImpliedBy, Kept: c.Kept,
 	}
 	if diff := cmp.Diff(want, c, cmp.AllowUnexported(contestedTotal{})); diff != "" {
 		t.Errorf("ContestedTotals (-exception +declared):\n%s", diff)

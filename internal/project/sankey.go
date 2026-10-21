@@ -1221,8 +1221,8 @@ var (
 // What a reader is owed is not our arithmetic but the knowledge that the city's
 // own book disagrees with itself here.
 //
-// THE FIGURES ARE THE EXCEPTION'S. Column, FundGroup, Published, Elsewhere and
-// Bead are read off the structure.Exception named by Exception -- a fund-group
+// THE FIGURES ARE THE EXCEPTION'S. Column, FundGroup, Published and Elsewhere
+// are read off the structure.Exception named by Exception -- a fund-group
 // cell held apart against the spine, both sides printed -- so the caveat and
 // cuts-tie-along-the-lattice cannot name two different pairs. What this
 // declaration adds is the prose: PrintedBy and ImpliedBy are separate so a
@@ -1245,9 +1245,10 @@ type contestedTotal struct {
 	// ones that only imply it, and says how -- a schedule that sums to a figure
 	// has not printed it, and the sentence must not say it has.
 	PrintedBy, ImpliedBy string
-	// Bead is the work that owns the decision. A contested figure with no bead
-	// is one nobody is deciding.
-	Bead string
+	// Kept says why this chart draws Published and not Elsewhere, as a clause
+	// a reader can check against the book. It is declared per entry because it
+	// is a claim about the corpus, not about the arithmetic.
+	Kept string
 }
 
 // contestedTotals is the whole list, in the words a reader meets. One entry,
@@ -1262,6 +1263,8 @@ var contestedTotals = []contestedTotal{{
 	PrintedBy:  "p0183, p0075, p0205 and p0209",
 	ImpliedBy: "p0061 prints $26,906,515, which is that figure plus the $612,000 " +
 		"transfer to the CIP it prints beside it, and the 78 rows of pp.85-125 sum to it",
+	Kept: "the Services & Supplies figure that would bring pp.66-67 into line with the other schedules " +
+		"is printed on no page of the book",
 }}
 
 // ContestedTotals is the declared list with each entry's figures filled from
@@ -1300,7 +1303,6 @@ func resolveContestedTotals() ([]contestedTotal, error) {
 		c.Column = Column{FiscalYear: p.Year, Basis: vocab.Basis(p.Basis)}
 		c.FundGroup = p.Coords[structure.AxisFundGroup]
 		c.Published, c.Elsewhere = p.Against.Cents, p.Cut.Cents
-		c.Bead = e.Bead
 		out = append(out, c)
 	}
 	return out, nil
@@ -1424,12 +1426,10 @@ func contestedCaveat(c contestedTotal, col Column, links []Link) (Caveat, bool) 
 				"expenditure is drawn at %s, which is what %s print for %s. Other "+
 				"schedules in the same document make it %s: %s print that figure, and "+
 				"%s. The difference is %s, in a single %s row. This chart draws the "+
-				"spine's figure because every figure here is one the city printed on the "+
-				"page it is cited from, and substituting a number from elsewhere would "+
-				"make this one an exception to that. Which figure the corpus should "+
-				"publish is open (%s).",
+				"spine's figure, and that is settled rather than open: %s, and every "+
+				"figure here is one the city printed on the page it is cited from.",
 			label, amount.Cents(c.Published).Dollars(), c.SpinePages, col.String(), amount.Cents(c.Elsewhere).Dollars(),
-			c.PrintedBy, c.ImpliedBy, amount.Cents(c.Published-c.Elsewhere).Dollars(), c.Row, c.Bead),
+			c.PrintedBy, c.ImpliedBy, amount.Cents(c.Published-c.Elsewhere).Dollars(), c.Row, c.Kept),
 		AppliesTo: []string{PrefixFundGroup + c.FundGroup},
 	}, true
 }

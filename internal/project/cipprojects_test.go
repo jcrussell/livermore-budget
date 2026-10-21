@@ -187,7 +187,7 @@ func TestCIPProjectsCaveatsStateTheListingsFigures(t *testing.T) {
 			}
 		}
 	}
-	for _, want := range []string{"carried forward", "projected", "fisc-ig9h", "FY 2024-25", "FY 2030-45", "TOTAL"} {
+	for _, want := range []string{"carried forward", "projected", "neither block is published", "FY 2024-25", "FY 2030-45", "TOTAL"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("no caveat says %q", want)
 		}

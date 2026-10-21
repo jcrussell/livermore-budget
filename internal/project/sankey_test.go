@@ -866,9 +866,10 @@ func TestContestedCaveatIsEmittedOnlyForTheColumnThatDrawsIt(t *testing.T) {
 	if !ok {
 		t.Fatal("no caveat for the column and figure the entry declares")
 	}
-	// The sentence must carry BOTH figures and the bead. A caveat naming only
-	// the drawn figure tells a reader nothing they could act on.
-	for _, want := range []string{amount.Cents(c.Published).Dollars(), amount.Cents(c.Elsewhere).Dollars(), c.Bead,
+	// The sentence must carry BOTH figures and why the drawn one is kept. A
+	// caveat naming only the drawn figure tells a reader nothing they could
+	// act on.
+	for _, want := range []string{amount.Cents(c.Published).Dollars(), amount.Cents(c.Elsewhere).Dollars(), c.Kept,
 		amount.Cents(c.Published - c.Elsewhere).Dollars()} {
 		if !strings.Contains(got.Text, want) {
 			t.Errorf("caveat does not mention %q:\n%s", want, got.Text)

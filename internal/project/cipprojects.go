@@ -168,7 +168,7 @@ func cipProjectsCaveats() []Caveat {
 			"less than the listing's printed grand total.",
 		Text: "p230 lists fund 611's storm projects twice, under a federal grant block and " +
 			"a state grant block, on lines identical but for their figures, and neither " +
-			"block is published (fisc-ig9h). Both still count in the listing's grand " +
+			"block is published. Both still count in the listing's grand " +
 			"total. " + fund611 + ".",
 		AppliesTo: []string{},
 	}, {

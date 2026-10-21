@@ -1138,7 +1138,7 @@ func TestContestedTotalsAreStillContested(t *testing.T) {
 		g, ok := graphs[e.Column]
 		if !ok {
 			t.Errorf("%s declares column %s, which this corpus publishes no graph for; "+
-				"the entry names a column that has gone away", e.Bead, e.Column)
+				"the entry names a column that has gone away", e.Exception, e.Column)
 			continue
 		}
 		got := project.GroupExpenditure(g.Links, e.FundGroup)
@@ -1148,12 +1148,12 @@ func TestContestedTotalsAreStillContested(t *testing.T) {
 				"the pages and either update it or remove it with whatever decided it. "+
 				"Do NOT simply delete it -- the figure moving is not the same event as "+
 				"the contradiction being resolved",
-				e.Bead, e.Column, e.FundGroup, e.Published, got)
+				e.Exception, e.Column, e.FundGroup, e.Published, got)
 		}
 		// A declaration whose two figures agree is not a contested total at
 		// all, and would print a caveat saying a figure differs from itself.
 		if e.Published == e.Elsewhere {
-			t.Errorf("%s declares the same figure as both published and elsewhere", e.Bead)
+			t.Errorf("%s declares the same figure as both published and elsewhere", e.Exception)
 		}
 	}
 }
