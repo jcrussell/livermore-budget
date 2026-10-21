@@ -176,10 +176,13 @@ func TestCancelIsDistinctFromUsage(t *testing.T) {
 
 // TestRunExitCodeComesFromTheCommandNotTheContext: a signal that lands after
 // a command has done its work must not report the work as cancelled, and a
-// command that stopped because of one must.
+// command that failed while the context was cancelled must, whatever error
+// the interrupt produced.
 //
-// Mutation: make run return exitCancel whenever ctx.Err() is non-nil and the
-// "completes" case goes red with "got exit code 130, want 0".
+// Mutations: make run return exitCancel whenever ctx.Err() is non-nil and the
+// "completes" case goes red with "got exit code 130, want 0"; drop the
+// cancelled-context arm and the ExitCodeError case goes red with "got exit
+// code 3, want 130".
 func TestRunExitCodeComesFromTheCommandNotTheContext(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -197,12 +200,34 @@ func TestRunExitCodeComesFromTheCommandNotTheContext(t *testing.T) {
 			wantCode: 0, wantNoErr: true,
 		},
 		{
-			name: "fails on its own, then the context is cancelled",
+			name: "fails while the context is cancelled",
 			runE: func(_ context.Context, cancel context.CancelFunc) error {
 				cancel()
 				return errors.New("disk on fire")
 			},
+			wantCode: 130, wantErr: "cancelled",
+		},
+		{
+			name: "reports an exit code while the context is cancelled",
+			runE: func(_ context.Context, cancel context.CancelFunc) error {
+				cancel()
+				return &cmdutil.ExitCodeError{Code: 3}
+			},
+			wantCode: 130, wantErr: "cancelled",
+		},
+		{
+			name: "fails without the context being cancelled",
+			runE: func(context.Context, context.CancelFunc) error {
+				return errors.New("disk on fire")
+			},
 			wantCode: 1, wantErr: "disk on fire",
+		},
+		{
+			name: "reports an exit code without the context being cancelled",
+			runE: func(context.Context, context.CancelFunc) error {
+				return &cmdutil.ExitCodeError{Code: 3}
+			},
+			wantCode: 3, wantNoErr: true,
 		},
 		{
 			name: "stops because the context was cancelled",

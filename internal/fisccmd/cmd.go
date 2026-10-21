@@ -44,15 +44,23 @@ func Run(root *cobra.Command, args []string, ios *iostreams.IOStreams) int {
 	return run(ctx, root, args, ios)
 }
 
-// run is Run under a context the caller controls. A cancelled context does
-// not decide the exit code: a command that finished before it noticed has
-// done its work, and only an error that wraps context.Canceled reports it.
+// run is Run under a context the caller controls. A command that succeeded
+// exits 0 however late the signal came: it has done its work. A command that
+// failed while the context was cancelled exits 130, whatever error the
+// interrupt produced -- an ExitCodeError included, since `fisc verify` turns
+// the checks a cancellation stopped into errored ones and reports the run
+// not clean.
 func run(ctx context.Context, root *cobra.Command, args []string, ios *iostreams.IOStreams) int {
 	root.SetArgs(args)
 	root.SetIn(ios.In)
 	root.SetOut(ios.Out)
 	root.SetErr(ios.ErrOut)
-	return classify(root.ExecuteContext(ctx), ios)
+	err := root.ExecuteContext(ctx)
+	if err != nil && ctx.Err() != nil {
+		fmt.Fprintln(ios.ErrOut, "cancelled")
+		return exitCancel
+	}
+	return classify(err, ios)
 }
 
 // classify maps an error to an exit code and prints whatever the user needs
