@@ -26,8 +26,9 @@ export const LEAST = 1;
 /**
  * @typedef {{category: string, label: string, cents: (number | null)[]}} Row
  *   cents is one entry per column, null where the row prints no figure.
- * @typedef {{id: string, label: string, cents: number[], members: string[], rank: number}} Band
- *   One drawn category, or the tail: its cents per column, the categories
+ * @typedef {{id: string, label: string, cents: (number | null)[], members: string[], rank: number}} Band
+ *   One drawn category, or the tail: its cents per column, null where none
+ *   of its rows prints a figure there, the categories
  *   folded into it (itself alone where named), and its rank by the last
  *   column, 1..NAMED+1 (rank names a sixth rather than fold it alone), or 0
  *   for the tail.
@@ -69,21 +70,34 @@ export function readRows(table) {
 }
 
 /**
- * Sums the rows by category per column, in order of first appearance.
+ * Adds a cell into a running sum, absent into absent staying absent: a sum
+ * is null until a printed figure, a printed zero included, reaches it.
+ * @param {number | null} sum
+ * @param {number | null} c
+ * @returns {number | null}
+ */
+function plus(sum, c) {
+  return c === null ? sum : (sum ?? 0) + c;
+}
+
+/**
+ * Sums the rows by category per column, in order of first appearance; a
+ * category none of whose rows prints a figure in a column sums to null there.
  * @param {Row[]} rows
  * @param {number} columns
- * @returns {{id: string, cents: number[], members: string[]}[]}
+ * @returns {{id: string, cents: (number | null)[], members: string[]}[]}
  */
 export function groupRows(rows, columns) {
-  /** @type {Map<string, {id: string, cents: number[], members: string[]}>} */
+  /** @type {Map<string, {id: string, cents: (number | null)[], members: string[]}>} */
   const by = new Map();
   for (const r of rows) {
     let g = by.get(r.category);
     if (!g) {
-      g = { id: r.category, cents: new Array(columns).fill(0), members: [r.category] };
+      g = { id: r.category, cents: new Array(columns).fill(null), members: [r.category] };
       by.set(r.category, g);
     }
-    r.cents.forEach((c, i) => { if (c !== null) g.cents[i] += c; });
+    const into = g;
+    r.cents.forEach((c, i) => { into.cents[i] = plus(into.cents[i], c); });
   }
   return [...by.values()];
 }
@@ -94,11 +108,13 @@ export function groupRows(rows, columns) {
  * would hold a single category. The rank is the category's and holds in
  * every column, so a colour follows the category and never its place in a
  * column.
- * @param {{id: string, cents: number[], members: string[]}[]} groups
+ * @param {{id: string, cents: (number | null)[], members: string[]}[]} groups
  * @returns {Band[]}
  */
 export function rank(groups) {
-  const last = (/** @type {{cents: number[]}} */ g) => Math.abs(g.cents[g.cents.length - 1] || 0);
+  // An absent last cell ranks with a printed zero, at the bottom; the order
+  // is ours and states no figure.
+  const last = (/** @type {{cents: (number | null)[]}} */ g) => Math.abs(g.cents[g.cents.length - 1] ?? 0);
   const sorted = [...groups].sort((a, b) => last(b) - last(a) || a.id.localeCompare(b.id));
   if (sorted.length <= NAMED + 1) {
     return sorted.map((g, i) => ({ id: g.id, label: g.id, cents: g.cents, members: g.members, rank: i + 1 }));
@@ -106,8 +122,9 @@ export function rank(groups) {
   const named = sorted.slice(0, NAMED).map((g, i) => ({ id: g.id, label: g.id, cents: g.cents, members: g.members, rank: i + 1 }));
   const rest = sorted.slice(NAMED);
   const columns = sorted[0].cents.length;
-  const tail = new Array(columns).fill(0);
-  for (const g of rest) g.cents.forEach((c, i) => { tail[i] += c; });
+  /** @type {(number | null)[]} */
+  const tail = new Array(columns).fill(null);
+  for (const g of rest) g.cents.forEach((c, i) => { tail[i] = plus(tail[i], c); });
   named.push({ id: "", label: TAIL_LABEL, cents: tail, members: rest.map((g) => g.id), rank: 0 });
   return named;
 }
@@ -138,20 +155,23 @@ export function millions(cents) {
 }
 
 /**
- * The column totals of the bands, signed, and the tallest stack: the largest
- * over any column of the positive bands' sum and the negative bands' sum.
+ * The column totals of the bands, signed, null for a column no band prints
+ * in, and the tallest stack: the largest over any column of the positive
+ * bands' sum and the negative bands' sum.
  * @param {Band[]} bands
  * @param {number} columns
  */
 export function totals(bands, columns) {
-  const sums = new Array(columns).fill(0);
+  /** @type {(number | null)[]} */
+  const sums = new Array(columns).fill(null);
   let tallest = 0;
   for (let i = 0; i < columns; i++) {
     let above = 0;
     let below = 0;
     for (const b of bands) {
       const c = b.cents[i];
-      sums[i] += c;
+      if (c === null) continue;
+      sums[i] = plus(sums[i], c);
       if (c >= 0) above += c;
       else below -= c;
     }
@@ -169,7 +189,7 @@ export function totals(bands, columns) {
  * and to the PDF page its `data-pdf` names.
  * @param {HTMLElement} section
  * @param {ReturnType<typeof tipper>} [tips] the page's tooltip
- * @returns {{bands: Band[], sums: number[]}}
+ * @returns {{bands: Band[], sums: (number | null)[]}}
  */
 export function draw(section, tips = tipper(section.ownerDocument)) {
   const doc = section.ownerDocument;
@@ -204,7 +224,7 @@ export function draw(section, tips = tipper(section.ownerDocument)) {
   // are shrunk by the flexbox and leave the one scale.
   let room = 0;
   for (let i = 0; i < heads.length; i++) {
-    const up = bands.map((b) => b.cents[i]).filter((c) => c > 0);
+    const up = /** @type {number[]} */ (bands.map((b) => b.cents[i]).filter((c) => c !== null && c > 0));
     room = Math.max(room, up.reduce((a, c) => a + px(c), 0) + GAP * Math.max(up.length - 1, 0));
   }
 
@@ -212,7 +232,8 @@ export function draw(section, tips = tipper(section.ownerDocument)) {
   heads.forEach((th, i) => {
     const col = clone("change-column");
     col.dataset.column = String(i);
-    col.dataset.cents = String(sums[i]);
+    const sum = sums[i];
+    if (sum !== null) col.dataset.cents = String(sum);
     if (th.classList.contains("group-start")) col.dataset.new = "true";
     const above = col.querySelector(".change-above");
     const below = col.querySelector(".change-below");
@@ -256,7 +277,7 @@ export function draw(section, tips = tipper(section.ownerDocument)) {
         above.prepend(seg);
       }
     }
-    total.textContent = "◇ " + millions(sums[i]);
+    total.textContent = sum === null ? "prints nothing" : "◇ " + millions(sum);
     year.textContent = head.label;
     if (head.basis) {
       const basis = doc.createElement("span");
@@ -276,7 +297,8 @@ export function draw(section, tips = tipper(section.ownerDocument)) {
     if (!name || !detail) throw new Error("the legend entry template lacks a name or a detail");
     name.textContent = b.label;
     const lastCents = b.cents[b.cents.length - 1];
-    detail.textContent = (b.rank ? "" : b.members.join(", ") + "; ") + `${dollars(lastCents)} in the last column`;
+    detail.textContent = (b.rank ? "" : b.members.join(", ") + "; ") +
+      (lastCents === null ? "prints nothing in the last column" : `${dollars(lastCents)} in the last column`);
     legend.appendChild(li);
   }
   caption.textContent = `◇ Each column is our sum of the ${rows.length} printed rows, by kind, ` +

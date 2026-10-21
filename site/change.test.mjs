@@ -226,6 +226,52 @@ test("readRows refuses a row with no category and a cell that is not integer cen
   assert.equal(mod.millions(-126150980), "-$1.3M");
 });
 
+// Absent is not zero: a kind or a column none of whose rows prints a figure
+// sums to null, and the legend and the cap say it prints nothing rather than
+// $0. Each case is the pinned audited-revenue figure with its cells' data-cents
+// stripped as stated, which readRows reads as absent.
+//
+// Mutation: seed groupRows' sums with 0 in place of null and every arm goes
+// red; keep the sums null but drop the null arm of the legend's detail, or of
+// the column's cap, and that arm does.
+describe("a kind or a column that prints nothing is said so, not drawn as $0", async () => {
+  const { mod, doc } = await booted();
+  const section = figures(doc).get("audited-revenue");
+  const strip = (cells) => {
+    let n = 0;
+    for (const td of cells) { td.removeAttribute("data-cents"); n++; }
+    assert.ok(n > 0, "no cell stripped");
+  };
+
+  test("a kind with no figure in the last column is legended as printing nothing there", () => {
+    const s = section.cloneNode(true);
+    // Cut to three kinds so the stripped kind is named, not folded.
+    const rows = [...s.querySelectorAll("tbody tr")];
+    for (const tr of rows.slice(3)) tr.remove();
+    const kind = rows[2].dataset.category;
+    const { columns } = mod.readRows(s.querySelector("table"));
+    strip(s.querySelectorAll(`tbody tr[data-category="${kind}"] td[data-column="${columns - 1}"]`));
+    const { bands } = mod.draw(s);
+    const band = bands.find((b) => b.members.includes(kind));
+    assert.ok(band && band.rank > 0, `${kind} folded into the tail`);
+    assert.equal(band.cents[columns - 1], null, `${kind}'s absent last cell summed to a figure`);
+    const entry = s.querySelector(`.change-legend li[data-rank="${band.rank}"] .change-detail`);
+    assert.equal(entry.textContent, "prints nothing in the last column");
+  });
+
+  test("a column with no figure in it is capped as printing nothing, and carries no sum", () => {
+    const s = section.cloneNode(true);
+    strip(s.querySelectorAll('tbody td[data-column="0"]'));
+    const { sums } = mod.draw(s);
+    assert.equal(sums[0], null, "the absent column summed to a figure");
+    const col = s.querySelector('.change-column[data-column="0"]');
+    assert.deepEqual({ cap: col.querySelector(".change-total").textContent, cents: col.dataset.cents ?? null, bands: col.querySelectorAll(".change-seg").length },
+      { cap: "prints nothing", cents: null, bands: 0 });
+    // Every other column still sums its printed rows.
+    assert.notEqual(sums[1], null);
+  });
+});
+
 // A click on a band pins its tip, and the tip links the page text of each
 // of the band's cells in that column, a page that prints the cell's figure.
 // Mutation: drop pageLinks from the band's fill in change.js and every
