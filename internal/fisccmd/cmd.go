@@ -31,23 +31,28 @@ const (
 
 // Run executes root with args and returns the process exit code. Commands
 // return errors; this function is what decides what those errors mean.
+//
+// The first SIGINT or SIGTERM cancels the context the commands read; the
+// handler is then released, so a second one kills the process outright.
 func Run(root *cobra.Command, args []string, ios *iostreams.IOStreams) int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	go func() {
+		<-ctx.Done()
+		stop()
+	}()
+	return run(ctx, root, args, ios)
+}
 
+// run is Run under a context the caller controls. A cancelled context does
+// not decide the exit code: a command that finished before it noticed has
+// done its work, and only an error that wraps context.Canceled reports it.
+func run(ctx context.Context, root *cobra.Command, args []string, ios *iostreams.IOStreams) int {
 	root.SetArgs(args)
 	root.SetIn(ios.In)
 	root.SetOut(ios.Out)
 	root.SetErr(ios.ErrOut)
-
-	err := root.ExecuteContext(ctx)
-
-	// A cancelled context beats whatever error the interrupt produced.
-	if ctx.Err() != nil && errors.Is(ctx.Err(), context.Canceled) {
-		fmt.Fprintln(ios.ErrOut, "cancelled")
-		return exitCancel
-	}
-	return classify(err, ios)
+	return classify(root.ExecuteContext(ctx), ios)
 }
 
 // classify maps an error to an exit code and prints whatever the user needs
@@ -76,6 +81,10 @@ func classify(err error, ios *iostreams.IOStreams) int {
 
 	switch {
 	case errors.Is(err, cmdutil.ErrCancel):
+		return exitCancel
+	case errors.Is(err, context.Canceled):
+		fmt.Fprintln(ios.ErrOut, "cancelled")
+		printed = true
 		return exitCancel
 	case errors.Is(err, cmdutil.ErrSilent):
 		return exitError

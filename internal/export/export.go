@@ -29,6 +29,7 @@
 package export
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -1009,7 +1010,9 @@ func Prepare(o Options) (*plan, error) {
 }
 
 // Write puts a prepared Plan on disk, creating o.Dir if needed, and returns the
-// slash-separated paths it wrote, relative to that directory and sorted.
+// slash-separated paths it wrote, relative to that directory and sorted. It
+// checks ctx before each file and stops with an error wrapping ctx.Err(),
+// leaving the files already written in place.
 //
 // Everything that can be decided has been. What is left can fail only on I/O,
 // so a caller that has cleaned a directory is past the point where anything it
@@ -1018,7 +1021,7 @@ func Prepare(o Options) (*plan, error) {
 // It does not clean the directory: destroying files is a separate decision with
 // its own guard rail (SafeCleanDir), and burying it in a writer would
 // make every caller of Write a caller of RemoveAll.
-func (p *plan) Write() ([]string, error) {
+func (p *plan) Write(ctx context.Context) ([]string, error) {
 	// #nosec G301 -- the output is a web root; a directory a server running as
 	// another user cannot traverse is a broken deploy, not a hardened one.
 	if err := os.MkdirAll(p.dir, 0o755); err != nil {
@@ -1026,6 +1029,9 @@ func (p *plan) Write() ([]string, error) {
 	}
 	written := make([]string, 0, len(p.files))
 	for _, f := range p.files {
+		if err := ctx.Err(); err != nil {
+			return nil, fmt.Errorf("write %q: %w", f.Path, err)
+		}
 		dst := filepath.Join(p.dir, filepath.FromSlash(f.Path))
 		// #nosec G301 -- as above: these are published directories.
 		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {

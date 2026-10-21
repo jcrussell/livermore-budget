@@ -1,6 +1,7 @@
 package fisccmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -41,8 +42,13 @@ func TestClassify(t *testing.T) {
 			err:  cmdutil.ErrSilent, wantCode: 1, wantErr: "",
 		},
 		{
-			name: "cancel exits 2",
+			name: "cancel exits 130",
 			err:  cmdutil.ErrCancel, wantCode: 130, wantErr: "",
+		},
+		{
+			name:     "a wrapped context cancellation exits 130 and says so",
+			err:      fmt.Errorf("export: %w", context.Canceled),
+			wantCode: 130, wantErr: "cancelled",
 		},
 		{
 			name: "explicit exit code prints nothing",
@@ -165,5 +171,69 @@ func TestCancelIsDistinctFromUsage(t *testing.T) {
 	}
 	if cancel != 130 {
 		t.Errorf("got cancel exit %d, want 130 (128+SIGINT)", cancel)
+	}
+}
+
+// TestRunExitCodeComesFromTheCommandNotTheContext: a signal that lands after
+// a command has done its work must not report the work as cancelled, and a
+// command that stopped because of one must.
+//
+// Mutation: make run return exitCancel whenever ctx.Err() is non-nil and the
+// "completes" case goes red with "got exit code 130, want 0".
+func TestRunExitCodeComesFromTheCommandNotTheContext(t *testing.T) {
+	tests := []struct {
+		name      string
+		runE      func(ctx context.Context, cancel context.CancelFunc) error
+		wantCode  int
+		wantErr   string
+		wantNoErr bool
+	}{
+		{
+			name: "completes, then the context is cancelled",
+			runE: func(_ context.Context, cancel context.CancelFunc) error {
+				cancel()
+				return nil
+			},
+			wantCode: 0, wantNoErr: true,
+		},
+		{
+			name: "fails on its own, then the context is cancelled",
+			runE: func(_ context.Context, cancel context.CancelFunc) error {
+				cancel()
+				return errors.New("disk on fire")
+			},
+			wantCode: 1, wantErr: "disk on fire",
+		},
+		{
+			name: "stops because the context was cancelled",
+			runE: func(ctx context.Context, cancel context.CancelFunc) error {
+				cancel()
+				return fmt.Errorf("export: %w", ctx.Err())
+			},
+			wantCode: 130, wantErr: "cancelled",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			ios, _, _, errOut := iostreams.Test()
+			root := &cobra.Command{Use: "fisc", SilenceErrors: true, SilenceUsage: true}
+			root.AddCommand(&cobra.Command{
+				Use: "export",
+				RunE: func(c *cobra.Command, _ []string) error {
+					return tt.runE(c.Context(), cancel)
+				},
+			})
+			if got := run(ctx, root, []string{"export"}, ios); got != tt.wantCode {
+				t.Errorf("got exit code %d, want %d", got, tt.wantCode)
+			}
+			if tt.wantNoErr && errOut.Len() != 0 {
+				t.Errorf("got stderr %q, want nothing", errOut)
+			}
+			if !strings.Contains(errOut.String(), tt.wantErr) {
+				t.Errorf("got stderr %q, want it to contain %q", errOut, tt.wantErr)
+			}
+		})
 	}
 }

@@ -2,6 +2,7 @@ package build
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -286,7 +287,7 @@ func TestBuildTiesToTheDocumentsOwnTotals(t *testing.T) {
 	root := testRepo(t, spinePages(t), "spine.yaml")
 	opts, out, errOut := testOptions(t, root)
 
-	if err := buildRun(opts); err != nil {
+	if err := buildRun(context.Background(), opts); err != nil {
 		t.Fatalf("buildRun: %v", err)
 	}
 
@@ -333,7 +334,7 @@ func TestBuildReportsWhatItCouldNotCheck(t *testing.T) {
 	opts, out, errOut := testOptions(t, root)
 	opts.JSON = true
 
-	if err := buildRun(opts); err != nil {
+	if err := buildRun(context.Background(), opts); err != nil {
 		t.Fatalf("buildRun: %v", err)
 	}
 
@@ -387,7 +388,7 @@ func TestBuildSeparatesColumnsThatTieOnlyToADeclaredDelta(t *testing.T) {
 	opts, out, errOut := testOptions(t, root)
 	opts.JSON = true
 
-	if err := buildRun(opts); err != nil {
+	if err := buildRun(context.Background(), opts); err != nil {
 		t.Fatalf("buildRun: %v", err)
 	}
 	var got report
@@ -407,7 +408,7 @@ func TestBuildSeparatesColumnsThatTieOnlyToADeclaredDelta(t *testing.T) {
 	// And the human-readable form says so too, since that is the one anybody
 	// building the site actually reads.
 	opts, _, errOut = testOptions(t, root)
-	if err := buildRun(opts); err != nil {
+	if err := buildRun(context.Background(), opts); err != nil {
 		t.Fatalf("buildRun without --json: %v", err)
 	}
 	want := "1 of those columns ties only to a declared delta in the document's own arithmetic"
@@ -423,7 +424,7 @@ func TestBuildNamesEveryUncheckedPart(t *testing.T) {
 	root := testRepo(t, transferPages(), "transfers.yaml")
 	opts, _, errOut := testOptions(t, root)
 
-	if err := buildRun(opts); err != nil {
+	if err := buildRun(context.Background(), opts); err != nil {
 		t.Fatalf("buildRun: %v", err)
 	}
 
@@ -553,7 +554,7 @@ func TestBuildFailsWhenAColumnDoesNotTie(t *testing.T) {
 	target := filepath.Join(root, defaultOutput)
 	writeRepoFile(t, target, "previous build\n")
 
-	err := buildRun(opts)
+	err := buildRun(context.Background(), opts)
 	if err == nil {
 		t.Fatal("buildRun = nil error, want the totals check to fail")
 	}
@@ -586,7 +587,7 @@ func TestBuildRefusesToWriteAnEmptyFactStore(t *testing.T) {
 	root := testRepo(t, spinePages(t))
 	opts, _, _ := testOptions(t, root)
 
-	err := buildRun(opts)
+	err := buildRun(context.Background(), opts)
 	if err == nil {
 		t.Fatal("buildRun = nil error, want a refusal")
 	}
@@ -602,7 +603,7 @@ func TestBuildWithNoMappingDirectory(t *testing.T) {
 	root := t.TempDir()
 	opts, _, _ := testOptions(t, root)
 
-	err := buildRun(opts)
+	err := buildRun(context.Background(), opts)
 	if err == nil {
 		t.Fatal("buildRun = nil error, want a failure")
 	}
@@ -641,7 +642,7 @@ func TestValidateRejectsPathsBeforeAnythingHappens(t *testing.T) {
 				Mappings: tt.mappings,
 			}
 
-			err := buildRun(opts)
+			err := buildRun(context.Background(), opts)
 			if err == nil {
 				t.Fatalf("buildRun with output %q mappings %q = nil error, want %q",
 					tt.output, tt.mappings, tt.want)
@@ -729,7 +730,7 @@ func TestAStraddlingRuleCreditsEveryPartItCovers(t *testing.T) {
 	opts, out, _ := testOptions(t, root)
 	opts.JSON = true
 
-	if err := buildRun(opts); err != nil {
+	if err := buildRun(context.Background(), opts); err != nil {
 		t.Fatalf("buildRun: %v", err)
 	}
 	var rep report
@@ -780,7 +781,7 @@ func TestAStraddlingRuleWhoseTotalMovedFailsTheBuild(t *testing.T) {
 	root := testRepo(t, map[int]string{81: straddleHead, 82: moved}, "spanning.yaml")
 	opts, out, errOut := testOptions(t, root)
 
-	err := buildRun(opts)
+	err := buildRun(context.Background(), opts)
 	if err == nil {
 		t.Fatal("buildRun succeeded; the page no longer prints the declared total row")
 	}
@@ -810,7 +811,7 @@ func TestARollupIsReportedAsItsOwnClaim(t *testing.T) {
 	opts, out, _ := testOptions(t, root)
 	opts.JSON = true
 
-	if err := buildRun(opts); err != nil {
+	if err := buildRun(context.Background(), opts); err != nil {
 		t.Fatalf("buildRun: %v", err)
 	}
 	var rep report
@@ -845,7 +846,7 @@ func TestARollupThatDoesNotTieFailsTheBuild(t *testing.T) {
 	root := testRepo(t, map[int]string{90: moved}, "rollup.yaml")
 	opts, _, _ := testOptions(t, root)
 
-	err := buildRun(opts)
+	err := buildRun(context.Background(), opts)
 	if err == nil {
 		t.Fatal("buildRun succeeded; the divisions state 1,000 and the page now prints 1,001")
 	}
@@ -868,7 +869,7 @@ func TestASubtotalIsReportedAndCreditsItsPart(t *testing.T) {
 	opts, out, _ := testOptions(t, root)
 	opts.JSON = true
 
-	if err := buildRun(opts); err != nil {
+	if err := buildRun(context.Background(), opts); err != nil {
 		t.Fatalf("buildRun: %v", err)
 	}
 	var rep report
@@ -896,7 +897,7 @@ func TestASubtotalThatDoesNotTieFailsTheBuild(t *testing.T) {
 		map[int]string{95: geomtest.Monospaced(docID, 95, moved)}, "subtotal.yaml")
 	opts, _, _ := testOptions(t, root)
 
-	err := buildRun(opts)
+	err := buildRun(context.Background(), opts)
 	if err == nil {
 		t.Fatal("buildRun succeeded; the rows sum to 30 and the page now prints 31")
 	}
@@ -917,7 +918,7 @@ func TestASubtotalTwoRulesCompareIsCountedOnce(t *testing.T) {
 	opts, out, _ := testOptions(t, root)
 	opts.JSON = true
 
-	if err := buildRun(opts); err != nil {
+	if err := buildRun(context.Background(), opts); err != nil {
 		t.Fatalf("buildRun: %v", err)
 	}
 	var rep report
@@ -942,7 +943,7 @@ func TestASubtotalTiedByDeclarationIsReportedApart(t *testing.T) {
 	opts, out, _ := testOptions(t, root)
 	opts.JSON = true
 
-	if err := buildRun(opts); err != nil {
+	if err := buildRun(context.Background(), opts); err != nil {
 		t.Fatalf("buildRun: %v", err)
 	}
 	var rep report
@@ -952,5 +953,31 @@ func TestASubtotalTiedByDeclarationIsReportedApart(t *testing.T) {
 	if rep.SubtotalCellsTied != 1 || rep.SubtotalCellsTiedByDeclaration != 1 {
 		t.Errorf("subtotal_cells_tied = %d, subtotal_cells_tied_by_declaration = %d, want 1 and 1",
 			rep.SubtotalCellsTied, rep.SubtotalCellsTiedByDeclaration)
+	}
+}
+
+// A cancelled build leaves the fact store as it was and says it was
+// cancelled.
+//
+// Mutation: drop both ctx checks (resolve's and buildRun's) and this goes red
+// with "got nil error".
+func TestBuildStopsWhenCancelled(t *testing.T) {
+	root := testRepo(t, spinePages(t), "spine.yaml")
+	opts, out, _ := testOptions(t, root)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	err := buildRun(ctx, opts)
+	if err == nil {
+		t.Fatal("got nil error, want the build to stop")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("got %v, want it to wrap context.Canceled so the runner exits 130", err)
+	}
+	if _, serr := os.Stat(filepath.Join(root, defaultOutput)); !errors.Is(serr, os.ErrNotExist) {
+		t.Errorf("the fact store was written (stat: %v)", serr)
+	}
+	if out.Len() != 0 {
+		t.Errorf("got stdout %q, want no report", out)
 	}
 }

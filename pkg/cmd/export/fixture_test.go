@@ -2,6 +2,7 @@ package export
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"maps"
@@ -105,7 +106,7 @@ func clientExport(t *testing.T) string {
 	root := repoRootForTest(t)
 	opts.RepoRoot = func() (string, error) { return root, nil }
 	opts.Build = buildClientSubset
-	if err := exportRun(opts); err != nil {
+	if err := exportRun(context.Background(), opts); err != nil {
 		t.Fatalf("exportRun over the client subset: %v", err)
 	}
 	return opts.OutputDir

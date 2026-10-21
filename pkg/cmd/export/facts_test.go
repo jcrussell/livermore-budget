@@ -2,6 +2,7 @@ package export
 
 import (
 	"bytes"
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -668,7 +669,7 @@ func TestTheIndexNamesOnlyFilesTheSiteWrites(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			io, _, _, _ := iostreams.Test()
 			dir := filepath.Join(t.TempDir(), "dist")
-			if err := exportRun(&Options{
+			if err := exportRun(context.Background(), &Options{
 				IO:              io,
 				RepoRoot:        func() (string, error) { return root, nil },
 				OutputDir:       dir,
@@ -758,7 +759,7 @@ func TestCleanDoesNotDestroyASiteOverAFaultItCouldHaveSeen(t *testing.T) {
 			OutputDir: dir,
 		}
 	}
-	if rerr := exportRun(opts()); rerr != nil {
+	if rerr := exportRun(context.Background(), opts()); rerr != nil {
 		t.Fatalf("seed export: %v", rerr)
 	}
 	before, err := os.ReadDir(dir)
@@ -785,7 +786,7 @@ func TestCleanDoesNotDestroyASiteOverAFaultItCouldHaveSeen(t *testing.T) {
 	o := opts()
 	o.Clean = true
 	o.extractedDir = tree
-	err = exportRun(o)
+	err = exportRun(context.Background(), o)
 	if err == nil {
 		t.Fatal("exportRun accepted a locator whose page text is missing")
 	}

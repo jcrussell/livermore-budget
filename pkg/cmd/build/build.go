@@ -10,6 +10,7 @@
 package build
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -91,11 +92,11 @@ figures resting on our arithmetic alone.`,
 		// A stray argument is a mistyped flag, not an input: this command
 		// takes its paths from flags so it can state their defaults.
 		Args: cobra.NoArgs,
-		RunE: func(_ *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			if runF != nil {
 				return runF(opts)
 			}
-			return buildRun(opts)
+			return buildRun(cmd.Context(), opts)
 		},
 	}
 
@@ -144,7 +145,9 @@ func validateRepoPath(flag, value string) error {
 	return nil
 }
 
-func buildRun(o *Options) error {
+// buildRun checks ctx between rule files and once more before it writes, so a
+// cancellation leaves the fact store as it was.
+func buildRun(ctx context.Context, o *Options) error {
 	if err := o.Validate(); err != nil {
 		return err
 	}
@@ -165,7 +168,7 @@ func buildRun(o *Options) error {
 		return err
 	}
 
-	facts, rep, err := resolve(root, files)
+	facts, rep, err := resolve(ctx, root, files)
 	if err != nil {
 		return err
 	}
@@ -190,6 +193,9 @@ func buildRun(o *Options) error {
 		return err
 	}
 
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("build: %w", err)
+	}
 	rep.Facts = len(facts)
 	rep.Output = filepath.ToSlash(filepath.Clean(o.Output))
 	if err := cmdutil.WriteFile(filepath.Join(root, o.Output), factsPerm, func(w io.Writer) error {
@@ -209,11 +215,14 @@ func buildRun(o *Options) error {
 // files can claim the same cell. Streaming would trade a check the project
 // depends on for memory this corpus does not need — the Budget Book's whole
 // mapping is in the low tens of thousands of facts.
-func resolve(root string, files []*mapping.File) ([]fact.Fact, *report, error) {
+func resolve(ctx context.Context, root string, files []*mapping.File) ([]fact.Fact, *report, error) {
 	rep := newReport()
 	var facts []fact.Fact
 
 	for _, f := range files {
+		if err := ctx.Err(); err != nil {
+			return nil, nil, fmt.Errorf("build: %w", err)
+		}
 		doc, err := corpus.OpenDoc(root, f.DocID)
 		if err != nil {
 			return nil, nil, fmt.Errorf("%s: %w", f.Path, err)

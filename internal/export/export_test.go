@@ -2,6 +2,7 @@ package export_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -303,6 +304,33 @@ func TestThePlanWritesTheMarkerFirstAndTheIndexLast(t *testing.T) {
 	}
 	if firstPage < 0 {
 		t.Fatalf("planned %q, want pages", paths)
+	}
+}
+
+// Write stops before a file once its context is cancelled.
+//
+// Mutation: drop the ctx check from Write and this goes red with "wrote
+// [...] after cancellation".
+func TestWriteStopsOnACancelledContext(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "out")
+	p, err := export.Prepare(export.Options{
+		Dir:         dir,
+		Projections: map[string][]byte{"sankey": goldenSankey(t)},
+		Views:       spineOnly(),
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+	})
+	if err != nil {
+		t.Fatalf("Prepare: %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	written, err := p.Write(ctx)
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("got error %v, want it to wrap context.Canceled", err)
+	}
+	if entries, _ := os.ReadDir(dir); len(written) > 0 || len(entries) > 0 {
+		t.Errorf("wrote %q (%d entries on disk) after cancellation", written, len(entries))
 	}
 }
 
@@ -1212,7 +1240,7 @@ func writeSite(o export.Options) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return p.Write()
+	return p.Write(context.Background())
 }
 
 // What style.css DECLARES; nothing here renders CSS (fisc-6at).

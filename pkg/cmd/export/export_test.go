@@ -2,6 +2,7 @@ package export
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -307,7 +308,7 @@ func TestNewCmdExportFlags(t *testing.T) {
 func TestExportRunWritesASiteAndSaysHowToServeIt(t *testing.T) {
 	opts, _, out, errOut := testOptions(t)
 
-	if err := exportRun(opts); err != nil {
+	if err := exportRun(context.Background(), opts); err != nil {
 		t.Fatalf("exportRun: %v", err)
 	}
 
@@ -365,7 +366,7 @@ func TestEveryCaveatSummaryLinksToAnAnchorThatExists(t *testing.T) {
 		OutputDir: filepath.Join(t.TempDir(), "dist"),
 		Build:     func(string) (result, error) { return result{Projections: built}, nil },
 	}
-	if err := exportRun(opts); err != nil {
+	if err := exportRun(context.Background(), opts); err != nil {
 		t.Fatalf("exportRun: %v", err)
 	}
 	read := func(name string) string {
@@ -516,7 +517,7 @@ func TestASiteWithNoCaveatsPageStatesEachCaveatOnceInItsList(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Prepare without the caveats view: %v", err)
 	}
-	if _, wErr := plan.Write(); wErr != nil {
+	if _, wErr := plan.Write(context.Background()); wErr != nil {
 		t.Fatalf("Write: %v", wErr)
 	}
 	if _, statErr := os.Stat(filepath.Join(opts.OutputDir, "caveats.html")); statErr == nil {
@@ -565,7 +566,7 @@ func TestASiteWithNoCaveatsPageStatesEachCaveatOnceInItsList(t *testing.T) {
 // inside window.FISC_CONFIG, which no reader reads.
 func TestTheSiteDoesNotSayThePSeventySixScheduleIsUnmapped(t *testing.T) {
 	opts, _, _, _ := testOptions(t)
-	if err := exportRun(opts); err != nil {
+	if err := exportRun(context.Background(), opts); err != nil {
 		t.Fatalf("exportRun: %v", err)
 	}
 	read := func(name string) string {
@@ -687,7 +688,7 @@ func TestTheSourcesPageListsEveryPageTheSankeyCites(t *testing.T) {
 // is traced to, has to be a file inside the output.
 func TestExportRunResolvesBothCitationClassesWithoutGitHub(t *testing.T) {
 	opts, _, _, _ := testOptions(t)
-	if err := exportRun(opts); err != nil {
+	if err := exportRun(context.Background(), opts); err != nil {
 		t.Fatalf("exportRun: %v", err)
 	}
 	page := readPage(t, opts.OutputDir)
@@ -753,7 +754,7 @@ func TestExportRunResolvesBothCitationClassesWithoutGitHub(t *testing.T) {
 func TestExportRunCitesTheBrowseURLWhenAsked(t *testing.T) {
 	opts, _, _, _ := testOptions(t)
 	opts.SourceBrowseURL = "https://example.test/blob/main"
-	if err := exportRun(opts); err != nil {
+	if err := exportRun(context.Background(), opts); err != nil {
 		t.Fatalf("exportRun: %v", err)
 	}
 	page := readPage(t, opts.OutputDir)
@@ -779,7 +780,7 @@ func TestExportRunNeedsTheExtractionItCites(t *testing.T) {
 		t.Fatalf("seed: %v", rmErr)
 	}
 
-	err = exportRun(opts)
+	err = exportRun(context.Background(), opts)
 	if err == nil {
 		t.Fatal("got nil error, want a refusal to cite text it cannot ship")
 	}
@@ -841,7 +842,7 @@ func TestExportRunCleanRefusesSomebodyElsesDirectory(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 
-	err := exportRun(opts)
+	err := exportRun(context.Background(), opts)
 	if err == nil {
 		t.Fatal("got nil error, want a refusal to delete")
 	}
@@ -865,7 +866,7 @@ func TestExportRunCleanRefusesSomebodyElsesDirectory(t *testing.T) {
 // validation in the wrong place, however correct its verdict.
 func TestExportRunRefusesBeforeCleanDestroysTheSite(t *testing.T) {
 	opts, _, _, _ := testOptions(t)
-	if err := exportRun(opts); err != nil {
+	if err := exportRun(context.Background(), opts); err != nil {
 		t.Fatalf("first export: %v", err)
 	}
 	index := filepath.Join(opts.OutputDir, "index.html")
@@ -914,7 +915,7 @@ func TestExportRunRefusesBeforeCleanDestroysTheSite(t *testing.T) {
 	}
 
 	opts.Clean = true
-	if err := exportRun(opts); err == nil {
+	if err := exportRun(context.Background(), opts); err == nil {
 		t.Fatal("exportRun accepted an undeclared unrendered document")
 	} else if !strings.Contains(err.Error(), "no view renders it") {
 		t.Fatalf("got %v, want the reachability refusal", err)
@@ -927,7 +928,7 @@ func TestExportRunRefusesBeforeCleanDestroysTheSite(t *testing.T) {
 
 func TestExportRunCleanEmptiesItsOwnOutput(t *testing.T) {
 	opts, _, _, _ := testOptions(t)
-	if err := exportRun(opts); err != nil {
+	if err := exportRun(context.Background(), opts); err != nil {
 		t.Fatalf("first export: %v", err)
 	}
 	// Seeded in a subdirectory, which is what --clean has to reach.
@@ -940,7 +941,7 @@ func TestExportRunCleanEmptiesItsOwnOutput(t *testing.T) {
 	}
 
 	opts.Clean = true
-	if err := exportRun(opts); err != nil {
+	if err := exportRun(context.Background(), opts); err != nil {
 		t.Fatalf("second export: %v", err)
 	}
 	if _, err := os.Stat(stale); err == nil {
@@ -974,7 +975,7 @@ func TestExportRunShipsTheBuildersFiles(t *testing.T) {
 			Files:       map[string][]byte{"facts/d/pages/p0066.jsonl": shard},
 		}, nil
 	}
-	if err := exportRun(opts); err != nil {
+	if err := exportRun(context.Background(), opts); err != nil {
 		t.Fatalf("exportRun: %v", err)
 	}
 
@@ -1019,7 +1020,7 @@ func TestExportRunRefusesAnAssetThatEscapesTheSite(t *testing.T) {
 			// A SITE THE REFUSAL COULD DESTROY, written by a good run first.
 			// Without it --clean has nothing to empty and the test asserts
 			// against an absence rather than against a survivor.
-			if err := exportRun(opts); err != nil {
+			if err := exportRun(context.Background(), opts); err != nil {
 				t.Fatalf("seed export: %v", err)
 			}
 			index := filepath.Join(opts.OutputDir, "index.html")
@@ -1033,7 +1034,7 @@ func TestExportRunRefusesAnAssetThatEscapesTheSite(t *testing.T) {
 					Files:       map[string][]byte{"../escaped.jsonl": []byte("{}")},
 				}, nil
 			}
-			err := exportRun(opts)
+			err := exportRun(context.Background(), opts)
 			if err == nil {
 				t.Fatal("exportRun accepted an asset path outside the site")
 			}
@@ -1055,7 +1056,7 @@ func TestExportRunReportsABuilderFailure(t *testing.T) {
 	opts.Build = func(string) (result, error) {
 		return result{}, os.ErrNotExist
 	}
-	if err := exportRun(opts); err == nil {
+	if err := exportRun(context.Background(), opts); err == nil {
 		t.Fatal("got nil error, want the builder's failure")
 	}
 	if _, err := os.Stat(opts.OutputDir); err == nil {
@@ -1213,7 +1214,7 @@ func TestEveryRecordsLinkTheConfigCarriesIsAShardTheExportWrote(t *testing.T) {
 	opts, _, _, _ := testOptions(t)
 	opts.RepoRoot = func() (string, error) { return root, nil }
 	opts.Build = buildAll
-	if err := exportRun(opts); err != nil {
+	if err := exportRun(context.Background(), opts); err != nil {
 		t.Fatalf("exportRun: %v", err)
 	}
 	page := readPage(t, opts.OutputDir)
@@ -1263,7 +1264,7 @@ func TestTheSitePublishesOneFilePerColumnAndNothingTwice(t *testing.T) {
 	opts, _, _, _ := testOptions(t)
 	opts.RepoRoot = func() (string, error) { return root, nil }
 	opts.Build = buildAll
-	if err := exportRun(opts); err != nil {
+	if err := exportRun(context.Background(), opts); err != nil {
 		t.Fatalf("exportRun: %v", err)
 	}
 	var got []string
@@ -1733,7 +1734,7 @@ func TestOpensIntoJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 	}
 	opts, _, _, _ := testOptions(t)
 	opts.Build = func(string) (result, error) { return result{Projections: short}, nil }
-	if err := exportRun(opts); err == nil {
+	if err := exportRun(context.Background(), opts); err == nil {
 		t.Error("exportRun accepted a spine whose second year has no expansion")
 	} else if !strings.Contains(err.Error(), `carries none`) {
 		t.Errorf("got %v, want the refusal naming the year's column", err)
@@ -1799,7 +1800,7 @@ func TestADocumentOutsideTheColumnItIsPublishedForIsRefused(t *testing.T) {
 	}
 	opts, _, _, _ := testOptions(t)
 	opts.Build = func(string) (result, error) { return result{Projections: elsewhere}, nil }
-	if err := exportRun(opts); err == nil {
+	if err := exportRun(context.Background(), opts); err == nil {
 		t.Error("exportRun accepted a spine whose opening column carries no expansion")
 	} else if !strings.Contains(err.Error(), "carries none") {
 		t.Errorf("got %v, want the refusal naming the opening year's column", err)
@@ -1909,7 +1910,7 @@ func TestAPageDoesNotLabelAColumnWithAWordItsCaveatWithdraws(t *testing.T) {
 		OutputDir: filepath.Join(t.TempDir(), "dist"),
 		Build:     func(string) (result, error) { return result{Projections: built}, nil },
 	}
-	if err = exportRun(opts); err != nil {
+	if err = exportRun(context.Background(), opts); err != nil {
 		t.Fatalf("exportRun: %v", err)
 	}
 
@@ -2074,7 +2075,7 @@ func TestTheIndexIsRefusedByNameWithoutItsRead(t *testing.T) {
 	opts.Build = func(string) (result, error) {
 		return result{Projections: map[string][]byte{"sankey": goldenSankey(t)}}, nil
 	}
-	err = exportRun(opts)
+	err = exportRun(context.Background(), opts)
 	if err == nil || !strings.Contains(err.Error(), project.DepartmentFundingProjection+" was not built") {
 		t.Errorf("exportRun over the spine alone returned %v, want the index's named refusal", err)
 	}
@@ -2374,7 +2375,7 @@ func TestEveryServedStampIsTheExportsOwn(t *testing.T) {
 	opts, _, _, _ := testOptions(t)
 	opts.RepoRoot = func() (string, error) { return root, nil }
 	opts.Build = buildAll
-	if runErr := exportRun(opts); runErr != nil {
+	if runErr := exportRun(context.Background(), opts); runErr != nil {
 		t.Fatalf("exportRun: %v", runErr)
 	}
 	exported := regexp.MustCompile(`"exported_by":"([^"]*)"`)
@@ -2460,7 +2461,7 @@ func TestEveryPageALinkCitesHasItsLinksInTheConfig(t *testing.T) {
 		built = r
 		return r, buildErr
 	}
-	if err = exportRun(opts); err != nil {
+	if err = exportRun(context.Background(), opts); err != nil {
 		t.Fatalf("exportRun: %v", err)
 	}
 	_, ix, err := export.ColumnsOf(built.Projections, "")
@@ -2568,7 +2569,7 @@ func TestTheSourcesPageListsEachInferredCellOnce(t *testing.T) {
 	root := repoRootForTest(t)
 	opts.RepoRoot = func() (string, error) { return root, nil }
 	opts.Build = func(string) (result, error) { return built, nil }
-	if err = exportRun(opts); err != nil {
+	if err = exportRun(context.Background(), opts); err != nil {
 		t.Fatalf("exportRun: %v", err)
 	}
 	raw, err := os.ReadFile(filepath.Join(opts.OutputDir, "provenance.html")) // #nosec G304 -- the temp site.
@@ -2752,5 +2753,36 @@ func TestNewCmdExportRefusesASourceDirectory(t *testing.T) {
 				t.Errorf("app.js = %q, %v; want the local edit left alone", b, rerr)
 			}
 		})
+	}
+}
+
+// A cancellation that arrives while the site is being built stops the export
+// before the output directory is touched, and says it was cancelled.
+//
+// Mutation: drop the ctx checks from exportRun and this goes red with "the
+// output directory was created"; drop Write's as well and it goes red with
+// "got nil error".
+func TestExportRunStopsWhenCancelled(t *testing.T) {
+	opts, _, out, _ := testOptions(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	build := opts.Build
+	opts.Build = func(root string) (result, error) {
+		cancel()
+		return build(root)
+	}
+
+	err := exportRun(ctx, opts)
+	if err == nil {
+		t.Fatal("got nil error, want the export to stop")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("got %v, want it to wrap context.Canceled so the runner exits 130", err)
+	}
+	if _, serr := os.Stat(opts.OutputDir); !errors.Is(serr, os.ErrNotExist) {
+		t.Errorf("the output directory was created (stat: %v)", serr)
+	}
+	if out() != "" {
+		t.Errorf("got stdout %q, want no paths reported", out())
 	}
 }

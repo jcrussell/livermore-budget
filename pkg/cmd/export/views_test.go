@@ -1,6 +1,7 @@
 package export
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -104,7 +105,7 @@ func TestExportRefusesAViewsFileItCannotLoad(t *testing.T) {
 	if werr := os.WriteFile(path, []byte(edited), 0o600); werr != nil {
 		t.Fatal(werr)
 	}
-	err = exportRun(opts)
+	err = exportRun(context.Background(), opts)
 	if err == nil {
 		t.Fatal("exportRun wrote a site from a views file naming a projection that does not exist")
 	}
@@ -179,7 +180,7 @@ func TestADeclarationFaultInAChartIsRefusedNotDropped(t *testing.T) {
 				t.Fatal(werr)
 			}
 			opts.Build = func(string) (result, error) { return result{Projections: built}, nil }
-			err = exportRun(opts)
+			err = exportRun(context.Background(), opts)
 			if err == nil {
 				t.Fatalf("exportRun wrote a site with %q in place of %q", tc.edit, tc.old)
 			}

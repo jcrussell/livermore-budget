@@ -1,6 +1,7 @@
 package export
 
 import (
+	"context"
 	"encoding/json"
 	stdhtml "html"
 	"os"
@@ -49,7 +50,7 @@ func TestTheSourcesPageListsEachInferredFigureOnceAtItsLeaf(t *testing.T) {
 		OutputDir: filepath.Join(t.TempDir(), "dist"),
 		Build:     buildAll,
 	}
-	if err := exportRun(opts); err != nil {
+	if err := exportRun(context.Background(), opts); err != nil {
 		t.Fatalf("exportRun: %v", err)
 	}
 	page, err := os.ReadFile(filepath.Join(opts.OutputDir, "provenance.html")) // #nosec G304 -- the temp site.

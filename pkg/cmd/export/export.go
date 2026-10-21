@@ -7,6 +7,7 @@
 package export
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"os"
@@ -206,14 +207,14 @@ the repository instead.`,
   # Cite the extracted page text on a forge instead of shipping it
   fisc export --source-browse-url https://github.com/you/livermore-budget/blob/main`,
 		Args: cobra.NoArgs,
-		RunE: func(_ *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			if err := opts.Validate(); err != nil {
 				return err
 			}
 			if runF != nil {
 				return runF(opts)
 			}
-			return exportRun(opts)
+			return exportRun(cmd.Context(), opts)
 		},
 	}
 
@@ -304,7 +305,10 @@ func (o *Options) extractionTree(repoRoot string) string {
 	return filepath.Join(repoRoot, filepath.FromSlash(repo.ExtractedDir))
 }
 
-func exportRun(o *Options) error {
+// exportRun checks ctx between stages and between files: a cancellation
+// before the write leaves the output directory as it was, and one during it
+// leaves a partial site whose marker --clean recognises.
+func exportRun(ctx context.Context, o *Options) error {
 	root, err := o.RepoRoot()
 	if err != nil {
 		return err
@@ -317,6 +321,9 @@ func exportRun(o *Options) error {
 	built, err := build(root)
 	if err != nil {
 		return err
+	}
+	if cerr := ctx.Err(); cerr != nil {
+		return fmt.Errorf("export: %w", cerr)
 	}
 	site, err := o.siteOptions(root, built)
 	if err != nil {
@@ -334,6 +341,9 @@ func exportRun(o *Options) error {
 	if err != nil {
 		return err
 	}
+	if cerr := ctx.Err(); cerr != nil {
+		return fmt.Errorf("export: %w", cerr)
+	}
 
 	if o.Clean {
 		if cerr := export.SafeCleanDir(o.OutputDir); cerr != nil {
@@ -341,7 +351,7 @@ func exportRun(o *Options) error {
 		}
 	}
 
-	written, err := plan.Write()
+	written, err := plan.Write(ctx)
 	if err != nil {
 		return err
 	}

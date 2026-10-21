@@ -1,6 +1,7 @@
 package export
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -175,7 +176,7 @@ func exportedSite(t *testing.T) string {
 	root := repoRootForTest(t)
 	opts.RepoRoot = func() (string, error) { return root, nil }
 	opts.Build = buildAll
-	if err := exportRun(opts); err != nil {
+	if err := exportRun(context.Background(), opts); err != nil {
 		t.Fatalf("exportRun: %v", err)
 	}
 	return opts.OutputDir
