@@ -2,6 +2,7 @@ package check
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"sort"
@@ -20,8 +21,10 @@ import (
 // property tax with every graph check green, because those checks tie the
 // graph to the facts and not the facts to each other.
 //
-// Peers, and pairs Compare cannot relate, are refused and counted, not
-// compared; the peers are peersOverlapOnlyByDeclaredIdentity's.
+// Peers, and pairs Compare refuses as structure.ErrNotComparable, are counted,
+// not compared; the peers are peersOverlapOnlyByDeclaredIdentity's. Any other
+// error from Compare is a finding: a fact the comparison would not see is a
+// comparison that did not happen.
 type cutsTieAlongTheLattice struct{}
 
 var _ Check = (*cutsTieAlongTheLattice)(nil)
@@ -160,10 +163,14 @@ func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error
 				continue
 			}
 			c, err := structure.Compare(s.Facts, sa, sb)
-			if err != nil {
+			switch {
+			case errors.Is(err, structure.ErrNotComparable):
 				if !tied[[2]string{a.Name, b.Name}] {
 					refused++
 				}
+				continue
+			case err != nil:
+				findings = append(findings, finding(a.Name+" ~ "+b.Name, "%v", err))
 				continue
 			}
 			reconcile(c)

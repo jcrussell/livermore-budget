@@ -1,6 +1,7 @@
 package structure
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"sort"
@@ -248,6 +249,24 @@ func onLine(lines []Line, f *fact.Fact) bool {
 	return false
 }
 
+// ErrNotComparable is what every refusal of a pair the lattice and the
+// declarations do not relate wraps: peers, no meet, no reference, or no kind,
+// fund group, fund-group axis, column or department tier in common. Every
+// other error Compare returns is about the data or the declarations, and is a
+// failure rather than a pair to skip.
+var ErrNotComparable = errors.New("the pair is not comparable")
+
+// notComparable keeps a refusal's own wording and answers errors.Is for
+// ErrNotComparable.
+type notComparable struct{ msg string }
+
+func (e notComparable) Error() string      { return e.msg }
+func (notComparable) Is(target error) bool { return target == ErrNotComparable }
+
+func notComparablef(format string, args ...any) error {
+	return notComparable{msg: fmt.Sprintf(format, args...)}
+}
+
 // restrict is the slice of the store a pair may be compared over at a level.
 // A pair is refused by name, never compared to a partial answer, when the
 // kinds do not meet, when a fund-group footprint meets a cut with no fund
@@ -261,7 +280,7 @@ func restrict(a, b Cut, at Level) (restriction, error) {
 		}
 	}
 	if len(r.kinds) == 0 {
-		return r, fmt.Errorf("%q prints %v and %q prints %v; no money is described by both",
+		return r, notComparablef("%q prints %v and %q prints %v; no money is described by both",
 			a.Name, a.Kinds, b.Name, b.Kinds)
 	}
 	r.fundGroups = a.FundGroups
@@ -275,7 +294,7 @@ func restrict(a, b Cut, at Level) (restriction, error) {
 				}
 			}
 			if len(r.fundGroups) == 0 {
-				return r, fmt.Errorf("%q covers fund groups %v and %q covers %v; they share none",
+				return r, notComparablef("%q covers fund groups %v and %q covers %v; they share none",
 					a.Name, a.FundGroups, b.Name, b.FundGroups)
 			}
 		}
@@ -283,7 +302,7 @@ func restrict(a, b Cut, at Level) (restriction, error) {
 	if len(r.fundGroups) > 0 {
 		for _, c := range []Cut{a, b} {
 			if !hasAxis(c.Level, AxisFundGroup) {
-				return r, fmt.Errorf("the pair covers only fund groups %v and %q is at %q, which "+
+				return r, notComparablef("the pair covers only fund groups %v and %q is at %q, which "+
 					"carries no fund group axis; there is no way to ask %q for that part of its money",
 					r.fundGroups, c.Name, c.Level, c.Name)
 			}
@@ -297,11 +316,11 @@ func restrict(a, b Cut, at Level) (restriction, error) {
 		}
 	}
 	if !shared {
-		return r, fmt.Errorf("%q prints %v columns and %q prints %v; there is no column both print",
+		return r, notComparablef("%q prints %v columns and %q prints %v; there is no column both print",
 			a.Name, a.Bases, b.Name, b.Bases)
 	}
 	if hasAxis(at, AxisDepartment) && a.DepartmentTier != b.DepartmentTier {
-		return r, fmt.Errorf("%q names departments at the %q tier and %q at the %q tier; compared "+
+		return r, notComparablef("%q names departments at the %q tier and %q at the %q tier; compared "+
 			"at %q the two would share no key, so the pair is not one vocabulary and is not compared",
 			a.Name, a.DepartmentTier, b.Name, b.DepartmentTier, at)
 	}
@@ -319,13 +338,14 @@ func hasAxis(l Level, a Axis) bool {
 }
 
 // Compare relates two cuts the way the lattice says they stand, and refuses a
-// pair it cannot relate. Peers are Peers'. A pair meeting strictly below both
-// is compared at the meet only when one side is the reference, which decides
-// the columns; otherwise either side could shrink an intersection.
+// pair it cannot relate with [ErrNotComparable]. Peers are Peers'. A pair
+// meeting strictly below both is compared at the meet only when one side is
+// the reference, which decides the columns; otherwise either side could
+// shrink an intersection.
 func Compare(facts []fact.Fact, a, b Cut) (Comparison, error) {
 	switch {
 	case a.Level == b.Level:
-		return Comparison{}, fmt.Errorf("compare %q against %q: both are at %q, so this is a "+
+		return Comparison{}, notComparablef("compare %q against %q: both are at %q, so this is a "+
 			"pair of peers and not a containment", a.Name, b.Name, a.Level)
 	case Refines(a.Level, b.Level):
 		return Contain(facts, a, b)
@@ -342,7 +362,7 @@ func Compare(facts []fact.Fact, a, b Cut) (Comparison, error) {
 	case a.Reference && !b.Reference:
 		return agree(facts, b, a, at)
 	}
-	return Comparison{}, fmt.Errorf("compare %q (%s) against %q (%s): neither decomposes the "+
+	return Comparison{}, notComparablef("compare %q (%s) against %q (%s): neither decomposes the "+
 		"other and neither is the reference, so nothing says whose columns the pair is held to",
 		a.Name, a.Level, b.Name, b.Level)
 }
@@ -356,7 +376,7 @@ func Contain(facts []fact.Fact, fine, coarse Cut) (Comparison, error) {
 		return Comparison{}, fmt.Errorf("compare %q against %q: %w", fine.Name, coarse.Name, err)
 	}
 	if !Refines(fine.Level, coarse.Level) {
-		return Comparison{}, fmt.Errorf("compare %q (%s) against %q (%s): neither level decomposes "+
+		return Comparison{}, notComparablef("compare %q (%s) against %q (%s): neither level decomposes "+
 			"the other, so this is a pair of peers and not a containment",
 			fine.Name, fine.Level, coarse.Name, coarse.Level)
 	}

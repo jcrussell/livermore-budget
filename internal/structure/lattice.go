@@ -200,7 +200,8 @@ func ancestors(l Level) map[Level]bool {
 // Meet is the finest level both a and b decompose, the grain at which two cuts
 // can be compared cell by cell. It need not be either: pp.66-67 and pp.85-125
 // meet at category alone. Two finest common ancestors are refused rather than
-// broken by map order.
+// broken by map order. Both lattice refusals are [ErrNotComparable]; an
+// undeclared level is not.
 func Meet(a, b Level) (Level, error) {
 	if !Declared(a) || !Declared(b) {
 		return "", fmt.Errorf("meet of %q and %q: at least one is not a declared level", a, b)
@@ -212,7 +213,7 @@ func Meet(a, b Level) (Level, error) {
 		}
 	}
 	if len(shared) == 0 {
-		return "", fmt.Errorf("levels %q and %q share no common coarsening, so no grain compares them", a, b)
+		return "", notComparablef("levels %q and %q share no common coarsening, so no grain compares them", a, b)
 	}
 	best := []Level{}
 	for _, cand := range shared {
@@ -229,7 +230,7 @@ func Meet(a, b Level) (Level, error) {
 	}
 	if len(best) != 1 {
 		sort.Slice(best, func(i, j int) bool { return best[i] < best[j] })
-		return "", fmt.Errorf("levels %q and %q have %d finest common coarsenings (%v); "+
+		return "", notComparablef("levels %q and %q have %d finest common coarsenings (%v); "+
 			"the lattice does not say which grain they agree at", a, b, len(best), best)
 	}
 	return best[0], nil

@@ -1,6 +1,7 @@
 package check
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -94,6 +95,9 @@ func TestTheCommittedCutsTieAlongTheLattice(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), tc.want) {
 			t.Errorf("Compare(%s, %s) = %v, want %q", tc.a, tc.b, err, tc.want)
 		}
+		if !errors.Is(err, structure.ErrNotComparable) {
+			t.Errorf("Compare(%s, %s) = %v, which is not structure.ErrNotComparable", tc.a, tc.b, err)
+		}
 	}
 }
 
@@ -141,6 +145,64 @@ func TestTheCutsCheckGoesRed(t *testing.T) {
 			t.Errorf("the second finding is not the General Fund's total on p198: %v", res.Findings[1])
 		}
 	})
+
+	// compareAt refuses a pair whose side holds a fact on no line it
+	// declares, or whose other side prints one on a line it neither prints
+	// nor leaves unprinted. Either refusal is the data's, so the check
+	// fails on it rather than counting the pair among those it cannot relate.
+	var flows structure.Cut
+	for _, c := range structure.AllCuts() {
+		if c.Name == structure.CutFundBalanceFlows {
+			flows = c
+		}
+	}
+	for _, tc := range []struct {
+		name, scope string
+		rules       []string
+		want        string
+	}{
+		{"a fact a cut admits on no line it declares fails the pair", flows.Scope, flows.Rules,
+			`is on no line "fund-balance-flows" declares`},
+		{"a fact the other side prints on a line the cut does not declare fails the pair", structure.ScopeAllFundsGross, nil,
+			`"fund-balance-flows" declares neither printed nor unprinted`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			planted := slices.Clone(facts)
+			moved := false
+			for i := range planted {
+				f := &planted[i]
+				if f.Scope == tc.scope && (tc.rules == nil || slices.Contains(tc.rules, f.RuleID)) &&
+					f.Kind == vocab.KindFundBalance && f.Category == structure.CategoryFundBalanceEnding {
+					f.Category = "fund-balance/on-no-line"
+					moved = true
+					break
+				}
+			}
+			if !moved {
+				t.Fatal("no ending balance to move off its line")
+			}
+			// The pair's exceptions go too: with the pair refused they would
+			// be inert, and that finding is not the one under test.
+			mutated := *s
+			mutated.Facts = planted
+			mutated.Exceptions = slices.DeleteFunc(slices.Clone(s.Exceptions), func(e structure.Exception) bool {
+				return e.Cut == structure.CutFundBalanceFlows && e.Against == structure.CutSpine
+			})
+			res := resultFor(t, runOne(t, &mutated, &cutsTieAlongTheLattice{}), "cuts-tie-along-the-lattice")
+			if res.Status != StatusFail {
+				t.Fatalf("status = %s, want a failure; summary: %s", res.Status, res.Summary)
+			}
+			var named bool
+			for _, f := range res.Findings {
+				if f.Subject == "spine ~ fund-balance-flows" && strings.Contains(f.Detail, tc.want) {
+					named = true
+				}
+			}
+			if !named {
+				t.Errorf("no finding on spine ~ fund-balance-flows says %q:\n  %v", tc.want, res.Findings)
+			}
+		})
+	}
 
 	t.Run("a row an exception says the reference prints, deleted, refuses the exception", func(t *testing.T) {
 		kept := make([]fact.Fact, 0, len(facts))
