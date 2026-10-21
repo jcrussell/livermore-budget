@@ -5,8 +5,8 @@
 > here is what was counted, and when.
 
 A false claim in committed text is one subject whether the text is a comment, a
-doc, a commit message or an injected memory. PROSE-NEW and PROSE-PRE-EXISTING
-together are 32 of the 115 findings counted in
+doc or an injected memory. PROSE-NEW and PROSE-PRE-EXISTING together are 32 of
+the 115 findings counted in
 [`review-loop-evidence.md`](review-loop-evidence.md).
 
 ## One fact in three files is three findings
@@ -45,32 +45,16 @@ So no list of past counts is recorded anywhere. One session reported "38 passed"
 after landing a check that made it 39, from a binary built before the check
 existed.
 
-## A commit message describing a fix is a claim about the tree
+## A scripted edit that aborts halfway leaves a tree that passes
 
-`261c78f` said it had reworded a citation and spelled out a README cell; the
-fifth review pass found both unchanged. The cause was mechanical and will recur:
-a batch of scripted edits with an assertion in the middle aborted at the second,
-the later edits never ran, and the message had been drafted from the plan rather
-than from the diff. A heredoc that raises halfway leaves a tree that still builds
-and still passes every test, so no gate goes red.
+`261c78f`'s rewording of a citation and a README cell never landed: a batch of
+scripted edits with an assertion in the middle aborted at the second, and the
+later edits never ran. The tree still built and passed every test, so no gate
+went red; the fifth review pass found both unchanged.
 
 An unmade edit is the same class as writing "filed as a bead" without filing one
 — which has happened twice, both claims false until a later pass caught them.
-Both are worse than a missing note in the same way: the claim reads as *done*, or
-as *tracked*, so nobody goes looking.
-
-## The range audit
-
-Over `cd1192c^..4f3c3ab` — eight commits: the pp.85-125 lane, its five
-review-fix passes, and two of beads and docs — every "this commit fixes X" was
-checked against the tree in one script. That was 23 claims and **2 were false**,
-both of them fixes asserted in a message that never landed, and both found by
-review rather than by the author.
-
-The range is pinned to two commit ids rather than written as `..HEAD`, because a
-doc naming a moving range stops naming what it measured the moment anything else
-lands; and it starts at `cd1192c^` because `a..b` excludes `a`, and the lane's
-own commit carries most of the claims.
+Both read as *done*, or as *tracked*, so nobody goes looking.
 
 ## What `make beadrefs` does not cover
 
@@ -79,8 +63,7 @@ extensions picked up while walking one of them, in `scannable`. A listed path
 that has gone from the tree fails the run; a path **deleted from the list** just
 makes the scan quietly smaller, and neither list can know about an entry that was
 never added. That is how `site/app.js` and then `site/style.css` were each
-unchecked for a while after it landed. A commit **message** is not scanned before
-it lands.
+unchecked for a while after it landed.
 
 ## Comments that outlived their rule
 

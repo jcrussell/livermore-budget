@@ -313,8 +313,7 @@ Why, measured: [`docs/review-loop-evidence.md`](docs/review-loop-evidence.md) �
 
 ## Prove it can fail
 
-- **The mutation is the proof.** Reproduce the defect green, then show it red,
-  and put both in the commit message.
+- **The mutation is the proof.** Reproduce the defect green, then show it red.
 - The doctrine is written down: `internal/check/vacuity.go` — a vacuous check is
   declared or `--strict` fails on it. `internal/check/check.go` sets out what
   these checks can and cannot witness.
@@ -341,8 +340,6 @@ Why, measured: [`docs/review-loop-evidence.md`](docs/review-loop-evidence.md).
 - **Rebuild `bin/fisc` and run it before quoting a check count**, and read the
   gate line off the run you are describing. A count copied from anywhere — this
   file, another commit, memory — is the defect this section exists to name.
-- **A commit message describing a fix is a claim about the tree.** Grep for the
-  fix before writing the sentence.
 - **One edit per script, or check each edit's exit status.** A heredoc that
   raises halfway leaves a tree that still builds and passes every test.
 - **When you correct a figure in prose, grep for its copies in the same commit —
@@ -350,10 +347,7 @@ Why, measured: [`docs/review-loop-evidence.md`](docs/review-loop-evidence.md).
   different propositions in different files, which is why this cannot be a check.
   `fisc-xbd4`.
 - `make beadrefs` checks ids in tracked prose and comments; `make doccheck`
-  checks citations of this file's sections. Neither reads a commit **message**,
-  so read those back yourself.
-- **At a lane boundary, audit every "this commit fixes X" in the range** against
-  the tree in one script. Pin the range to two commit ids and start at `<first>^`.
+  checks citations of this file's sections.
 
 Why, measured: [`docs/prose-claims-evidence.md`](docs/prose-claims-evidence.md).
 
@@ -367,15 +361,8 @@ Why, measured: [`docs/prose-claims-evidence.md`](docs/prose-claims-evidence.md).
 - Explain *why* in the body, especially when the reason is a document quirk that
   will not be obvious from the diff.
 - Regenerated artifacts belong in the same commit as the change that caused them.
-- **Numbered findings** — `(1)`, `(2)` — when one commit fixes several, each
-  opening with a capitalised lead clause naming the defect rather than the change.
-- **Measurements inline, labelled as measured.** A number in a commit message is
-  a claim like any other.
-- **State the mutation**: what was reverted, and what went red.
-- **The gate line**, near-formulaic: *"facts.jsonl unmoved; fisc verify N passed,
-  0 failed"* — with N read off the run you just did.
-- **Credit where a finding came from**: *"Found by /code-review over this range."*
-  It tells the next reader whether a fix was designed or discovered.
+- **Describe what changed at a high level**, written from the diff rather than
+  the plan. A message is not kept in step with later commits.
 
 ## Provenance invariants
 
@@ -456,10 +443,8 @@ Breaking one is a defect even when tests pass.
 - **What survives the rule is a measurement**, and only where it is evidence a
   reader would otherwise re-derive or re-litigate. That is a claim about the
   present which is expensive to recover, not a record of what happened.
-- **The commit message is the exception, because it IS the history.** It states
-  what changed, what the mutation was and what went red. It is still a claim
-  about the tree rather than a diary: no account of what an earlier commit, bead
-  or comment said.
+- **The commit message is the exception, because it IS the history.** It
+  describes what that commit changed.
 - The rule reaches the injected memories for a reason worth keeping in view:
   `bd prime` delivers them whether or not anyone opens the file they are about,
   so a memory's erratum arrives in every session unasked.
