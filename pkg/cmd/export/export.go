@@ -151,6 +151,12 @@ func validateBrowseURL(raw string) error {
 	if u.Host == "" {
 		return fmt.Errorf("%q has no host", raw)
 	}
+	// The base is copied into every citation the site publishes, so a
+	// credential in it would be published too. An empty userinfo ("@host")
+	// still parses to a non-nil User.
+	if u.User != nil {
+		return fmt.Errorf("%q carries userinfo; the base is copied into every published citation", u.Redacted())
+	}
 	// Each citation appends a repository path to the base, so a query or a
 	// fragment would sit in front of the path, and an empty one is still a
 	// "?" or a "#" there: url.URL keeps no flag for an empty fragment.

@@ -233,6 +233,16 @@ func TestNewCmdExportFlags(t *testing.T) {
 			args:    []string{"--source-browse-url", "https://example.test/blob/main#"},
 			wantErr: "carries a fragment",
 		},
+		{
+			name:    "browse url with a user and password",
+			args:    []string{"--source-browse-url", "https://user:pass@example.test/blob/main"},
+			wantErr: "carries userinfo",
+		},
+		{
+			name:    "browse url with an empty userinfo",
+			args:    []string{"--source-browse-url", "https://@example.test/blob/main"},
+			wantErr: "carries userinfo",
+		},
 		{name: "positional args", args: []string{"dist"}, wantErr: `unknown command "dist"`},
 	}
 	for _, tc := range cases {
@@ -2687,4 +2697,15 @@ func TestTheSourcesPageListsEachInferredCellOnce(t *testing.T) {
 		t.Fatal("no derived ribbon in the subset repeats another's cells, so the count arm covers nothing")
 	}
 	t.Logf("%d ribbon(s) repeat cells another draws; %d contra cell(s)", repeated, contra)
+}
+
+// A refused credential must not be echoed to the terminal either.
+func TestValidateBrowseURLRedactsPassword(t *testing.T) {
+	err := validateBrowseURL("https://user:hunter2@example.test/blob/main")
+	if err == nil {
+		t.Fatal("got nil error, want a refusal")
+	}
+	if strings.Contains(err.Error(), "hunter2") {
+		t.Errorf("error %q repeats the password", err)
+	}
 }
