@@ -22,7 +22,12 @@ import { clone, fillTip, tileShare } from "./sides.js";
 
 /** @typedef {import("./core.js").SideTile} SideTile */
 /** @typedef {{doc_id: string, pages: number[]}} Locator */
-/** @typedef {{id: string, label: string, cents: number, factIds: string[], locators: Locator[]}} Row */
+/**
+ * @typedef {{id: string, label: string, cents: number, factIds: string[], locators: Locator[], derived: boolean, contra: string}} Row
+ *   derived where any link it sums is, since a sum over an inferred figure is
+ *   not a printed one; contra the sentence its links share as a printed
+ *   reduction, "" where they are not one.
+ */
 
 /**
  * The link kinds a spending row may declare, and whether each is a transfer
@@ -96,22 +101,32 @@ function unionLocators(a, b) {
 
 /**
  * One row per distinct node at one end of the links, its cents summed and
- * its fact ids and locators unioned, largest first.
+ * its fact ids and locators unioned, largest first. FAILS CLOSED on a row
+ * whose links disagree on the reduction they are printed as: part reduction
+ * and part not, its sum is neither, and would take a share of a total it is
+ * no part of or be left out of one it is.
  * @param {any[]} links
  * @param {any[]} nodes
  * @param {"from" | "to"} end
+ * @param {string} schedule the schedule the links are read from, for the refusal
  * @returns {Row[]}
  */
-function rowsBy(links, nodes, end) {
+function rowsBy(links, nodes, end, schedule) {
   /** @type {Map<number, Row>} */
   const by = new Map();
   for (const l of links) {
     const i = l[end];
+    const contra = String(l.contra || "");
     let r = by.get(i);
     if (!r) {
-      r = { id: nodes[i].id, label: nodes[i].label, cents: 0, factIds: [], locators: [] };
+      r = { id: nodes[i].id, label: nodes[i].label, cents: 0, factIds: [], locators: [], derived: false, contra };
       by.set(i, r);
     }
+    if (r.contra !== contra) {
+      throw new Error(`${schedule} draws ${r.id} with links that disagree on the reduction they are printed as ` +
+        `(${JSON.stringify(r.contra)} and ${JSON.stringify(contra)}), so its sum is neither`);
+    }
+    r.derived = r.derived || Boolean(l.derived);
     r.cents += l.value_cents;
     for (const id of l.fact_ids) if (!r.factIds.includes(id)) r.factIds.push(id);
     r.locators = unionLocators(r.locators, l.locators);
@@ -160,14 +175,19 @@ export function departmentFigures(column, config, departmentId) {
   const parentOf = new Map();
   for (const n of funding.nodes) if (n.parent) parentOf.set(n.node, n.parent);
   const labelOf = new Map(nodes.map((/** @type {any} */ n) => [n.id, n.label]));
-  const fundRows = rowsBy(fundLinks, nodes, "from").map((r) => {
-    const l = fundLinks.find((/** @type {any} */ x) => nodes[x.from].id === r.id);
-    const group = parentOf.get(l.from) || "";
-    return { ...r, kind: String(l.kind), groupId: String(group), group: String(labelOf.get(group) || group) };
+  // A fund row's kind is its links', and two on one row are refused.
+  const fundRows = rowsBy(fundLinks, nodes, "from", config.funding).map((r) => {
+    const mine = fundLinks.filter((/** @type {any} */ x) => nodes[x.from].id === r.id);
+    const kinds = new Set(mine.map((/** @type {any} */ x) => x.kind));
+    if (kinds.size !== 1) {
+      throw new Error(`${config.funding} draws ${r.id} as ${[...kinds].map(String).join(" and ")}, and a fund row is one kind`);
+    }
+    const group = parentOf.get(mine[0].from) || "";
+    return { ...r, kind: String(mine[0].kind), groupId: String(group), group: String(labelOf.get(group) || group) };
   });
   // Whether a spending row is an expenditure is its links' kind, as Go
   // declares it; a kind the page does not name, or two on one row, is refused.
-  const objectRows = rowsBy(spendLinks, nodes, "from").map((r) => {
+  const objectRows = rowsBy(spendLinks, nodes, "from", config.spending).map((r) => {
     const kinds = new Set(spendLinks.filter((/** @type {any} */ l) => nodes[l.from].id === r.id)
       .map((/** @type {any} */ l) => l.kind));
     const [kind] = kinds;
@@ -274,14 +294,15 @@ export function departmentBars(column, config) {
 
 /**
  * One row of a side as a flat tile LEDGER draws: no parent, nothing under
- * it and nothing to open, its figure and citations the row's.
+ * it and nothing to open, its figure, citations, inference and reduction the
+ * row's.
  * @param {Row} r
  * @param {string} label
  * @returns {SideTile}
  */
 function tileOf(r, label) {
   return {
-    id: r.id, label, tier: 0, parent: "", derived: false, contra: "",
+    id: r.id, label, tier: 0, parent: "", derived: r.derived, contra: r.contra,
     cents: r.cents, size: Math.abs(r.cents), fact_ids: [...r.factIds],
     locators: r.locators.map((l) => ({ doc_id: l.doc_id, pages: [...l.pages] })),
     splits: [], open: "", children: null,

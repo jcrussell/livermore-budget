@@ -15,7 +15,7 @@ delete globalThis.FISC_CONFIG;
 delete globalThis.d3;
 const domless = typeof globalThis.document === "undefined";
 const mod = await import(pathToFileURL(path.join(HERE, "department.js")).href);
-const { dollars } = await import(pathToFileURL(path.join(HERE, "format.js")).href);
+const { dollars, share } = await import(pathToFileURL(path.join(HERE, "format.js")).href);
 
 /** The pinned page and the config cut out of it. */
 function departmentPage() {
@@ -396,6 +396,77 @@ describe("the page over the pinned columns", () => {
     assert.match(document.getElementById("internal-service-says").textContent, /charging its own\s+departments/);
     assert.match(document.getElementById("funding-says").textContent, /General Fund bar is the General Fund's share alone/);
     assert.match(document.getElementById("spending-says").textContent, /whole department's\s+cost/);
+  });
+});
+
+// A row carries what its links say of themselves: inferred where any link is
+// derived, a printed reduction where every link is one, and one kind. Each
+// case is a pinned column with one stated change to its links.
+//
+// Mutation: hard-code `derived: false, contra: ""` in tileOf and the first two
+// go red; drop rowsBy's contra refusal and the third does; drop the fund
+// row's kind refusal and the fourth does.
+describe("a department row carries its links' inference, reduction and kind", () => {
+  const { config } = departmentPage();
+  const works = "department/public-works";
+  const admin = "department/administrative-services";
+  const wages = "expenditure/wages-and-benefits";
+  /** The spending links from `id` into `dept`'s divisions, in a clone. */
+  const mineOf = (column, dept, id) => {
+    const divisions = config.departments.find((d) => d.id === dept).divisions.map((d) => d.id);
+    const mine = column.schedules[config.spending].links
+      .filter((l) => column.nodes[l.from].id === id && divisions.includes(column.nodes[l.to].id));
+    assert.ok(mine.length > 1, `${dept} draws ${id} in fewer than two divisions`);
+    return mine;
+  };
+
+  test("a spending row summing one derived link is drawn inferred", () => {
+    const column = structuredClone(columnFixture("fy2026-adopted"));
+    mineOf(column, works, wages)[0].derived = true;
+    const { document } = installBrowser({ html: departmentPage().html });
+    mod.render(document, config, column, { year: "fy2026-adopted.json", department: works });
+    const li = document.querySelector(`section.department-side[data-side="spending"] li.bar-row[data-id="${wages}"]`);
+    assert.ok(li, "no wages bar drawn");
+    assert.deepEqual({ derived: li.classList.contains("derived"), label: li.querySelector(".bar-label").textContent },
+      { derived: true, label: "Wages & Benefits (inferred)" });
+    const inferred = [...document.querySelectorAll("section.department-side li.bar-row.derived")].map((x) => x.dataset.id);
+    assert.deepEqual(inferred, [wages], "a row with no derived link was drawn inferred");
+  });
+
+  test("a spending row printed as a reduction takes no share and is in no share's total", () => {
+    const column = structuredClone(columnFixture("fy2026-adopted"));
+    for (const l of mineOf(column, works, wages)) {
+      l.value_cents = -l.value_cents;
+      l.contra = "printed as a reduction of Expenditure";
+    }
+    const { document } = installBrowser({ html: departmentPage().html });
+    const f = mod.render(document, config, column, { year: "fy2026-adopted.json", department: works });
+    const rows = [...document.querySelectorAll('section.department-side[data-side="spending"] li.bar-row')];
+    const contra = rows.find((li) => li.dataset.id === wages);
+    assert.ok(contra, "no wages bar drawn");
+    assert.deepEqual({ reduction: contra.classList.contains("reduction"), share: contra.querySelector(".bar-share").textContent },
+      { reduction: true, share: "" });
+    const whole = f.spending.rows.filter((r) => !r.contra).reduce((a, r) => a + r.cents, 0);
+    const other = rows.find((li) => li.dataset.id !== wages);
+    const r = f.spending.rows.find((x) => x.id === other.dataset.id);
+    assert.equal(other.querySelector(".bar-share").textContent, "◇ " + share(r.cents, whole), `${r.id}'s share counts the reduction`);
+  });
+
+  test("a spending row only part of which is a printed reduction is refused", () => {
+    const column = structuredClone(columnFixture("fy2026-adopted"));
+    const l = mineOf(column, works, wages)[0];
+    l.value_cents = -l.value_cents;
+    l.contra = "printed as a reduction of Expenditure";
+    assert.throws(() => mod.departmentFigures(column, config, works), /draws expenditure\/wages-and-benefits with links that disagree on the reduction they are printed as .*, so its sum is neither/);
+  });
+
+  test("a fund row whose links declare two kinds is refused", () => {
+    const column = structuredClone(columnFixture("fy2026-adopted"));
+    const links = column.schedules[config.funding].links;
+    const l = links.find((x) => column.nodes[x.from].id === "fund/100" && column.nodes[x.to].id === admin);
+    assert.ok(l && l.kind === "external", "fund/100 pays administrative services as no external link");
+    links.push({ ...structuredClone(l), kind: "internal_service" });
+    assert.throws(() => mod.departmentFigures(column, config, admin), /draws fund\/100 as external and internal_service, and a fund row is one kind/);
   });
 });
 
