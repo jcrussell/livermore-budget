@@ -845,3 +845,49 @@ func TestTheRowFundsSummaryStatesNoZeroClause(t *testing.T) {
 		t.Errorf("heldLines(180, 78, 62) = %q", got)
 	}
 }
+
+// TestAVerbPhrasedAnchorThatResolvesToNoFundIsAFinding holds the prefix arm to
+// what the bare-label arm already does: "Transfer From X" names the fund that
+// pays, so an X the registry does not resolve leaves the declared payer checked
+// against nothing, and the row is not one whose page prints no anchor.
+func TestAVerbPhrasedAnchorThatResolvesToNoFundIsAFinding(t *testing.T) {
+	t.Parallel()
+	s := isolated(t)
+	renamed := 0
+	for _, f := range s.Files {
+		for i := range f.Rules {
+			for j := range f.Rules[i].Rows {
+				row := &f.Rules[i].Rows[j]
+				if row.Counterpart == nil || row.Counterpart.Fund != 200 ||
+					row.Label != "Transfer From Low Income Hsng" {
+					continue
+				}
+				row.Label = "Transfer From No Such Fund"
+				renamed++
+			}
+		}
+	}
+	if renamed != 1 {
+		t.Fatalf("renamed %d rows, want 1; the mutation missed its target", renamed)
+	}
+
+	res, err := (&rowFundsMatchTheirAnchors{}).Run(t.Context(), s)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if res.Status != StatusFail {
+		t.Fatalf("a verb-phrased anchor naming no fund reported %s: %s", res.Status, res.Summary)
+	}
+	var b strings.Builder
+	for _, f := range res.Findings {
+		b.WriteString(f.Subject + ": " + f.Detail + "\n")
+	}
+	for _, want := range []string{"Transfer From No Such Fund", "the fund that pays", "fund 200", "checked against nothing"} {
+		if !strings.Contains(b.String(), want) {
+			t.Errorf("the finding does not contain %q:\n%s", want, b.String())
+		}
+	}
+	if strings.Contains(res.Summary, "Transfer From No Such Fund") {
+		t.Errorf("the row is also listed as having no printed anchor: %s", res.Summary)
+	}
+}

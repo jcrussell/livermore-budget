@@ -284,8 +284,8 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 					if anchorHasVerbPhrase(a) {
 						phrased = true
 					}
-					entry, isFar, ok := resolveAnchorFund(s, a)
-					if !ok {
+					entry, isFar, matched, lookupErr := resolveAnchorFund(s, a)
+					if !matched {
 						continue
 					}
 					want, end := near, "receives"
@@ -303,6 +303,19 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 						namedFar = true
 					} else {
 						namedNear = true
+					}
+					// A verb phrase names the fund at this end, so a name
+					// the registry does not resolve leaves the declared fund
+					// checked against nothing: a finding, as in the
+					// bare-label arm, and not a row with no printed anchor.
+					if lookupErr != nil {
+						findings = append(findings, finding(
+							fmt.Sprintf("%s %q", ru.ID, row.PrintedLabel()),
+							"the page prints %q, which names the fund that %s, and the "+
+								"name is not one data/funds.yaml records, so the fund %d "+
+								"this row declares there is checked against nothing: %v",
+							a, end, want, lookupErr))
+						continue
 					}
 					if entry.Number == want {
 						continue
@@ -485,9 +498,7 @@ func heldLines(subjects, bare, numbered int) string {
 //
 // It is the difference between "the page prints nothing here" and "the page
 // prints a label this check does not read", and those are the two lists the
-// summary keeps apart. resolveAnchorFund cannot answer it: it returns the same
-// not-ok for an unmatched prefix and for a matched prefix whose remainder is
-// not a fund, which are opposite statements about the page.
+// summary keeps apart.
 func anchorHasVerbPhrase(anchor string) bool {
 	for _, p := range rowAnchorPrefixes {
 		if strings.HasPrefix(anchor, p.prefix) {
@@ -498,13 +509,14 @@ func anchorHasVerbPhrase(anchor string) bool {
 }
 
 // resolveAnchorFund strips a known verb phrase off a printed anchor and looks
-// the remainder up. Not found is the common case and not an error: most rows in
-// this corpus name a category rather than a fund.
-func resolveAnchorFund(s *Subject, anchor string) (entry registry.Fund, far, ok bool) {
+// the remainder up. No verb phrase is the common case and not an error: most
+// rows in this corpus name a category rather than a fund. A verb phrase whose
+// remainder the registry does not resolve is matched with the lookup's error.
+func resolveAnchorFund(s *Subject, anchor string) (entry registry.Fund, far, matched bool, err error) {
 	if anchor == "" {
-		return registry.Fund{}, false, false
+		return registry.Fund{}, false, false, nil
 	}
-	label, matched := anchor, false
+	label := anchor
 	for _, p := range rowAnchorPrefixes {
 		if rest, cut := strings.CutPrefix(label, p.prefix); cut {
 			label, far, matched = rest, p.far, true
@@ -514,13 +526,13 @@ func resolveAnchorFund(s *Subject, anchor string) (entry registry.Fund, far, ok 
 	if !matched {
 		// No declared verb phrase, so the anchor says nothing about direction
 		// and this check has no claim to make about it.
-		return registry.Fund{}, false, false
+		return registry.Fund{}, false, false, nil
 	}
 	e, err := s.Vocabulary.FundByLabel(label)
 	if err != nil {
-		return registry.Fund{}, false, false
+		return registry.Fund{}, far, true, err
 	}
-	return e, far, true
+	return e, far, true, nil
 }
 
 // activeInAnyPart is the union of the rows any part of a rule reads, in
