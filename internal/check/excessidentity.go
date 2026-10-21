@@ -40,6 +40,13 @@ const categoryExcessOfRevenues = "fund-balance/excess-of-revenues"
 // amount that is wrong against the page, which is fact-offset-points-at-token's
 // claim, not this one's.
 //
+// WHERE A COLUMN ALSO PRINTS ITS NET CHANGE, the excess plus the transfers,
+// each as printed, must equal it: p121's 2,747,199 + 1,555,206 - 17,179,000 =
+// -12,876,595 in the original budget, and likewise in the other two columns.
+// fund-balance-identity holds the change to the stocks; this holds it to the
+// flows, which SourcesUses does not for a scope printing Transfers (out)
+// negative. pp.168-169 publish no change line, so the arm is p121's alone.
+//
 // A YEAR CARRYING ANY OF THE THREE SIDES MUST CARRY ALL THREE, the same
 // fail-closed arm as fundBalanceIdentity: a rule that stopped publishing the
 // excess row would otherwise leave the identity nothing to violate, and the
@@ -85,6 +92,8 @@ func (*excessOfRevenuesIdentity) Run(_ context.Context, s *Subject) (Result, err
 	rev := map[excessColumn]excessSide{}
 	exp := map[excessColumn]excessSide{}
 	excess := map[excessColumn]excessSide{}
+	transfers := map[excessColumn]excessSide{}
+	change := map[excessColumn]excessSide{}
 	excessID := map[excessColumn]string{}
 	duplicated := map[excessColumn]bool{}
 	var order []excessColumn
@@ -134,12 +143,22 @@ func (*excessOfRevenuesIdentity) Run(_ context.Context, s *Subject) (Result, err
 			side.cents += amount.Cents(f.AmountCents)
 			side.rows++
 			exp[k] = side
+		case f.Kind == vocab.KindTransferIn || f.Kind == vocab.KindTransferOut:
+			side := transfers[k]
+			side.cents += amount.Cents(f.AmountCents)
+			side.rows++
+			transfers[k] = side
+		case f.Category == structure.CategoryFundBalanceChange:
+			side := change[k]
+			side.cents += amount.Cents(f.AmountCents)
+			side.rows++
+			change[k] = side
 		}
 	}
 
 	sort.Slice(order, func(i, j int) bool { return order[i].String() < order[j].String() })
 
-	complete := 0
+	complete, flows := 0, 0
 	for _, k := range order {
 		var missing []string
 		for _, side := range []struct {
@@ -179,13 +198,34 @@ func (*excessOfRevenuesIdentity) Run(_ context.Context, s *Subject) (Result, err
 				rev[k].cents-exp[k].cents, excess[k].cents,
 				excess[k].cents-(rev[k].cents-exp[k].cents)))
 		}
+		switch c := change[k]; {
+		case c.rows == 0:
+		case c.rows > 1:
+			findings = append(findings, finding(excessID[k],
+				"%s publishes the net change line %d times; the flows have no single "+
+					"change to equal", k, c.rows))
+		case transfers[k].rows == 0:
+			findings = append(findings, finding(excessID[k],
+				"%s prints a net change and no transfer line, so the flows cannot be "+
+					"held to it", k))
+		case excess[k].cents+transfers[k].cents == c.cents:
+			flows++
+		default:
+			findings = append(findings, finding(excessID[k],
+				"%s: the excess %s plus %d transfer rows' %s is %s, but the document "+
+					"prints a net change of %s — off by %s",
+				k, excess[k].cents, transfers[k].rows, transfers[k].cents,
+				excess[k].cents+transfers[k].cents, c.cents,
+				c.cents-(excess[k].cents+transfers[k].cents)))
+		}
 	}
 
 	return conclusion{
 		subjects: len(order),
 		unit:     "columns",
 		held: fmt.Sprintf("%d columns of %s, each with total revenues minus total "+
-			"expenditures equal to the printed excess to the cent", complete, strings.Join(excessScopes, " and ")),
+			"expenditures equal to the printed excess to the cent, and %d of them with the excess "+
+			"plus transfers equal to the printed net change", complete, strings.Join(excessScopes, " and "), flows),
 		nothing:  fmt.Sprintf("no fact is in scope %s", strings.Join(excessScopes, " or ")),
 		findings: findings,
 	}.result(), nil

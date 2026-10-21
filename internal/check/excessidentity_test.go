@@ -49,16 +49,59 @@ func runExcessIdentity(t *testing.T, facts []fact.Fact) Result {
 	return res
 }
 
+// p121Fact is a fact of ACFR p121's FY2025 actual column.
+func p121Fact(id string, kind vocab.Kind, category string, cents int64) fact.Fact {
+	f := excessFact(id, kind, category, 2025, cents)
+	f.Scope = structure.ScopeACFRGeneralFundBudgetActual
+	f.Basis = vocab.BasisActual
+	return f
+}
+
+// p121Column is one column of p121's shape: revenue less expenditure is the
+// excess, and the excess plus the two transfers, the out leg printed
+// negative, is the net change.
+func p121Column(change int64) []fact.Fact {
+	return []fact.Fact{
+		p121Fact("gr", vocab.KindRevenue, "taxes/property", 500),
+		p121Fact("ge", vocab.KindExpenditure, "fire", 200),
+		p121Fact("gx", vocab.KindFundBalance, categoryExcessOfRevenues, 300),
+		p121Fact("gti", vocab.KindTransferIn, "transfers/in", 40),
+		p121Fact("gto", vocab.KindTransferOut, "transfers/out", -90),
+		p121Fact("gc", vocab.KindFundBalance, structure.CategoryFundBalanceChange, change),
+	}
+}
+
+// TestTheFlowsAreHeldToThePrintedChange is the arm SourcesUses cannot hold
+// for a scope printing Transfers (out) negative: 300 + 40 - 90 = 250.
+func TestTheFlowsAreHeldToThePrintedChange(t *testing.T) {
+	t.Parallel()
+	if res := runExcessIdentity(t, p121Column(250)); res.Status != StatusPass {
+		t.Fatalf("status = %s (%s), want pass", res.Status, res.Summary)
+	}
+	res := runExcessIdentity(t, p121Column(251))
+	if res.Status != StatusFail || len(res.Findings) != 1 ||
+		!strings.Contains(res.Findings[0].Detail, "prints a net change of $2.51") {
+		t.Fatalf("status = %s, findings %v; want the change a cent off", res.Status, res.Findings)
+	}
+	var noTransfers []fact.Fact
+	for _, f := range p121Column(250) {
+		if f.Kind != vocab.KindTransferIn && f.Kind != vocab.KindTransferOut {
+			noTransfers = append(noTransfers, f)
+		}
+	}
+	res = runExcessIdentity(t, noTransfers)
+	if res.Status != StatusFail || len(res.Findings) != 1 ||
+		!strings.Contains(res.Findings[0].Detail, "no transfer line") {
+		t.Fatalf("status = %s, findings %v; want the missing transfers named", res.Status, res.Findings)
+	}
+}
+
 // TestExcessIdentityHoldsEachScopeApart is ACFR p121 beside pp.168-169: the
 // General Fund's column is held to its own rows, and a General Fund excess
 // wrong against them fails even where the combined schedule's column ties.
 func TestExcessIdentityHoldsEachScopeApart(t *testing.T) {
 	t.Parallel()
-	gf := func(id string, kind vocab.Kind, category string, cents int64) fact.Fact {
-		f := excessFact(id, kind, category, 2016, cents)
-		f.Scope = structure.ScopeACFRGeneralFundBudgetActual
-		return f
-	}
+	gf := p121Fact
 	facts := append(excessBaseline(),
 		gf("gr", vocab.KindRevenue, "taxes/property", 500),
 		gf("ge", vocab.KindExpenditure, "fire", 200),
@@ -84,6 +127,9 @@ func TestExcessIdentityCoversBothScopesOverTheCommittedCorpus(t *testing.T) {
 	res := runExcessIdentity(t, s.Facts)
 	if res.Status != StatusPass || res.Subjects != 13 {
 		t.Fatalf("status = %s over %d (%s), want pass over 13 columns", res.Status, res.Subjects, res.Summary)
+	}
+	if !strings.Contains(res.Summary, "3 of them with the excess plus transfers equal to the printed net change") {
+		t.Errorf("summary %q, want p121's three columns holding their flows to the net change", res.Summary)
 	}
 	excess := map[string]int{}
 	for i := range s.Facts {

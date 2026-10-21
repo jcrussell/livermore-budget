@@ -250,12 +250,12 @@ func TestAYearOnSeveralBasesAloneCarriesNothing(t *testing.T) {
 			{vocab.KindFundBalance, structure.CategoryFundBalanceEnding, ending},
 		}
 	}
-	bases := []vocab.Basis{vocab.BasisAdopted, vocab.BasisRevised, vocab.BasisAudited}
+	bases := []vocab.Basis{vocab.BasisAdopted, vocab.BasisRevised, vocab.BasisActual}
 	build := func(audited int64) []fact.Fact {
 		var facts []fact.Fact
 		for _, b := range bases {
 			ending := int64(80_000)
-			if b == vocab.BasisAudited {
+			if b == vocab.BasisActual {
 				ending = audited
 			}
 			at := balanceAt{structure.ScopeACFRGeneralFundBudgetActual, "", 0, 2025, b}
@@ -264,7 +264,7 @@ func TestAYearOnSeveralBasesAloneCarriesNothing(t *testing.T) {
 		return facts
 	}
 	wantPass(t, runBalance(t, &fundBalanceIdentity{}, build(80_000)), 3)
-	wantFail(t, runBalance(t, &fundBalanceIdentity{}, build(80_001)), "FY2025 audited")
+	wantFail(t, runBalance(t, &fundBalanceIdentity{}, build(80_001)), "FY2025 actual")
 }
 
 func TestACarryForwardBreakFails(t *testing.T) {
