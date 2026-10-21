@@ -787,15 +787,16 @@ rules:
   # --------------------------------------------------------------------------
   # p121, the General Fund's budgetary comparison schedule for FY2024-25:
   # Original and Final budgeted amounts, Actual Amounts Budgetary Basis, and a
-  # Variance column. Five rules over one page, one per kind, each declaring the
-  # four columns. Variance is skipped: it is Actual less Final, a difference of
+  # Variance column. Five rules over one page, one per printed block, each
+  # declaring the four columns. Variance is skipped: it is Actual less Final, a difference of
   # two figures already published, and no figure of the fund.
   #
   # The columns name no fund group, so each takes the scope as its column path,
   # as a single-fund schedule does. Named `general`, the Actual column would be
-  # p41's series again, the same lines printed for the same year, and p41 rounds
-  # them to $10,000. Nor are they fund 100's: the Budget Book's fund 100 begins
-  # FY2024-25 at 14,740,780, and p121 at 92,047,744.
+  # p41's series again: the same lines printed for the same year, p41's rounded
+  # to $10,000, and its fund balances not p121's (fisc-i1bs). Nor are they fund
+  # 100's: the Budget Book's fund 100 begins FY2024-25 at 14,740,780, and p121
+  # at 92,047,744.
   - id: acfr-p0121-gf-budget-revenues
     kind: revenue
     basis: audited
@@ -931,9 +932,8 @@ rules:
     units: dollars
     note: >-
       The three fund-balance lines the schedule closes with. No total_row: a
-      fund balance is a stock and the page never adds these together;
-      fund-balance-identity asserts beginning + change = ending per column.
-      The rows above them are the other-financing-sources rule's, skipped here
+      fund balance is a stock and the page never adds these together. The
+      rows above them are the other-financing-sources rule's, skipped here
       so no printed figure is cited twice.
     parts:
       - page: 121

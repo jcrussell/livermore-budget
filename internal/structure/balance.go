@@ -86,8 +86,9 @@ func (b Balance) BlankExemptsSourcesUses(l Line) bool {
 
 // FundBalances is every scope printing a fund balance, and how.
 //
-// The spine and ACFR p41 print a change line, which witnesses their flows, so
-// only the three balance lines are required of them. pp.186-209 print no change
+// The spine and ACFR p41 and p121 print a change line, so only the three
+// balance lines are required of them. The spine's change witnesses its flows
+// through SourcesUses; p41's and p121's witnesses nothing (fisc-wstb). pp.186-209 print no change
 // line, so every flow they print is required: a dropped column of dashes would
 // leave ending - beginning with nothing to violate.
 func FundBalances() []Balance {

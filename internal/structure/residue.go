@@ -91,7 +91,9 @@ const acfrBudgetActualResidueReason = "ACFR p121 prints the General Fund's FY202
 	"Budget Book's FY2024-25 revised General Fund revenues in seven of nine lines, Total Revenues " +
 	"148,800,148 in both; property taxes 60,571,418 and use of money and property 7,287,501 are " +
 	"p127's 60,621,418 and p129's 7,237,501 with 50,000 moved between them, and its transfers in, " +
-	"905,500, are not p192's 914,206. Its actual is p41's FY2024-25, which p41 rounds to $10,000. " +
+	"905,500, are not p192's 914,206. Its actual is p41's FY2024-25 to the $10,000 p41 rounds to, but " +
+	"for the fund balances: p41 begins at 92.10 million, as restated, and ends at 87.10, where p121 " +
+	"prints 92,047,744 and 87,043,576. " +
 	"Each column ties to the schedule's own printed totals"
 
 // fundBalancesByFundResidue is pp.186-209's Capital Improvement Program

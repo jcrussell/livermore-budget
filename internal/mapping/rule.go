@@ -454,7 +454,7 @@ type Part struct {
 	// Wastewater's and Water's lines and nothing under Reserve
 	// Increase/(Use), where every other row prints a figure or a "-". A blank
 	// is absent, not zero, so the cell yields no Value and is reported as an
-	// Omission, unless its column is skipped.
+	// Omission.
 	//
 	// It is about the DOCUMENT, never about our pipeline. A declaration that
 	// absorbed an extraction defect would launder a pipeline bug into a

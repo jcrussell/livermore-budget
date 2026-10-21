@@ -9,7 +9,6 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
@@ -59,7 +58,7 @@ func (*excessOfRevenuesIdentity) Description() string {
 
 // excessScopes are the schedules printing an excess line, each one fund scope:
 // pp.168-169 all governmental funds combined, p121 the General Fund alone.
-var excessScopes = []string{project.ChangesScope, structure.ScopeACFRGeneralFundBudgetActual}
+var excessScopes = []string{structure.ScopeACFRChangesInFundBalances, structure.ScopeACFRGeneralFundBudgetActual}
 
 // excessColumn is one column of a schedule: one (fiscal year, basis) pair at
 // one of excessScopes. The fund dimension is deliberately absent — each scope
@@ -178,9 +177,9 @@ func (*excessOfRevenuesIdentity) Run(_ context.Context, s *Subject) (Result, err
 	return conclusion{
 		subjects: len(order),
 		unit:     "columns",
-		held: fmt.Sprintf("%d columns of %q, each with total revenues minus total "+
-			"expenditures equal to the printed excess to the cent", complete, excessScopes),
-		nothing:  fmt.Sprintf("no fact is in scope %q", excessScopes),
+		held: fmt.Sprintf("%d columns of %s, each with total revenues minus total "+
+			"expenditures equal to the printed excess to the cent", complete, strings.Join(excessScopes, " and ")),
+		nothing:  fmt.Sprintf("no fact is in scope %s", strings.Join(excessScopes, " or ")),
 		findings: findings,
 	}.result(), nil
 }

@@ -313,11 +313,10 @@ func TestParseRefusesABadOmittedCell(t *testing.T) {
 	}
 }
 
-// TestABlankUnderASkippedColumnIsReadAndNoOmission is ACFR p121's shape: a
-// row that prints nothing under the column the rule skips. The row's other
-// figures are read, and the blank is no Omission, since a skipped column's
-// year and basis name a cell a read column publishes.
-func TestABlankUnderASkippedColumnIsReadAndNoOmission(t *testing.T) {
+// TestABlankUnderASkippedColumnIsRead is a positional row that prints nothing
+// under the column the rule skips: its other figures are read, and the blank
+// is reported like any other.
+func TestABlankUnderASkippedColumnIsRead(t *testing.T) {
 	src := strings.Replace(blankPair, blankEntry,
 		`          - {label: "Beta", column: "TOTAL", note: "printed blank"}`+"\n", 1)
 	pages := blankPairPages()
@@ -335,8 +334,51 @@ func TestABlankUnderASkippedColumnIsReadAndNoOmission(t *testing.T) {
 	if diff := cmp.Diff(want, placedCells(p, cells)); diff != "" {
 		t.Errorf("cells (-want +got):\n%s", diff)
 	}
-	if len(omissions) != 0 {
-		t.Errorf("omissions = %d, want none: a skipped column's blank is no fact's cell", len(omissions))
+	if len(omissions) != 1 || omissions[0].Header != "TOTAL" {
+		t.Errorf("omissions = %+v, want Beta's blank under TOTAL", omissions)
+	}
+}
+
+// skippedBlankLabelled is ACFR p121's shape: a labelled page whose third
+// column the rule skips, and whose middle row prints nothing under it.
+func skippedBlankLabelled() (string, map[int]string) {
+	src := strings.NewReplacer(
+		`    total_row: "Total"`+"\n", "",
+		blankLabelledEntry, `          - {label: "Beta", column: "VAR", note: "printed blank"}`+"\n",
+		`column_headers: ["FY A", "FY B"]`, `column_headers: ["FY A", "FY B", "VAR"]`,
+		`section: "FY B\n"`, `section: "VAR\n"`,
+		`          - {fiscal_year: 2026}`, "          - {fiscal_year: 2026}\n          - {skip: true}",
+	).Replace(blankLabelled)
+	row := func(label, a, b, v string) string { return fmt.Sprintf("%-12s%10s%10s%10s\n", label, a, b, v) }
+	return src, map[int]string{1: row("", "FY A", "FY B", "VAR") + row("Alpha", "100", "200", "1") +
+		row("Beta", "300", "400", "") + row("Gamma", "500", "600", "2") + "Total\n"}
+}
+
+// TestALabelledBlankUnderASkippedColumnIsRead reads the labelled path p121
+// takes, and refuses a figure printed under the skipped column's blank.
+func TestALabelledBlankUnderASkippedColumnIsRead(t *testing.T) {
+	src, pages := skippedBlankLabelled()
+	p, cells, omissions, err := readBlank(t, src, pages, 0)
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	want := []placedCell{
+		{"Alpha", "FY A", "100", 10000}, {"Alpha", "FY B", "200", 20000}, {"Alpha", "VAR", "1", 100},
+		{"Beta", "FY A", "300", 30000}, {"Beta", "FY B", "400", 40000},
+		{"Gamma", "FY A", "500", 50000}, {"Gamma", "FY B", "600", 60000}, {"Gamma", "VAR", "2", 200},
+	}
+	if diff := cmp.Diff(want, placedCells(p, cells)); diff != "" {
+		t.Errorf("cells (-want +got):\n%s", diff)
+	}
+	if len(omissions) != 1 || omissions[0].Header != "VAR" {
+		t.Errorf("omissions = %+v, want Beta's blank under VAR", omissions)
+	}
+
+	pages[1] = strings.Replace(pages[1], fmt.Sprintf("%-12s%10s%10s%10s\n", "Beta", "300", "400", ""),
+		fmt.Sprintf("%-12s%10s%10s%10s\n", "Beta", "300", "400", "9"), 1)
+	if _, _, _, err := readBlank(t, src, pages, 0); !strings.Contains(fmt.Sprint(err),
+		`"9" is printed under column 3 (VAR), which the rule declares blank on this row`) {
+		t.Fatalf("got %v, want the figure under the declared blank refused", err)
 	}
 }
 

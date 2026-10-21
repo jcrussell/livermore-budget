@@ -73,6 +73,18 @@ func TestExcessIdentityHoldsEachScopeApart(t *testing.T) {
 	}
 }
 
+// TestExcessIdentityCoversBothScopesOverTheCommittedCorpus pins the
+// population: pp.168-169's ten columns and ACFR p121's three. A scope that
+// stopped reaching the check would leave it passing over fewer.
+func TestExcessIdentityCoversBothScopesOverTheCommittedCorpus(t *testing.T) {
+	t.Parallel()
+	res := resultFor(t, Run(t.Context(), committed(t), All(), ReportOptions{}), "excess-of-revenues-identity")
+	if res.Status != StatusPass || res.Subjects != 13 {
+		t.Fatalf("status = %s over %d (%s), want pass over 13 columns: pp.168-169's ten and p121's three",
+			res.Status, res.Subjects, res.Summary)
+	}
+}
+
 func TestExcessIdentityHoldsOverTheBaseline(t *testing.T) {
 	t.Parallel()
 	res := runExcessIdentity(t, excessBaseline())

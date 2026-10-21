@@ -239,17 +239,32 @@ func TestAYearOnTwoBasesHasNoSingleEnding(t *testing.T) {
 }
 
 // TestAYearOnSeveralBasesAloneCarriesNothing is ACFR p121's shape: one year
-// printed on three bases and no year beside it, so no ending is carried and
-// each basis is held to its own identity.
+// printed on three bases, each with its change line, and no year beside it,
+// so no ending is carried and each basis is held to its own identity.
 func TestAYearOnSeveralBasesAloneCarriesNothing(t *testing.T) {
 	t.Parallel()
-	var facts []fact.Fact
-	for _, b := range []vocab.Basis{vocab.BasisAdopted, vocab.BasisRevised, vocab.BasisAudited} {
-		at := fund101
-		at.basis = b
-		facts = append(facts, at.facts(byFundRow())...)
+	lines := func(ending int64) []balanceLine {
+		return []balanceLine{
+			{vocab.KindFundBalance, structure.CategoryFundBalanceBeginning, 100_000},
+			{vocab.KindFundBalance, structure.CategoryFundBalanceChange, -20_000},
+			{vocab.KindFundBalance, structure.CategoryFundBalanceEnding, ending},
+		}
 	}
-	wantPass(t, runBalance(t, &fundBalanceIdentity{}, facts), 3)
+	bases := []vocab.Basis{vocab.BasisAdopted, vocab.BasisRevised, vocab.BasisAudited}
+	build := func(audited int64) []fact.Fact {
+		var facts []fact.Fact
+		for _, b := range bases {
+			ending := int64(80_000)
+			if b == vocab.BasisAudited {
+				ending = audited
+			}
+			at := balanceAt{structure.ScopeACFRGeneralFundBudgetActual, "", 0, 2025, b}
+			facts = append(facts, at.facts(lines(ending))...)
+		}
+		return facts
+	}
+	wantPass(t, runBalance(t, &fundBalanceIdentity{}, build(80_000)), 3)
+	wantFail(t, runBalance(t, &fundBalanceIdentity{}, build(80_001)), "FY2025 audited")
 }
 
 func TestACarryForwardBreakFails(t *testing.T) {
