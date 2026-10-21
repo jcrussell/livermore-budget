@@ -22,7 +22,7 @@ const categoryExcessOfRevenues = "fund-balance/excess-of-revenues"
 //
 // This is the schedule's corroboration tie, and it is a check rather than a
 // build-time total because all three terms are published facts: the city prints
-// the excess independently of the 21 detail rows it summarises, so the store is
+// the excess independently of the detail rows it summarises, so the store is
 // checked against a figure the document states rather than against our own sum.
 // Measured off p168 before the check was written: the identity holds in all ten
 // columns, 2016's 149,526,096 - 114,652,048 = 34,874,048 through 2025's
@@ -34,15 +34,17 @@ const categoryExcessOfRevenues = "fund-balance/excess-of-revenues"
 // column agreement. Each block's total_row ties a column against its own rows,
 // so a whole column read into the wrong year ties anyway; this identity fails
 // unless the revenue, expenditure and excess reads agree about which column is
-// which. It cannot witness all three shifting TOGETHER — no geometry guard
-// exists on a bare-year-headed page (fisc-wiyg) — and it cannot witness an
+// which. On pp.168-169 it cannot witness all three shifting TOGETHER — no
+// geometry guard exists on a bare-year-headed page (fisc-wiyg); p121 declares
+// column_headers, so its guard does. It cannot witness an
 // amount that is wrong against the page, which is fact-offset-points-at-token's
 // claim, not this one's.
 //
 // A YEAR CARRYING ANY OF THE THREE SIDES MUST CARRY ALL THREE, the same
 // fail-closed arm as fundBalanceIdentity: a rule that stopped publishing the
 // excess row would otherwise leave the identity nothing to violate, and the
-// check would go quietly from ten subjects to none.
+// check would go quietly to fewer subjects. An excess line at a scope not in
+// excessScopes is a finding for the same reason.
 type excessOfRevenuesIdentity struct{}
 
 var _ Check = (*excessOfRevenuesIdentity)(nil)
@@ -97,6 +99,11 @@ func (*excessOfRevenuesIdentity) Run(_ context.Context, s *Subject) (Result, err
 	}
 	for _, f := range s.Facts {
 		if !slices.Contains(excessScopes, f.Scope) {
+			if f.Category == categoryExcessOfRevenues {
+				findings = append(findings, finding(f.ID,
+					"scope %q prints an excess line and is not one of the identity's scopes, "+
+						"so nothing recomputes it", f.Scope))
+			}
 			continue
 		}
 		k := excessColumn{f.Scope, f.FiscalYear, fact.BandOf(&f), f.Basis}

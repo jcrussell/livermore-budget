@@ -1374,7 +1374,10 @@ categories:
   # reason is not the one the funding-source note gives: this document
   # is FY2025 audited and the Budget Book prints no audited column, so
   # the two share no (kind, category, fund_group, fund, fiscal year,
-  # basis) key at all.
+  # basis) key at all. ACFR p121 prints the same five rows in adopted,
+  # revised and actual FY2025 columns at acfr-general-fund-budget-actual,
+  # a declared residue no projection draws, and no Budget Book fact
+  # carries this category in any column.
   #
   # AND THE FACTS CARRY NO `department:`, which is a constraint rather
   # than a choice and a different one from the funding-source case

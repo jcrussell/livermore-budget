@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/structure"
@@ -74,14 +76,37 @@ func TestExcessIdentityHoldsEachScopeApart(t *testing.T) {
 }
 
 // TestExcessIdentityCoversBothScopesOverTheCommittedCorpus pins the
-// population: pp.168-169's ten columns and ACFR p121's three. A scope that
-// stopped reaching the check would leave it passing over fewer.
+// population per scope: pp.168-169's ten columns and ACFR p121's three. A
+// scope that stopped reaching the check would leave it passing over fewer.
 func TestExcessIdentityCoversBothScopesOverTheCommittedCorpus(t *testing.T) {
 	t.Parallel()
-	res := resultFor(t, Run(t.Context(), committed(t), All(), ReportOptions{}), "excess-of-revenues-identity")
+	s := committed(t)
+	res := runExcessIdentity(t, s.Facts)
 	if res.Status != StatusPass || res.Subjects != 13 {
-		t.Fatalf("status = %s over %d (%s), want pass over 13 columns: pp.168-169's ten and p121's three",
-			res.Status, res.Subjects, res.Summary)
+		t.Fatalf("status = %s over %d (%s), want pass over 13 columns", res.Status, res.Subjects, res.Summary)
+	}
+	excess := map[string]int{}
+	for i := range s.Facts {
+		if s.Facts[i].Category == categoryExcessOfRevenues {
+			excess[s.Facts[i].Scope]++
+		}
+	}
+	want := map[string]int{structure.ScopeACFRChangesInFundBalances: 10, structure.ScopeACFRGeneralFundBudgetActual: 3}
+	if diff := cmp.Diff(want, excess); diff != "" {
+		t.Errorf("excess lines per scope (-want +got):\n%s", diff)
+	}
+}
+
+// TestAnExcessLineAtAnUndeclaredScopeIsAFinding is the arm that keeps a new
+// schedule's excess line from passing unrecomputed.
+func TestAnExcessLineAtAnUndeclaredScopeIsAFinding(t *testing.T) {
+	t.Parallel()
+	x := excessFact("x-new", vocab.KindFundBalance, categoryExcessOfRevenues, 2016, 1)
+	x.Scope = "some-new-schedule"
+	res := runExcessIdentity(t, append(excessBaseline(), x))
+	if res.Status != StatusFail || len(res.Findings) != 1 ||
+		!strings.Contains(res.Findings[0].Detail, `"some-new-schedule"`) {
+		t.Fatalf("status = %s, findings %v; want one naming the undeclared scope", res.Status, res.Findings)
 	}
 }
 

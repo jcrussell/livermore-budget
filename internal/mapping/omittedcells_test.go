@@ -337,6 +337,13 @@ func TestABlankUnderASkippedColumnIsRead(t *testing.T) {
 	if len(omissions) != 1 || omissions[0].Header != "TOTAL" {
 		t.Errorf("omissions = %+v, want Beta's blank under TOTAL", omissions)
 	}
+
+	pages[2] = strings.Replace(pages[2], fmt.Sprintf("%10s%10s%10s\n", "40", "7", ""),
+		fmt.Sprintf("%10s%10s%10s\n", "40", "7", "9"), 1)
+	if _, _, _, err := readBlank(t, src, pages, 1); !strings.Contains(fmt.Sprint(err),
+		`read 9 values, want 8`) {
+		t.Fatalf("got %v, want the figure under the declared blank refused by count", err)
+	}
 }
 
 // skippedBlankLabelled is ACFR p121's shape: a labelled page whose third

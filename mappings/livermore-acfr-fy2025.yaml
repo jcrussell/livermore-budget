@@ -787,9 +787,12 @@ rules:
   # --------------------------------------------------------------------------
   # p121, the General Fund's budgetary comparison schedule for FY2024-25:
   # Original and Final budgeted amounts, Actual Amounts Budgetary Basis, and a
-  # Variance column. Five rules over one page, one per printed block, each
-  # declaring the four columns. Variance is skipped: it is Actual less Final, a difference of
-  # two figures already published, and no figure of the fund.
+  # Variance column, one rule per printed block, each declaring the four
+  # columns. Variance is skipped: it is Actual less Final, a difference of two
+  # figures already published, and no figure of the fund, so no total holds it.
+  # The Actual column is basis actual: p121 is Required Supplementary
+  # Information, outside the auditor's opinion, and on the budgetary basis,
+  # where p41 is GAAP.
   #
   # The columns name no fund group, so each takes the scope as its column path,
   # as a single-fund schedule does. Named `general`, the Actual column would be
@@ -799,14 +802,14 @@ rules:
   # at 92,047,744.
   - id: acfr-p0121-gf-budget-revenues
     kind: revenue
-    basis: audited
+    basis: actual
     scope: acfr-general-fund-budget-actual
     grain: category
     units: dollars
     total_row: "Total Revenues"
     note: >-
-      The nine revenue lines, tying to the printed Total Revenues in all four
-      columns. The page prints no Contributions from outside sources line,
+      The nine revenue lines, tying to the printed Total Revenues in the
+      three columns read. The page prints no Contributions from outside sources line,
       which p41 does at 0.00.
     parts:
       - page: 121
@@ -819,7 +822,7 @@ rules:
         columns:
           - {fiscal_year: 2025, basis: adopted}
           - {fiscal_year: 2025, basis: revised}
-          - {fiscal_year: 2025, basis: audited}
+          - {fiscal_year: 2025, basis: actual}
           - {fiscal_year: 2025, skip: true}
     rows:
       - {label: "Property taxes", category: taxes/property}
@@ -835,14 +838,14 @@ rules:
   # --------------------------------------------------------------------------
   - id: acfr-p0121-gf-budget-expenditures
     kind: expenditure
-    basis: audited
+    basis: actual
     scope: acfr-general-fund-budget-actual
     grain: category
     units: dollars
     total_row: "Total Expenditurs"
     note: >-
       The fourteen expenditure lines on the ACFR's function axis, tying to the
-      printed total in all four columns. The total's label is the page's own
+      printed total in the three columns read. The total's label is the page's own
       misspelling, quoted as printed. The five General Government divisions
       carry no department, as on p41 and for the reason
       data/taxonomy.yaml's general-government entry gives.
@@ -857,7 +860,7 @@ rules:
         columns:
           - {fiscal_year: 2025, basis: adopted}
           - {fiscal_year: 2025, basis: revised}
-          - {fiscal_year: 2025, basis: audited}
+          - {fiscal_year: 2025, basis: actual}
           - {fiscal_year: 2025, skip: true}
     rows:
       - {label: "City Council", category: general-government}
@@ -878,7 +881,7 @@ rules:
   # --------------------------------------------------------------------------
   - id: acfr-p0121-gf-budget-excess-of-revenues
     kind: fund_balance
-    basis: audited
+    basis: actual
     scope: acfr-general-fund-budget-actual
     grain: category
     units: dollars
@@ -893,7 +896,7 @@ rules:
         columns:
           - {fiscal_year: 2025, basis: adopted}
           - {fiscal_year: 2025, basis: revised}
-          - {fiscal_year: 2025, basis: audited}
+          - {fiscal_year: 2025, basis: actual}
           - {fiscal_year: 2025, skip: true}
     rows:
       - {label: "OVER EXPENDITURES", category: fund-balance/excess-of-revenues}
@@ -901,13 +904,14 @@ rules:
   # --------------------------------------------------------------------------
   - id: acfr-p0121-gf-budget-other-financing-sources
     kind: transfer_in
-    basis: audited
+    basis: actual
     scope: acfr-general-fund-budget-actual
     grain: category
     units: dollars
     total_row: "Total Other Financing Sources (Uses)"
     note: >-
-      The two transfer lines, tying to the printed total in all four columns.
+      The two transfer lines, tying to the printed total in the three columns
+      read.
       The second row overrides the kind to transfer_out, as p41's does.
     parts:
       - page: 121
@@ -917,7 +921,7 @@ rules:
         columns:
           - {fiscal_year: 2025, basis: adopted}
           - {fiscal_year: 2025, basis: revised}
-          - {fiscal_year: 2025, basis: audited}
+          - {fiscal_year: 2025, basis: actual}
           - {fiscal_year: 2025, skip: true}
     rows:
       - {label: "Transfers in", category: transfers/in}
@@ -926,7 +930,7 @@ rules:
   # --------------------------------------------------------------------------
   - id: acfr-p0121-gf-budget-fund-balances
     kind: fund_balance
-    basis: audited
+    basis: actual
     scope: acfr-general-fund-budget-actual
     grain: category
     units: dollars
@@ -947,7 +951,7 @@ rules:
         columns:
           - {fiscal_year: 2025, basis: adopted}
           - {fiscal_year: 2025, basis: revised}
-          - {fiscal_year: 2025, basis: audited}
+          - {fiscal_year: 2025, basis: actual}
           - {fiscal_year: 2025, skip: true}
     rows:
       - {label: "Transfers in", skip: true}
