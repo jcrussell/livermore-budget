@@ -189,11 +189,14 @@ export function tileShare(tile, side) {
 
 /**
  * The words a tile's tooltip says of how it opens: its primary
- * split's member count, and each alternative's.
+ * split's member count, and each alternative's, marked ours as a count of
+ * what is drawn; "" for a tile that does not open.
  * @param {core.SideTile} tile
  */
 export function opensAs(tile) {
-  return tile.splits.map((sp) => `${sp.members.length} ${sp.key}${sp.alternative ? " (alternative)" : ""}`).join("; ");
+  if (!tile.splits.length) return "";
+  return "◇ " + tile.splits.map((sp) => `${sp.members.length} ${sp.key}${sp.alternative ? " (alternative)" : ""}`).join("; ") +
+    ", by our count";
 }
 
 /**

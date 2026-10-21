@@ -392,8 +392,12 @@ test("the tooltip stands under a focused mark", async () => {
   assert.equal(tip.style.top, "34px");
 });
 
-// The tooltip says the tile's figure, its share of its side marked ours, and
-// the pages it cites; it hides on leave.
+// The tooltip says the tile's figure, its share of its side and how many
+// members it opens to, both marked ours, and the pages it cites; it hides on
+// leave.
+//
+// Mutation: drop the ◇ and "by our count" from opensAs and the meta arm goes
+// red.
 test("hover shows a tile's figure, share and pages, and leaving hides it", async () => {
   const browser = await booted("ledger");
   const { document, window } = browser;
@@ -403,7 +407,8 @@ test("hover shows a tile's figure, share and pages, and leaving hides it", async
   assert.equal(tip.hidden, false);
   assert.equal(tip.querySelector(".tip-label").textContent, "Property Taxes");
   assert.equal(tip.querySelector(".tip-value").textContent, format.dollars(Number(mark.dataset.cents)));
-  assert.match(tip.querySelector(".tip-meta").textContent, /^◇ \d+\.\d% of where the money comes from\. Click to open: \d+ lines/);
+  assert.match(tip.querySelector(".tip-meta").textContent,
+    /^◇ \d+\.\d% of where the money comes from\. Click to open: ◇ \d+ lines(; \d+ [a-z-]+ \(alternative\))*, by our count$/);
   // The root's ribbons are the fund-flows leaves folded, so it cites the
   // revenue-by-fund pages, pp.127-140, and not p66.
   assert.match(tip.querySelector(".facts").textContent, /^p1[2-4]\d PDF(, p1[2-4]\d PDF)*$/);
