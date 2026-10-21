@@ -22,8 +22,8 @@ const (
 // token, and sits in that fact's slot -- an issue cell its row, its column
 // and its side, a requirements cell its period, its fund type and its side;
 // every fact of its slice is published by exactly one figure; and each fund
-// type's total cites exactly the figures its column lays out and is their
-// sum.
+// type has exactly one total, which cites exactly the figures its column lays
+// out and is their sum.
 //
 // It is the check the debt page's figures rest on. A figure dropped, carried
 // twice or published under the wrong period goes red here before
@@ -146,6 +146,18 @@ func (*debtServiceTiesToFacts) Run(_ context.Context, s *Subject) (Result, error
 			if seen[f.ID] != 1 {
 				findings = append(findings, finding(p.String(), "fact %s (%q %s) is published by %d figures, want 1",
 					f.ID, f.RowLabel, project.ColumnOf(&f), seen[f.ID]))
+			}
+		}
+		// Export lays one total under each fund type's column: a type with
+		// none prints blank total cells, and of two it keeps the last.
+		totals := map[string]int{}
+		for _, t := range d.Requirements.Totals {
+			totals[t.FundType]++
+		}
+		for _, ft := range d.Requirements.FundTypes {
+			if n := totals[ft.Key]; n != 1 {
+				findings = append(findings, finding(p.Name+" total "+ft.Key,
+					"the document heads fund type %q and carries %d totals for it, want 1", ft.Key, n))
 			}
 		}
 		for _, t := range d.Requirements.Totals {

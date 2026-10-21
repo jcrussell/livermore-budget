@@ -15,7 +15,8 @@ import (
 //
 // Mutation: drop the slice sweep from debtServiceTiesToFacts.Run and "a
 // figure dropped" goes green; drop the column-set comparison and "a total
-// that leaves out the bands" does.
+// that leaves out the bands" does; drop the per-type count of totals and "a
+// fund type with no total" and "a fund type with two totals" do.
 func TestDebtServiceTiesToFactsGoesRed(t *testing.T) {
 	t.Parallel()
 	const id = "debt-service-ties-to-facts"
@@ -63,6 +64,12 @@ func TestDebtServiceTiesToFactsGoesRed(t *testing.T) {
 			}
 			t.FactIDs = kept
 		}, "leaves out"},
+		{"a fund type with no total", func(d *project.DebtServiceDocument) {
+			d.Requirements.Totals = d.Requirements.Totals[1:]
+		}, "carries 0 totals for it, want 1"},
+		{"a fund type with two totals", func(d *project.DebtServiceDocument) {
+			d.Requirements.Totals = append(d.Requirements.Totals, d.Requirements.Totals[0])
+		}, "carries 2 totals for it, want 1"},
 		{"an issue's two adopted years swapped", func(d *project.DebtServiceDocument) {
 			c := d.Issues[0].Cells
 			c[1], c[2] = c[2], c[1]
