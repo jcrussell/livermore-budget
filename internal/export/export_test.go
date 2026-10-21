@@ -255,6 +255,57 @@ func indexSite(t *testing.T) string {
 	return dir
 }
 
+// TestThePlanWritesTheMarkerFirstAndTheIndexLast holds Prepare's write order:
+// the marker before anything else, so a run that dies midway leaves a
+// directory --clean recognises, and the pages after every asset they fetch,
+// with index.html, the completed-site sentinel, last of all. The index is
+// declared first here so that writing the pages in declaration order fails.
+//
+// Mutation: add the pages in declaration order without holding IndexPath back
+// and this goes red with "the last planned file is \"caveats.html\"".
+// Moving the marker's add below the verbatim assets goes red with "the first
+// planned file is \"app.js\"".
+func TestThePlanWritesTheMarkerFirstAndTheIndexLast(t *testing.T) {
+	p, err := export.Prepare(export.Options{
+		Dir:         t.TempDir(),
+		Projections: map[string][]byte{"sankey": goldenSankey(t)},
+		Views: []export.View{
+			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
+				Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"},
+			{Path: "caveats.html", Nav: "Caveats", Template: export.CaveatsTemplate},
+		},
+		Files:       map[string][]byte{"extra/asset.txt": []byte("x")},
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+	})
+	if err != nil {
+		t.Fatalf("Prepare: %v", err)
+	}
+	paths := export.PlannedPaths(p)
+	if len(paths) < 3 {
+		t.Fatalf("planned %q, want the marker, assets and pages", paths)
+	}
+	if paths[0] != export.MarkerName {
+		t.Errorf("the first planned file is %q, want %q", paths[0], export.MarkerName)
+	}
+	if last := paths[len(paths)-1]; last != export.IndexPath {
+		t.Errorf("the last planned file is %q, want %q", last, export.IndexPath)
+	}
+	firstPage := -1
+	for i, rel := range paths {
+		isPage := strings.HasSuffix(rel, ".html")
+		if isPage && firstPage < 0 {
+			firstPage = i
+		}
+		if !isPage && firstPage >= 0 {
+			t.Errorf("%q is planned after the page %q", rel, paths[firstPage])
+		}
+	}
+	if firstPage < 0 {
+		t.Fatalf("planned %q, want pages", paths)
+	}
+}
+
 // TestTheIndexLeadsWithWhatTheCitySpends: the index's one headline figure is
 // the golden spine's all-funds gross expenditure, in the hero. Mutation: drop
 // {{.Hero.Value}} from site/flows.html.tmpl, and this goes red.
