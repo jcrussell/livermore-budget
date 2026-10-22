@@ -164,12 +164,14 @@ func TestWritableDir(t *testing.T) {
 // -- `fisc export -o data` names one holding YAML and subdirectories, and
 // `-o site` one holding Go -- is refused, and so is one holding a finished
 // site's index.html with no marker, since nothing but the marker says fisc
-// wrote it.
+// wrote it. Such a site is what an export made before the marker left, so
+// the refusal says how to recover: remove the directory or name a new one.
 //
 // Mutation: make RefuseForeignDir return nil for any directory and every
 // refused case goes red with "got nil error, want a refusal"; make the
 // marker loop match nothing and the marker cases go red with "want the
-// directory accepted".
+// directory accepted"; drop the hint and the refused cases go red with "want
+// it to say how to recover a site exported before the marker".
 func TestRefuseForeignDir(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -204,6 +206,8 @@ func TestRefuseForeignDir(t *testing.T) {
 				t.Fatal("got nil error, want a refusal")
 			case tc.refuse && !strings.Contains(err.Error(), "carries no "+export.MarkerName):
 				t.Errorf("got error %q, want it to name the missing marker", err)
+			case tc.refuse && !strings.Contains(err.Error(), "remove the directory or name a new one"):
+				t.Errorf("got error %q, want it to say how to recover a site exported before the marker", err)
 			case !tc.refuse && err != nil:
 				t.Errorf("got %v, want the directory accepted", err)
 			}

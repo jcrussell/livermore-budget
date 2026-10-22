@@ -89,7 +89,8 @@ func RefuseForeignDir(dir string) error {
 	}
 	if !marked {
 		return fmt.Errorf(
-			"output directory %q is not empty and carries no %s marker from an earlier export; refusing to write a site into it",
+			"output directory %q is not empty and carries no %s marker from an earlier export; refusing to write a site into it. "+
+				"If it is a site an export wrote before exports carried the marker, remove the directory or name a new one",
 			dir, MarkerName)
 	}
 	if name, ok := looksLikeSource(entries); ok {
