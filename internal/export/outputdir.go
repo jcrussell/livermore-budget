@@ -55,6 +55,21 @@ func ResolveOutputDir(outputDir string) (string, error) {
 	return resolved, nil
 }
 
+// ErrForeignDir matches every refusal RefuseForeignDir makes, and none of
+// the I/O errors it can meet reading the directory: a refusal means the
+// caller named a directory fisc must not write into, an I/O error means the
+// environment failed, and the two exit differently.
+var ErrForeignDir = errors.New("output directory is not one fisc may write into")
+
+type foreignDirError struct{ msg string }
+
+func (e *foreignDirError) Error() string        { return e.msg }
+func (e *foreignDirError) Is(target error) bool { return target == ErrForeignDir }
+
+func refuse(format string, a ...any) error {
+	return &foreignDirError{msg: fmt.Sprintf(format, a...)}
+}
+
 // RefuseForeignDir refuses an output directory fisc does not own: one that
 // exists, holds anything but a stranded write probe, and carries no
 // MarkerName. Export writes only into a directory that is missing, empty, or
@@ -78,7 +93,7 @@ func RefuseForeignDir(dir string) error {
 		return fmt.Errorf("stat %q: %w", dir, err)
 	}
 	if !info.IsDir() {
-		return fmt.Errorf("output path %q exists but is not a directory", dir)
+		return refuse("output path %q exists but is not a directory", dir)
 	}
 	all, err := os.ReadDir(dir)
 	if err != nil {
@@ -101,13 +116,13 @@ func RefuseForeignDir(dir string) error {
 		}
 	}
 	if !marked {
-		return fmt.Errorf(
+		return refuse(
 			"output directory %q is not empty and carries no %s marker from an earlier export; refusing to write a site into it. "+
 				"If it is a site an export wrote before exports carried the marker, remove the directory or name a new one",
 			dir, MarkerName)
 	}
 	if name, ok := looksLikeSource(entries); ok {
-		return fmt.Errorf(
+		return refuse(
 			"output directory %q carries a %s marker and also holds %s, which no export writes; refusing to write a site into it or clean it",
 			dir, MarkerName, name)
 	}

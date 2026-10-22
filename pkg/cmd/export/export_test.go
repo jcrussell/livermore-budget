@@ -2806,6 +2806,38 @@ func TestNewCmdExportRefusesADirectoryItDoesNotOwn(t *testing.T) {
 	}
 }
 
+// An output directory Validate cannot read is the environment failing, not
+// the caller naming the wrong directory, so it is not a FlagError and the
+// runner exits 1 rather than 2.
+//
+// Mutation: wrap every RefuseForeignDir error in FlagErrorf again and this
+// goes red with "got *cmdutil.FlagError ... want an error the runner exits 1
+// on".
+func TestNewCmdExportReportsAnUnreadableDirectoryAsAnError(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root reads a mode-000 directory")
+	}
+	dir := filepath.Join(t.TempDir(), "out")
+	if err := os.Mkdir(dir, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o750) })
+	io, _, _, _ := iostreams.Test()
+	f := &cmdutil.Factory{IOStreams: io, RepoRoot: func() (string, error) { return "", nil }}
+	cmd := NewCmdExport(f, func(*Options) error { return nil })
+	cmd.SetArgs([]string{"--output", dir})
+	cmd.SetOut(os.Stderr)
+	cmd.SetErr(os.Stderr)
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("got nil error, want the unreadable directory reported")
+	}
+	var flagErr *cmdutil.FlagError
+	if errors.As(err, &flagErr) {
+		t.Errorf("got %T (%v), want an error the runner exits 1 on", err, err)
+	}
+}
+
 // Validate accepts the directories export may write into: missing, empty,
 // and one an earlier export marked.
 func TestNewCmdExportAcceptsADirectoryItOwns(t *testing.T) {

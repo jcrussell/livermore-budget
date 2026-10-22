@@ -127,7 +127,10 @@ func (o *Options) Validate() error {
 		return cmdutil.FlagErrorf("%s", err)
 	}
 	if err := export.RefuseForeignDir(resolved); err != nil {
-		return cmdutil.FlagErrorf("%s", err)
+		if errors.Is(err, export.ErrForeignDir) {
+			return cmdutil.FlagErrorf("%s", err)
+		}
+		return err
 	}
 	if err := export.WritableDir(resolved); err != nil {
 		return cmdutil.FlagErrorf("%s", err)

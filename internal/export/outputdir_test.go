@@ -239,6 +239,35 @@ func TestRefuseForeignDir(t *testing.T) {
 //
 // Mutation: drop strandedProbe's emptiness test and this goes red with "got
 // nil error, want a refusal".
+// A refusal matches ErrForeignDir; failing to read the directory does not.
+//
+// Mutation: return a plain fmt.Errorf from the unmarked-directory arm and the
+// first case goes red with "does not match ErrForeignDir".
+func TestRefuseForeignDirTellsARefusalFromAnIOError(t *testing.T) {
+	refused := t.TempDir()
+	if err := os.WriteFile(filepath.Join(refused, "sources.yaml"), []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := export.RefuseForeignDir(refused); !errors.Is(err, export.ErrForeignDir) {
+		t.Errorf("refusal %v does not match ErrForeignDir", err)
+	}
+	if os.Geteuid() == 0 {
+		return
+	}
+	unreadable := filepath.Join(t.TempDir(), "out")
+	if err := os.Mkdir(unreadable, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(unreadable, 0o750) })
+	err := export.RefuseForeignDir(unreadable)
+	if err == nil {
+		t.Fatal("got nil error for an unreadable directory")
+	}
+	if errors.Is(err, export.ErrForeignDir) {
+		t.Errorf("I/O error %v matches ErrForeignDir", err)
+	}
+}
+
 func TestRefuseForeignDirKeepsAProbeNamedDirectoryThatHoldsAFile(t *testing.T) {
 	dir := t.TempDir()
 	probe := filepath.Join(dir, ".fisc-write-probe-123")
