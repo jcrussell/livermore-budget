@@ -301,8 +301,15 @@ export function draw(section, tips = tipper(section.ownerDocument)) {
       (lastCents === null ? "prints nothing in the last column" : `${dollars(lastCents)} in the last column`);
     legend.appendChild(li);
   }
-  caption.textContent = `◇ Each column is our sum of the ${rows.length} printed rows, by kind, ` +
-    "and its cap says that sum in millions; a band below the baseline is a kind whose rows sum below zero " +
+  // A column none of the rows prints in has no sum, and its cap says so.
+  const blank = heads.filter((_, i) => sums[i] === null).map((th) => {
+    const head = headWords(th);
+    return head.label + (head.basis ? " " + head.basis : "");
+  });
+  caption.textContent = `◇ Each column is our sum of what the ${rows.length} printed rows print in it, by kind, ` +
+    "and its cap says that sum in millions" +
+    (blank.length ? `, or says the column prints nothing where none of the rows prints in it (${blank.join(", ")})` : "") +
+    "; a band below the baseline is a kind whose rows sum below zero " +
     "in that column, and it counts against the column.";
   figure.hidden = false;
   // The table was the chart's data; the chart now says what it held.

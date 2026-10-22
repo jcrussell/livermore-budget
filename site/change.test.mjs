@@ -270,6 +270,25 @@ describe("a kind or a column that prints nothing is said so, not drawn as $0", a
     // Every other column still sums its printed rows.
     assert.notEqual(sums[1], null);
   });
+
+  // Mutation: drop the blank-column clause from the caption and this goes
+  // red; the caption then calls a column with no printed figure a sum.
+  test("the caption names a column that prints nothing rather than calling it a sum", () => {
+    const s = section.cloneNode(true);
+    strip(s.querySelectorAll('tbody td[data-column="0"]'));
+    mod.draw(s);
+    const head = mod.headWords(s.querySelector('thead th[data-column="0"]'));
+    const named = head.label + (head.basis ? " " + head.basis : "");
+    const caption = s.querySelector(".change-sum").textContent;
+    assert.ok(caption.includes(`prints nothing where none of the rows prints in it (${named})`), caption);
+  });
+
+  test("a caption over columns that all print names none as printing nothing", () => {
+    const s = section.cloneNode(true);
+    mod.draw(s);
+    const caption = s.querySelector(".change-sum").textContent;
+    assert.equal(caption.includes("prints nothing"), false, caption);
+  });
 });
 
 // A click on a band pins its tip, and the tip links the page text of each
