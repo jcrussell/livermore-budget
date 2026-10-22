@@ -308,9 +308,10 @@ func (o *Options) extractionTree(repoRoot string) string {
 	return filepath.Join(repoRoot, filepath.FromSlash(repo.ExtractedDir))
 }
 
-// exportRun checks ctx between stages and between files: a cancellation
-// before the write leaves the output directory as it was, and one during it
-// leaves a partial site whose marker --clean recognises.
+// exportRun checks ctx between stages, last immediately before --clean, and
+// between files: a cancellation seen before the clean leaves the output
+// directory as it was, and one during the write leaves a partial site whose
+// marker --clean recognises.
 func exportRun(ctx context.Context, o *Options) error {
 	root, err := o.RepoRoot()
 	if err != nil {

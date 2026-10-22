@@ -2810,6 +2810,55 @@ func TestNewCmdExportAcceptsADirectoryItOwns(t *testing.T) {
 	}
 }
 
+// lateCancel is a context whose cancellation lands after its first Err():
+// a signal that arrives once the build has been checked and before the clean.
+type lateCancel struct {
+	context.Context
+	seen bool
+}
+
+func (c *lateCancel) Err() error {
+	if c.seen {
+		return context.Canceled
+	}
+	c.seen = true
+	return nil
+}
+
+// A cancellation that lands after the build, with --clean over an earlier
+// export, stops before SafeCleanDir: the reader's site stays as it was.
+//
+// Mutation: drop the ctx check that follows Prepare and this goes red with
+// "index.html was removed".
+func TestExportRunCancelledBeforeTheCleanLeavesTheSite(t *testing.T) {
+	opts, _, out, _ := testOptions(t)
+	opts.Clean = true
+	if err := os.MkdirAll(opts.OutputDir, 0o750); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	for _, name := range []string{export.MarkerName, "index.html"} {
+		if err := os.WriteFile(filepath.Join(opts.OutputDir, name), []byte("earlier export\n"), 0o600); err != nil {
+			t.Fatalf("seed %s: %v", name, err)
+		}
+	}
+
+	err := exportRun(&lateCancel{Context: context.Background()}, opts)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("got %v, want it to wrap context.Canceled", err)
+	}
+	for _, name := range []string{export.MarkerName, "index.html"} {
+		b, rerr := os.ReadFile(filepath.Join(opts.OutputDir, name))
+		if rerr != nil {
+			t.Errorf("%s was removed: %v", name, rerr)
+		} else if string(b) != "earlier export\n" {
+			t.Errorf("%s = %q, want the earlier export left alone", name, b)
+		}
+	}
+	if out() != "" {
+		t.Errorf("got stdout %q, want no paths reported", out())
+	}
+}
+
 // A cancellation that arrives while the site is being built stops the export
 // before the output directory is touched, and says it was cancelled.
 //
