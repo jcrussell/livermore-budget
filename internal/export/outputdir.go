@@ -57,6 +57,11 @@ func ResolveOutputDir(outputDir string) (string, error) {
 // `fisc export -o data` followed by `--clean` would remove the PDFs and the
 // extracted pages. An unreadable directory is refused rather than assumed
 // empty.
+//
+// The marker is not the whole rule: a marked directory that also looks like
+// source (looksLikeSource) is refused too, because a marker can be stale --
+// written by a binary that accepted `-o data` -- or copied by hand, and
+// --clean would RemoveAll whatever sits beside it.
 func RefuseForeignDir(dir string) error {
 	info, err := os.Stat(dir)
 	if errors.Is(err, os.ErrNotExist) {
@@ -75,14 +80,44 @@ func RefuseForeignDir(dir string) error {
 	if len(entries) == 0 {
 		return nil
 	}
+	marked := false
 	for _, e := range entries {
 		if e.Name() == MarkerName && e.Type().IsRegular() {
-			return nil
+			marked = true
+			break
 		}
 	}
-	return fmt.Errorf(
-		"output directory %q is not empty and carries no %s marker from an earlier export; refusing to write a site into it",
-		dir, MarkerName)
+	if !marked {
+		return fmt.Errorf(
+			"output directory %q is not empty and carries no %s marker from an earlier export; refusing to write a site into it",
+			dir, MarkerName)
+	}
+	if name, ok := looksLikeSource(entries); ok {
+		return fmt.Errorf(
+			"output directory %q carries a %s marker and also holds %s, which no export writes; refusing to write a site into it or clean it",
+			dir, MarkerName, name)
+	}
+	return nil
+}
+
+// looksLikeSource returns the first top-level entry of a directory that a
+// human's work or a checkout put there and no export writes: a .git, or a
+// file whose extension the site never carries. data/'s top level is YAML,
+// site/'s is Go and templates, and the repository root's is a go.mod.
+func looksLikeSource(entries []os.DirEntry) (string, bool) {
+	for _, e := range entries {
+		if e.Name() == ".git" {
+			return e.Name(), true
+		}
+		if e.IsDir() {
+			continue
+		}
+		switch filepath.Ext(e.Name()) {
+		case ".go", ".tmpl", ".mod", ".sum", ".mjs", ".yaml", ".yml", ".py", ".pdf", ".md":
+			return e.Name(), true
+		}
+	}
+	return "", false
 }
 
 // SafeCleanDir removes outputDir and recreates it empty, but only when

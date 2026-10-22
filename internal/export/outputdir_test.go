@@ -224,3 +224,52 @@ func TestRefuseForeignDir(t *testing.T) {
 		t.Errorf("missing directory: %v", err)
 	}
 }
+
+// A marker is not proof by itself: one a binary wrote into data/ or site/
+// before it refused those, or one copied by hand, sits beside source, and
+// --clean would RemoveAll the source with it. RefuseForeignDir refuses such a
+// directory for writing, and SafeCleanDir, which goes through it, leaves
+// every file in place.
+//
+// Mutation: make looksLikeSource report nothing and every case goes red with
+// "got nil error, want a refusal of a marked directory holding source".
+func TestSafeCleanDirRefusesASourceDirectory(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		files []string
+		dirs  []string
+	}{
+		{name: "a Go package", files: []string{"embed.go", "index.html", export.MarkerName}},
+		{name: "data", files: []string{"sources.yaml", export.MarkerName}, dirs: []string{"pdf"}},
+		{name: "a checkout", files: []string{export.MarkerName}, dirs: []string{".git"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			for _, f := range tc.files {
+				if err := os.WriteFile(filepath.Join(dir, f), []byte("x"), 0o600); err != nil {
+					t.Fatalf("seed %s: %v", f, err)
+				}
+			}
+			for _, d := range tc.dirs {
+				if err := os.Mkdir(filepath.Join(dir, d), 0o750); err != nil {
+					t.Fatalf("seed %s: %v", d, err)
+				}
+			}
+			err := export.RefuseForeignDir(dir)
+			if err == nil {
+				t.Fatal("got nil error, want a refusal of a marked directory holding source")
+			}
+			if !strings.Contains(err.Error(), "no export writes") {
+				t.Errorf("error %q does not say why it refused", err)
+			}
+			if err := export.SafeCleanDir(dir); err == nil {
+				t.Error("SafeCleanDir on a marked directory holding source = nil error, want a refusal")
+			}
+			for _, f := range append(tc.files, tc.dirs...) {
+				if _, serr := os.Stat(filepath.Join(dir, f)); serr != nil {
+					t.Errorf("%s was removed anyway: %v", f, serr)
+				}
+			}
+		})
+	}
+}
