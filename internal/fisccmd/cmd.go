@@ -66,6 +66,10 @@ func run(ctx context.Context, root *cobra.Command, args []string, ios *iostreams
 // classify maps an error to an exit code and prints whatever the user needs
 // to see. It is separate from Run so it can be tested without a live cobra
 // tree or signal handling.
+//
+// A wrapped context.Canceled is an ordinary error here: only run, seeing the
+// process context cancelled, reports an interrupt. A command's own child
+// context being cancelled is not the user pressing Ctrl-C.
 func classify(err error, ios *iostreams.IOStreams) int {
 	if err == nil {
 		return exitOK
@@ -89,10 +93,6 @@ func classify(err error, ios *iostreams.IOStreams) int {
 
 	switch {
 	case errors.Is(err, cmdutil.ErrCancel):
-		return exitCancel
-	case errors.Is(err, context.Canceled):
-		fmt.Fprintln(ios.ErrOut, "cancelled")
-		printed = true
 		return exitCancel
 	case errors.Is(err, cmdutil.ErrSilent):
 		return exitError

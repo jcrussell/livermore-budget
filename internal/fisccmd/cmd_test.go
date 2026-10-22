@@ -46,9 +46,9 @@ func TestClassify(t *testing.T) {
 			err:  cmdutil.ErrCancel, wantCode: 130, wantErr: "",
 		},
 		{
-			name:     "a wrapped context cancellation exits 130 and says so",
+			name:     "a wrapped context cancellation alone is an ordinary error",
 			err:      fmt.Errorf("export: %w", context.Canceled),
-			wantCode: 130, wantErr: "cancelled",
+			wantCode: 1, wantErr: "error: export: context canceled",
 		},
 		{
 			name: "explicit exit code prints nothing",
@@ -182,7 +182,9 @@ func TestCancelIsDistinctFromUsage(t *testing.T) {
 // Mutations: make run return exitCancel whenever ctx.Err() is non-nil and the
 // "completes" case goes red with "got exit code 130, want 0"; drop the
 // cancelled-context arm and the ExitCodeError case goes red with "got exit
-// code 3, want 130".
+// code 3, want 130". Map a wrapped context.Canceled to exitCancel in
+// classify and the child-context case goes red with "got exit code 130,
+// want 1".
 func TestRunExitCodeComesFromTheCommandNotTheContext(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -236,6 +238,15 @@ func TestRunExitCodeComesFromTheCommandNotTheContext(t *testing.T) {
 				return fmt.Errorf("export: %w", ctx.Err())
 			},
 			wantCode: 130, wantErr: "cancelled",
+		},
+		{
+			name: "returns its own child context's cancellation, no interrupt",
+			runE: func(ctx context.Context, _ context.CancelFunc) error {
+				child, stop := context.WithCancel(ctx)
+				stop()
+				return fmt.Errorf("export: %w", child.Err())
+			},
+			wantCode: 1, wantErr: "error: export: context canceled",
 		},
 	}
 	for _, tt := range tests {
