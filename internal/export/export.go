@@ -1014,9 +1014,11 @@ func Prepare(o Options) (*plan, error) {
 // checks ctx before creating o.Dir and before each file, and stops with an
 // error wrapping ctx.Err(), leaving the files already written in place.
 //
-// Everything that can be decided has been. What is left can fail only on I/O,
-// so a caller that has cleaned a directory is past the point where anything it
-// could have known in advance will stop it.
+// Everything that can be decided has been. What is left can fail only on I/O
+// or stop on a cancelled ctx, so a caller that has cleaned a directory is past
+// the point where anything it could have known in advance will stop it. A
+// cancellation after the clean leaves the directory empty or partly written;
+// the marker is the first file written, so --clean recognises what is left.
 //
 // It does not clean the directory: destroying files is a separate decision with
 // its own guard rail (SafeCleanDir), and burying it in a writer would

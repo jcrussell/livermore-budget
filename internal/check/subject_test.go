@@ -1103,9 +1103,14 @@ func TestAPublishedDocumentShortAColumnIsReported(t *testing.T) {
 // half: over the COMMITTED corpus, every declared entry must still describe a
 // column that is published and a figure that is drawn.
 //
-// So the day fisc-av0w is decided either way, this goes red and says which
-// entry to delete. It lives here rather than in internal/project because this
-// package is where the committed corpus is loadable, and it compares against
+// fisc-av0w decided to keep publishing p0067's figure, so the entry stands:
+// the book still prints two figures for this total, and the caveat and its
+// exception still apply. This holds that every entry still says so of the
+// committed corpus -- its column is published, the graph draws the figure it
+// declares, and that figure differs from the one printed elsewhere -- and the
+// day the corpus stops drawing an entry's figure, this goes red and names the
+// entry to re-derive. It lives here rather than in internal/project because
+// this package is where the committed corpus is loadable, and it compares against
 // project.ContestedTotals() rather than a second copy of the figures -- two
 // copies agreeing is not the claim worth making.
 func TestContestedTotalsAreStillContested(t *testing.T) {
@@ -1116,7 +1121,7 @@ func TestContestedTotalsAreStillContested(t *testing.T) {
 	}
 	if len(entries) == 0 {
 		t.Fatal("project.ContestedTotals() declares nothing, so this test holds nothing; " +
-			"if fisc-av0w was decided, remove this test with the last entry")
+			"remove it with the last entry")
 	}
 
 	s := committed(t)
