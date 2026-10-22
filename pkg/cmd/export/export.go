@@ -92,8 +92,8 @@ type Options struct {
 	// directories carry one.
 	Clean bool
 
-	// DryRun prints the paths Clean would remove and writes nothing. It
-	// requires Clean.
+	// DryRun prints the files and directories Clean would remove and writes
+	// nothing. It requires Clean.
 	DryRun bool
 
 	// SourceBrowseURL cites the committed page text at a remote — a forge's
@@ -231,8 +231,9 @@ Writing never deletes, and never writes over a file the manifest does not
 list: one at a path the export writes is refused before anything is written.
 --clean removes only what the earlier export's manifest lists and this export
 does not write, then the directories that leaves empty; a file no export wrote
-is left where it is. --clean --dry-run prints the paths
---clean would remove, one per line, and writes nothing.`,
+is left where it is. --clean --dry-run prints the files --clean would remove,
+then the directories, each with a trailing separator, one per line, and
+writes nothing.`,
 		Example: `  # Write the site to dist/ and read it in a browser
   fisc export
   python3 -m http.server -d dist 8000
@@ -259,7 +260,7 @@ is left where it is. --clean --dry-run prints the paths
 
 	cmd.Flags().StringVarP(&opts.OutputDir, "output", "o", defaultOutputDir, "Directory to write the site into (missing, empty, or an earlier export)")
 	cmd.Flags().BoolVar(&opts.Clean, "clean", false, "Remove the files the earlier export wrote and this one does not")
-	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "With --clean, print the paths it would remove and write nothing")
+	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "With --clean, print the files and directories it would remove and write nothing")
 	cmd.Flags().StringVar(&opts.SourceBrowseURL, "source-browse-url", "",
 		"Cite the extracted page text at this base URL instead of shipping it in the site (e.g. "+export.DefaultSourceBrowseURL+")")
 
@@ -386,14 +387,19 @@ func exportRun(ctx context.Context, o *Options) error {
 	}
 
 	if o.DryRun {
-		obsolete, oerr := plan.Obsolete()
+		files, dirs, oerr := plan.Obsolete()
 		if oerr != nil {
 			return usage(oerr)
 		}
-		for _, rel := range obsolete {
+		// Files first, then directories deepest first with a trailing
+		// separator: the order --clean removes them in.
+		for _, rel := range files {
 			fmt.Fprintln(o.IO.Out, filepath.Join(o.OutputDir, filepath.FromSlash(rel)))
 		}
-		fmt.Fprintf(o.IO.ErrOut, "--clean would remove %d files; dry run, nothing written\n", len(obsolete))
+		for _, rel := range dirs {
+			fmt.Fprintln(o.IO.Out, filepath.Join(o.OutputDir, filepath.FromSlash(rel))+string(filepath.Separator))
+		}
+		fmt.Fprintf(o.IO.ErrOut, "--clean would remove %d files and %d directories; dry run, nothing written\n", len(files), len(dirs))
 		return nil
 	}
 

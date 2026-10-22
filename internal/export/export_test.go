@@ -580,7 +580,7 @@ func TestCleanRemovesOnlyWhatTheEarlierExportListed(t *testing.T) {
 // planFiles prepares the golden site into dir, shipping files beside it.
 func planFiles(t *testing.T, dir string, files map[string][]byte) interface {
 	Write(context.Context, bool) ([]string, []string, error)
-	Obsolete() ([]string, error)
+	Obsolete() ([]string, []string, error)
 } {
 	t.Helper()
 	p, err := export.Prepare(export.Options{
@@ -747,7 +747,7 @@ func TestWriteRefusesToWriteOverWhatNoManifestLists(t *testing.T) {
 				marker, _ := os.ReadFile(filepath.Join(dir, export.MarkerName))
 				p := planFiles(t, dir, c.files)
 				if clean {
-					if _, err := p.Obsolete(); !errors.Is(err, export.ErrForeignDir) {
+					if _, _, err := p.Obsolete(); !errors.Is(err, export.ErrForeignDir) {
 						t.Errorf("Obsolete: got %v, want a refusal matching ErrForeignDir", err)
 					}
 				}
@@ -781,7 +781,7 @@ func TestCleanRemovesAStrandedManifestTempFile(t *testing.T) {
 	keep := []string{".fisc-tmp-x", "sub/.fisc-tmp-43"}
 	seedExport(t, dir, nil, append(slices.Clone(keep), ".fisc-tmp-42"))
 	p := planFiles(t, dir, nil)
-	obsolete, err := p.Obsolete()
+	obsolete, _, err := p.Obsolete()
 	if err != nil {
 		t.Fatalf("Obsolete: %v", err)
 	}

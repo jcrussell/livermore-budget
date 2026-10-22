@@ -1139,7 +1139,9 @@ func TestExportRunDryRunPrintsWhatCleanWouldRemoveAndWritesNothing(t *testing.T)
 	if err := exportRun(context.Background(), opts); err != nil {
 		t.Fatalf("dry run: %v", err)
 	}
-	want := filepath.Join(opts.OutputDir, "facts", "gone", "p0001.jsonl") + "\n"
+	want := filepath.Join(opts.OutputDir, "facts", "gone", "p0001.jsonl") + "\n" +
+		filepath.Join(opts.OutputDir, "facts", "gone") + string(filepath.Separator) + "\n" +
+		filepath.Join(opts.OutputDir, "facts") + string(filepath.Separator) + "\n"
 	if stdout.String() != want {
 		t.Errorf("got stdout %q, want %q", stdout.String(), want)
 	}
@@ -1148,6 +1150,72 @@ func TestExportRunDryRunPrintsWhatCleanWouldRemoveAndWritesNothing(t *testing.T)
 	}
 	if out() == "" {
 		t.Fatal("the first export reported nothing, so this test proves nothing about its stdout")
+	}
+}
+
+// The dry run lists exactly what --clean then removes: every file and every
+// directory that vanishes from the output directory, and nothing that stays.
+//
+// Mutation: drop the directories from the dry run's printing and this goes
+// red with facts/gone and facts/gone/deep "removed but not listed"; make
+// prunedBy prune every parent and the --clean run goes red with "directory
+// not empty" on facts/kept, which still holds an unlisted file.
+func TestExportRunDryRunListsWhatCleanRemoves(t *testing.T) {
+	opts, _, _, _ := testOptions(t)
+	build := opts.Build
+	opts.Build = func(root string) (result, error) {
+		r, err := build(root)
+		r.Files = map[string][]byte{
+			"facts/gone/p0001.jsonl":      []byte("{}\n"),
+			"facts/gone/deep/p0002.jsonl": []byte("{}\n"),
+			"facts/kept/p0003.jsonl":      []byte("{}\n"),
+		}
+		return r, err
+	}
+	if err := exportRun(context.Background(), opts); err != nil {
+		t.Fatalf("first export: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(opts.OutputDir, "facts", "kept", "mine.txt"), []byte("mine\n"), 0o600); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	before := treeOf(t, opts.OutputDir)
+
+	io, _, stdout, _ := iostreams.Test()
+	opts.IO = io
+	opts.Build = build
+	opts.Clean = true
+	opts.DryRun = true
+	if err := exportRun(context.Background(), opts); err != nil {
+		t.Fatalf("dry run: %v", err)
+	}
+	listed := map[string]bool{}
+	for _, line := range strings.Split(strings.TrimSuffix(stdout.String(), "\n"), "\n") {
+		listed[strings.TrimSuffix(line, string(filepath.Separator))] = true
+	}
+
+	opts.DryRun = false
+	if err := exportRun(context.Background(), opts); err != nil {
+		t.Fatalf("--clean: %v", err)
+	}
+	after := treeOf(t, opts.OutputDir)
+	removed := map[string]bool{}
+	for p := range before {
+		if _, ok := after[p]; !ok {
+			removed[p] = true
+		}
+	}
+	if len(removed) != 5 {
+		t.Errorf("--clean removed %d entries, want the 3 files and 2 directories this test sets up", len(removed))
+	}
+	for p := range removed {
+		if !listed[p] {
+			t.Errorf("%s was removed but not listed", p)
+		}
+	}
+	for p := range listed {
+		if !removed[p] {
+			t.Errorf("%s was listed but not removed", p)
+		}
 	}
 }
 

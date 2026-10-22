@@ -1111,26 +1111,32 @@ func (p *plan) Write(ctx context.Context, clean bool) ([]string, []string, error
 	return written, removed, nil
 }
 
-// Obsolete is what Write with clean would remove, sorted: the files the
-// previous valid manifest lists that this plan does not write, and the
-// stranded manifest temp files. It refuses
+// Obsolete is what Write with clean would remove: the files the previous
+// valid manifest lists that this plan does not write and the stranded
+// manifest temp files, sorted, and the directories removing them leaves
+// empty, deepest first. It refuses
 // what Write with clean would refuse, and it reads the directory and changes
 // nothing.
-func (p *plan) Obsolete() ([]string, error) {
+func (p *plan) Obsolete() (files, dirs []string, err error) {
 	prev, err := previousManifest(p.dir)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	planned := p.paths()
 	left := leftover(p.dir, prev, planned)
 	if err = screen(p.dir, prev, planned, left, true); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	temps, err := strandedTemps(p.dir, prev, planned)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return union(left, temps), nil
+	files = union(left, temps)
+	dirs, err = prunedBy(p.dir, files)
+	if err != nil {
+		return nil, nil, err
+	}
+	return files, dirs, nil
 }
 
 // strandedTemps is the temp files an interrupted writeManifest left at the
@@ -1285,16 +1291,37 @@ func onlyLeftovers(dir, rel string, isLeft func(string) bool) (bool, error) {
 	return only, nil
 }
 
-// removeListed removes each of rels from dir, then every directory between
-// them and dir that the removal leaves empty, deepest first. rels are what
-// leftover returned, so each is a file reached through real directories. A
-// directory still holding anything stays, and dir itself is never removed.
+// removeListed removes each of rels from dir, then the directories prunedBy
+// says that leaves empty, deepest first. rels are what leftover returned, so
+// each is a file reached through real directories. A directory still holding
+// anything stays, and dir itself is never removed.
 func removeListed(dir string, rels []string) error {
-	parents := make(map[string]bool)
+	dirs, err := prunedBy(dir, rels)
+	if err != nil {
+		return err
+	}
 	for _, rel := range rels {
 		if err := os.Remove(filepath.Join(dir, filepath.FromSlash(rel))); err != nil && !errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("remove %q: %w", rel, err)
 		}
+	}
+	for _, d := range dirs {
+		if err := os.Remove(filepath.Join(dir, filepath.FromSlash(d))); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("remove emptied directory %q: %w", d, err)
+		}
+	}
+	return nil
+}
+
+// prunedBy is the directories between rels and dir that removing rels would
+// leave empty, deepest first: each holding nothing but rels and directories
+// before it in the list. It only reads, so the dry run and the removal answer
+// from one rule.
+func prunedBy(dir string, rels []string) ([]string, error) {
+	gone := make(map[string]bool, len(rels))
+	parents := make(map[string]bool)
+	for _, rel := range rels {
+		gone[rel] = true
 		for d := path.Dir(rel); d != "."; d = path.Dir(d) {
 			parents[d] = true
 		}
@@ -1306,23 +1333,21 @@ func removeListed(dir string, rels []string) error {
 		}
 		return strings.Compare(a, b)
 	})
+	var out []string
 	for _, d := range dirs {
-		full := filepath.Join(dir, filepath.FromSlash(d))
-		entries, err := os.ReadDir(full)
+		entries, err := os.ReadDir(filepath.Join(dir, filepath.FromSlash(d)))
 		if errors.Is(err, os.ErrNotExist) {
 			continue
 		}
 		if err != nil {
-			return fmt.Errorf("read %q: %w", d, err)
+			return nil, fmt.Errorf("read %q: %w", d, err)
 		}
-		if len(entries) > 0 {
-			continue
-		}
-		if err := os.Remove(full); err != nil {
-			return fmt.Errorf("remove emptied directory %q: %w", d, err)
+		if !slices.ContainsFunc(entries, func(e os.DirEntry) bool { return !gone[d+"/"+e.Name()] }) {
+			gone[d] = true
+			out = append(out, d)
 		}
 	}
-	return nil
+	return out, nil
 }
 
 // previousManifest is the listing dir's manifest holds, or nothing where it
