@@ -9,3 +9,8 @@ func PlannedPaths(p *plan) []string {
 	}
 	return paths
 }
+
+// RemoveListed is removeListed, for the external tests: what it is handed
+// was decided earlier, so a test can hand it a directory that has since
+// stopped being empty without racing a writer.
+var RemoveListed = removeListed

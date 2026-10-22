@@ -952,6 +952,37 @@ func TestCleanRemovesAStrandedManifestTempFile(t *testing.T) {
 	}
 }
 
+// A directory prunedBy chose that something has landed in since is skipped,
+// not removed and not an error, and so is every directory above it; one
+// still empty is removed, and only what was removed is reported.
+//
+// Mutation: drop notEmpty from removeListed's skip and this goes red with
+// "directory not empty".
+func TestRemovalSkipsADirectoryThatIsNoLongerEmpty(t *testing.T) {
+	dir := t.TempDir()
+	for _, d := range []string{"a/full", "b"} {
+		if err := os.MkdirAll(filepath.Join(dir, filepath.FromSlash(d)), 0o750); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(dir, "a", "full", "landed.txt"), []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	removed, err := export.RemoveListed(dir, nil, []string{"a/full", "a", "b"})
+	if err != nil {
+		t.Fatalf("RemoveListed: %v", err)
+	}
+	if diff := cmp.Diff([]string{"b"}, removed); diff != "" {
+		t.Errorf("removed (-want +got):\n%s", diff)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "a", "full", "landed.txt")); err != nil {
+		t.Errorf("what landed is gone: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "b")); err == nil {
+		t.Error("b, still empty, was not removed")
+	}
+}
+
 // A --clean removal that fails carries a hint saying how to get past it.
 //
 // Mutation: return removeListed's error without the hint and this goes red

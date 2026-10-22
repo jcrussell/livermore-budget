@@ -41,6 +41,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"syscall"
 
 	"github.com/jcrussell/livermore-budget/internal/corpus"
 	"github.com/jcrussell/livermore-budget/internal/hint"
@@ -1078,7 +1079,7 @@ func (p *plan) Write(ctx context.Context, clean bool) ([]string, []string, error
 		if err := ctx.Err(); err != nil {
 			return nil, nil, fmt.Errorf("remove obsolete files: %w", err)
 		}
-		if err := removeListed(p.dir, now.files(), now.dirs); err != nil {
+		if _, err := removeListed(p.dir, now.files(), now.dirs); err != nil {
 			return nil, nil, hint.With(err, "pass a different --output, or remove the files yourself")
 		}
 	}
@@ -1104,7 +1105,7 @@ func (p *plan) Write(ctx context.Context, clean bool) ([]string, []string, error
 		return nil, nil, fmt.Errorf("write %q: %w", MarkerName, err)
 	}
 	if clean {
-		if err := removeListed(p.dir, after.files(), after.dirs); err != nil {
+		if _, err := removeListed(p.dir, after.files(), after.dirs); err != nil {
 			return nil, nil, hint.With(err, "pass a different --output, or remove the files yourself")
 		}
 		removed, left = c.files(), nil
@@ -1310,21 +1311,35 @@ func obstruction(dir string, prev, planned []string, c cleanup) (foreign, clears
 }
 
 // removeListed removes each of rels from dir, then each of dirs, which must
-// come deepest first. rels are files reached through real directories, and
-// dirs are what prunedBy said removing them leaves empty; dir itself is
-// never among them.
-func removeListed(dir string, rels, dirs []string) error {
+// come deepest first, and returns the directories it removed. rels are files
+// reached through real directories, and dirs are what prunedBy said removing
+// them leaves empty; dir itself is never among them. prunedBy decided before
+// anything was removed, so a directory something has landed in since is not
+// empty, and is skipped rather than failing the clean.
+func removeListed(dir string, rels, dirs []string) ([]string, error) {
 	for _, rel := range rels {
 		if err := os.Remove(filepath.Join(dir, filepath.FromSlash(rel))); err != nil && !errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("remove %q: %w", rel, err)
+			return nil, fmt.Errorf("remove %q: %w", rel, err)
 		}
 	}
+	var removed []string
 	for _, d := range dirs {
-		if err := os.Remove(filepath.Join(dir, filepath.FromSlash(d))); err != nil && !errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("remove emptied directory %q: %w", d, err)
+		err := os.Remove(filepath.Join(dir, filepath.FromSlash(d)))
+		switch {
+		case err == nil:
+			removed = append(removed, d)
+		case errors.Is(err, os.ErrNotExist), notEmpty(err):
+		default:
+			return nil, fmt.Errorf("remove emptied directory %q: %w", d, err)
 		}
 	}
-	return nil
+	return removed, nil
+}
+
+// notEmpty reports whether err is a directory removal refused because the
+// directory holds something. POSIX lets rmdir say so with either errno.
+func notEmpty(err error) bool {
+	return errors.Is(err, syscall.ENOTEMPTY) || errors.Is(err, syscall.EEXIST)
 }
 
 // prunedBy is the one rule for which directories a clean removes: those that
