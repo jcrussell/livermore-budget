@@ -1011,8 +1011,8 @@ func Prepare(o Options) (*plan, error) {
 
 // Write puts a prepared Plan on disk, creating o.Dir if needed, and returns the
 // slash-separated paths it wrote, relative to that directory and sorted. It
-// checks ctx before each file and stops with an error wrapping ctx.Err(),
-// leaving the files already written in place.
+// checks ctx before creating o.Dir and before each file, and stops with an
+// error wrapping ctx.Err(), leaving the files already written in place.
 //
 // Everything that can be decided has been. What is left can fail only on I/O,
 // so a caller that has cleaned a directory is past the point where anything it
@@ -1022,6 +1022,9 @@ func Prepare(o Options) (*plan, error) {
 // its own guard rail (SafeCleanDir), and burying it in a writer would
 // make every caller of Write a caller of RemoveAll.
 func (p *plan) Write(ctx context.Context) ([]string, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("create output directory: %w", err)
+	}
 	// #nosec G301 -- the output is a web root; a directory a server running as
 	// another user cannot traverse is a broken deploy, not a hardened one.
 	if err := os.MkdirAll(p.dir, 0o755); err != nil {

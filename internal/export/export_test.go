@@ -307,31 +307,79 @@ func TestThePlanWritesTheMarkerFirstAndTheIndexLast(t *testing.T) {
 	}
 }
 
-// Write stops before a file once its context is cancelled.
+// cancelFromCall is a context whose Err() reports a cancellation from its
+// nth call on.
+type cancelFromCall struct {
+	context.Context
+	n, calls int
+}
+
+func (c *cancelFromCall) Err() error {
+	c.calls++
+	if c.calls >= c.n {
+		return context.Canceled
+	}
+	return nil
+}
+
+// Write stops on a cancelled context: one already cancelled creates nothing,
+// not even the output directory, and one cancelled once the directory exists
+// writes no file into it.
 //
-// Mutation: drop the ctx check from Write and this goes red with "wrote
-// [...] after cancellation".
+// Mutation: drop the ctx check before MkdirAll and the first case goes red
+// with "the output directory was created after cancellation"; drop the
+// per-file check and the second goes red with "wrote [...] after
+// cancellation".
 func TestWriteStopsOnACancelledContext(t *testing.T) {
-	dir := filepath.Join(t.TempDir(), "out")
-	p, err := export.Prepare(export.Options{
-		Dir:         dir,
-		Projections: map[string][]byte{"sankey": goldenSankey(t)},
-		Views:       spineOnly(),
-		Docs:        budgetDocs(),
-		GeneratedBy: "fisc test",
+	type writer interface {
+		Write(context.Context) ([]string, error)
+	}
+	prepare := func(t *testing.T) (writer, string) {
+		t.Helper()
+		dir := filepath.Join(t.TempDir(), "out")
+		p, err := export.Prepare(export.Options{
+			Dir:         dir,
+			Projections: map[string][]byte{"sankey": goldenSankey(t)},
+			Views:       spineOnly(),
+			Docs:        budgetDocs(),
+			GeneratedBy: "fisc test",
+		})
+		if err != nil {
+			t.Fatalf("Prepare: %v", err)
+		}
+		return p, dir
+	}
+
+	t.Run("already cancelled", func(t *testing.T) {
+		p, dir := prepare(t)
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		written, err := p.Write(ctx)
+		if !errors.Is(err, context.Canceled) {
+			t.Errorf("got error %v, want it to wrap context.Canceled", err)
+		}
+		if len(written) > 0 {
+			t.Errorf("wrote %q after cancellation", written)
+		}
+		if _, serr := os.Stat(dir); !errors.Is(serr, os.ErrNotExist) {
+			t.Errorf("the output directory was created after cancellation (stat: %v)", serr)
+		}
 	})
-	if err != nil {
-		t.Fatalf("Prepare: %v", err)
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	written, err := p.Write(ctx)
-	if !errors.Is(err, context.Canceled) {
-		t.Errorf("got error %v, want it to wrap context.Canceled", err)
-	}
-	if entries, _ := os.ReadDir(dir); len(written) > 0 || len(entries) > 0 {
-		t.Errorf("wrote %q (%d entries on disk) after cancellation", written, len(entries))
-	}
+
+	t.Run("cancelled once the directory exists", func(t *testing.T) {
+		p, dir := prepare(t)
+		written, err := p.Write(&cancelFromCall{Context: context.Background(), n: 2})
+		if !errors.Is(err, context.Canceled) {
+			t.Errorf("got error %v, want it to wrap context.Canceled", err)
+		}
+		entries, rerr := os.ReadDir(dir)
+		if rerr != nil {
+			t.Fatalf("the output directory was not created before the cancellation: %v", rerr)
+		}
+		if len(written) > 0 || len(entries) > 0 {
+			t.Errorf("wrote %q (%d entries on disk) after cancellation", written, len(entries))
+		}
+	})
 }
 
 // TestTheIndexLeadsWithWhatTheCitySpends: the index's one headline figure is
