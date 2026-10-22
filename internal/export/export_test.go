@@ -1385,6 +1385,30 @@ func TestWriteRefusesAnAssetPathOutsideTheSite(t *testing.T) {
 	}
 }
 
+// A planned path that does not come from Options.Files, which assetPath
+// screens first, is still put through manifestEntry as it joins the plan: a
+// view path is checked for its suffix and its directory, not for a line
+// break, and a manifest could not list it.
+//
+// Mutation: drop the manifestEntry check from Prepare's add and this goes
+// red with "Prepare accepted the view path".
+func TestPrepareRefusesAViewPathAManifestCouldNotList(t *testing.T) {
+	views := append(spineOnly(), export.View{Path: "notes\nindex.html", Nav: "Caveats", Template: export.CaveatsTemplate})
+	_, err := export.Prepare(export.Options{
+		Dir:         t.TempDir(),
+		Projections: map[string][]byte{"sankey": goldenSankey(t)},
+		Views:       views,
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+	})
+	if err == nil {
+		t.Fatal("Prepare accepted the view path \"notes\\nindex.html\"")
+	}
+	if !strings.Contains(err.Error(), "not a clean relative path on one line") {
+		t.Errorf("got %v, want the refusal of a path a manifest could not list", err)
+	}
+}
+
 // Prepare refuses every plan Write could only fail on, so that what is left
 // for Write is I/O: a path its manifest could not list on one line, a path
 // planned both as a file and as a directory above another, and a path under
