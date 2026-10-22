@@ -237,12 +237,12 @@ func TestNewCmdExportFlags(t *testing.T) {
 		{
 			name:    "browse url with a user and password",
 			args:    []string{"--source-browse-url", "https://user:pass@example.test/blob/main"},
-			wantErr: "carries userinfo",
+			wantErr: `carries an "@"`,
 		},
 		{
 			name:    "browse url with an empty userinfo",
 			args:    []string{"--source-browse-url", "https://@example.test/blob/main"},
-			wantErr: "carries userinfo",
+			wantErr: `carries an "@"`,
 		},
 		{name: "positional args", args: []string{"dist"}, wantErr: `unknown command "dist"`},
 	}
@@ -2702,30 +2702,41 @@ func TestTheSourcesPageListsEachInferredCellOnce(t *testing.T) {
 
 // A refused credential must not be echoed to the terminal either, by any
 // refusal: a token passed as the username is as secret as a password, and a
-// value refused for its scheme, its query or its parse still carries both.
+// value refused for its scheme, its host, its query or its parse still
+// carries both. A "/", "?" or "#" inside the password, and one or three
+// slashes after the scheme, all move where a parser thinks the authority
+// ends, which is why no refusal tries to cut the userinfo out.
 //
-// Mutations: print u.Redacted() in the userinfo arm and the token-as-username
-// case goes red with "repeats ghp_SECRET"; print raw in the scheme arm and the
-// opaque "ftp:" case goes red with "repeats hunter2"; wrap url.Parse's error
-// whole and the unparseable cases go red with "repeats ghp_SECRET".
+// Mutation: drop the "@" arm and the "sec/ret" case goes red with "repeats
+// sec" in an invalid-port message, the "///" and "http:/" cases with
+// "repeats secret" in a no-host message, and the "p#x" case with "repeats
+// p#x".
 func TestValidateBrowseURLEchoesNoUserinfo(t *testing.T) {
-	for _, raw := range []string{
-		"https://ghp_SECRET@github.com/you/livermore-budget/blob/main",
-		"https://ghp_SECRET:hunter2@example.test/blob/main",
-		"ftp://ghp_SECRET:hunter2@example.test/blob/main",
-		"https://ghp_SECRET:hunter2@/blob/main",
-		"https://ghp_SECRET:hunter2@example.test/blob/main?ref=x",
-		"https://ghp_SECRET:hunter2@exa mple.test/blob/main",
-		"https://ghp_SECRET:hunter2@example.test:port/blob/main",
-		"ghp_SECRET:hunter2@example.test/blob/main",
-		"ftp:ghp_SECRET:hunter2@example.test",
+	for _, tc := range []struct {
+		raw     string
+		secrets []string
+	}{
+		{"https://ghp_SECRET@github.com/you/livermore-budget/blob/main", []string{"ghp_SECRET"}},
+		{"https://ghp_SECRET:hunter2@example.test/blob/main", []string{"ghp_SECRET", "hunter2"}},
+		{"ftp://ghp_SECRET:hunter2@example.test/blob/main", []string{"ghp_SECRET", "hunter2"}},
+		{"https://ghp_SECRET:hunter2@/blob/main", []string{"ghp_SECRET", "hunter2"}},
+		{"https://ghp_SECRET:hunter2@example.test/blob/main?ref=x", []string{"ghp_SECRET", "hunter2"}},
+		{"https://ghp_SECRET:hunter2@exa mple.test/blob/main", []string{"ghp_SECRET", "hunter2"}},
+		{"https://ghp_SECRET:hunter2@example.test:port/blob/main", []string{"ghp_SECRET", "hunter2"}},
+		{"ghp_SECRET:hunter2@example.test/blob/main", []string{"ghp_SECRET", "hunter2"}},
+		{"ftp:ghp_SECRET:hunter2@example.test", []string{"ghp_SECRET", "hunter2"}},
+		{"https://user:sec/ret@github.com/x", []string{"sec", "ret"}},
+		{"https:///user:secret@host", []string{"secret"}},
+		{"http:/user:secret@host", []string{"secret"}},
+		{"https://u:p#x@host", []string{"p#x"}},
+		{"https://u:p?x@host", []string{"p?x"}},
 	} {
-		t.Run(raw, func(t *testing.T) {
-			err := validateBrowseURL(raw)
+		t.Run(tc.raw, func(t *testing.T) {
+			err := validateBrowseURL(tc.raw)
 			if err == nil {
 				t.Fatal("got nil error, want a refusal")
 			}
-			for _, secret := range []string{"ghp_SECRET", "hunter2"} {
+			for _, secret := range tc.secrets {
 				if strings.Contains(err.Error(), secret) {
 					t.Errorf("error %q repeats %s", err, secret)
 				}
