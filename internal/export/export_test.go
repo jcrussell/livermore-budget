@@ -1386,16 +1386,19 @@ func TestWriteRefusesAnAssetPathOutsideTheSite(t *testing.T) {
 }
 
 // Prepare refuses every plan Write could only fail on, so that what is left
-// for Write is I/O: a path its manifest could not list on one line, and a
-// path planned both as a file and as a directory above another.
+// for Write is I/O: a path its manifest could not list on one line, a path
+// planned both as a file and as a directory above another, and a path under
+// the manifest, which Write would need as a directory.
 //
 // Mutation: drop '\n' from manifestEntry's refused characters and "two
 // manifest lines" goes red with "Prepare accepted"; drop the nesting check
-// and "a file and a directory" goes red the same way.
+// and "a file and a directory" goes red the same way; drop the MarkerName
+// check and "under the manifest" does.
 func TestPrepareRefusesWhatWriteCouldOnlyFailOn(t *testing.T) {
 	cases := map[string]map[string][]byte{
 		"two manifest lines":     {"notes.txt\nindex.html": []byte("x")},
 		"a file and a directory": {"facts": []byte("x"), "facts/d/p0001.jsonl": []byte("x")},
+		"under the manifest":     {export.MarkerName + "/notes.txt": []byte("x")},
 	}
 	for name, files := range cases {
 		t.Run(name, func(t *testing.T) {

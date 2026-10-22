@@ -1005,11 +1005,14 @@ func Prepare(o Options) (*plan, error) {
 			return nil, err
 		}
 	}
-	// A path planned as a file and as a directory above another can only
-	// fail in Write, so it is refused here.
+	// A path planned as a file and as a directory above another, or at or
+	// under the manifest, can only fail in Write, so it is refused here.
 	for _, f := range plan.files {
-		for d := path.Dir(f.Path); d != "."; d = path.Dir(d) {
-			if seen[d] {
+		for d := f.Path; d != "."; d = path.Dir(d) {
+			if d == MarkerName {
+				return nil, fmt.Errorf("the output path %q is at or under %s, the export's manifest", f.Path, MarkerName)
+			}
+			if d != f.Path && seen[d] {
 				return nil, fmt.Errorf("the output path %q is planned as a file and as a directory holding %q", d, f.Path)
 			}
 		}
