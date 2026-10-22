@@ -334,7 +334,7 @@ func (c *cancelFromCall) Err() error {
 // cancellation".
 func TestWriteStopsOnACancelledContext(t *testing.T) {
 	type writer interface {
-		Write(context.Context, bool) ([]string, []string, error)
+		Write(context.Context, bool) ([]string, export.Removal, error)
 	}
 	prepare := func(t *testing.T) (writer, string) {
 		t.Helper()
@@ -509,7 +509,7 @@ func TestCleanRemovesOnlyWhatIsInTheWayBeforeItWrites(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Write: %v", err)
 	}
-	if diff := cmp.Diff([]string{"old/gone.txt"}, removed); diff != "" {
+	if diff := cmp.Diff(export.Removal{Files: []string{"old/gone.txt"}, Dirs: []string{"old"}}, removed); diff != "" {
 		t.Errorf("removed (-want +got):\n%s", diff)
 	}
 	if _, serr := os.Stat(filepath.Join(dir, "old")); serr == nil {
@@ -560,7 +560,8 @@ func TestAWriteKeepsListingWhatTheEarlierExportLeft(t *testing.T) {
 // write, unchecked, and this goes red with "outside/x.txt was removed";
 // remove each leftover's parent directories with RemoveAll rather than only
 // when empty and it goes red with "old/mixed/mine.txt was removed"; skip the
-// pruning and it goes red with "old/sub was left behind empty".
+// pruning and it goes red with "old/sub was left behind empty"; leave the
+// directories out of Write's Removal and it goes red with a removed diff.
 func TestCleanRemovesOnlyWhatTheEarlierExportListed(t *testing.T) {
 	root := t.TempDir()
 	dir := filepath.Join(root, "out")
@@ -591,7 +592,8 @@ func TestCleanRemovesOnlyWhatTheEarlierExportListed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Write: %v", err)
 	}
-	if diff := cmp.Diff([]string{"old/mixed/gone.txt", "old/sub/gone.txt", "top.txt"}, removed); diff != "" {
+	want := export.Removal{Files: []string{"old/mixed/gone.txt", "old/sub/gone.txt", "top.txt"}, Dirs: []string{"old/sub"}}
+	if diff := cmp.Diff(want, removed); diff != "" {
 		t.Errorf("removed (-want +got):\n%s", diff)
 	}
 	for _, rel := range unlisted {
@@ -619,7 +621,7 @@ func TestCleanRemovesOnlyWhatTheEarlierExportListed(t *testing.T) {
 
 // planFiles prepares the golden site into dir, shipping files beside it.
 func planFiles(t *testing.T, dir string, files map[string][]byte) interface {
-	Write(context.Context, bool) ([]string, []string, error)
+	Write(context.Context, bool) ([]string, export.Removal, error)
 	Obsolete() ([]string, []string, error)
 } {
 	t.Helper()
@@ -663,7 +665,7 @@ func TestCleanLetsAPathTurnBetweenFileAndDirectory(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Write: %v", err)
 			}
-			if diff := cmp.Diff([]string{c.earlier}, removed); diff != "" {
+			if diff := cmp.Diff([]string{c.earlier}, removed.Files); diff != "" {
 				t.Errorf("removed (-want +got):\n%s", diff)
 			}
 			if b, rerr := os.ReadFile(filepath.Join(dir, filepath.FromSlash(c.now))); rerr != nil || string(b) != "now\n" {
@@ -731,7 +733,7 @@ func TestCleanKeepsTheDirectoriesAPlannedFileLandsIn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Write: %v", err)
 	}
-	if diff := cmp.Diff(files, removed); diff != "" {
+	if diff := cmp.Diff(export.Removal{Files: files}, removed); diff != "" {
 		t.Errorf("removed (-Obsolete +Write):\n%s", diff)
 	}
 	after, err := os.Stat(pages)
@@ -939,7 +941,7 @@ func TestCleanRemovesAStrandedManifestTempFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Write: %v", err)
 	}
-	if diff := cmp.Diff([]string{".fisc-tmp-42"}, removed); diff != "" {
+	if diff := cmp.Diff(export.Removal{Temps: []string{".fisc-tmp-42"}}, removed); diff != "" {
 		t.Errorf("removed (-want +got):\n%s", diff)
 	}
 	if _, err := os.Stat(filepath.Join(dir, ".fisc-tmp-42")); err == nil {
@@ -1044,7 +1046,7 @@ func TestCleanWithoutAValidManifestRemovesNothing(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Write: %v", err)
 			}
-			if _, serr := os.Stat(filepath.Join(dir, "gone.txt")); serr != nil || len(removed) > 0 {
+			if _, serr := os.Stat(filepath.Join(dir, "gone.txt")); serr != nil || !cmp.Equal(export.Removal{}, removed) {
 				t.Errorf("gone.txt was removed (removed %q, stat %v)", removed, serr)
 			}
 		})

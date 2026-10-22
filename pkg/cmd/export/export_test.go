@@ -837,9 +837,10 @@ func readPage(t *testing.T, dir string) string {
 	return string(b)
 }
 
-// --clean removes only what a manifest lists, so even reached past
-// Validate, over a directory with no manifest whose file stands at no path
-// the export writes, it writes the site beside the file and removes nothing.
+// --clean removes no file a manifest does not list but a stranded manifest
+// temp file, so even reached past Validate, over a directory with no
+// manifest whose file stands at no path the export writes, it writes the site
+// beside the file and removes nothing.
 //
 // Mutation: make Write's clean remove every file the plan does not write and
 // this goes red with "the file was removed anyway".
@@ -928,12 +929,15 @@ func TestExportRunRefusesAnUnreachableDocumentBeforeTouchingTheSite(t *testing.T
 	}
 }
 
-// --clean removes a file the earlier export wrote and this one does not, and
-// the directories that leaves empty, and leaves a file no export wrote.
+// --clean removes a file the earlier export wrote and this one does not, the
+// directories that leaves empty and a stranded manifest temp file, leaves a
+// file no export wrote, and says how many of each kind it removed.
 //
 // Mutation: drop the clean branch from Write and this goes red with "a file
 // the earlier export wrote survived --clean"; skip the pruning and it goes
-// red with "facts/gone was left behind empty".
+// red with "facts/gone was left behind empty"; count the temp file among the
+// earlier export's files in the summary and it goes red with "does not say
+// what --clean removed".
 func TestExportRunCleanRemovesWhatTheEarlierExportWrote(t *testing.T) {
 	opts, _, _, errOut := testOptions(t)
 	build := opts.Build
@@ -956,6 +960,10 @@ func TestExportRunCleanRemovesWhatTheEarlierExportWrote(t *testing.T) {
 	if err := os.WriteFile(notes, []byte("mine\n"), 0o600); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
+	temp := filepath.Join(opts.OutputDir, ".fisc-tmp-7")
+	if err := os.WriteFile(temp, []byte("stranded\n"), 0o600); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
 
 	opts.Build = build
 	opts.Clean = true
@@ -974,8 +982,11 @@ func TestExportRunCleanRemovesWhatTheEarlierExportWrote(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(opts.OutputDir, "index.html")); err != nil {
 		t.Errorf("the site was not rewritten: %v", err)
 	}
-	if !strings.Contains(errOut(), "removed 1 files") {
-		t.Errorf("stderr %q does not say what --clean removed", errOut())
+	if _, err := os.Stat(temp); err == nil {
+		t.Error("the stranded manifest temp file survived --clean")
+	}
+	if want := "removed 1 files the earlier export wrote and this one does not, 1 stranded manifest temp files and 2 empty directories\n"; !strings.Contains(errOut(), want) {
+		t.Errorf("stderr %q does not say what --clean removed: want %q", errOut(), want)
 	}
 }
 

@@ -145,7 +145,8 @@ func TestRefuseForeignDir(t *testing.T) {
 		// but subdirectories holding source. Only a manifest says fisc's.
 		{name: "the older binary's marker over source below", marker: "fisc export\n", files: []string{"cmd/fisc/main.go", "src/x/x.go"}, refuse: notManifest},
 		// A manifest is the whole rule: what else is there is never at risk,
-		// because --clean removes only what the manifest lists.
+		// because --clean removes no file the manifest does not list but a
+		// stranded manifest temp file.
 		{name: "a manifest beside files no export wrote", files: []string{export.MarkerName, "notes.md", "sub/keep.go", ".git/HEAD"}},
 	}
 	for _, tc := range cases {

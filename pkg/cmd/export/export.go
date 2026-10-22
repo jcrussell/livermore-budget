@@ -87,9 +87,11 @@ type Options struct {
 	OutputDir string
 
 	// Clean removes the files the earlier export's manifest lists and this
-	// export does not write, and the directories that leaves empty. A file no
-	// manifest lists is never removed; see export.RefuseForeignDir for which
-	// directories carry one.
+	// export does not write, the manifest temp files (.fisc-tmp-N) an
+	// interrupted export stranded at the top of the directory, and the
+	// directories that leaves empty or that stand empty where this export
+	// writes a file. No other file a manifest does not list is removed; see
+	// export.RefuseForeignDir for which directories carry one.
 	Clean bool
 
 	// DryRun prints the files and directories Clean would remove and writes
@@ -229,11 +231,13 @@ again.
 
 Writing never deletes, and never writes over a file the manifest does not
 list: one at a path the export writes is refused before anything is written.
---clean removes only what the earlier export's manifest lists and this export
-does not write, then the directories that leaves empty; a file no export wrote
-is left where it is. --clean --dry-run prints the files --clean would remove,
-then the directories, each with a trailing separator, one per line, and
-writes nothing.`,
+--clean removes what the earlier export's manifest lists and this export does
+not write, any manifest temp file (.fisc-tmp-N) an interrupted export left at
+the top of the directory, and the directories that leaves empty or that stand
+empty where this export writes a file; any other file no export wrote is left
+where it is. --clean --dry-run prints the files --clean would remove, then
+the directories, each with a trailing separator, one per line, and writes
+nothing.`,
 		Example: `  # Write the site to dist/ and read it in a browser
   fisc export
   python3 -m http.server -d dist 8000
@@ -422,7 +426,8 @@ func exportRun(ctx context.Context, o *Options) error {
 	}
 	fmt.Fprintf(o.IO.ErrOut, "wrote %d files to %s\n", len(written), display)
 	if o.Clean {
-		fmt.Fprintf(o.IO.ErrOut, "removed %d files the earlier export wrote and this one does not\n", len(removed))
+		fmt.Fprintf(o.IO.ErrOut, "removed %d files the earlier export wrote and this one does not, %d stranded manifest temp files and %d empty directories\n",
+			len(removed.Files), len(removed.Temps), len(removed.Dirs))
 	}
 	// Say this every time, not only on failure: the page fetches its data,
 	// and fetch() from a file:// origin is blocked in Chrome, so the obvious

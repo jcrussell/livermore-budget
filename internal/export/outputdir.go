@@ -15,8 +15,8 @@ import (
 // MarkerName is the manifest `fisc export` keeps in the output directory: the
 // header line ManifestHeader, then the sorted, slash-separated relative path of
 // every file the export wrote, one per line, itself excluded. A directory is
-// fisc's only while it carries a valid one, and --clean removes nothing it
-// does not list.
+// fisc's only while it carries a valid one, and --clean removes no file it
+// does not list but a manifest temp file an interrupted export stranded.
 const MarkerName = ".fisc-export"
 
 // ManifestHeader is the manifest's first line. A marker with any other first
@@ -81,16 +81,17 @@ func refuse(format string, a ...any) error {
 
 // RefuseForeignDir refuses an output directory fisc does not own: one that
 // exists, holds anything but a stranded write probe or manifest temp file,
-// and carries no valid
-// MarkerName manifest. Export writes only into a directory that is missing,
-// empty, or carries an earlier export's manifest; writing anywhere else would
-// overwrite files fisc did not write. An unreadable directory or manifest is
-// an I/O error rather than a refusal, and neither is assumed empty.
+// and carries no valid MarkerName manifest. Export writes only into a
+// directory that is missing, empty, or carries an earlier export's manifest;
+// writing anywhere else would overwrite files fisc did not write. An
+// unreadable directory or manifest is an I/O error rather than a refusal,
+// and neither is assumed empty.
 //
-// What else the directory holds does not matter here: --clean removes only
-// what the manifest lists, and Write refuses to write over anything at a path
-// it writes that the manifest does not list, so a file beside it that no
-// export wrote is never at risk.
+// What else the directory holds does not matter here: --clean removes no
+// file the manifest does not list but a stranded manifest temp file, and no
+// directory but an empty one, and Write refuses to write over anything else
+// at a path it writes that the manifest does not list, so a file beside it
+// that no export wrote is never at risk.
 func RefuseForeignDir(dir string) error {
 	info, err := os.Stat(dir)
 	if errors.Is(err, os.ErrNotExist) {

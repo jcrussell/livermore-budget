@@ -1020,27 +1020,35 @@ func Prepare(o Options) (*plan, error) {
 	return plan, nil
 }
 
+// Removal is what a clean removed from the output directory, each path
+// relative to it: Files, what the earlier export's manifest listed and this
+// plan does not write, and Temps, the manifest temp files an interrupted
+// export stranded at its top, both sorted; and Dirs, the directories that
+// left empty or that stood empty in the way of a planned file, in the order
+// they were removed.
+type Removal struct{ Files, Temps, Dirs []string }
+
 // Write puts a prepared Plan on disk, creating o.Dir if needed. It returns
-// the slash-separated paths it wrote, the manifest included, and with clean
-// the paths it removed, each relative to o.Dir and sorted. It checks ctx
-// before creating o.Dir, before each file, before removing what is in the
-// way, and before the last manifest and what is removed with it, and stops
-// with an error wrapping ctx.Err(), leaving what is on disk in place.
+// the slash-separated paths it wrote, the manifest included, sorted and
+// relative to o.Dir, and with clean what it removed. It checks ctx before
+// creating o.Dir, before each file, before removing what is in the way, and
+// before the last manifest and what is removed with it, and stops with an
+// error wrapping ctx.Err(), leaving what is on disk in place.
 //
 // The manifest goes down first and last. First it lists every path the
 // previous manifest did and every path this plan writes, so a run stopped at
 // any point leaves a manifest covering everything an export may have put
 // there. Without clean nothing is removed, and the last manifest lists this
 // plan's paths and whatever the earlier export wrote that is still there;
-// with clean those leftovers are removed, with the temp files an
-// interrupted manifest write strands at the top of o.Dir and the directories
-// prunedBy names, and the last manifest lists this plan's paths alone. What
-// stands in the way of a planned path goes before any file is written, which
-// is what lets a path that was a file in the earlier export be a directory in
-// this one, or the reverse; the rest goes after the last file, so the earlier
-// site keeps what it links to until this one is in place. No file the
-// previous manifest does not list is ever removed but a stranded temp file,
-// and no directory but an empty one; a missing or unparseable manifest lists
+// with clean those leftovers are removed, with the temp files an interrupted
+// manifest write strands at the top of o.Dir and the directories prunedBy
+// names, and the last manifest lists this plan's paths alone. What stands in
+// the way of a planned path goes before any file is written, which is what
+// lets a path that was a file in the earlier export be a directory in this
+// one, or the reverse; the rest goes after the last file, so the earlier site
+// keeps what it links to until this one is in place. No file the previous
+// manifest does not list is ever removed but a stranded temp file, and no
+// directory but an empty one; a missing or unparseable manifest lists
 // nothing.
 //
 // Before writing anything it refuses, with an error matching ErrForeignDir,
@@ -1053,68 +1061,73 @@ func Prepare(o Options) (*plan, error) {
 //
 // Everything else that can be decided has been. What is left can fail only on
 // I/O or stop on a cancelled ctx.
-func (p *plan) Write(ctx context.Context, clean bool) ([]string, []string, error) {
+func (p *plan) Write(ctx context.Context, clean bool) ([]string, Removal, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, nil, fmt.Errorf("create output directory: %w", err)
+		return nil, Removal{}, fmt.Errorf("create output directory: %w", err)
 	}
 	// #nosec G301 -- the output is a web root; a directory a server running as
 	// another user cannot traverse is a broken deploy, not a hardened one.
 	if err := os.MkdirAll(p.dir, 0o755); err != nil {
-		return nil, nil, fmt.Errorf("create output directory: %w", err)
+		return nil, Removal{}, fmt.Errorf("create output directory: %w", err)
 	}
 	prev, planned, c, err := p.survey()
 	if err != nil {
-		return nil, nil, err
+		return nil, Removal{}, err
 	}
 	if err := screen(p.dir, prev, planned, c, clean); err != nil {
-		return nil, nil, err
+		return nil, Removal{}, err
 	}
 	if err := ctx.Err(); err != nil {
-		return nil, nil, fmt.Errorf("write %q: %w", MarkerName, err)
+		return nil, Removal{}, fmt.Errorf("write %q: %w", MarkerName, err)
 	}
 	if err := writeManifest(p.dir, union(prev, planned)); err != nil {
-		return nil, nil, err
+		return nil, Removal{}, err
 	}
 	left := c.left
-	var removed []string
+	var removed Removal
 	now, after := c.inTheWayOf(planned)
 	if clean {
 		if err := ctx.Err(); err != nil {
-			return nil, nil, fmt.Errorf("remove obsolete files: %w", err)
+			return nil, Removal{}, fmt.Errorf("remove obsolete files: %w", err)
 		}
-		if _, err := removeListed(p.dir, now.files(), now.dirs); err != nil {
-			return nil, nil, hint.With(err, "pass a different --output, or remove the files yourself")
+		dirs, err := removeListed(p.dir, now.files(), now.dirs)
+		if err != nil {
+			return nil, Removal{}, hint.With(err, "pass a different --output, or remove the files yourself")
 		}
+		removed.Dirs = dirs
 	}
 	written := make([]string, 0, len(p.files)+1)
 	written = append(written, MarkerName)
 	for _, f := range p.files {
 		if err := ctx.Err(); err != nil {
-			return nil, nil, fmt.Errorf("write %q: %w", f.Path, err)
+			return nil, Removal{}, fmt.Errorf("write %q: %w", f.Path, err)
 		}
 		dst := filepath.Join(p.dir, filepath.FromSlash(f.Path))
 		// #nosec G301 -- as above: these are published directories.
 		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
-			return nil, nil, fmt.Errorf("create %q: %w", path.Dir(f.Path), err)
+			return nil, Removal{}, fmt.Errorf("create %q: %w", path.Dir(f.Path), err)
 		}
 		// #nosec G306 -- these are published web assets; 0600 would make the
 		// output unreadable to a web server running as another user.
 		if err := os.WriteFile(dst, f.Bytes, 0o644); err != nil {
-			return nil, nil, fmt.Errorf("write %q: %w", f.Path, err)
+			return nil, Removal{}, fmt.Errorf("write %q: %w", f.Path, err)
 		}
 		written = append(written, f.Path)
 	}
 	if err := ctx.Err(); err != nil {
-		return nil, nil, fmt.Errorf("write %q: %w", MarkerName, err)
+		return nil, Removal{}, fmt.Errorf("write %q: %w", MarkerName, err)
 	}
 	if clean {
-		if _, err := removeListed(p.dir, after.files(), after.dirs); err != nil {
-			return nil, nil, hint.With(err, "pass a different --output, or remove the files yourself")
+		dirs, err := removeListed(p.dir, after.files(), after.dirs)
+		if err != nil {
+			return nil, Removal{}, hint.With(err, "pass a different --output, or remove the files yourself")
 		}
-		removed, left = c.files(), nil
+		removed.Files, removed.Temps = c.left, c.temps
+		removed.Dirs = append(removed.Dirs, dirs...)
+		left = nil
 	}
 	if err := writeManifest(p.dir, union(planned, left)); err != nil {
-		return nil, nil, err
+		return nil, Removal{}, err
 	}
 	sort.Strings(written)
 	return written, removed, nil
@@ -1122,10 +1135,9 @@ func (p *plan) Write(ctx context.Context, clean bool) ([]string, []string, error
 
 // Obsolete is what Write with clean would remove: the files the previous
 // valid manifest lists that this plan does not write and the stranded
-// manifest temp files, sorted, and the directories removing them leaves
-// empty, deepest first. It refuses
-// what Write with clean would refuse, and it reads the directory and changes
-// nothing.
+// manifest temp files, sorted, and the directories prunedBy names, deepest
+// first. It refuses what Write with clean would refuse, and it reads the
+// directory and changes nothing.
 func (p *plan) Obsolete() (files, dirs []string, err error) {
 	prev, planned, c, err := p.survey()
 	if err != nil {
