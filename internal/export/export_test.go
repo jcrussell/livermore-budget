@@ -477,6 +477,46 @@ func TestAStoppedWriteLeavesAManifestOfBothExports(t *testing.T) {
 	}
 }
 
+// --clean removes before it writes only what stands in the way of a planned
+// path, and the rest of the earlier export's leftovers after the last file,
+// so a served site keeps what it links to while the write runs: a run
+// stopped after its first file has removed the leftover in the way and left
+// the other on disk and in the manifest, and a full run removes both.
+//
+// Mutation: remove every leftover before the write loop and this goes red
+// with "old/gone.txt was removed before the write finished".
+func TestCleanRemovesOnlyWhatIsInTheWayBeforeItWrites(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "out")
+	seedExport(t, dir, []string{"facts", "old/gone.txt"}, []string{"facts", "old/gone.txt"})
+	p := planFiles(t, dir, map[string][]byte{"facts/d/p0001.jsonl": []byte("now\n")})
+	// Err is asked before the directory, before the manifest, before the
+	// removal of what is in the way, and before each file: the fifth call
+	// stops the write after its first file.
+	_, _, err := p.Write(&cancelFromCall{Context: context.Background(), n: 5}, true)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("got error %v, want it to wrap context.Canceled", err)
+	}
+	if info, serr := os.Lstat(filepath.Join(dir, "facts")); serr == nil && !info.IsDir() {
+		t.Error("facts, in the way of facts/d/p0001.jsonl, was not removed before the write")
+	}
+	if _, serr := os.Stat(filepath.Join(dir, "old", "gone.txt")); serr != nil {
+		t.Errorf("old/gone.txt was removed before the write finished: %v", serr)
+	}
+	if !slices.Contains(manifestOf(t, dir), "old/gone.txt") {
+		t.Error("the manifest no longer lists old/gone.txt, which is still on disk")
+	}
+	_, removed, err := p.Write(context.Background(), true)
+	if err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	if diff := cmp.Diff([]string{"old/gone.txt"}, removed); diff != "" {
+		t.Errorf("removed (-want +got):\n%s", diff)
+	}
+	if _, serr := os.Stat(filepath.Join(dir, "old")); serr == nil {
+		t.Error("old survived a full --clean")
+	}
+}
+
 // A write without --clean removes nothing, and its manifest keeps listing what
 // the earlier export wrote and is still there, so a later --clean can still
 // remove it. A listed path that is gone, or is now a directory, drops out.

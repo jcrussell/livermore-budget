@@ -985,7 +985,8 @@ func Prepare(o Options) (*plan, error) {
 	// does -- including the other views it links to, or it would appear
 	// while its own nav pointed at 404s. Over an earlier export, with or
 	// without --clean, the old index.html is already there, and a write that
-	// stops partway leaves it beside a mix of old and new files
+	// stops partway leaves it beside a mix of old and new files, missing at
+	// most what --clean removed from the way of a planned path
 	// (fisc-3s5d.69).
 	for _, pg := range pages {
 		if pg.Path == IndexPath {
@@ -1018,19 +1019,22 @@ func Prepare(o Options) (*plan, error) {
 // Write puts a prepared Plan on disk, creating o.Dir if needed. It returns
 // the slash-separated paths it wrote, the manifest included, and with clean
 // the paths it removed, each relative to o.Dir and sorted. It checks ctx
-// before creating o.Dir, before each file, and before removing anything, and
-// stops with an error wrapping ctx.Err(), leaving what is on disk in place.
+// before creating o.Dir, before each file, before removing what is in the
+// way, and before the last manifest and what is removed with it, and stops
+// with an error wrapping ctx.Err(), leaving what is on disk in place.
 //
 // The manifest goes down first and last. First it lists every path the
 // previous manifest did and every path this plan writes, so a run stopped at
 // any point leaves a manifest covering everything an export may have put
 // there. Without clean nothing is removed, and the last manifest lists this
 // plan's paths and whatever the earlier export wrote that is still there;
-// with clean those leftovers are removed before any file is written, with
-// the temp files an interrupted manifest write strands at the top of o.Dir
-// and the directories prunedBy names, and the last manifest lists this
-// plan's paths alone. Removing first is what lets a path that was a file in
-// the earlier export be a directory in this one, or the reverse. No file the
+// with clean those leftovers are removed, with the temp files an
+// interrupted manifest write strands at the top of o.Dir and the directories
+// prunedBy names, and the last manifest lists this plan's paths alone. What
+// stands in the way of a planned path goes before any file is written, which
+// is what lets a path that was a file in the earlier export be a directory in
+// this one, or the reverse; the rest goes after the last file, so the earlier
+// site keeps what it links to until this one is in place. No file the
 // previous manifest does not list is ever removed but a stranded temp file,
 // and no directory but an empty one; a missing or unparseable manifest lists
 // nothing.
@@ -1069,15 +1073,14 @@ func (p *plan) Write(ctx context.Context, clean bool) ([]string, []string, error
 	}
 	left := c.left
 	var removed []string
+	now, after := c.inTheWayOf(planned)
 	if clean {
 		if err := ctx.Err(); err != nil {
 			return nil, nil, fmt.Errorf("remove obsolete files: %w", err)
 		}
-		removed = c.files()
-		if err := removeListed(p.dir, removed, c.dirs); err != nil {
+		if err := removeListed(p.dir, now.files(), now.dirs); err != nil {
 			return nil, nil, hint.With(err, "pass a different --output, or remove the files yourself")
 		}
-		left = nil
 	}
 	written := make([]string, 0, len(p.files)+1)
 	written = append(written, MarkerName)
@@ -1099,6 +1102,12 @@ func (p *plan) Write(ctx context.Context, clean bool) ([]string, []string, error
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, nil, fmt.Errorf("write %q: %w", MarkerName, err)
+	}
+	if clean {
+		if err := removeListed(p.dir, after.files(), after.dirs); err != nil {
+			return nil, nil, hint.With(err, "pass a different --output, or remove the files yourself")
+		}
+		removed, left = c.files(), nil
 	}
 	if err := writeManifest(p.dir, union(planned, left)); err != nil {
 		return nil, nil, err
@@ -1133,6 +1142,46 @@ type cleanup struct{ left, temps, dirs []string }
 
 // files is every file the cleanup removes, sorted.
 func (c cleanup) files() []string { return union(c.left, c.temps) }
+
+// inTheWayOf splits c into what stands in the way of writing planned -- a
+// file at a directory above a planned path, and anything at or under one --
+// and the rest. Write removes the first before it writes and the second
+// after, so a served site keeps the files it links to while the write runs.
+// A directory c prunes is never above a planned path, so nothing written
+// lands in one the second part removes.
+func (c cleanup) inTheWayOf(planned []string) (now, after cleanup) {
+	above := make(map[string]bool)
+	for _, rel := range planned {
+		for d := path.Dir(rel); d != "."; d = path.Dir(d) {
+			above[d] = true
+		}
+	}
+	inTheWay := func(rel string) bool {
+		if above[rel] {
+			return true
+		}
+		for d := rel; d != "."; d = path.Dir(d) {
+			if _, ok := slices.BinarySearch(planned, d); ok {
+				return true
+			}
+		}
+		return false
+	}
+	split := func(rels []string) (in, out []string) {
+		for _, rel := range rels {
+			if inTheWay(rel) {
+				in = append(in, rel)
+			} else {
+				out = append(out, rel)
+			}
+		}
+		return in, out
+	}
+	now.left, after.left = split(c.left)
+	now.temps, after.temps = split(c.temps)
+	now.dirs, after.dirs = split(c.dirs)
+	return now, after
+}
 
 // survey reads the output directory once: the previous manifest's listing,
 // this plan's paths, both sorted, and what a clean would remove.
