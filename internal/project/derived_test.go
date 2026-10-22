@@ -79,6 +79,36 @@ func TestContestedTotalsReadTheirFiguresOffTheException(t *testing.T) {
 	}
 }
 
+// TestAContestedTotalWithAnEmptyClauseIsAnError: every prose field is a
+// clause the caveat prints, so an empty one is refused where the entries are
+// resolved rather than published as a sentence with a hole in it.
+//
+// Mutation: drop the empty-clause loop from resolveContestedTotals and every
+// case goes red with "got nil error".
+func TestAContestedTotalWithAnEmptyClauseIsAnError(t *testing.T) {
+	was := contestedTotals
+	t.Cleanup(func() { contestedTotals = was })
+	for name, blank := range map[string]func(*contestedTotal){
+		"Kept":       func(c *contestedTotal) { c.Kept = "" },
+		"PrintedBy":  func(c *contestedTotal) { c.PrintedBy = " " },
+		"ImpliedBy":  func(c *contestedTotal) { c.ImpliedBy = "" },
+		"Row":        func(c *contestedTotal) { c.Row = "" },
+		"SpinePages": func(c *contestedTotal) { c.SpinePages = "" },
+	} {
+		t.Run(name, func(t *testing.T) {
+			contestedTotals = slices.Clone(was)
+			blank(&contestedTotals[0])
+			_, err := resolveContestedTotals()
+			if err == nil {
+				t.Fatal("got nil error, want an empty clause refused")
+			}
+			if !strings.Contains(err.Error(), "declares no "+name) {
+				t.Errorf("got %v, want it to name %s", err, name)
+			}
+		})
+	}
+}
+
 // TestAContestedTotalNamingNoExceptionIsAnError pins that a declaration naming
 // an exception structure no longer carries refuses with a message, which
 // verify records as a projection that did not build, rather than a panic.

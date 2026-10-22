@@ -868,7 +868,11 @@ func TestContestedCaveatIsEmittedOnlyForTheColumnThatDrawsIt(t *testing.T) {
 	}
 	// The sentence must carry BOTH figures and why the drawn one is kept. A
 	// caveat naming only the drawn figure tells a reader nothing they could
-	// act on.
+	// act on. An empty Kept is contained in every string, so it is asserted
+	// non-empty first.
+	if strings.TrimSpace(c.Kept) == "" {
+		t.Fatal("the entry declares no Kept, so the caveat cannot say why the drawn figure is kept")
+	}
 	for _, want := range []string{amount.Cents(c.Published).Dollars(), amount.Cents(c.Elsewhere).Dollars(), c.Kept,
 		amount.Cents(c.Published - c.Elsewhere).Dollars()} {
 		if !strings.Contains(got.Text, want) {

@@ -1299,6 +1299,17 @@ func resolveContestedTotals() ([]contestedTotal, error) {
 		if e.Against != reference.Name || e.At != structure.LevelFundGroup || len(e.Cells) != 1 {
 			return nil, fmt.Errorf("project: contested total names exception %q, which is not one fund-group cell against %q", c.Exception, reference.Name)
 		}
+		// Each prose field is a clause of the caveat's sentence, and an empty
+		// one publishes the sentence with a hole in it -- "settled rather than
+		// open: , and every figure" -- which nothing downstream reads.
+		for name, v := range map[string]string{
+			"SpinePages": c.SpinePages, "Row": c.Row, "PrintedBy": c.PrintedBy,
+			"ImpliedBy": c.ImpliedBy, "Kept": c.Kept,
+		} {
+			if strings.TrimSpace(v) == "" {
+				return nil, fmt.Errorf("project: contested total %q declares no %s, a clause its caveat prints", c.Exception, name)
+			}
+		}
 		p := e.Cells[0]
 		c.Column = Column{FiscalYear: p.Year, Basis: vocab.Basis(p.Basis)}
 		c.FundGroup = p.Coords[structure.AxisFundGroup]
