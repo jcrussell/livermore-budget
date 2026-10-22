@@ -184,7 +184,8 @@ func TestCancelIsDistinctFromUsage(t *testing.T) {
 // cancelled-context arm and the ExitCodeError case goes red with "got exit
 // code 3, want 130". Map a wrapped context.Canceled to exitCancel in
 // classify and the child-context case goes red with "got exit code 130,
-// want 1".
+// want 1". Print only "cancelled" for every error a cancelled run returns and
+// the raced-failure case goes red, its "disk on fire" dropped.
 func TestRunExitCodeComesFromTheCommandNotTheContext(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -192,6 +193,7 @@ func TestRunExitCodeComesFromTheCommandNotTheContext(t *testing.T) {
 		wantCode  int
 		wantErr   string
 		wantNoErr bool
+		wantOnly  bool
 	}{
 		{
 			name: "completes, then the context is cancelled",
@@ -207,7 +209,7 @@ func TestRunExitCodeComesFromTheCommandNotTheContext(t *testing.T) {
 				cancel()
 				return errors.New("disk on fire")
 			},
-			wantCode: 130, wantErr: "cancelled",
+			wantCode: 130, wantErr: "error: disk on fire\ncancelled",
 		},
 		{
 			name: "reports an exit code while the context is cancelled",
@@ -215,7 +217,7 @@ func TestRunExitCodeComesFromTheCommandNotTheContext(t *testing.T) {
 				cancel()
 				return &cmdutil.ExitCodeError{Code: 3}
 			},
-			wantCode: 130, wantErr: "cancelled",
+			wantCode: 130, wantErr: "cancelled", wantOnly: true,
 		},
 		{
 			name: "fails without the context being cancelled",
@@ -237,7 +239,7 @@ func TestRunExitCodeComesFromTheCommandNotTheContext(t *testing.T) {
 				cancel()
 				return fmt.Errorf("export: %w", ctx.Err())
 			},
-			wantCode: 130, wantErr: "cancelled",
+			wantCode: 130, wantErr: "cancelled", wantOnly: true,
 		},
 		{
 			name: "returns its own child context's cancellation, no interrupt",
@@ -269,6 +271,9 @@ func TestRunExitCodeComesFromTheCommandNotTheContext(t *testing.T) {
 			}
 			if !strings.Contains(errOut.String(), tt.wantErr) {
 				t.Errorf("got stderr %q, want it to contain %q", errOut, tt.wantErr)
+			}
+			if tt.wantOnly && strings.TrimSpace(errOut.String()) != tt.wantErr {
+				t.Errorf("got stderr %q, want only %q", errOut, tt.wantErr)
 			}
 		})
 	}

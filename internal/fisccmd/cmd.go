@@ -49,7 +49,9 @@ func Run(root *cobra.Command, args []string, ios *iostreams.IOStreams) int {
 // failed while the context was cancelled exits 130, whatever error the
 // interrupt produced -- an ExitCodeError included, since `fisc verify` turns
 // the checks a cancellation stopped into errored ones and reports the run
-// not clean.
+// not clean. An error that is neither the cancellation itself nor an exit
+// code may be a failure the signal merely raced, so it is printed before
+// "cancelled" rather than dropped.
 func run(ctx context.Context, root *cobra.Command, args []string, ios *iostreams.IOStreams) int {
 	root.SetArgs(args)
 	root.SetIn(ios.In)
@@ -57,6 +59,10 @@ func run(ctx context.Context, root *cobra.Command, args []string, ios *iostreams
 	root.SetErr(ios.ErrOut)
 	err := root.ExecuteContext(ctx)
 	if err != nil && ctx.Err() != nil {
+		var code *cmdutil.ExitCodeError
+		if !errors.Is(err, context.Canceled) && !errors.As(err, &code) {
+			classify(err, ios)
+		}
 		fmt.Fprintln(ios.ErrOut, "cancelled")
 		return exitCancel
 	}
