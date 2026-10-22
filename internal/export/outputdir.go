@@ -63,8 +63,8 @@ var ErrForeignDir = errors.New("output directory is not one fisc may write into"
 
 type foreignDirError struct{ msg string }
 
-func (e *foreignDirError) Error() string        { return e.msg }
-func (e *foreignDirError) Is(target error) bool { return target == ErrForeignDir }
+func (e *foreignDirError) Error() string      { return e.msg }
+func (*foreignDirError) Is(target error) bool { return target == ErrForeignDir }
 
 func refuse(format string, a ...any) error {
 	return &foreignDirError{msg: fmt.Sprintf(format, a...)}
