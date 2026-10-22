@@ -256,17 +256,17 @@ func indexSite(t *testing.T) string {
 	return dir
 }
 
-// TestThePlanWritesTheMarkerFirstAndTheIndexLast holds Prepare's write order:
-// the marker before anything else, so a run that dies midway leaves a
-// directory --clean recognises, and the pages after every asset they fetch,
-// with index.html, the completed-site sentinel, last of all. The index is
-// declared first here so that writing the pages in declaration order fails.
+// TestThePlanWritesTheIndexLast holds Prepare's write order: the pages after
+// every asset they fetch, with index.html, the completed-site sentinel, last
+// of all. The index is declared first here so that writing the pages in
+// declaration order fails. The manifest is not in the plan: Write writes it
+// around the plan, listing it.
 //
 // Mutation: add the pages in declaration order without holding IndexPath back
 // and this goes red with "the last planned file is \"caveats.html\"".
-// Moving the marker's add below the verbatim assets goes red with "the first
-// planned file is \"app.js\"".
-func TestThePlanWritesTheMarkerFirstAndTheIndexLast(t *testing.T) {
+// Adding MarkerName to the plan goes red with "want the manifest left to
+// Write".
+func TestThePlanWritesTheIndexLast(t *testing.T) {
 	p, err := export.Prepare(export.Options{
 		Dir:         t.TempDir(),
 		Projections: map[string][]byte{"sankey": goldenSankey(t)},
@@ -283,11 +283,11 @@ func TestThePlanWritesTheMarkerFirstAndTheIndexLast(t *testing.T) {
 		t.Fatalf("Prepare: %v", err)
 	}
 	paths := export.PlannedPaths(p)
-	if len(paths) < 3 {
-		t.Fatalf("planned %q, want the marker, assets and pages", paths)
+	if len(paths) < 2 {
+		t.Fatalf("planned %q, want assets and pages", paths)
 	}
-	if paths[0] != export.MarkerName {
-		t.Errorf("the first planned file is %q, want %q", paths[0], export.MarkerName)
+	if slices.Contains(paths, export.MarkerName) {
+		t.Errorf("planned %q, want the manifest left to Write, which lists the plan in it", export.MarkerName)
 	}
 	if last := paths[len(paths)-1]; last != export.IndexPath {
 		t.Errorf("the last planned file is %q, want %q", last, export.IndexPath)
@@ -380,6 +380,131 @@ func TestWriteStopsOnACancelledContext(t *testing.T) {
 			t.Errorf("wrote %q (%d entries on disk) after cancellation", written, len(entries))
 		}
 	})
+}
+
+// manifestOf is the listing dir's manifest holds, failing the test where it
+// holds none a later export would accept.
+func manifestOf(t *testing.T, dir string) []string {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join(dir, export.MarkerName))
+	if err != nil {
+		t.Fatalf("read the manifest: %v", err)
+	}
+	if err := export.RefuseForeignDir(dir); err != nil {
+		t.Fatalf("the manifest %q is not one a later export accepts: %v", b, err)
+	}
+	lines := strings.Split(strings.TrimSuffix(string(b), "\n"), "\n")
+	return lines[1:]
+}
+
+// seedExport makes dir look like an earlier export's output: a manifest
+// listing listed, and a file at each of present.
+func seedExport(t *testing.T, dir string, listed, present []string) {
+	t.Helper()
+	for _, rel := range present {
+		path := filepath.Join(dir, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte("earlier export\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	body := export.ManifestHeader + "\n" + strings.Join(listed, "\n")
+	if len(listed) > 0 {
+		body += "\n"
+	}
+	if err := os.WriteFile(filepath.Join(dir, export.MarkerName), []byte(body), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// The manifest a finished export leaves lists exactly the files it wrote,
+// itself excluded, in the order a later export reads them.
+//
+// Mutation: write the final manifest from the previous listing only and this
+// goes red with a diff naming every planned path.
+func TestTheManifestListsWhatTheExportWrote(t *testing.T) {
+	dir, written := writeGolden(t)
+	want := slices.DeleteFunc(slices.Clone(written), func(rel string) bool { return rel == export.MarkerName })
+	if len(want) == len(written) {
+		t.Fatalf("wrote %q, want the manifest among them", written)
+	}
+	if diff := cmp.Diff(want, manifestOf(t, dir)); diff != "" {
+		t.Errorf("manifest (-written +listed):\n%s", diff)
+	}
+}
+
+// A write stopped after its first file leaves a manifest listing everything
+// the previous one did and everything this export plans, so whatever is on
+// disk is listed whichever export put it there.
+//
+// Mutation: write the first manifest from the plan alone and this goes red
+// with "old/gone.txt" missing from the listing.
+func TestAStoppedWriteLeavesAManifestOfBothExports(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "out")
+	seedExport(t, dir, []string{"old/gone.txt"}, []string{"old/gone.txt"})
+	p, err := export.Prepare(export.Options{
+		Dir:         dir,
+		Projections: map[string][]byte{"sankey": goldenSankey(t)},
+		Views:       spineOnly(),
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+	})
+	if err != nil {
+		t.Fatalf("Prepare: %v", err)
+	}
+	planned := export.PlannedPaths(p)
+	// Err is asked before the directory, before the manifest, and before each
+	// file: the fourth call stops the write after its first file.
+	_, err = p.Write(&cancelFromCall{Context: context.Background(), n: 4})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("got error %v, want it to wrap context.Canceled", err)
+	}
+	if _, serr := os.Stat(filepath.Join(dir, filepath.FromSlash(planned[0]))); serr != nil {
+		t.Fatalf("the first planned file was not written: %v", serr)
+	}
+	if _, serr := os.Stat(filepath.Join(dir, filepath.FromSlash(planned[1]))); serr == nil {
+		t.Fatal("the second planned file was written, so the write did not stop where this test needs")
+	}
+	want := append(slices.Clone(planned), "old/gone.txt")
+	slices.Sort(want)
+	if diff := cmp.Diff(want, manifestOf(t, dir)); diff != "" {
+		t.Errorf("manifest (-earlier and planned +listed):\n%s", diff)
+	}
+}
+
+// A write without --clean removes nothing, and its manifest keeps listing what
+// the earlier export wrote and is still there, so a later --clean can still
+// remove it. A listed path that is gone, or is now a directory, drops out.
+//
+// Mutation: write the final manifest from the plan alone and this goes red
+// with "old/gone.txt" missing from the listing; carry forward every earlier
+// entry and it goes red listing "vanished.txt".
+func TestAWriteKeepsListingWhatTheEarlierExportLeft(t *testing.T) {
+	dir := t.TempDir()
+	seedExport(t, dir, []string{"now-a-dir", "old/gone.txt", "vanished.txt"}, []string{"now-a-dir/inside.txt", "old/gone.txt"})
+	p, err := export.Prepare(export.Options{
+		Dir:         dir,
+		Projections: map[string][]byte{"sankey": goldenSankey(t)},
+		Views:       spineOnly(),
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+	})
+	if err != nil {
+		t.Fatalf("Prepare: %v", err)
+	}
+	if _, err := p.Write(context.Background()); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "old", "gone.txt")); err != nil {
+		t.Errorf("a write without --clean removed a file: %v", err)
+	}
+	want := append(export.PlannedPaths(p), "old/gone.txt")
+	slices.Sort(want)
+	if diff := cmp.Diff(want, manifestOf(t, dir)); diff != "" {
+		t.Errorf("manifest (-want +listed):\n%s", diff)
+	}
 }
 
 // TestTheIndexLeadsWithWhatTheCitySpends: the index's one headline figure is

@@ -209,8 +209,11 @@ projection cites is copied into the site, so both citation classes resolve
 without reaching a forge. Pass --source-browse-url to cite a browsable copy of
 the repository instead.
 
-It writes only into a directory that is missing, empty, or marked by an
-earlier export; any other directory is refused before anything is written.`,
+It writes only into a directory that is missing, empty, or carries the
+manifest an earlier export left (.fisc-export, listing every file it wrote);
+any other directory is refused before anything is written. A manifest an
+older fisc wrote is not one this fisc reads: remove that directory and export
+again.`,
 		Example: `  # Write the site to dist/ and read it in a browser
   fisc export
   python3 -m http.server -d dist 8000

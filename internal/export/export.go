@@ -943,13 +943,6 @@ func Prepare(o Options) (*plan, error) {
 		return nil
 	}
 
-	// The marker goes down first, before anything that can fail. A run that
-	// dies midway then leaves a directory that RefuseForeignDir recognises as
-	// ours; writing it last would dead-end the retry, because the debris would
-	// be a non-empty directory with no marker.
-	if err := add(MarkerName, []byte("fisc export\n")); err != nil {
-		return nil, err
-	}
 	for _, name := range verbatimAssets {
 		b, rerr := fs.ReadFile(o.assetTree(), name)
 		if rerr != nil {
@@ -1013,19 +1006,20 @@ func Prepare(o Options) (*plan, error) {
 }
 
 // Write puts a prepared Plan on disk, creating o.Dir if needed, and returns the
-// slash-separated paths it wrote, relative to that directory and sorted. It
-// checks ctx before creating o.Dir and before each file, and stops with an
-// error wrapping ctx.Err(), leaving the files already written in place.
+// slash-separated paths it wrote, relative to that directory and sorted, the
+// manifest included. It checks ctx before creating o.Dir and before each file,
+// and stops with an error wrapping ctx.Err(), leaving the files already
+// written in place.
+//
+// The manifest goes down first and last. First it lists every path the
+// previous manifest did and every path this plan writes, so a run stopped at
+// any point leaves a manifest covering everything an export may have put
+// there; last it lists this plan's paths and whatever the previous export
+// wrote that is still there, which is what a later --clean may remove. A
+// previous manifest that is missing or does not parse lists nothing.
 //
 // Everything that can be decided has been. What is left can fail only on I/O
-// or stop on a cancelled ctx, so a caller that has cleaned a directory is past
-// the point where anything it could have known in advance will stop it. A
-// cancellation after the clean leaves the directory empty or partly written;
-// the marker is the first file written, so --clean recognises what is left.
-//
-// It does not clean the directory: destroying files is a separate decision with
-// its own guard rail (SafeCleanDir), and burying it in a writer would
-// make every caller of Write a caller of RemoveAll.
+// or stop on a cancelled ctx.
 func (p *plan) Write(ctx context.Context) ([]string, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, fmt.Errorf("create output directory: %w", err)
@@ -1035,7 +1029,23 @@ func (p *plan) Write(ctx context.Context) ([]string, error) {
 	if err := os.MkdirAll(p.dir, 0o755); err != nil {
 		return nil, fmt.Errorf("create output directory: %w", err)
 	}
-	written := make([]string, 0, len(p.files))
+	prev, err := previousManifest(p.dir)
+	if err != nil {
+		return nil, err
+	}
+	planned := make([]string, len(p.files))
+	for i, f := range p.files {
+		planned[i] = f.Path
+	}
+	slices.Sort(planned)
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("write %q: %w", MarkerName, err)
+	}
+	if err := writeManifest(p.dir, union(prev, planned)); err != nil {
+		return nil, err
+	}
+	written := make([]string, 0, len(p.files)+1)
+	written = append(written, MarkerName)
 	for _, f := range p.files {
 		if err := ctx.Err(); err != nil {
 			return nil, fmt.Errorf("write %q: %w", f.Path, err)
@@ -1052,8 +1062,74 @@ func (p *plan) Write(ctx context.Context) ([]string, error) {
 		}
 		written = append(written, f.Path)
 	}
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("write %q: %w", MarkerName, err)
+	}
+	if err := writeManifest(p.dir, union(planned, leftover(p.dir, prev, planned))); err != nil {
+		return nil, err
+	}
 	sort.Strings(written)
 	return written, nil
+}
+
+// previousManifest is the listing dir's manifest holds, or nothing where it
+// holds none a reader can trust; only I/O fails it.
+func previousManifest(dir string) ([]string, error) {
+	paths, err := readManifest(dir)
+	var invalid *invalidManifestError
+	if errors.Is(err, errNoManifest) || errors.As(err, &invalid) {
+		return nil, nil
+	}
+	return paths, err
+}
+
+// leftover is what prev lists and planned does not that is still a file in
+// dir, reached through directories rather than symlinks: what an earlier
+// export wrote and this one leaves behind. Both listings are sorted.
+func leftover(dir string, prev, planned []string) []string {
+	var out []string
+	for _, rel := range prev {
+		if _, ok := slices.BinarySearch(planned, rel); ok {
+			continue
+		}
+		if fileWithin(dir, rel) {
+			out = append(out, rel)
+		}
+	}
+	return out
+}
+
+// fileWithin reports whether rel names something in dir other than a
+// directory, with every directory between them a real one: a symlinked
+// directory on the way would put the file outside dir.
+func fileWithin(dir, rel string) bool {
+	cur := dir
+	parts := strings.Split(rel, "/")
+	for i, part := range parts {
+		cur = filepath.Join(cur, part)
+		info, err := os.Lstat(cur)
+		if err != nil {
+			return false
+		}
+		// Lstat reports a symlink as no directory, so a symlinked directory
+		// on the way fails here.
+		if i == len(parts)-1 {
+			return !info.IsDir()
+		}
+		if !info.IsDir() {
+			return false
+		}
+	}
+	return false
+}
+
+// union is the sorted, duplicate-free merge of two sorted listings.
+func union(a, b []string) []string {
+	out := make([]string, 0, len(a)+len(b))
+	out = append(out, a...)
+	out = append(out, b...)
+	slices.Sort(out)
+	return slices.Compact(out)
 }
 
 // copyTree copies every file under root in fsys, preserving relative paths.

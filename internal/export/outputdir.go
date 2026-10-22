@@ -3,17 +3,26 @@ package export
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
+
+	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
-// MarkerName is the sentinel file `fisc export` writes at the very start
-// of a run to mark the output directory as fisc's, and therefore safe to
-// write into and to clean. It goes down first so a run that fails midway
-// still leaves a directory RefuseForeignDir accepts, keeping a partial export
-// recoverable with --clean.
+// MarkerName is the manifest `fisc export` keeps in the output directory: the
+// header line ManifestHeader, then the sorted, slash-separated relative path of
+// every file the export wrote, one per line, itself excluded. A directory is
+// fisc's only while it carries a valid one, and --clean removes nothing it
+// does not list.
 const MarkerName = ".fisc-export"
+
+// ManifestHeader is the manifest's first line. A marker with any other first
+// line -- the bare "fisc export" an older binary wrote included -- is not a
+// manifest, and the directory carrying it is not fisc's.
+const ManifestHeader = "fisc export manifest 1"
 
 // probePrefix names the directory WritableDir creates and removes. A process
 // that dies between the two strands it empty, so RefuseForeignDir disregards
@@ -71,14 +80,11 @@ func refuse(format string, a ...any) error {
 }
 
 // RefuseForeignDir refuses an output directory fisc does not own: one that
-// exists, holds anything but a stranded write probe, and carries no
-// MarkerName. Export writes only into a directory that is missing, empty, or
-// marked by an earlier export, because writing anywhere else leaves the
-// marker beside files fisc did not write, and a later --clean would take the
-// marker at its word and delete them --
-// `fisc export -o data` followed by `--clean` would remove the PDFs and the
-// extracted pages. An unreadable directory is refused rather than assumed
-// empty.
+// exists, holds anything but a stranded write probe, and carries no valid
+// MarkerName manifest. Export writes only into a directory that is missing,
+// empty, or carries an earlier export's manifest; writing anywhere else would
+// overwrite files fisc did not write. An unreadable directory or manifest is
+// an I/O error rather than a refusal, and neither is assumed empty.
 //
 // The marker is not the whole rule: a marked directory that also looks like
 // source (looksLikeSource) is refused too, because a marker can be stale --
@@ -108,18 +114,21 @@ func RefuseForeignDir(dir string) error {
 	if len(entries) == 0 {
 		return nil
 	}
-	marked := false
-	for _, e := range entries {
-		if e.Name() == MarkerName && e.Type().IsRegular() {
-			marked = true
-			break
-		}
-	}
-	if !marked {
+	_, err = readManifest(dir)
+	var invalid *invalidManifestError
+	switch {
+	case errors.Is(err, errNoManifest):
 		return refuse(
-			"output directory %q is not empty and carries no %s marker from an earlier export; refusing to write a site into it. "+
-				"If it is a site an export wrote before exports carried the marker, remove the directory or name a new one",
+			"output directory %q is not empty and carries no %s manifest from an earlier export; refusing to write a site into it. "+
+				"If an earlier export wrote it, remove the directory and export again, or name a new one",
 			dir, MarkerName)
+	case errors.As(err, &invalid):
+		return refuse(
+			"output directory %q carries a %s that is not a manifest this fisc reads (%s); refusing to write a site into it. "+
+				"If an earlier export wrote it, remove the directory and export again, or name a new one",
+			dir, MarkerName, invalid.reason)
+	case err != nil:
+		return err
 	}
 	if name, ok := looksLikeSource(entries); ok {
 		return refuse(
@@ -127,6 +136,100 @@ func RefuseForeignDir(dir string) error {
 			dir, MarkerName, name)
 	}
 	return nil
+}
+
+// errNoManifest is readManifest's answer for a directory with no MarkerName.
+var errNoManifest = errors.New("no export manifest")
+
+// invalidManifestError is readManifest's answer for a MarkerName that is
+// there and is not a manifest: the directory is then nobody's export.
+type invalidManifestError struct{ reason string }
+
+func (e *invalidManifestError) Error() string { return "invalid export manifest: " + e.reason }
+
+// readManifest returns the paths dir's manifest lists. It fails with
+// errNoManifest when there is none, with an *invalidManifestError when the
+// marker is not a regular file or does not parse, and with anything else
+// only on I/O.
+func readManifest(dir string) ([]string, error) {
+	name := filepath.Join(dir, MarkerName)
+	info, err := os.Lstat(name)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, errNoManifest
+	}
+	if err != nil {
+		return nil, fmt.Errorf("stat %q: %w", name, err)
+	}
+	if !info.Mode().IsRegular() {
+		return nil, &invalidManifestError{reason: "it is not a regular file"}
+	}
+	b, err := os.ReadFile(name) // #nosec G304 -- the marker in the output directory the caller named.
+	if err != nil {
+		return nil, fmt.Errorf("read %q: %w", name, err)
+	}
+	return parseManifest(b)
+}
+
+// parseManifest is the one reading of a manifest. Every entry must be a clean,
+// local, slash-separated path other than the marker, and the entries strictly
+// ascending, so no listing can name a file outside the directory or name one
+// twice.
+func parseManifest(b []byte) ([]string, error) {
+	s := string(b)
+	if !strings.HasSuffix(s, "\n") {
+		return nil, &invalidManifestError{reason: "it does not end in a newline"}
+	}
+	lines := strings.Split(strings.TrimSuffix(s, "\n"), "\n")
+	if lines[0] != ManifestHeader {
+		return nil, &invalidManifestError{reason: fmt.Sprintf("its first line is %q, not %q", lines[0], ManifestHeader)}
+	}
+	paths := lines[1:]
+	for i, rel := range paths {
+		if !manifestEntry(rel) {
+			return nil, &invalidManifestError{reason: fmt.Sprintf("line %d, %q, is not a clean relative path", i+2, rel)}
+		}
+		if i > 0 && rel <= paths[i-1] {
+			return nil, &invalidManifestError{reason: fmt.Sprintf("line %d, %q, is out of order or repeated", i+2, rel)}
+		}
+	}
+	return paths, nil
+}
+
+// manifestEntry reports whether rel may be listed: a path naming a file
+// strictly inside the directory, spelled one way only.
+func manifestEntry(rel string) bool {
+	return rel != "" && rel != "." && rel != MarkerName &&
+		!strings.ContainsAny(rel, "\\\x00\r") &&
+		path.Clean(rel) == rel && filepath.IsLocal(filepath.FromSlash(rel))
+}
+
+// encodeManifest is the manifest listing paths, which must be sorted.
+func encodeManifest(paths []string) []byte {
+	var b strings.Builder
+	b.WriteString(ManifestHeader)
+	b.WriteByte('\n')
+	for _, rel := range paths {
+		b.WriteString(rel)
+		b.WriteByte('\n')
+	}
+	return []byte(b.String())
+}
+
+// writeManifest replaces dir's manifest with one listing paths, atomically,
+// so a run stopped at any point leaves the old manifest or the new one. It
+// refuses a listing parseManifest would refuse, so no export can write a
+// manifest that dead-ends the next one.
+func writeManifest(dir string, paths []string) error {
+	b := encodeManifest(paths)
+	if _, err := parseManifest(b); err != nil {
+		return fmt.Errorf("write %s: %w", MarkerName, err)
+	}
+	// #nosec G306 -- it sits in a published web root beside files a server
+	// running as another user must read.
+	return cmdutil.WriteFile(filepath.Join(dir, MarkerName), 0o644, func(w io.Writer) error {
+		_, err := w.Write(b)
+		return err
+	})
 }
 
 // strandedProbe reports whether e is a WritableDir probe left behind empty.

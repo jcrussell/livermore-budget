@@ -2757,6 +2757,9 @@ func TestNewCmdExportRefusesADirectoryItDoesNotOwn(t *testing.T) {
 	dirs := map[string]map[string]string{
 		"yaml-and-subdir": {"sources.yaml": "documents: []\n", "pdf/keep.txt": "x"},
 		"source":          {"embed.go": "package site\n", "app.js": edit},
+		// The marker an older binary wrote is not a manifest, so the site
+		// beside it is nobody's export.
+		"older-marker": {export.MarkerName: "fisc export\n", "index.html": "<html>\n"},
 	}
 	for name, seed := range dirs {
 		for _, extra := range [][]string{nil, {"--clean"}} {
@@ -2787,8 +2790,8 @@ func TestNewCmdExportRefusesADirectoryItDoesNotOwn(t *testing.T) {
 				if !errors.As(err, &flagErr) {
 					t.Errorf("got %T, want a *cmdutil.FlagError so the runner exits 2", err)
 				}
-				if !strings.Contains(err.Error(), "carries no") {
-					t.Errorf("got error %q, want it to say the directory carries no marker", err)
+				if !strings.Contains(err.Error(), "carries no") && !strings.Contains(err.Error(), "is not a manifest") {
+					t.Errorf("got error %q, want it to say the directory carries no manifest", err)
 				}
 				if ran {
 					t.Error("the run function was reached")
@@ -2798,8 +2801,10 @@ func TestNewCmdExportRefusesADirectoryItDoesNotOwn(t *testing.T) {
 						t.Errorf("%s = %q, %v; want it left alone", rel, b, rerr)
 					}
 				}
-				if _, serr := os.Stat(filepath.Join(dir, export.MarkerName)); serr == nil {
-					t.Error("the marker was written")
+				if _, seeded := seed[export.MarkerName]; !seeded {
+					if _, serr := os.Stat(filepath.Join(dir, export.MarkerName)); serr == nil {
+						t.Error("the marker was written")
+					}
 				}
 			})
 		}
@@ -2846,11 +2851,7 @@ func TestNewCmdExportAcceptsADirectoryItOwns(t *testing.T) {
 		"empty":   func(t *testing.T) string { return t.TempDir() },
 		"marked": func(t *testing.T) string {
 			dir := t.TempDir()
-			for _, name := range []string{export.MarkerName, "index.html"} {
-				if err := os.WriteFile(filepath.Join(dir, name), []byte("x"), 0o600); err != nil {
-					t.Fatalf("seed %s: %v", name, err)
-				}
-			}
+			seedExport(t, dir, "index.html")
 			return dir
 		},
 	}
@@ -2902,21 +2903,21 @@ func TestExportRunCancelledBeforeTheCleanLeavesTheSite(t *testing.T) {
 	if err := os.MkdirAll(opts.OutputDir, 0o750); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	for _, name := range []string{export.MarkerName, "index.html"} {
-		if err := os.WriteFile(filepath.Join(opts.OutputDir, name), []byte("earlier export\n"), 0o600); err != nil {
-			t.Fatalf("seed %s: %v", name, err)
-		}
+	seedExport(t, opts.OutputDir, "index.html")
+	manifest, err := os.ReadFile(filepath.Join(opts.OutputDir, export.MarkerName))
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	err := exportRun(&lateCancel{Context: context.Background()}, opts)
+	err = exportRun(&lateCancel{Context: context.Background()}, opts)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("got %v, want it to wrap context.Canceled", err)
 	}
-	for _, name := range []string{export.MarkerName, "index.html"} {
+	for name, want := range map[string]string{export.MarkerName: string(manifest), "index.html": "earlier export\n"} {
 		b, rerr := os.ReadFile(filepath.Join(opts.OutputDir, name))
 		if rerr != nil {
 			t.Errorf("%s was removed: %v", name, rerr)
-		} else if string(b) != "earlier export\n" {
+		} else if string(b) != want {
 			t.Errorf("%s = %q, want the earlier export left alone", name, b)
 		}
 	}
@@ -2953,5 +2954,27 @@ func TestExportRunStopsWhenCancelled(t *testing.T) {
 	}
 	if out() != "" {
 		t.Errorf("got stdout %q, want no paths reported", out())
+	}
+}
+
+// seedExport makes dir an earlier export's output: each of files holding
+// "earlier export", and a manifest listing them.
+func seedExport(t *testing.T, dir string, files ...string) {
+	t.Helper()
+	listed := slices.Clone(files)
+	slices.Sort(listed)
+	body := export.ManifestHeader + "\n"
+	for _, rel := range listed {
+		body += rel + "\n"
+		path := filepath.Join(dir, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+			t.Fatalf("seed %s: %v", rel, err)
+		}
+		if err := os.WriteFile(path, []byte("earlier export\n"), 0o600); err != nil {
+			t.Fatalf("seed %s: %v", rel, err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(dir, export.MarkerName), []byte(body), 0o600); err != nil {
+		t.Fatalf("seed manifest: %v", err)
 	}
 }

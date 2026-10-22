@@ -13,8 +13,9 @@ this document — where the two disagree, the golden file is a bug.
 `<output>/fy<year>-<basis>.json`, one document per published column, so
 `fisc export -o dist` writes `dist/fy2026-adopted.json` and
 `fisc export -o /srv/www/budget` writes `/srv/www/budget/fy2026-adopted.json`.
-One code path, one layout. The output directory must be missing, empty, or an
-earlier export; any other is refused before anything is written.
+One code path, one layout. The output directory must be missing, empty, or
+carry the manifest an earlier export left in `.fisc-export`; any other is
+refused before anything is written.
 
 A projection stating a fiscal year and a basis is **a schedule inside its
 column**, keyed by the stem with its year suffix stripped, and is not published
