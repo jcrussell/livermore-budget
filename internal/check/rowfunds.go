@@ -281,13 +281,11 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 				}
 
 				for _, a := range []string{row.Label, row.LabelTail} {
-					if anchorHasVerbPhrase(a) {
-						phrased = true
-					}
 					entry, isFar, matched, lookupErr := resolveAnchorFund(s, a)
 					if !matched {
 						continue
 					}
+					phrased = true
 					want, end := near, "receives"
 					if isFar {
 						want, end = far, "pays"

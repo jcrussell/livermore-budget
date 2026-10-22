@@ -201,7 +201,7 @@ describe("a spending row is a transfer because its links say so", () => {
     await mod.boot(browser.window);
     await settle();
     const refusal = browser.document.getElementById("department-refusal");
-    assert.ok(refusal, "no refusal was said");
+    assert.ok(refusal !== null, "no refusal was said");
     assert.match(refusal.textContent, /could not be drawn: .*transfers\/out/);
   });
 
@@ -253,7 +253,7 @@ describe("the page over the pinned columns", () => {
   test("a hash naming no department or column is refused in words and the opening view shown", async () => {
     const { document, config } = await booted("#y=fy1999-adopted&d=department/nope");
     const refusal = document.getElementById("department-refusal");
-    assert.ok(refusal, "no refusal was said");
+    assert.ok(refusal !== null, "no refusal was said");
     assert.match(refusal.textContent, /fy1999-adopted/);
     assert.match(refusal.textContent, /department\/nope/);
     assert.equal(document.getElementById("year-select").value, config.years.at(-1).path.replace(/\.json$/, ""));
@@ -426,7 +426,7 @@ describe("a department row carries its links' inference, reduction and kind", ()
     const { document } = installBrowser({ html: departmentPage().html });
     mod.render(document, config, column, { year: "fy2026-adopted.json", department: works });
     const li = document.querySelector(`section.department-side[data-side="spending"] li.bar-row[data-id="${wages}"]`);
-    assert.ok(li, "no wages bar drawn");
+    assert.ok(li !== null, "no wages bar drawn");
     assert.deepEqual({ derived: li.classList.contains("derived"), label: li.querySelector(".bar-label").textContent },
       { derived: true, label: "Wages & Benefits (inferred)" });
     const inferred = [...document.querySelectorAll("section.department-side li.bar-row.derived")].map((x) => x.dataset.id);
@@ -443,7 +443,7 @@ describe("a department row carries its links' inference, reduction and kind", ()
     const f = mod.render(document, config, column, { year: "fy2026-adopted.json", department: works });
     const rows = [...document.querySelectorAll('section.department-side[data-side="spending"] li.bar-row')];
     const contra = rows.find((li) => li.dataset.id === wages);
-    assert.ok(contra, "no wages bar drawn");
+    assert.ok(contra !== undefined, "no wages bar drawn");
     assert.deepEqual({ reduction: contra.classList.contains("reduction"), share: contra.querySelector(".bar-share").textContent },
       { reduction: true, share: "" });
     const whole = f.spending.rows.filter((r) => !r.contra).reduce((a, r) => a + r.cents, 0);
@@ -882,7 +882,7 @@ describe("the opening view writes the hash only for a view it shows", () => {
       await mod.boot(browser.window);
       await settle();
       const refusal = browser.document.getElementById("department-refusal");
-      assert.ok(refusal, `${hash || "no hash"}: no refusal was said`);
+      assert.ok(refusal !== null, `${hash || "no hash"}: no refusal was said`);
       assert.match(refusal.textContent, /could not be drawn/);
       assert.equal(browser.window.location.hash, hash, `${hash || "no hash"}: the hash was rewritten`);
     }
