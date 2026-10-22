@@ -1028,7 +1028,8 @@ func Prepare(o Options) (*plan, error) {
 // plan's paths and whatever the earlier export wrote that is still there;
 // with clean those leftovers are removed before any file is written, then
 // every directory the removal leaves empty, and the last manifest lists this
-// plan's paths alone. Removing first is what lets a path that was a file in
+// plan's paths alone. Clean also removes the temp files an interrupted
+// manifest write strands at the top of o.Dir. Removing first is what lets a path that was a file in
 // the earlier export be a directory in this one, or the reverse. Nothing the
 // previous manifest does not list is ever removed, and a missing or
 // unparseable one lists nothing.
@@ -1072,10 +1073,15 @@ func (p *plan) Write(ctx context.Context, clean bool) ([]string, []string, error
 		if err := ctx.Err(); err != nil {
 			return nil, nil, fmt.Errorf("remove obsolete files: %w", err)
 		}
-		if err := removeListed(p.dir, left); err != nil {
+		temps, terr := strandedTemps(p.dir, prev, planned)
+		if terr != nil {
+			return nil, nil, terr
+		}
+		removed = union(left, temps)
+		if err := removeListed(p.dir, removed); err != nil {
 			return nil, nil, err
 		}
-		removed, left = left, nil
+		left = nil
 	}
 	written := make([]string, 0, len(p.files)+1)
 	written = append(written, MarkerName)
@@ -1106,7 +1112,8 @@ func (p *plan) Write(ctx context.Context, clean bool) ([]string, []string, error
 }
 
 // Obsolete is what Write with clean would remove, sorted: the files the
-// previous valid manifest lists that this plan does not write. It refuses
+// previous valid manifest lists that this plan does not write, and the
+// stranded manifest temp files. It refuses
 // what Write with clean would refuse, and it reads the directory and changes
 // nothing.
 func (p *plan) Obsolete() ([]string, error) {
@@ -1116,10 +1123,39 @@ func (p *plan) Obsolete() ([]string, error) {
 	}
 	planned := p.paths()
 	left := leftover(p.dir, prev, planned)
-	if err := screen(p.dir, prev, planned, left, true); err != nil {
+	if err = screen(p.dir, prev, planned, left, true); err != nil {
 		return nil, err
 	}
-	return left, nil
+	temps, err := strandedTemps(p.dir, prev, planned)
+	if err != nil {
+		return nil, err
+	}
+	return union(left, temps), nil
+}
+
+// strandedTemps is the temp files an interrupted writeManifest left at the
+// top of dir, sorted: regular files RefuseForeignDir disregards as stranded,
+// that neither the previous manifest lists nor this plan writes.
+func strandedTemps(dir string, prev, planned []string) ([]string, error) {
+	entries, err := os.ReadDir(dir)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read output dir: %w", err)
+	}
+	var out []string
+	for _, e := range entries {
+		if !strandedTemp(e) {
+			continue
+		}
+		_, listed := slices.BinarySearch(prev, e.Name())
+		_, plannedHere := slices.BinarySearch(planned, e.Name())
+		if !listed && !plannedHere {
+			out = append(out, e.Name())
+		}
+	}
+	return out, nil
 }
 
 // screen refuses a plan whose write would meet, on its way, anything the

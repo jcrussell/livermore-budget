@@ -6,13 +6,33 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
-// tempPattern is what an interrupted WriteFile leaves behind. It is a dotfile
-// so a half-written facts.jsonl is never picked up by a glob, and it is
-// spelled once here so a future sweep can recognize the residue rather than
-// hard-coding a second copy that can drift.
-const tempPattern = ".tmp-*"
+// TempPrefix begins the name of every temp file WriteFile makes, which
+// os.CreateTemp follows with a decimal random suffix; an interrupted
+// WriteFile leaves one behind. It is a dotfile so a half-written facts.jsonl
+// is never picked up by a glob, and names fisc so IsTempName recognises the
+// residue without claiming another tool's.
+const TempPrefix = ".fisc-tmp-"
+
+const tempPattern = TempPrefix + "*"
+
+// IsTempName reports whether name has the shape WriteFile gives its temp
+// files: TempPrefix, then the one to ten ASCII digits of the decimal uint32
+// os.CreateTemp puts in place of the "*".
+func IsTempName(name string) bool {
+	suffix, ok := strings.CutPrefix(name, TempPrefix)
+	if !ok || len(suffix) == 0 || len(suffix) > 10 {
+		return false
+	}
+	for _, c := range suffix {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
+}
 
 // dirPerm is the mode a created parent directory gets: owner and group, no
 // world bit, which is what gosec's G301 asks for and costs nothing here.

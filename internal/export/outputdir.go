@@ -80,7 +80,8 @@ func refuse(format string, a ...any) error {
 }
 
 // RefuseForeignDir refuses an output directory fisc does not own: one that
-// exists, holds anything but a stranded write probe, and carries no valid
+// exists, holds anything but a stranded write probe or manifest temp file,
+// and carries no valid
 // MarkerName manifest. Export writes only into a directory that is missing,
 // empty, or carries an earlier export's manifest; writing anywhere else would
 // overwrite files fisc did not write. An unreadable directory or manifest is
@@ -107,7 +108,7 @@ func RefuseForeignDir(dir string) error {
 	}
 	entries := all[:0:0]
 	for _, e := range all {
-		if !strandedProbe(dir, e) {
+		if !strandedProbe(dir, e) && !strandedTemp(e) {
 			entries = append(entries, e)
 		}
 	}
@@ -238,6 +239,13 @@ func strandedProbe(dir string, e os.DirEntry) bool {
 	}
 	inside, err := os.ReadDir(filepath.Join(dir, e.Name()))
 	return err == nil && len(inside) == 0
+}
+
+// strandedTemp reports whether e is a temp file writeManifest's
+// cmdutil.WriteFile left behind: a regular file named exactly as WriteFile
+// names them. Anything else of a similar name is not disregarded.
+func strandedTemp(e os.DirEntry) bool {
+	return e.Type().IsRegular() && cmdutil.IsTempName(e.Name())
 }
 
 // WritableDir reports whether path — or, if it does not exist yet, its

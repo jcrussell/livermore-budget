@@ -769,6 +769,48 @@ func TestWriteRefusesToWriteOverWhatNoManifestLists(t *testing.T) {
 	}
 }
 
+// --clean removes a manifest temp file an interrupted export stranded at the
+// top of the output directory, and Obsolete lists it; a plain write leaves
+// it, and nothing of another shape or in a subdirectory is touched.
+//
+// Mutation: leave strandedTemps out of the clean's removal and this goes red
+// with ".fisc-tmp-42 survived --clean" and a removed diff; leave it out of
+// Obsolete and it goes red with an Obsolete diff.
+func TestCleanRemovesAStrandedManifestTempFile(t *testing.T) {
+	dir := t.TempDir()
+	keep := []string{".fisc-tmp-x", "sub/.fisc-tmp-43"}
+	seedExport(t, dir, nil, append(slices.Clone(keep), ".fisc-tmp-42"))
+	p := planFiles(t, dir, nil)
+	obsolete, err := p.Obsolete()
+	if err != nil {
+		t.Fatalf("Obsolete: %v", err)
+	}
+	if diff := cmp.Diff([]string{".fisc-tmp-42"}, obsolete); diff != "" {
+		t.Errorf("Obsolete (-want +got):\n%s", diff)
+	}
+	if _, _, err = p.Write(context.Background(), false); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	if _, err = os.Stat(filepath.Join(dir, ".fisc-tmp-42")); err != nil {
+		t.Errorf("a write without --clean removed the temp file: %v", err)
+	}
+	_, removed, err := p.Write(context.Background(), true)
+	if err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	if diff := cmp.Diff([]string{".fisc-tmp-42"}, removed); diff != "" {
+		t.Errorf("removed (-want +got):\n%s", diff)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".fisc-tmp-42")); err == nil {
+		t.Error(".fisc-tmp-42 survived --clean")
+	}
+	for _, rel := range keep {
+		if _, err := os.Stat(filepath.Join(dir, filepath.FromSlash(rel))); err != nil {
+			t.Errorf("%s was removed: %v", rel, err)
+		}
+	}
+}
+
 // --clean over a directory with no manifest, or one that does not parse,
 // removes nothing: there is no record of what an export wrote there.
 //

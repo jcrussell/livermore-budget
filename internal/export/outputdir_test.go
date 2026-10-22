@@ -95,7 +95,10 @@ func TestWritableDir(t *testing.T) {
 // "unsorted" and "repeated" do; drop the hint and the refused cases go red
 // with "want it to say how to recover"; stop disregarding a stranded write
 // probe and "only a stale write probe" goes red with "want the directory
-// accepted".
+// accepted"; stop disregarding a stranded manifest temp file and "only a
+// stranded manifest temp file" goes red the same way; disregard every entry
+// cmdutil.IsTempName accepts whatever its type and "a directory named like a
+// temp file" goes red with "got nil error, want a refusal".
 func TestRefuseForeignDir(t *testing.T) {
 	const h = export.ManifestHeader + "\n"
 	noMarker := "carries no " + export.MarkerName
@@ -131,6 +134,11 @@ func TestRefuseForeignDir(t *testing.T) {
 		{name: "only a stale write probe", dirs: []string{".fisc-write-probe-123"}},
 		{name: "a partial export and a stale write probe", files: []string{export.MarkerName}, dirs: []string{".fisc-write-probe-123"}},
 		{name: "a partial export", files: []string{export.MarkerName}},
+		{name: "only a stranded manifest temp file", files: []string{".fisc-tmp-123"}},
+		{name: "a partial export and a stranded manifest temp file", files: []string{export.MarkerName, ".fisc-tmp-123"}},
+		{name: "a file named like a temp file but not shaped as one", files: []string{".fisc-tmp-abc"}, refuse: noMarker},
+		{name: "a directory named like a temp file", dirs: []string{".fisc-tmp-123"}, refuse: noMarker},
+		{name: "another tool's temp file", files: []string{".tmp-123"}, refuse: noMarker},
 		{name: "a finished export", files: []string{export.MarkerName, "index.html"}, dirs: []string{"data"}},
 		{name: "a manifest listing files", marker: h + "index.html\nvendor/d3.js\n", files: []string{"index.html"}},
 		// The directory fisc-3s5d.65 is about: an older marker over nothing

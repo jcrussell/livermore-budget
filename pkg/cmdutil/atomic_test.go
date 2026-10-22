@@ -7,7 +7,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -85,8 +84,8 @@ func TestWriteFileKeepsItsTempFileBesideTheTarget(t *testing.T) {
 		t.Fatalf("WriteFile: %v", err)
 	}
 
-	if len(duringWrite) != 1 || !strings.HasPrefix(duringWrite[0], ".tmp-") {
-		t.Errorf("during the write the directory held %v, want one .tmp- file", duringWrite)
+	if len(duringWrite) != 1 || !IsTempName(duringWrite[0]) {
+		t.Errorf("during the write the directory held %v, want one file IsTempName recognises", duringWrite)
 	}
 	// The target must not exist until the rename, or a reader can see a
 	// partial file.
@@ -143,5 +142,28 @@ func TestWriteFileWithAnUnwritableParent(t *testing.T) {
 	}
 	if called {
 		t.Error("the writer ran although the directory could not be created")
+	}
+}
+
+// IsTempName recognises exactly the names os.CreateTemp makes of tempPattern
+// and nothing else beginning with TempPrefix, since a sweep acting on it
+// removes the file.
+//
+// Mutation: accept any suffix after TempPrefix and the refused names
+// ".fisc-tmp-", ".fisc-tmp-12a" and ".fisc-tmp-12345678901" go red.
+func TestIsTempName(t *testing.T) {
+	for name, want := range map[string]bool{
+		".fisc-tmp-0":           true,
+		".fisc-tmp-4294967295":  true,
+		".fisc-tmp-":            false,
+		".fisc-tmp-12a":         false,
+		".fisc-tmp-12345678901": false,
+		".fisc-tmp--1":          false,
+		".tmp-123":              false,
+		"x.fisc-tmp-123":        false,
+	} {
+		if got := IsTempName(name); got != want {
+			t.Errorf("IsTempName(%q) = %v, want %v", name, got, want)
+		}
 	}
 }
