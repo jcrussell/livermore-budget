@@ -109,6 +109,29 @@ func TestAContestedTotalWithAnEmptyClauseIsAnError(t *testing.T) {
 	}
 }
 
+// Of two blank clauses the refusal names the one declared first, every run:
+// a refusal that named whichever a map yielded would read differently from
+// one run to the next. Row is declared before Kept.
+//
+// Mutation: iterate the clauses as a map again and this goes red with
+// "want it to name Row" on some of its twenty runs.
+func TestAContestedTotalWithTwoEmptyClausesNamesTheFirst(t *testing.T) {
+	was := contestedTotals
+	t.Cleanup(func() { contestedTotals = was })
+	contestedTotals = slices.Clone(was)
+	contestedTotals[0].Kept = ""
+	contestedTotals[0].Row = ""
+	for range 20 {
+		_, err := resolveContestedTotals()
+		if err == nil {
+			t.Fatal("got nil error, want an empty clause refused")
+		}
+		if !strings.Contains(err.Error(), "declares no Row") {
+			t.Fatalf("got %v, want it to name Row", err)
+		}
+	}
+}
+
 // TestAContestedTotalNamingNoExceptionIsAnError pins that a declaration naming
 // an exception structure no longer carries refuses with a message, which
 // verify records as a projection that did not build, rather than a panic.

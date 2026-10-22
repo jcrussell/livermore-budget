@@ -1301,13 +1301,15 @@ func resolveContestedTotals() ([]contestedTotal, error) {
 		}
 		// Each prose field is a clause of the caveat's sentence, and an empty
 		// one publishes the sentence with a hole in it -- "settled rather than
-		// open: , and every figure" -- which nothing downstream reads.
-		for name, v := range map[string]string{
-			"SpinePages": c.SpinePages, "Row": c.Row, "PrintedBy": c.PrintedBy,
-			"ImpliedBy": c.ImpliedBy, "Kept": c.Kept,
+		// open: , and every figure" -- which nothing downstream reads. The
+		// fields are a slice in declaration order, so of two blank ones the
+		// refusal names the same one every run.
+		for _, field := range []struct{ name, v string }{
+			{"SpinePages", c.SpinePages}, {"Row", c.Row}, {"PrintedBy", c.PrintedBy},
+			{"ImpliedBy", c.ImpliedBy}, {"Kept", c.Kept},
 		} {
-			if strings.TrimSpace(v) == "" {
-				return nil, fmt.Errorf("project: contested total %q declares no %s, a clause its caveat prints", c.Exception, name)
+			if strings.TrimSpace(field.v) == "" {
+				return nil, fmt.Errorf("project: contested total %q declares no %s, a clause its caveat prints", c.Exception, field.name)
 			}
 		}
 		p := e.Cells[0]
