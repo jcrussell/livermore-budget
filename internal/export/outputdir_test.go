@@ -234,11 +234,6 @@ func TestRefuseForeignDir(t *testing.T) {
 	}
 }
 
-// A directory named like a write probe that holds something is not a
-// stranded probe, and does not make an unmarked directory look empty.
-//
-// Mutation: drop strandedProbe's emptiness test and this goes red with "got
-// nil error, want a refusal".
 // A refusal matches ErrForeignDir; failing to read the directory does not.
 //
 // Mutation: return a plain fmt.Errorf from the unmarked-directory arm and the
@@ -268,6 +263,11 @@ func TestRefuseForeignDirTellsARefusalFromAnIOError(t *testing.T) {
 	}
 }
 
+// A directory named like a write probe that holds something is not a
+// stranded probe, and does not make an unmarked directory look empty.
+//
+// Mutation: drop strandedProbe's emptiness test and this goes red with "got
+// nil error, want a refusal".
 func TestRefuseForeignDirKeepsAProbeNamedDirectoryThatHoldsAFile(t *testing.T) {
 	dir := t.TempDir()
 	probe := filepath.Join(dir, ".fisc-write-probe-123")

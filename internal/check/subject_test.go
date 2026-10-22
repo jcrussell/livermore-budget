@@ -1103,9 +1103,9 @@ func TestAPublishedDocumentShortAColumnIsReported(t *testing.T) {
 // half: over the COMMITTED corpus, every declared entry must still describe a
 // column that is published and a figure that is drawn.
 //
-// fisc-av0w decided to keep publishing p0067's figure, so the entry stands:
-// the book still prints two figures for this total, and the caveat and its
-// exception still apply. This holds that every entry still says so of the
+// The corpus publishes p0067's figure for the contested total (fisc-av0w), so
+// the entry stands: the book prints two figures for this total, and the
+// caveat and its exception apply. This holds that every entry still says so of the
 // committed corpus -- its column is published, the graph draws the figure it
 // declares, and that figure differs from the one printed elsewhere -- and the
 // day the corpus stops drawing an entry's figure, this goes red and names the
