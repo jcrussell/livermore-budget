@@ -26,28 +26,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/jcrussell/livermore-budget/internal/beadid"
 )
-
-// idPattern matches the project's own ids. byobPattern matches byob's, which
-// are rows of the same graph and so must resolve too. No example id is spelled
-// in this file: it would make the command report itself.
-//
-// THE PATTERN ALONE IS NOT ENOUGH, because `fisc-` is an overloaded prefix in
-// this tree and not a namespace: fact ids are fisc-f-<hash>, series ids are
-// fisc-s-<hash>, the export marker file is .fisc-export and a scratch directory
-// is .fisc-write-probe-*. Every one of those begins with something a bead id
-// could be. What tells them apart is the SECOND hyphen and the leading dot, so
-// the boundaries are applied in citedIn rather than here; RE2 has no lookaround.
-var idPattern = regexp.MustCompile(`fisc-[a-z0-9]+(?:\.[0-9]+)*`)
-
-// byobPattern takes the whole hyphenated slug, which is one id, and cannot end
-// on a hyphen, so an id written before an em dash stops at the slug. citedIn's
-// trailing-hyphen rule therefore does not apply to it.
-var byobPattern = regexp.MustCompile(`byob-[a-z0-9]+(?:-[a-z0-9]+)*(?:\.[0-9]+)*`)
 
 // exempt names files whose fisc- literals are fixtures rather than claims about
 // the tracker, with the reason each is here. It is a declaration and not a
@@ -58,8 +42,9 @@ var byobPattern = regexp.MustCompile(`byob-[a-z0-9]+(?:-[a-z0-9]+)*(?:\.[0-9]+)*
 // rather than against the walk, because a run over a narrower path set is a
 // narrower run and not a stale declaration.
 var exempt = map[string]string{
-	"tools/beadrefs/main_test.go":  "its fixtures are ids that must NOT resolve, so a test for this command cannot be written out of real ones",
-	"tools/beadcheck/main_test.go": "its fixtures are synthetic bead records, and building them out of real ids would tie a prose check to whichever beads happen to exist",
+	"tools/beadrefs/main_test.go":    "its fixtures are ids that must NOT resolve, so a test for this command cannot be written out of real ones",
+	"internal/beadid/beadid_test.go": "its fixtures are id shapes, most of which name no bead, so a test of the matcher cannot be written out of real ones",
+	"tools/beadcheck/main_test.go":   "its fixtures are synthetic bead records, and building them out of real ids would tie a prose check to whichever beads happen to exist",
 }
 
 // exemptIDs names tokens that are shaped like a bead id and are not one, with
@@ -97,11 +82,11 @@ func main() {
 			fmt.Fprintf(os.Stderr, "beadrefs: %s is a real bead the citation scanner cannot see\n", id)
 		}
 		fmt.Fprintln(os.Stderr, "")
-		fmt.Fprintln(os.Stderr, "beadrefs: the ids above are in the export and outside what citedIn")
+		fmt.Fprintln(os.Stderr, "beadrefs: the ids above are in the export and outside what beadid.Cited")
 		fmt.Fprintln(os.Stderr, "  recognises, so a citation to one would be dropped without a report")
 		fmt.Fprintln(os.Stderr, "  -- the dead-pointer failure this gate exists to prevent, inside the")
 		fmt.Fprintln(os.Stderr, "  gate. The ids are not wrong; bd mints them and this repo does not.")
-		fmt.Fprintln(os.Stderr, "  Teach idPattern and citedIn the new shape without unteaching the")
+		fmt.Fprintln(os.Stderr, "  Teach internal/beadid the new shape without unteaching the")
 		fmt.Fprintln(os.Stderr, "  boundaries: today the second hyphen is what tells a fact id")
 		fmt.Fprintln(os.Stderr, "  (fisc-f-<hash>) from a bead id.")
 		os.Exit(2)
@@ -250,9 +235,9 @@ func knownIDs(path string) (map[string]bool, error) {
 	return known, nil
 }
 
-// unrecognisable returns the export ids citedIn could never return, sorted so a
+// unrecognisable returns the export ids beadid.Cited could never return, sorted so a
 // failure reads the same way twice. bd chooses what a bead id looks like and
-// this repo does not, and citedIn refuses a match that runs into a hyphen
+// this repo does not, and beadid.Cited refuses a match that runs into a hyphen
 // because the second hyphen is what tells a fact id from a bead id. An export
 // id on the wrong side of that boundary is not invalid -- it is INVISIBLE, and
 // every citation to it would be dropped with no report, which is this command's
@@ -261,14 +246,14 @@ func knownIDs(path string) (map[string]bool, error) {
 // citation nothing can check; the hyphen refusal is safe to keep because this
 // is watching it.
 //
-// The probe is citedIn itself, on the id alone on a line, rather than a second
+// The probe is beadid.Cited itself, on the id alone on a line, rather than a second
 // pattern: a parallel regex would be a copy of the boundaries that nothing
-// keeps in step. Recognised means recognised WHOLE -- an id citedIn returns a
+// keeps in step. Recognised means recognised WHOLE -- an id beadid.Cited returns a
 // prefix of is as unseeable as one it drops.
 func unrecognisable(known map[string]bool) []string {
 	var bad []string
 	for id := range known {
-		if got := citedIn(id); len(got) != 1 || got[0] != id {
+		if got := beadid.Cited(id); len(got) != 1 || got[0] != id {
 			bad = append(bad, id)
 		}
 	}
@@ -322,7 +307,7 @@ func refsUnder(paths []string) ([]ref, map[string]bool, error) {
 // .json IS IN THE LIST, which is not obvious: it is mostly extracted geometry,
 // where a fisc- token would be a value. But testdata/sankey.golden.json carries
 // a prose note citing a bead, so "a golden holds values and not claims" was
-// simply false, and the citedIn boundaries already reject the one value shape
+// simply false, and the beadid.Cited boundaries already reject the one value shape
 // that occurs there (fact ids, fisc-f-<hash>).
 //
 // .txt IS NOT, and that is the same judgement going the other way: the page
@@ -348,7 +333,7 @@ func refsIn(path string) ([]ref, error) {
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 0, 64*1024), 8*1024*1024)
 	for n := 1; sc.Scan(); n++ {
-		for _, id := range citedIn(sc.Text()) {
+		for _, id := range beadid.Cited(sc.Text()) {
 			refs = append(refs, ref{id: id, file: path, line: n})
 		}
 	}
@@ -356,42 +341,6 @@ func refsIn(path string) ([]ref, error) {
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
 	return refs, nil
-}
-
-// citedIn returns the bead ids one line CITES, which is not every fisc- token it
-// contains. A match is a citation only when nothing runs into it on either side:
-// a preceding dot or hyphen or letter makes it part of a longer name (.fisc-export),
-// and a following hyphen or letter makes it a prefix of one (fisc-f-0ba7b00dfaf7).
-// A following dot is left alone -- the pattern has already taken any dotted child,
-// so what remains is the period ending a sentence.
-func citedIn(line string) []string {
-	var ids []string
-	for _, loc := range idPattern.FindAllStringIndex(line, -1) {
-		if loc[0] > 0 && runsInto(line[loc[0]-1]) {
-			continue
-		}
-		if loc[1] < len(line) && (line[loc[1]] == '-' || isWordByte(line[loc[1]])) {
-			continue
-		}
-		ids = append(ids, line[loc[0]:loc[1]])
-	}
-	// No trailing-hyphen rule here; see byobPattern.
-	for _, loc := range byobPattern.FindAllStringIndex(line, -1) {
-		if loc[0] > 0 && runsInto(line[loc[0]-1]) {
-			continue
-		}
-		if loc[1] < len(line) && isWordByte(line[loc[1]]) {
-			continue
-		}
-		ids = append(ids, line[loc[0]:loc[1]])
-	}
-	return ids
-}
-
-func runsInto(b byte) bool { return b == '.' || b == '-' || isWordByte(b) }
-
-func isWordByte(b byte) bool {
-	return b == '_' || (b >= '0' && b <= '9') || (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z')
 }
 
 // resolve reports the citations that name nothing, sorted by file and line so a
@@ -437,7 +386,7 @@ func bdKnows(ctx context.Context) func(string) bool {
 	return func(id string) bool {
 		ask, cancel := context.WithTimeout(ctx, bdTimeout)
 		defer cancel()
-		out, err := exec.CommandContext(ask, path, "show", id, "--json").Output() // #nosec G204 -- id matched idPattern.
+		out, err := exec.CommandContext(ask, path, "show", id, "--json").Output() // #nosec G204 -- id is one beadid.Cited returned.
 		if err != nil {
 			return false
 		}

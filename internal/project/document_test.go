@@ -76,20 +76,35 @@ func TestValidateCaveatsRefusesEveryShapeThatWouldRender(t *testing.T) {
 			[]Caveat{{ID: "a", Summary: "Neither block is published (fisc-ig9h).", Text: "t", AppliesTo: []string{}}},
 			nodes, `prints the tracker id "fisc-ig9h"`,
 		},
-		// Mutation: drop the dotted tail from trackerID and this goes red
-		// naming "fisc-yj4w" rather than the child.
+		// Mutation: drop the dotted tail from beadid's fisc pattern and this
+		// goes red naming "fisc-yj4w" rather than the child.
 		{
 			"a dotted child's tracker id",
 			[]Caveat{{ID: "a", Summary: "s", Text: "That is settled (fisc-yj4w.35.10).", AppliesTo: []string{}}},
 			nodes, `prints the tracker id "fisc-yj4w.35.10"`,
 		},
+		// A byob decision is a row of the same tracker, and a reader can no
+		// more open it.
+		//
+		// Mutation: drop beadid.Cited's byob arm and both go red with
+		// "ValidateCaveats = nil".
+		{
+			"a byob id",
+			[]Caveat{{ID: "a", Summary: "s", Text: "The layout follows byob-layout.1.", AppliesTo: []string{}}},
+			nodes, `prints the tracker id "byob-layout.1"`,
+		},
+		{
+			"a hyphenated byob id",
+			[]Caveat{{ID: "a", Summary: "Shaped by byob-command-shape.1, as decided.", Text: "t", AppliesTo: []string{}}},
+			nodes, `prints the tracker id "byob-command-shape.1"`,
+		},
 		// A fact id, a series id and the export marker begin with what a bead
 		// id could be, and are not one: a caveat may cite the fact it is about.
 		//
-		// Mutations: drop trackerIDIn's following-byte check and the fact and
-		// series cases go red naming the id's head as a tracker id; drop its
-		// preceding-byte check and the marker case goes red naming the marker
-		// without its dot.
+		// Mutations: drop beadid.Cited's following-byte check on the fisc arm
+		// and the fact and series cases go red naming the id's head as a
+		// tracker id; drop its preceding-byte check and the marker case goes
+		// red naming the marker without its dot.
 		{
 			"a fact id",
 			[]Caveat{{ID: "a", Summary: "s", Text: "Printed as fisc-f-0ba7b00dfaf7.", AppliesTo: []string{}}},

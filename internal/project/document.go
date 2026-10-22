@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"sort"
 
+	"github.com/jcrussell/livermore-budget/internal/beadid"
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/schema"
@@ -225,8 +225,8 @@ func validateCaveats(caveats []Caveat, nodes map[string]struct{}) error {
 			return fmt.Errorf("caveat %q has no text, so its summary summarises nothing", c.ID)
 		}
 		for _, prose := range []string{c.Summary, c.Text} {
-			if id := trackerIDIn(prose); id != "" {
-				return fmt.Errorf("caveat %q prints the tracker id %q; a reader cannot open the tracker, so say what it decided instead", c.ID, id)
+			if ids := beadid.Cited(prose); len(ids) > 0 {
+				return fmt.Errorf("caveat %q prints the tracker id %q; a reader cannot open the tracker, so say what it decided instead", c.ID, ids[0])
 			}
 		}
 		if _, dup := seen[c.ID]; dup {
@@ -243,35 +243,6 @@ func validateCaveats(caveats []Caveat, nodes map[string]struct{}) error {
 		}
 	}
 	return nil
-}
-
-// trackerID matches a bead id, which names work in a tracker no reader of
-// the site can open, and also the head of names that are not one: a fact id
-// (fisc-f-<hash>), a series id (fisc-s-<hash>) and the export marker
-// (.fisc-export). trackerIDIn applies the boundaries that tell them apart --
-// the same ones tools/beadrefs applies -- because RE2 has no lookaround.
-var trackerID = regexp.MustCompile(`fisc-[a-z0-9]+(?:\.[0-9]+)*`)
-
-// trackerIDIn returns the first bead id prose cites, or "". A match preceded
-// by a dot, a hyphen or a word byte is part of a longer name, and one followed
-// by a hyphen or a word byte is the prefix of one; a following dot is the
-// period ending a sentence, since the pattern has already taken any dotted
-// child.
-func trackerIDIn(prose string) string {
-	for _, loc := range trackerID.FindAllStringIndex(prose, -1) {
-		if loc[0] > 0 && (prose[loc[0]-1] == '.' || prose[loc[0]-1] == '-' || isWordByte(prose[loc[0]-1])) {
-			continue
-		}
-		if loc[1] < len(prose) && (prose[loc[1]] == '-' || isWordByte(prose[loc[1]])) {
-			continue
-		}
-		return prose[loc[0]:loc[1]]
-	}
-	return ""
-}
-
-func isWordByte(b byte) bool {
-	return b == '_' || (b >= '0' && b <= '9') || (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z')
 }
 
 // nodeIDs is the set [ValidateCaveats] checks AppliesTo against.
