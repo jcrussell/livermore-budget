@@ -20,6 +20,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/export"
+	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/schema"
 	"github.com/jcrussell/livermore-budget/site"
@@ -455,9 +456,10 @@ func TestAStoppedWriteLeavesAManifestOfBothExports(t *testing.T) {
 		t.Fatalf("Prepare: %v", err)
 	}
 	planned := export.PlannedPaths(p)
-	// Err is asked before the directory, before the manifest, and before each
-	// file: the fourth call stops the write after its first file.
-	_, _, err = p.Write(&cancelFromCall{Context: context.Background(), n: 4}, true)
+	// Err is asked before the directory, before the manifest, before the
+	// clean's removal, and before each file: the fifth call stops the write
+	// after its first file.
+	_, _, err = p.Write(&cancelFromCall{Context: context.Background(), n: 5}, true)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("got error %v, want it to wrap context.Canceled", err)
 	}
@@ -571,6 +573,91 @@ func TestCleanRemovesOnlyWhatTheEarlierExportListed(t *testing.T) {
 	slices.Sort(planned)
 	if diff := cmp.Diff(planned, manifestOf(t, dir)); diff != "" {
 		t.Errorf("manifest (-planned +listed):\n%s", diff)
+	}
+}
+
+// planFiles prepares the golden site into dir, shipping files beside it.
+func planFiles(t *testing.T, dir string, files map[string][]byte) interface {
+	Write(context.Context, bool) ([]string, []string, error)
+	Obsolete() ([]string, error)
+} {
+	t.Helper()
+	p, err := export.Prepare(export.Options{
+		Dir:         dir,
+		Projections: map[string][]byte{"sankey": goldenSankey(t)},
+		Views:       spineOnly(),
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+		Files:       files,
+	})
+	if err != nil {
+		t.Fatalf("Prepare: %v", err)
+	}
+	return p
+}
+
+// A path the earlier export wrote as a file and this one needs as a
+// directory, or the reverse, converges under --clean, which removes the
+// earlier export's leftovers before it writes anything. Without --clean the
+// write is refused before anything is written, naming --clean, since only
+// --clean may remove what is in the way.
+//
+// Mutation: remove the leftovers after the write loop rather than before it
+// and both "with --clean" cases go red with "not a directory" and "is a
+// directory"; drop the refusal without clean and both "without --clean" cases
+// go red with an I/O error that does not match ErrForeignDir.
+func TestCleanLetsAPathTurnBetweenFileAndDirectory(t *testing.T) {
+	cases := map[string]struct {
+		earlier, now string
+	}{
+		"file to directory": {earlier: "facts", now: "facts/d/p0001.jsonl"},
+		"directory to file": {earlier: "facts/d/p0001.jsonl", now: "facts"},
+	}
+	for name, c := range cases {
+		t.Run(name+" with --clean", func(t *testing.T) {
+			dir := t.TempDir()
+			seedExport(t, dir, []string{c.earlier}, []string{c.earlier})
+			p := planFiles(t, dir, map[string][]byte{c.now: []byte("now\n")})
+			_, removed, err := p.Write(context.Background(), true)
+			if err != nil {
+				t.Fatalf("Write: %v", err)
+			}
+			if diff := cmp.Diff([]string{c.earlier}, removed); diff != "" {
+				t.Errorf("removed (-want +got):\n%s", diff)
+			}
+			if b, rerr := os.ReadFile(filepath.Join(dir, filepath.FromSlash(c.now))); rerr != nil || string(b) != "now\n" {
+				t.Errorf("%s holds %q, %v; want this export's bytes", c.now, b, rerr)
+			}
+			if slices.Contains(manifestOf(t, dir), c.earlier) {
+				t.Errorf("the manifest still lists %s", c.earlier)
+			}
+		})
+		t.Run(name+" without --clean", func(t *testing.T) {
+			dir := t.TempDir()
+			seedExport(t, dir, []string{c.earlier}, []string{c.earlier})
+			before, rerr := os.ReadFile(filepath.Join(dir, export.MarkerName))
+			if rerr != nil {
+				t.Fatal(rerr)
+			}
+			p := planFiles(t, dir, map[string][]byte{c.now: []byte("now\n")})
+			_, _, err := p.Write(context.Background(), false)
+			if !errors.Is(err, export.ErrForeignDir) {
+				t.Fatalf("got error %v, want a refusal matching ErrForeignDir", err)
+			}
+			if !strings.Contains(err.Error(), strconv.Quote(c.now)) {
+				t.Errorf("the refusal %q does not name %s", err, c.now)
+			}
+			var h *hint.ErrHint
+			if !errors.As(err, &h) || !strings.Contains(h.Hint, "--clean") {
+				t.Errorf("the refusal %q carries no hint naming --clean", err)
+			}
+			if b, serr := os.ReadFile(filepath.Join(dir, filepath.FromSlash(c.earlier))); serr != nil || string(b) != "earlier export\n" {
+				t.Errorf("%s was touched: %q, %v", c.earlier, b, serr)
+			}
+			if after, _ := os.ReadFile(filepath.Join(dir, export.MarkerName)); !bytes.Equal(before, after) {
+				t.Errorf("the manifest was rewritten before the refusal: %q", after)
+			}
+		})
 	}
 }
 

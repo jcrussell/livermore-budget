@@ -979,6 +979,45 @@ func TestExportRunCleanRemovesWhatTheEarlierExportWrote(t *testing.T) {
 	}
 }
 
+// A path the earlier export wrote as a file and this one writes under is a
+// usage error without --clean, exiting 2 with a hint naming --clean, and
+// --clean converges.
+//
+// Mutation: return Write's error unchanged and this goes red with "got
+// <error>, want a FlagError".
+func TestExportRunNeedsCleanWhereAnEarlierFileIsInTheWay(t *testing.T) {
+	opts, _, _, _ := testOptions(t)
+	build := opts.Build
+	withFile := func(rel string) builder {
+		return func(root string) (result, error) {
+			r, err := build(root)
+			r.Files = map[string][]byte{rel: []byte("{}\n")}
+			return r, err
+		}
+	}
+	opts.Build = withFile("facts")
+	if err := exportRun(context.Background(), opts); err != nil {
+		t.Fatalf("first export: %v", err)
+	}
+	opts.Build = withFile("facts/d/p0001.jsonl")
+	err := exportRun(context.Background(), opts)
+	var flagErr *cmdutil.FlagError
+	if !errors.As(err, &flagErr) {
+		t.Fatalf("got %v, want a FlagError", err)
+	}
+	var h *hint.ErrHint
+	if !errors.As(err, &h) || !strings.Contains(h.Hint, "--clean") {
+		t.Errorf("the refusal %q carries no hint naming --clean", err)
+	}
+	opts.Clean = true
+	if err := exportRun(context.Background(), opts); err != nil {
+		t.Fatalf("--clean: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(opts.OutputDir, "facts", "d", "p0001.jsonl")); err != nil {
+		t.Errorf("--clean did not write the file: %v", err)
+	}
+}
+
 // treeOf is every entry under dir, its mode, modification time and, for a
 // file, its bytes: what a run that writes nothing leaves exactly as it was.
 func treeOf(t *testing.T, dir string) map[string]string {

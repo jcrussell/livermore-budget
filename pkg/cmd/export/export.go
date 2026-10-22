@@ -386,7 +386,7 @@ func exportRun(ctx context.Context, o *Options) error {
 	if o.DryRun {
 		obsolete, oerr := plan.Obsolete()
 		if oerr != nil {
-			return oerr
+			return usage(oerr)
 		}
 		for _, rel := range obsolete {
 			fmt.Fprintln(o.IO.Out, filepath.Join(o.OutputDir, filepath.FromSlash(rel)))
@@ -397,7 +397,7 @@ func exportRun(ctx context.Context, o *Options) error {
 
 	written, removed, err := plan.Write(ctx, o.Clean)
 	if err != nil {
-		return err
+		return usage(err)
 	}
 
 	// The paths are the command's data: they are what a caller pipes into a
@@ -422,4 +422,13 @@ func exportRun(ctx context.Context, o *Options) error {
 	fmt.Fprintf(o.IO.ErrOut, "the page fetches its data, which browsers block on file:// URLs — serve it over HTTP:\n  python3 -m http.server -d %s 8000\n", display)
 
 	return nil
+}
+
+// usage makes a refusal of the output directory a usage error wherever it is
+// found, as Validate does with the ones it finds, so it exits 2.
+func usage(err error) error {
+	if errors.Is(err, export.ErrForeignDir) {
+		return &cmdutil.FlagError{Err: err}
+	}
+	return err
 }

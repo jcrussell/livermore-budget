@@ -43,6 +43,7 @@ import (
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/corpus"
+	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/project"
 
 	"github.com/jcrussell/livermore-budget/site"
@@ -1017,13 +1018,19 @@ func Prepare(o Options) (*plan, error) {
 // any point leaves a manifest covering everything an export may have put
 // there. Without clean nothing is removed, and the last manifest lists this
 // plan's paths and whatever the earlier export wrote that is still there;
-// with clean those leftovers are removed first, then every directory the
-// removal leaves empty, and the last manifest lists this plan's paths alone.
-// Nothing the previous manifest does not list is ever removed, and a missing
-// or unparseable one lists nothing.
+// with clean those leftovers are removed before any file is written, then
+// every directory the removal leaves empty, and the last manifest lists this
+// plan's paths alone. Removing first is what lets a path that was a file in
+// the earlier export be a directory in this one, or the reverse. Nothing the
+// previous manifest does not list is ever removed, and a missing or
+// unparseable one lists nothing.
 //
-// Everything that can be decided has been. What is left can fail only on I/O
-// or stop on a cancelled ctx.
+// Before writing anything it refuses, with an error matching ErrForeignDir,
+// a plan whose write would meet a leftover of the earlier export on its way
+// when clean is not set, since only clean may remove one.
+//
+// Everything else that can be decided has been. What is left can fail only on
+// I/O or stop on a cancelled ctx.
 func (p *plan) Write(ctx context.Context, clean bool) ([]string, []string, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, nil, fmt.Errorf("create output directory: %w", err)
@@ -1038,11 +1045,25 @@ func (p *plan) Write(ctx context.Context, clean bool) ([]string, []string, error
 		return nil, nil, err
 	}
 	planned := p.paths()
+	left := leftover(p.dir, prev, planned)
+	if err := screen(p.dir, planned, left, clean); err != nil {
+		return nil, nil, err
+	}
 	if err := ctx.Err(); err != nil {
 		return nil, nil, fmt.Errorf("write %q: %w", MarkerName, err)
 	}
 	if err := writeManifest(p.dir, union(prev, planned)); err != nil {
 		return nil, nil, err
+	}
+	var removed []string
+	if clean {
+		if err := ctx.Err(); err != nil {
+			return nil, nil, fmt.Errorf("remove obsolete files: %w", err)
+		}
+		if err := removeListed(p.dir, left); err != nil {
+			return nil, nil, err
+		}
+		removed, left = left, nil
 	}
 	written := make([]string, 0, len(p.files)+1)
 	written = append(written, MarkerName)
@@ -1062,17 +1083,6 @@ func (p *plan) Write(ctx context.Context, clean bool) ([]string, []string, error
 		}
 		written = append(written, f.Path)
 	}
-	var removed []string
-	left := leftover(p.dir, prev, planned)
-	if clean {
-		if err := ctx.Err(); err != nil {
-			return nil, nil, fmt.Errorf("remove obsolete files: %w", err)
-		}
-		if err := removeListed(p.dir, left); err != nil {
-			return nil, nil, err
-		}
-		removed, left = left, nil
-	}
 	if err := ctx.Err(); err != nil {
 		return nil, nil, fmt.Errorf("write %q: %w", MarkerName, err)
 	}
@@ -1084,14 +1094,38 @@ func (p *plan) Write(ctx context.Context, clean bool) ([]string, []string, error
 }
 
 // Obsolete is what Write with clean would remove, sorted: the files the
-// previous valid manifest lists that this plan does not write. It reads the
-// directory and changes nothing.
+// previous valid manifest lists that this plan does not write. It refuses
+// what Write with clean would refuse, and it reads the directory and changes
+// nothing.
 func (p *plan) Obsolete() ([]string, error) {
 	prev, err := previousManifest(p.dir)
 	if err != nil {
 		return nil, err
 	}
-	return leftover(p.dir, prev, p.paths()), nil
+	planned := p.paths()
+	left := leftover(p.dir, prev, planned)
+	if err := screen(p.dir, planned, left, true); err != nil {
+		return nil, err
+	}
+	return left, nil
+}
+
+// screen refuses a plan whose write would meet a leftover of the earlier
+// export on its way -- a file left where this plan needs a directory, or a
+// directory holding only leftovers where it needs a file -- unless clean is
+// set and so removes them first.
+func screen(dir string, planned, left []string, clean bool) error {
+	_, clears, err := obstruction(dir, planned, left)
+	if err != nil {
+		return err
+	}
+	if clears != nil && !clean {
+		return hint.With(refuse(
+			"output directory %q holds what the earlier export wrote at %q, in the way of %q, which this export writes; refusing to write over it",
+			dir, clears.at, clears.rel),
+			"pass --clean to remove what the earlier export wrote and this one does not")
+	}
+	return nil
 }
 
 // paths is the plan's output paths, sorted.
@@ -1102,6 +1136,94 @@ func (p *plan) paths() []string {
 	}
 	slices.Sort(planned)
 	return planned
+}
+
+// blocked is something on disk in the way of writing the planned path rel,
+// standing at at: rel itself or a directory above it.
+type blocked struct{ at, rel string }
+
+// obstruction walks each planned path down from dir and reports the first
+// thing in the way of writing it that removing the leftovers in left clears,
+// and the first that nothing this export may do clears. In the way is
+// anything above the path but a real directory, and at the path anything but
+// a regular file the previous manifest lists. Removing left clears a leftover
+// above the path, and a directory at the path whose every leaf is a leftover,
+// since removeListed then prunes it. Both listings are sorted.
+func obstruction(dir string, planned, left []string) (foreign, clears *blocked, err error) {
+	isLeft := func(rel string) bool { _, ok := slices.BinarySearch(left, rel); return ok }
+	note := func(b blocked, clear bool) {
+		switch {
+		case clear && clears == nil:
+			clears = &b
+		case !clear && foreign == nil:
+			foreign = &b
+		}
+	}
+	for _, rel := range planned {
+		parts := strings.Split(rel, "/")
+		for i := range parts {
+			at := strings.Join(parts[:i+1], "/")
+			info, lerr := os.Lstat(filepath.Join(dir, filepath.FromSlash(at)))
+			if errors.Is(lerr, os.ErrNotExist) {
+				break
+			}
+			if lerr != nil {
+				return nil, nil, fmt.Errorf("stat %q: %w", at, lerr)
+			}
+			if i < len(parts)-1 {
+				if !info.IsDir() {
+					note(blocked{at: at, rel: rel}, isLeft(at))
+					break
+				}
+				continue
+			}
+			if info.IsDir() {
+				only, werr := onlyLeftovers(dir, at, isLeft)
+				if werr != nil {
+					return nil, nil, werr
+				}
+				note(blocked{at: at, rel: rel}, only)
+			}
+		}
+	}
+	return foreign, clears, nil
+}
+
+// onlyLeftovers reports whether every leaf under the directory rel -- each
+// thing in it but a directory, and each empty directory -- is one of the
+// leftovers, so that removing them and pruning leaves nothing at rel.
+func onlyLeftovers(dir, rel string, isLeft func(string) bool) (bool, error) {
+	only := true
+	root := filepath.Join(dir, filepath.FromSlash(rel))
+	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		sub, rerr := filepath.Rel(dir, p)
+		if rerr != nil {
+			return rerr
+		}
+		if !d.IsDir() {
+			if !isLeft(filepath.ToSlash(sub)) {
+				only = false
+				return filepath.SkipAll
+			}
+			return nil
+		}
+		entries, rerr := os.ReadDir(p)
+		if rerr != nil {
+			return rerr
+		}
+		if len(entries) == 0 {
+			only = false
+			return filepath.SkipAll
+		}
+		return nil
+	})
+	if err != nil {
+		return false, fmt.Errorf("read %q: %w", rel, err)
+	}
+	return only, nil
 }
 
 // removeListed removes each of rels from dir, then every directory between
