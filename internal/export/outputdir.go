@@ -191,10 +191,12 @@ func parseManifest(b []byte) ([]string, error) {
 }
 
 // manifestEntry reports whether rel may be listed: a path naming a file
-// strictly inside the directory, spelled one way only.
+// strictly inside the directory, spelled one way only, on one line. It is
+// also the screen Prepare puts every planned path through, so no export plans
+// a path its manifest could not list.
 func manifestEntry(rel string) bool {
 	return rel != "" && rel != "." && rel != MarkerName &&
-		!strings.ContainsAny(rel, "\\\x00\r") &&
+		!strings.ContainsAny(rel, "\\\x00\r\n") &&
 		path.Clean(rel) == rel && filepath.IsLocal(filepath.FromSlash(rel))
 }
 

@@ -866,14 +866,10 @@ func templateRendersSections(name string) bool {
 // worth refusing at the door rather than a file written outside Dir.
 func assetPath(rel string, reserved map[string]bool) error {
 	switch {
-	case rel == "":
-		return errors.New("asset path is empty")
-	case strings.ContainsRune(rel, '\\'):
-		return fmt.Errorf("asset path %q is not slash-separated", rel)
-	case path.IsAbs(rel), rel == ".", rel == "..", strings.HasPrefix(rel, "../"), path.Clean(rel) != rel:
-		return fmt.Errorf("asset path %q is not a clean relative path", rel)
 	case reserved[rel], strings.HasPrefix(rel, dataDir+"/"), strings.HasPrefix(rel, "vendor/"):
 		return fmt.Errorf("asset path %q is part of the fixed site layout", rel)
+	case !manifestEntry(rel):
+		return fmt.Errorf("asset path %q is not a clean relative path on one line", rel)
 	}
 	return nil
 }
@@ -937,6 +933,9 @@ func Prepare(o Options) (*plan, error) {
 	plan := &plan{dir: o.Dir}
 	seen := make(map[string]bool)
 	add := func(rel string, b []byte) error {
+		if !manifestEntry(rel) {
+			return fmt.Errorf("output path %q is not a clean relative path on one line", rel)
+		}
 		if seen[rel] {
 			return fmt.Errorf("two assets claim the output path %q", rel)
 		}
@@ -1002,6 +1001,15 @@ func Prepare(o Options) (*plan, error) {
 		}
 		if err := add(pg.Path, pg.HTML); err != nil {
 			return nil, err
+		}
+	}
+	// A path planned as a file and as a directory above another can only
+	// fail in Write, so it is refused here.
+	for _, f := range plan.files {
+		for d := path.Dir(f.Path); d != "."; d = path.Dir(d) {
+			if seen[d] {
+				return nil, fmt.Errorf("the output path %q is planned as a file and as a directory holding %q", d, f.Path)
+			}
 		}
 	}
 	return plan, nil

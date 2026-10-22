@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"html/template"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -1122,6 +1123,9 @@ func TestWriteRefusesAnAssetPathOutsideTheSite(t *testing.T) {
 		"a projection":       "data/sankey.json",
 		"the projection dir": "data/anything.json",
 		"vendored d3":        "vendor/d3.min.js",
+		"carriage return":    "notes\r.txt",
+		"nul":                "notes\x00.txt",
+		"two manifest lines": "notes.txt\nindex.html",
 	}
 	for name, rel := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -1137,6 +1141,35 @@ func TestWriteRefusesAnAssetPathOutsideTheSite(t *testing.T) {
 			}
 			if _, serr := os.Stat(filepath.Join(dir, "index.html")); serr == nil {
 				t.Error("the site was written anyway; the screen has to run before any side effect")
+			}
+		})
+	}
+}
+
+// Prepare refuses every plan Write could only fail on, so that what is left
+// for Write is I/O: a path its manifest could not list on one line, and a
+// path planned both as a file and as a directory above another.
+//
+// Mutation: drop '\n' from manifestEntry's refused characters and "two
+// manifest lines" goes red with "Prepare accepted"; drop the nesting check
+// and "a file and a directory" goes red the same way.
+func TestPrepareRefusesWhatWriteCouldOnlyFailOn(t *testing.T) {
+	cases := map[string]map[string][]byte{
+		"two manifest lines":     {"notes.txt\nindex.html": []byte("x")},
+		"a file and a directory": {"facts": []byte("x"), "facts/d/p0001.jsonl": []byte("x")},
+	}
+	for name, files := range cases {
+		t.Run(name, func(t *testing.T) {
+			_, err := export.Prepare(export.Options{
+				Dir:         t.TempDir(),
+				Projections: map[string][]byte{"sankey": goldenSankey(t)},
+				Views:       spineOnly(),
+				Docs:        budgetDocs(),
+				GeneratedBy: "fisc test",
+				Files:       files,
+			})
+			if err == nil {
+				t.Fatalf("Prepare accepted %q", slices.Sorted(maps.Keys(files)))
 			}
 		})
 	}
