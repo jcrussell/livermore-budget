@@ -1026,21 +1026,22 @@ func Prepare(o Options) (*plan, error) {
 // any point leaves a manifest covering everything an export may have put
 // there. Without clean nothing is removed, and the last manifest lists this
 // plan's paths and whatever the earlier export wrote that is still there;
-// with clean those leftovers are removed before any file is written, then
-// every directory the removal leaves empty, and the last manifest lists this
-// plan's paths alone. Clean also removes the temp files an interrupted
-// manifest write strands at the top of o.Dir. Removing first is what lets a path that was a file in
-// the earlier export be a directory in this one, or the reverse. Nothing the
-// previous manifest does not list is ever removed, and a missing or
-// unparseable one lists nothing.
+// with clean those leftovers are removed before any file is written, with
+// the temp files an interrupted manifest write strands at the top of o.Dir
+// and the directories prunedBy names, and the last manifest lists this
+// plan's paths alone. Removing first is what lets a path that was a file in
+// the earlier export be a directory in this one, or the reverse. No file the
+// previous manifest does not list is ever removed but a stranded temp file,
+// and no directory but an empty one; a missing or unparseable manifest lists
+// nothing.
 //
 // Before writing anything it refuses, with an error matching ErrForeignDir,
 // a plan whose write would overwrite, write through or be blocked by
-// anything the previous valid manifest does not list -- a file somebody put
-// at a planned path, say -- since recording it in the first manifest would
-// license a later --clean to delete it. It refuses as well a plan whose write
-// would meet a leftover of the earlier export on its way when clean is not
-// set, since only clean may remove one.
+// anything the previous valid manifest does not list and clean would not
+// remove -- a file somebody put at a planned path, say -- since recording it
+// in the first manifest would license a later --clean to delete it. It
+// refuses as well a plan whose write would meet something clean removes when
+// clean is not set, since only clean may remove it.
 //
 // Everything else that can be decided has been. What is left can fail only on
 // I/O or stop on a cancelled ctx.
@@ -1053,13 +1054,11 @@ func (p *plan) Write(ctx context.Context, clean bool) ([]string, []string, error
 	if err := os.MkdirAll(p.dir, 0o755); err != nil {
 		return nil, nil, fmt.Errorf("create output directory: %w", err)
 	}
-	prev, err := previousManifest(p.dir)
+	prev, planned, c, err := p.survey()
 	if err != nil {
 		return nil, nil, err
 	}
-	planned := p.paths()
-	left := leftover(p.dir, prev, planned)
-	if err := screen(p.dir, prev, planned, left, clean); err != nil {
+	if err := screen(p.dir, prev, planned, c, clean); err != nil {
 		return nil, nil, err
 	}
 	if err := ctx.Err(); err != nil {
@@ -1068,17 +1067,14 @@ func (p *plan) Write(ctx context.Context, clean bool) ([]string, []string, error
 	if err := writeManifest(p.dir, union(prev, planned)); err != nil {
 		return nil, nil, err
 	}
+	left := c.left
 	var removed []string
 	if clean {
 		if err := ctx.Err(); err != nil {
 			return nil, nil, fmt.Errorf("remove obsolete files: %w", err)
 		}
-		temps, terr := strandedTemps(p.dir, prev, planned)
-		if terr != nil {
-			return nil, nil, terr
-		}
-		removed = union(left, temps)
-		if err := removeListed(p.dir, removed); err != nil {
+		removed = c.files()
+		if err := removeListed(p.dir, removed, c.dirs); err != nil {
 			return nil, nil, hint.With(err, "pass a different --output, or remove the files yourself")
 		}
 		left = nil
@@ -1118,25 +1114,41 @@ func (p *plan) Write(ctx context.Context, clean bool) ([]string, []string, error
 // what Write with clean would refuse, and it reads the directory and changes
 // nothing.
 func (p *plan) Obsolete() (files, dirs []string, err error) {
-	prev, err := previousManifest(p.dir)
+	prev, planned, c, err := p.survey()
 	if err != nil {
 		return nil, nil, err
 	}
-	planned := p.paths()
-	left := leftover(p.dir, prev, planned)
-	if err = screen(p.dir, prev, planned, left, true); err != nil {
+	if err = screen(p.dir, prev, planned, c, true); err != nil {
 		return nil, nil, err
 	}
-	temps, err := strandedTemps(p.dir, prev, planned)
-	if err != nil {
-		return nil, nil, err
+	return c.files(), c.dirs, nil
+}
+
+// cleanup is what Write with clean would remove from the output directory,
+// decided once so the screen, the dry run and the removal read one answer:
+// left, what the earlier export wrote and this plan does not, sorted; temps,
+// the stranded manifest temp files, sorted; and dirs, the directories prunedBy
+// says removing both leaves empty, deepest first.
+type cleanup struct{ left, temps, dirs []string }
+
+// files is every file the cleanup removes, sorted.
+func (c cleanup) files() []string { return union(c.left, c.temps) }
+
+// survey reads the output directory once: the previous manifest's listing,
+// this plan's paths, both sorted, and what a clean would remove.
+func (p *plan) survey() (prev, planned []string, c cleanup, err error) {
+	if prev, err = previousManifest(p.dir); err != nil {
+		return nil, nil, cleanup{}, err
 	}
-	files = union(left, temps)
-	dirs, err = prunedBy(p.dir, files)
-	if err != nil {
-		return nil, nil, err
+	planned = p.paths()
+	c.left = leftover(p.dir, prev, planned)
+	if c.temps, err = strandedTemps(p.dir, prev, planned); err != nil {
+		return nil, nil, cleanup{}, err
 	}
-	return files, dirs, nil
+	if c.dirs, err = prunedBy(p.dir, c.files(), planned); err != nil {
+		return nil, nil, cleanup{}, err
+	}
+	return prev, planned, c, nil
 }
 
 // strandedTemps is the temp files an interrupted writeManifest left at the
@@ -1165,26 +1177,25 @@ func strandedTemps(dir string, prev, planned []string) ([]string, error) {
 }
 
 // screen refuses a plan whose write would meet, on its way, anything the
-// previous manifest prev does not list, and one whose write would meet a
-// leftover of the earlier export -- a file left where this plan needs a
-// directory, or a directory holding only leftovers where it needs a file --
-// unless clean is set and so removes them first.
-func screen(dir string, prev, planned, left []string, clean bool) error {
-	foreign, clears, err := obstruction(dir, prev, planned, left)
+// cleanup c does not remove, and one whose write would meet anything it does
+// remove -- a leftover where this plan needs a directory, or a directory c
+// prunes where it needs a file -- unless clean is set and so removes it first.
+func screen(dir string, prev, planned []string, c cleanup, clean bool) error {
+	foreign, clears, err := obstruction(dir, prev, planned, c)
 	if err != nil {
 		return err
 	}
 	if foreign != nil {
 		return hint.With(refuse(
-			"output directory %q holds %q, which no earlier export's manifest lists, in the way of %q, which this export writes; refusing to write over it",
+			"output directory %q holds %q, which no earlier export's manifest lists and --clean would not remove, in the way of %q, which this export writes; refusing to write over it",
 			dir, foreign.at, foreign.rel),
 			"move it out of the output directory, or pass a different --output")
 	}
 	if clears != nil && !clean {
 		return hint.With(refuse(
-			"output directory %q holds what the earlier export wrote at %q, in the way of %q, which this export writes; refusing to write over it",
+			"output directory %q holds %q, which only --clean removes, in the way of %q, which this export writes; refusing to write over it",
 			dir, clears.at, clears.rel),
-			"pass --clean to remove what the earlier export wrote and this one does not")
+			"pass --clean to remove what the earlier export wrote and this one does not, and the empty directories in the way")
 	}
 	return nil
 }
@@ -1204,14 +1215,13 @@ func (p *plan) paths() []string {
 type blocked struct{ at, rel string }
 
 // obstruction walks each planned path down from dir and reports the first
-// thing in the way of writing it that removing the leftovers in left clears,
-// and the first that nothing this export may do clears. In the way is
-// anything above the path but a real directory, and at the path anything but
-// a regular file the previous manifest prev lists. Removing left clears a leftover
-// above the path, and a directory at the path whose every leaf is a leftover,
-// since removeListed then prunes it. Both listings are sorted.
-func obstruction(dir string, prev, planned, left []string) (foreign, clears *blocked, err error) {
-	isLeft := func(rel string) bool { _, ok := slices.BinarySearch(left, rel); return ok }
+// thing in the way of writing it that the cleanup c removes, and the first
+// that nothing this export may do clears. In the way is anything above the
+// path but a real directory, and at the path anything but a regular file the
+// previous manifest prev lists. c clears a leftover above the path and a
+// directory at the path it prunes. Both listings are sorted.
+func obstruction(dir string, prev, planned []string, c cleanup) (foreign, clears *blocked, err error) {
+	isLeft := func(rel string) bool { _, ok := slices.BinarySearch(c.left, rel); return ok }
 	isPrev := func(rel string) bool { _, ok := slices.BinarySearch(prev, rel); return ok }
 	note := func(b blocked, clear bool) {
 		switch {
@@ -1241,11 +1251,7 @@ func obstruction(dir string, prev, planned, left []string) (foreign, clears *blo
 			}
 			switch {
 			case info.IsDir():
-				only, werr := onlyLeftovers(dir, at, isLeft)
-				if werr != nil {
-					return nil, nil, werr
-				}
-				note(blocked{at: at, rel: rel}, only)
+				note(blocked{at: at, rel: rel}, slices.Contains(c.dirs, at))
 			case !info.Mode().IsRegular() || !isPrev(rel):
 				note(blocked{at: at, rel: rel}, false)
 			}
@@ -1254,52 +1260,11 @@ func obstruction(dir string, prev, planned, left []string) (foreign, clears *blo
 	return foreign, clears, nil
 }
 
-// onlyLeftovers reports whether every leaf under the directory rel -- each
-// thing in it but a directory, and each empty directory -- is one of the
-// leftovers, so that removing them and pruning leaves nothing at rel.
-func onlyLeftovers(dir, rel string, isLeft func(string) bool) (bool, error) {
-	only := true
-	root := filepath.Join(dir, filepath.FromSlash(rel))
-	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		sub, rerr := filepath.Rel(dir, p)
-		if rerr != nil {
-			return rerr
-		}
-		if !d.IsDir() {
-			if !isLeft(filepath.ToSlash(sub)) {
-				only = false
-				return filepath.SkipAll
-			}
-			return nil
-		}
-		entries, rerr := os.ReadDir(p)
-		if rerr != nil {
-			return rerr
-		}
-		if len(entries) == 0 {
-			only = false
-			return filepath.SkipAll
-		}
-		return nil
-	})
-	if err != nil {
-		return false, fmt.Errorf("read %q: %w", rel, err)
-	}
-	return only, nil
-}
-
-// removeListed removes each of rels from dir, then the directories prunedBy
-// says that leaves empty, deepest first. rels are what leftover returned, so
-// each is a file reached through real directories. A directory still holding
-// anything stays, and dir itself is never removed.
-func removeListed(dir string, rels []string) error {
-	dirs, err := prunedBy(dir, rels)
-	if err != nil {
-		return err
-	}
+// removeListed removes each of rels from dir, then each of dirs, which must
+// come deepest first. rels are files reached through real directories, and
+// dirs are what prunedBy said removing them leaves empty; dir itself is
+// never among them.
+func removeListed(dir string, rels, dirs []string) error {
 	for _, rel := range rels {
 		if err := os.Remove(filepath.Join(dir, filepath.FromSlash(rel))); err != nil && !errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("remove %q: %w", rel, err)
@@ -1313,21 +1278,52 @@ func removeListed(dir string, rels []string) error {
 	return nil
 }
 
-// prunedBy is the directories between rels and dir that removing rels would
-// leave empty, deepest first: each holding nothing but rels and directories
-// before it in the list. It only reads, so the dry run and the removal answer
-// from one rule.
-func prunedBy(dir string, rels []string) ([]string, error) {
+// prunedBy is the one rule for which directories a clean removes: those that
+// removing rels leaves holding nothing, deepest first, each holding nothing
+// but rels and directories before it in the list. It weighs every directory
+// above one of rels and every directory at or under a path planned writes
+// as a file, so an empty directory in the way of a planned file is pruned
+// too; it holds no data, and an earlier export or an interrupted clean can
+// leave one. A directory above a planned path is never pruned, since the
+// write puts a file in it. It only reads, so the screen, the dry run and the
+// removal answer from one rule.
+func prunedBy(dir string, rels, planned []string) ([]string, error) {
 	gone := make(map[string]bool, len(rels))
-	parents := make(map[string]bool)
+	weigh := make(map[string]bool)
+	keep := make(map[string]bool)
 	for _, rel := range rels {
 		gone[rel] = true
 		for d := path.Dir(rel); d != "."; d = path.Dir(d) {
-			parents[d] = true
+			weigh[d] = true
+		}
+	}
+	for _, rel := range planned {
+		for d := path.Dir(rel); d != "."; d = path.Dir(d) {
+			keep[d] = true
+		}
+		info, ok := within(dir, rel)
+		if !ok || !info.IsDir() {
+			continue
+		}
+		err := filepath.WalkDir(filepath.Join(dir, filepath.FromSlash(rel)), func(p string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() {
+				sub, rerr := filepath.Rel(dir, p)
+				if rerr != nil {
+					return rerr
+				}
+				weigh[filepath.ToSlash(sub)] = true
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, fmt.Errorf("read %q: %w", rel, err)
 		}
 	}
 	// Longer first puts every directory before its parent.
-	dirs := slices.SortedFunc(maps.Keys(parents), func(a, b string) int {
+	dirs := slices.SortedFunc(maps.Keys(weigh), func(a, b string) int {
 		if n := cmp.Compare(len(b), len(a)); n != 0 {
 			return n
 		}
@@ -1335,6 +1331,9 @@ func prunedBy(dir string, rels []string) ([]string, error) {
 	})
 	var out []string
 	for _, d := range dirs {
+		if keep[d] {
+			continue
+		}
 		entries, err := os.ReadDir(filepath.Join(dir, filepath.FromSlash(d)))
 		if errors.Is(err, os.ErrNotExist) {
 			continue
@@ -1378,27 +1377,34 @@ func leftover(dir string, prev, planned []string) []string {
 }
 
 // fileWithin reports whether rel names something in dir other than a
-// directory, with every directory between them a real one: a symlinked
-// directory on the way would put the file outside dir.
+// directory, reached through real directories.
 func fileWithin(dir, rel string) bool {
+	info, ok := within(dir, rel)
+	return ok && !info.IsDir()
+}
+
+// within reports what rel names in dir, and whether it is there with every
+// directory between them a real one: a symlinked directory on the way would
+// put it outside dir.
+func within(dir, rel string) (fs.FileInfo, bool) {
 	cur := dir
 	parts := strings.Split(rel, "/")
 	for i, part := range parts {
 		cur = filepath.Join(cur, part)
 		info, err := os.Lstat(cur)
 		if err != nil {
-			return false
+			return nil, false
+		}
+		if i == len(parts)-1 {
+			return info, true
 		}
 		// Lstat reports a symlink as no directory, so a symlinked directory
 		// on the way fails here.
-		if i == len(parts)-1 {
-			return !info.IsDir()
-		}
 		if !info.IsDir() {
-			return false
+			return nil, false
 		}
 	}
-	return false
+	return nil, false
 }
 
 // union is the sorted, duplicate-free merge of two sorted listings.

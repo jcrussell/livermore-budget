@@ -662,6 +662,107 @@ func TestCleanLetsAPathTurnBetweenFileAndDirectory(t *testing.T) {
 	}
 }
 
+// A directory a planned file lands in is kept, though removing a leftover
+// beside it would leave it empty for a moment: the dry run does not list it,
+// and --clean neither lists it as removed nor removes and recreates it.
+//
+// Mutation: drop the keep check from prunedBy and this goes red with an
+// Obsolete dirs diff naming facts/doc/pages, facts/doc and facts.
+func TestCleanKeepsTheDirectoriesAPlannedFileLandsIn(t *testing.T) {
+	dir := t.TempDir()
+	seedExport(t, dir, []string{"facts/doc/pages/p0001.txt"}, []string{"facts/doc/pages/p0001.txt"})
+	pages := filepath.Join(dir, "facts", "doc", "pages")
+	before, err := os.Stat(pages)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := planFiles(t, dir, map[string][]byte{"facts/doc/pages/p0002.txt": []byte("now\n")})
+	files, dirs, err := p.Obsolete()
+	if err != nil {
+		t.Fatalf("Obsolete: %v", err)
+	}
+	if diff := cmp.Diff([]string{"facts/doc/pages/p0001.txt"}, files); diff != "" {
+		t.Errorf("Obsolete files (-want +got):\n%s", diff)
+	}
+	if len(dirs) > 0 {
+		t.Errorf("Obsolete dirs %q, want none: a planned file lands in each", dirs)
+	}
+	_, removed, err := p.Write(context.Background(), true)
+	if err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	if diff := cmp.Diff(files, removed); diff != "" {
+		t.Errorf("removed (-Obsolete +Write):\n%s", diff)
+	}
+	after, err := os.Stat(pages)
+	if err != nil {
+		t.Fatalf("facts/doc/pages is gone: %v", err)
+	}
+	if !os.SameFile(before, after) {
+		t.Error("facts/doc/pages was removed and made again")
+	}
+	if _, err := os.Stat(filepath.Join(pages, "p0001.txt")); err == nil {
+		t.Error("p0001.txt survived --clean")
+	}
+}
+
+// An empty directory at or under a path this export writes as a file holds
+// no data, whoever left it: --clean removes it so the file can land, and a
+// write without --clean refuses with a hint naming --clean, never calling it
+// something no manifest lists.
+//
+// Mutation: drop the walk under planned paths from prunedBy and every case
+// goes red, the --clean ones with a refusal and the others with a message
+// saying no earlier export's manifest lists facts.
+func TestAnEmptyDirectoryInTheWayIsCleanable(t *testing.T) {
+	cases := map[string][]string{
+		"its file removed by hand": {"facts/d/p0001.jsonl"},
+		"listed by no manifest":    nil,
+	}
+	for name, listed := range cases {
+		for _, clean := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s clean=%v", name, clean), func(t *testing.T) {
+				dir := t.TempDir()
+				seedExport(t, dir, listed, nil)
+				if err := os.MkdirAll(filepath.Join(dir, "facts", "d"), 0o750); err != nil {
+					t.Fatal(err)
+				}
+				p := planFiles(t, dir, map[string][]byte{"facts": []byte("now\n")})
+				if !clean {
+					_, _, err := p.Write(context.Background(), false)
+					if !errors.Is(err, export.ErrForeignDir) {
+						t.Fatalf("got error %v, want a refusal matching ErrForeignDir", err)
+					}
+					if strings.Contains(err.Error(), "manifest lists") {
+						t.Errorf("the refusal %q says a manifest does not list an empty directory", err)
+					}
+					var h *hint.ErrHint
+					if !errors.As(err, &h) || !strings.Contains(h.Hint, "--clean") {
+						t.Errorf("the refusal %q carries no hint naming --clean", err)
+					}
+					if _, serr := os.Stat(filepath.Join(dir, "facts", "d")); serr != nil {
+						t.Errorf("facts/d was removed without --clean: %v", serr)
+					}
+					return
+				}
+				_, dirs, err := p.Obsolete()
+				if err != nil {
+					t.Fatalf("Obsolete: %v", err)
+				}
+				if diff := cmp.Diff([]string{"facts/d", "facts"}, dirs); diff != "" {
+					t.Errorf("Obsolete dirs (-want +got):\n%s", diff)
+				}
+				if _, _, err := p.Write(context.Background(), true); err != nil {
+					t.Fatalf("Write: %v", err)
+				}
+				if b, rerr := os.ReadFile(filepath.Join(dir, "facts")); rerr != nil || string(b) != "now\n" {
+					t.Errorf("facts holds %q, %v; want this export's bytes", b, rerr)
+				}
+			})
+		}
+	}
+}
+
 // Write refuses, before it writes anything, a plan whose write would
 // overwrite, write through or be blocked by anything the previous valid
 // manifest does not list, with or without --clean, and so does the dry run's
