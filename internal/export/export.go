@@ -986,10 +986,13 @@ func Prepare(o Options) (*plan, error) {
 			return nil, err
 		}
 	}
-	// The pages are written last, and index.html last of all: it is the
-	// completed-site sentinel, so it must not exist until the site around it
-	// does -- including the other views it links to, or the entry point would
-	// appear while its own nav pointed at 404s.
+	// The pages are written last, and index.html last of all, so in a fresh
+	// or cleaned directory the entry point does not exist until the site
+	// around it does -- including the other views it links to, or it would
+	// appear while its own nav pointed at 404s. Over an earlier export
+	// written without --clean the old index.html is already there, and a
+	// write that stops partway leaves it beside a mix of old and new files
+	// (fisc-3s5d.69).
 	for _, pg := range pages {
 		if pg.Path == IndexPath {
 			continue
