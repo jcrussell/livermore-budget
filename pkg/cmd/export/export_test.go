@@ -862,12 +862,12 @@ func TestExportRunCleanRemovesNothingNoManifestLists(t *testing.T) {
 	}
 }
 
-// TestExportRunRefusesBeforeCleanDestroysTheSite pins the ORDER of the
-// reachability check against --clean, which is the whole of its consequence:
-// `fisc export --clean` over a corpus that has just published an undeclared
-// document refuses before it writes or removes anything, so the reader's site
-// survives a fault detectable before anything was touched.
-func TestExportRunRefusesBeforeCleanDestroysTheSite(t *testing.T) {
+// TestExportRunRefusesAnUnreachableDocumentBeforeTouchingTheSite pins the
+// ORDER of the reachability check against Write: `fisc export --clean` over a
+// corpus that has just published an undeclared document refuses before it
+// writes or removes anything, so the reader's site survives a fault
+// detectable before anything was touched.
+func TestExportRunRefusesAnUnreachableDocumentBeforeTouchingTheSite(t *testing.T) {
 	opts, _, _, _ := testOptions(t)
 	if err := exportRun(context.Background(), opts); err != nil {
 		t.Fatalf("first export: %v", err)
@@ -924,8 +924,7 @@ func TestExportRunRefusesBeforeCleanDestroysTheSite(t *testing.T) {
 		t.Fatalf("got %v, want the reachability refusal", err)
 	}
 	if _, err := os.Stat(index); err != nil {
-		t.Errorf("--clean emptied the output directory and then refused, so the reader's "+
-			"site is gone and no new one was written: %v", err)
+		t.Errorf("the export touched the reader's site before refusing: %v", err)
 	}
 }
 

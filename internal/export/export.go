@@ -1079,7 +1079,7 @@ func (p *plan) Write(ctx context.Context, clean bool) ([]string, []string, error
 		}
 		removed = union(left, temps)
 		if err := removeListed(p.dir, removed); err != nil {
-			return nil, nil, err
+			return nil, nil, hint.With(err, "pass a different --output, or remove the files yourself")
 		}
 		left = nil
 	}

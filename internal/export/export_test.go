@@ -811,6 +811,31 @@ func TestCleanRemovesAStrandedManifestTempFile(t *testing.T) {
 	}
 }
 
+// A --clean removal that fails carries a hint saying how to get past it.
+//
+// Mutation: return removeListed's error without the hint and this goes red
+// with "carries no hint".
+func TestACleanRemovalFailureCarriesAHint(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root removes from a read-only directory")
+	}
+	dir := t.TempDir()
+	seedExport(t, dir, []string{"old/gone.txt"}, []string{"old/gone.txt"})
+	old := filepath.Join(dir, "old")
+	if err := os.Chmod(old, 0o500); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(old, 0o750) })
+	_, _, err := planFiles(t, dir, nil).Write(context.Background(), true)
+	if err == nil {
+		t.Fatal("removing from a read-only directory succeeded")
+	}
+	var h *hint.ErrHint
+	if !errors.As(err, &h) || !strings.Contains(h.Hint, "--output") {
+		t.Errorf("the failure %q carries no hint", err)
+	}
+}
+
 // --clean over a directory with no manifest, or one that does not parse,
 // removes nothing: there is no record of what an export wrote there.
 //
