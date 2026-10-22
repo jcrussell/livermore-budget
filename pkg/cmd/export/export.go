@@ -92,6 +92,10 @@ type Options struct {
 	// directories carry one.
 	Clean bool
 
+	// DryRun prints the paths Clean would remove and writes nothing. It
+	// requires Clean.
+	DryRun bool
+
 	// SourceBrowseURL cites the committed page text at a remote — a forge's
 	// blob view of this repository — instead of shipping it inside the site.
 	// Empty is the default and the better answer: the export copies the cited
@@ -123,6 +127,9 @@ func (o *Options) Validate() error {
 	if o.OutputDir == "" {
 		return cmdutil.FlagErrorf("--output requires a directory")
 	}
+	if o.DryRun && !o.Clean {
+		return cmdutil.FlagErrorf("--dry-run requires --clean")
+	}
 	resolved, err := export.ResolveOutputDir(o.OutputDir)
 	if err != nil {
 		return cmdutil.FlagErrorf("%s", err)
@@ -133,8 +140,12 @@ func (o *Options) Validate() error {
 		}
 		return err
 	}
-	if err := export.WritableDir(resolved); err != nil {
-		return cmdutil.FlagErrorf("%s", err)
+	// A dry run writes nothing, so it neither needs a writable directory nor
+	// leaves the probe's trace in one.
+	if !o.DryRun {
+		if err := export.WritableDir(resolved); err != nil {
+			return cmdutil.FlagErrorf("%s", err)
+		}
 	}
 	if o.SourceBrowseURL != "" {
 		if err := validateBrowseURL(o.SourceBrowseURL); err != nil {
@@ -218,13 +229,17 @@ again.
 
 Writing never deletes. --clean removes only what the earlier export's manifest
 lists and this export does not write, then the directories that leaves empty;
-a file no export wrote is left where it is.`,
+a file no export wrote is left where it is. --clean --dry-run prints the paths
+--clean would remove, one per line, and writes nothing.`,
 		Example: `  # Write the site to dist/ and read it in a browser
   fisc export
   python3 -m http.server -d dist 8000
 
   # Refresh an earlier export, removing the files it wrote that this one does not
   fisc export --output build/site --clean
+
+  # See what --clean would remove, without writing or removing anything
+  fisc export --output build/site --clean --dry-run
 
   # Cite the extracted page text on a forge instead of shipping it
   fisc export --source-browse-url https://github.com/you/livermore-budget/blob/main`,
@@ -242,6 +257,7 @@ a file no export wrote is left where it is.`,
 
 	cmd.Flags().StringVarP(&opts.OutputDir, "output", "o", defaultOutputDir, "Directory to write the site into (missing, empty, or an earlier export)")
 	cmd.Flags().BoolVar(&opts.Clean, "clean", false, "Remove the files the earlier export wrote and this one does not")
+	cmd.Flags().BoolVar(&opts.DryRun, "dry-run", false, "With --clean, print the paths it would remove and write nothing")
 	cmd.Flags().StringVar(&opts.SourceBrowseURL, "source-browse-url", "",
 		"Cite the extracted page text at this base URL instead of shipping it in the site (e.g. "+export.DefaultSourceBrowseURL+")")
 
@@ -365,6 +381,18 @@ func exportRun(ctx context.Context, o *Options) error {
 	}
 	if cerr := ctx.Err(); cerr != nil {
 		return fmt.Errorf("export: %w", cerr)
+	}
+
+	if o.DryRun {
+		obsolete, oerr := plan.Obsolete()
+		if oerr != nil {
+			return oerr
+		}
+		for _, rel := range obsolete {
+			fmt.Fprintln(o.IO.Out, filepath.Join(o.OutputDir, filepath.FromSlash(rel)))
+		}
+		fmt.Fprintf(o.IO.ErrOut, "--clean would remove %d files; dry run, nothing written\n", len(obsolete))
+		return nil
 	}
 
 	written, removed, err := plan.Write(ctx, o.Clean)

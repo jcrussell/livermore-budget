@@ -1083,6 +1083,17 @@ func (p *plan) Write(ctx context.Context, clean bool) ([]string, []string, error
 	return written, removed, nil
 }
 
+// Obsolete is what Write with clean would remove, sorted: the files the
+// previous valid manifest lists that this plan does not write. It reads the
+// directory and changes nothing.
+func (p *plan) Obsolete() ([]string, error) {
+	prev, err := previousManifest(p.dir)
+	if err != nil {
+		return nil, err
+	}
+	return leftover(p.dir, prev, p.paths()), nil
+}
+
 // paths is the plan's output paths, sorted.
 func (p *plan) paths() []string {
 	planned := make([]string, len(p.files))

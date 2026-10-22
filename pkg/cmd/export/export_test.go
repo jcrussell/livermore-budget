@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 
@@ -193,6 +194,8 @@ func TestNewCmdExportFlags(t *testing.T) {
 		{name: "output", args: []string{"--output", "site"}, want: Options{OutputDir: "site"}},
 		{name: "short output", args: []string{"-o", "site"}, want: Options{OutputDir: "site"}},
 		{name: "clean", args: []string{"--clean"}, want: Options{OutputDir: "dist", Clean: true}},
+		{name: "clean dry run", args: []string{"--clean", "--dry-run"}, want: Options{OutputDir: "dist", Clean: true, DryRun: true}},
+		{name: "dry run without clean", args: []string{"--dry-run"}, wantErr: "--dry-run requires --clean"},
 		{
 			name: "source browse url",
 			args: []string{"--source-browse-url", "https://example.test/blob/main"},
@@ -288,6 +291,9 @@ func TestNewCmdExportFlags(t *testing.T) {
 			}
 			if got.Clean != tc.want.Clean {
 				t.Errorf("got --clean %v, want %v", got.Clean, tc.want.Clean)
+			}
+			if got.DryRun != tc.want.DryRun {
+				t.Errorf("got --dry-run %v, want %v", got.DryRun, tc.want.DryRun)
 			}
 			if got.SourceBrowseURL != tc.want.SourceBrowseURL {
 				t.Errorf("got --source-browse-url %q, want %q", got.SourceBrowseURL, tc.want.SourceBrowseURL)
@@ -970,6 +976,115 @@ func TestExportRunCleanRemovesWhatTheEarlierExportWrote(t *testing.T) {
 	}
 	if !strings.Contains(errOut(), "removed 1 files") {
 		t.Errorf("stderr %q does not say what --clean removed", errOut())
+	}
+}
+
+// treeOf is every entry under dir, its mode, modification time and, for a
+// file, its bytes: what a run that writes nothing leaves exactly as it was.
+func treeOf(t *testing.T, dir string) map[string]string {
+	t.Helper()
+	tree := map[string]string{}
+	err := filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+		entry := fmt.Sprintf("%v %d", info.Mode(), info.ModTime().UnixNano())
+		if d.Type().IsRegular() {
+			b, rerr := os.ReadFile(p)
+			if rerr != nil {
+				return rerr
+			}
+			entry += " " + string(b)
+		}
+		tree[p] = entry
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk %s: %v", dir, err)
+	}
+	return tree
+}
+
+// --clean --dry-run prints exactly the paths --clean would remove, one per
+// line, and leaves the directory as it was, down to its modification times:
+// no file written, none removed, no write probe made and taken away.
+//
+// Mutation: fall through to Write after printing and this goes red with a
+// tree diff; skip the printing and it goes red with stdout ""; keep the
+// write probe in Validate for a dry run and it goes red with a diff in the
+// output directory's modification time.
+func TestExportRunDryRunPrintsWhatCleanWouldRemoveAndWritesNothing(t *testing.T) {
+	opts, _, out, _ := testOptions(t)
+	build := opts.Build
+	opts.Build = func(root string) (result, error) {
+		r, err := build(root)
+		if err != nil {
+			return r, err
+		}
+		r.Files = map[string][]byte{"facts/gone/p0001.jsonl": []byte("{}\n")}
+		return r, nil
+	}
+	if err := exportRun(context.Background(), opts); err != nil {
+		t.Fatalf("first export: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(opts.OutputDir, "notes.md"), []byte("mine\n"), 0o600); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	// Back-dated, so a probe made and removed within the filesystem's clock
+	// tick still moves the directory's modification time.
+	past := time.Date(2001, 1, 1, 0, 0, 0, 0, time.UTC)
+	if err := os.Chtimes(opts.OutputDir, past, past); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	before := treeOf(t, opts.OutputDir)
+
+	io, _, stdout, _ := iostreams.Test()
+	opts.IO = io
+	opts.Build = build
+	opts.Clean = true
+	opts.DryRun = true
+	if err := opts.Validate(); err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	if err := exportRun(context.Background(), opts); err != nil {
+		t.Fatalf("dry run: %v", err)
+	}
+	want := filepath.Join(opts.OutputDir, "facts", "gone", "p0001.jsonl") + "\n"
+	if stdout.String() != want {
+		t.Errorf("got stdout %q, want %q", stdout.String(), want)
+	}
+	if diff := cmp.Diff(before, treeOf(t, opts.OutputDir)); diff != "" {
+		t.Errorf("the dry run changed the output directory (-before +after):\n%s", diff)
+	}
+	if out() == "" {
+		t.Fatal("the first export reported nothing, so this test proves nothing about its stdout")
+	}
+}
+
+// A dry run over a directory that does not exist yet creates nothing and
+// prints nothing: there is no manifest, so --clean would remove nothing.
+//
+// Mutation: fall through to Write after printing and this goes red with "the
+// dry run created the output directory".
+func TestExportRunDryRunOverAMissingDirectoryCreatesNothing(t *testing.T) {
+	opts, _, out, _ := testOptions(t)
+	opts.Clean = true
+	opts.DryRun = true
+	if err := opts.Validate(); err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	if err := exportRun(context.Background(), opts); err != nil {
+		t.Fatalf("dry run: %v", err)
+	}
+	if _, err := os.Stat(opts.OutputDir); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("the dry run created the output directory (stat: %v)", err)
+	}
+	if out() != "" {
+		t.Errorf("got stdout %q, want nothing to remove", out())
 	}
 }
 
