@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // MarkerName is the sentinel file `fisc export` writes at the very start
@@ -13,6 +14,11 @@ import (
 // still leaves a directory RefuseForeignDir accepts, keeping a partial export
 // recoverable with --clean.
 const MarkerName = ".fisc-export"
+
+// probePrefix names the directory WritableDir creates and removes. A process
+// that dies between the two strands it empty, so RefuseForeignDir disregards
+// an empty directory of this name rather than refusing every later export.
+const probePrefix = ".fisc-write-probe-"
 
 // ResolveOutputDir abs-resolves a user-supplied output directory, follows
 // symlinks on its existing prefix, and refuses the two locations where a
@@ -50,10 +56,11 @@ func ResolveOutputDir(outputDir string) (string, error) {
 }
 
 // RefuseForeignDir refuses an output directory fisc does not own: one that
-// exists, holds anything, and carries no MarkerName. Export writes only into a
-// directory that is missing, empty, or marked by an earlier export, because
-// writing anywhere else leaves the marker beside files fisc did not write, and
-// a later --clean would take the marker at its word and delete them --
+// exists, holds anything but a stranded write probe, and carries no
+// MarkerName. Export writes only into a directory that is missing, empty, or
+// marked by an earlier export, because writing anywhere else leaves the
+// marker beside files fisc did not write, and a later --clean would take the
+// marker at its word and delete them --
 // `fisc export -o data` followed by `--clean` would remove the PDFs and the
 // extracted pages. An unreadable directory is refused rather than assumed
 // empty.
@@ -73,9 +80,15 @@ func RefuseForeignDir(dir string) error {
 	if !info.IsDir() {
 		return fmt.Errorf("output path %q exists but is not a directory", dir)
 	}
-	entries, err := os.ReadDir(dir)
+	all, err := os.ReadDir(dir)
 	if err != nil {
 		return fmt.Errorf("read output dir: %w", err)
+	}
+	entries := all[:0:0]
+	for _, e := range all {
+		if !strandedProbe(dir, e) {
+			entries = append(entries, e)
+		}
 	}
 	if len(entries) == 0 {
 		return nil
@@ -99,6 +112,17 @@ func RefuseForeignDir(dir string) error {
 			dir, MarkerName, name)
 	}
 	return nil
+}
+
+// strandedProbe reports whether e is a WritableDir probe left behind empty.
+// One holding anything, or unreadable, is not disregarded: only an empty
+// directory says nothing but that a probe was interrupted.
+func strandedProbe(dir string, e os.DirEntry) bool {
+	if !e.IsDir() || !strings.HasPrefix(e.Name(), probePrefix) {
+		return false
+	}
+	inside, err := os.ReadDir(filepath.Join(dir, e.Name()))
+	return err == nil && len(inside) == 0
 }
 
 // looksLikeSource returns the first top-level entry of a directory that a
@@ -160,7 +184,7 @@ func WritableDir(path string) error {
 			if !info.IsDir() {
 				return fmt.Errorf("%q is not a directory", target)
 			}
-			tmp, terr := os.MkdirTemp(target, ".fisc-write-probe-*")
+			tmp, terr := os.MkdirTemp(target, probePrefix+"*")
 			if terr != nil {
 				return fmt.Errorf("directory %q is not writable: %w", target, terr)
 			}

@@ -171,7 +171,9 @@ func TestWritableDir(t *testing.T) {
 // refused case goes red with "got nil error, want a refusal"; make the
 // marker loop match nothing and the marker cases go red with "want the
 // directory accepted"; drop the hint and the refused cases go red with "want
-// it to say how to recover a site exported before the marker".
+// it to say how to recover a site exported before the marker"; stop
+// disregarding a stranded write probe and "only a stale write probe" goes
+// red with "want the directory accepted".
 func TestRefuseForeignDir(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -183,7 +185,10 @@ func TestRefuseForeignDir(t *testing.T) {
 		{name: "source files", files: []string{"embed.go", "app.js"}, refuse: true},
 		{name: "an index.html with no marker", files: []string{"index.html"}, refuse: true},
 		{name: "a directory named like the marker", dirs: []string{export.MarkerName}, refuse: true},
+		{name: "a file named like a write probe", files: []string{".fisc-write-probe-123"}, refuse: true},
 		{name: "empty"},
+		{name: "only a stale write probe", dirs: []string{".fisc-write-probe-123"}},
+		{name: "a partial export and a stale write probe", files: []string{export.MarkerName}, dirs: []string{".fisc-write-probe-123"}},
 		{name: "a partial export", files: []string{export.MarkerName}},
 		{name: "a finished export", files: []string{export.MarkerName, "index.html"}, dirs: []string{"data"}},
 	}
@@ -226,6 +231,25 @@ func TestRefuseForeignDir(t *testing.T) {
 	}
 	if err := export.RefuseForeignDir(filepath.Join(t.TempDir(), "missing")); err != nil {
 		t.Errorf("missing directory: %v", err)
+	}
+}
+
+// A directory named like a write probe that holds something is not a
+// stranded probe, and does not make an unmarked directory look empty.
+//
+// Mutation: drop strandedProbe's emptiness test and this goes red with "got
+// nil error, want a refusal".
+func TestRefuseForeignDirKeepsAProbeNamedDirectoryThatHoldsAFile(t *testing.T) {
+	dir := t.TempDir()
+	probe := filepath.Join(dir, ".fisc-write-probe-123")
+	if err := os.Mkdir(probe, 0o750); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(probe, "notes.txt"), []byte("x"), 0o600); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	if err := export.RefuseForeignDir(dir); err == nil {
+		t.Fatal("got nil error, want a refusal")
 	}
 }
 
