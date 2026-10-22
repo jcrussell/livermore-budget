@@ -76,6 +76,35 @@ func TestValidateCaveatsRefusesEveryShapeThatWouldRender(t *testing.T) {
 			[]Caveat{{ID: "a", Summary: "Neither block is published (fisc-ig9h).", Text: "t", AppliesTo: []string{}}},
 			nodes, `prints the tracker id "fisc-ig9h"`,
 		},
+		// Mutation: drop the dotted tail from trackerID and this goes red
+		// naming "fisc-yj4w" rather than the child.
+		{
+			"a dotted child's tracker id",
+			[]Caveat{{ID: "a", Summary: "s", Text: "That is settled (fisc-yj4w.35.10).", AppliesTo: []string{}}},
+			nodes, `prints the tracker id "fisc-yj4w.35.10"`,
+		},
+		// A fact id, a series id and the export marker begin with what a bead
+		// id could be, and are not one: a caveat may cite the fact it is about.
+		//
+		// Mutations: drop trackerIDIn's following-byte check and the fact and
+		// series cases go red naming the id's head as a tracker id; drop its
+		// preceding-byte check and the marker case goes red naming the marker
+		// without its dot.
+		{
+			"a fact id",
+			[]Caveat{{ID: "a", Summary: "s", Text: "Printed as fisc-f-0ba7b00dfaf7.", AppliesTo: []string{}}},
+			nodes, "",
+		},
+		{
+			"a series id",
+			[]Caveat{{ID: "a", Summary: "Series fisc-s-1c2d3e4f5a6b.", Text: "t", AppliesTo: []string{}}},
+			nodes, "",
+		},
+		{
+			"the export marker",
+			[]Caveat{{ID: "a", Summary: "s", Text: "The site carries .fisc-export.", AppliesTo: []string{}}},
+			nodes, "",
+		},
 		{
 			"applies to a node the document does not carry",
 			[]Caveat{{ID: "a", Summary: "s", Text: "t", AppliesTo: []string{"fund-group/nope"}}},
