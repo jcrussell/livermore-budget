@@ -661,6 +661,113 @@ func TestCleanLetsAPathTurnBetweenFileAndDirectory(t *testing.T) {
 	}
 }
 
+// Write refuses, before it writes anything, a plan whose write would
+// overwrite, write through or be blocked by anything the previous valid
+// manifest does not list, with or without --clean, and so does the dry run's
+// Obsolete: recording such a file in the first manifest would license a later
+// --clean to delete it.
+//
+// Mutation: drop the foreign refusal from screen and every case goes red, the
+// overwrites with "got error <nil>" and the blocked ones with an I/O error
+// that does not match ErrForeignDir; treat a listed symlink as a regular file
+// and "a symlink at a listed path" goes red with "got error <nil>".
+func TestWriteRefusesToWriteOverWhatNoManifestLists(t *testing.T) {
+	type seed func(t *testing.T, dir, outside string)
+	put := func(t *testing.T, dir, rel, body string) {
+		t.Helper()
+		path := filepath.Join(dir, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cases := []struct {
+		name  string
+		files map[string][]byte
+		seed  seed
+		keep  string // the path that must survive as "mine\n", relative to dir
+	}{
+		{
+			name: "an unlisted file at a planned path beside a manifest",
+			seed: func(t *testing.T, dir, _ string) {
+				seedExport(t, dir, []string{"old.txt"}, []string{"old.txt"})
+				put(t, dir, "app.js", "mine\n")
+			},
+			keep: "app.js",
+		},
+		{
+			name: "an unlisted file at a planned path and no manifest",
+			seed: func(t *testing.T, dir, _ string) { put(t, dir, "app.js", "mine\n") },
+			keep: "app.js",
+		},
+		{
+			name:  "an unlisted file above a planned path",
+			files: map[string][]byte{"facts/d/p0001.jsonl": []byte("{}\n")},
+			seed: func(t *testing.T, dir, _ string) {
+				seedExport(t, dir, nil, nil)
+				put(t, dir, "facts", "mine\n")
+			},
+			keep: "facts",
+		},
+		{
+			name:  "a directory at a planned path holding an unlisted file",
+			files: map[string][]byte{"facts": []byte("{}\n")},
+			seed: func(t *testing.T, dir, _ string) {
+				seedExport(t, dir, []string{"facts/old.txt"}, []string{"facts/old.txt"})
+				put(t, dir, "facts/mine.txt", "mine\n")
+			},
+			keep: "facts/mine.txt",
+		},
+		{
+			name: "a symlink at a listed path",
+			seed: func(t *testing.T, dir, outside string) {
+				seedExport(t, dir, []string{"app.js"}, nil)
+				put(t, outside, "x.js", "mine\n")
+				if err := os.Symlink(filepath.Join(outside, "x.js"), filepath.Join(dir, "app.js")); err != nil {
+					t.Fatal(err)
+				}
+			},
+			keep: "app.js",
+		},
+	}
+	for _, c := range cases {
+		for _, clean := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s clean=%v", c.name, clean), func(t *testing.T) {
+				root := t.TempDir()
+				dir, outside := filepath.Join(root, "out"), filepath.Join(root, "outside")
+				for _, d := range []string{dir, outside} {
+					if err := os.MkdirAll(d, 0o750); err != nil {
+						t.Fatal(err)
+					}
+				}
+				c.seed(t, dir, outside)
+				marker, _ := os.ReadFile(filepath.Join(dir, export.MarkerName))
+				p := planFiles(t, dir, c.files)
+				if clean {
+					if _, err := p.Obsolete(); !errors.Is(err, export.ErrForeignDir) {
+						t.Errorf("Obsolete: got %v, want a refusal matching ErrForeignDir", err)
+					}
+				}
+				_, _, err := p.Write(context.Background(), clean)
+				if !errors.Is(err, export.ErrForeignDir) {
+					t.Fatalf("got error %v, want a refusal matching ErrForeignDir", err)
+				}
+				if !strings.Contains(err.Error(), strconv.Quote(strings.SplitN(c.keep, "/", 2)[0])) {
+					t.Errorf("the refusal %q does not name what is in the way", err)
+				}
+				if b, rerr := os.ReadFile(filepath.Join(dir, filepath.FromSlash(c.keep))); rerr != nil || string(b) != "mine\n" {
+					t.Errorf("%s holds %q, %v; want it untouched", c.keep, b, rerr)
+				}
+				if after, _ := os.ReadFile(filepath.Join(dir, export.MarkerName)); !bytes.Equal(marker, after) {
+					t.Errorf("the manifest was written before the refusal: %q", after)
+				}
+			})
+		}
+	}
+}
+
 // --clean over a directory with no manifest, or one that does not parse,
 // removes nothing: there is no record of what an export wrote there.
 //

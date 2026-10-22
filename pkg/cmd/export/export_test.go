@@ -838,7 +838,8 @@ func readPage(t *testing.T, dir string) string {
 }
 
 // --clean removes only what a manifest lists, so even reached past
-// Validate, over a directory with no manifest, it removes nothing.
+// Validate, over a directory with no manifest whose file stands at no path
+// the export writes, it writes the site beside the file and removes nothing.
 //
 // Mutation: make Write's clean remove every file the plan does not write and
 // this goes red with "the file was removed anyway".
@@ -1015,6 +1016,52 @@ func TestExportRunNeedsCleanWhereAnEarlierFileIsInTheWay(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(opts.OutputDir, "facts", "d", "p0001.jsonl")); err != nil {
 		t.Errorf("--clean did not write the file: %v", err)
+	}
+}
+
+// A file at a path the export writes that the earlier export's manifest does
+// not list is refused before anything is written, exiting 2, with or without
+// --clean, and the file survives: writing it would also list it in the
+// manifest, and a later --clean would delete it.
+//
+// Mutation: drop the foreign refusal from Write's screen and this goes red
+// with "got <nil>, want a FlagError".
+func TestExportRunRefusesToOverwriteAFileNoManifestLists(t *testing.T) {
+	for _, clean := range []bool{false, true} {
+		t.Run(fmt.Sprintf("clean=%v", clean), func(t *testing.T) {
+			opts, _, _, _ := testOptions(t)
+			if err := exportRun(context.Background(), opts); err != nil {
+				t.Fatalf("first export: %v", err)
+			}
+			marker := filepath.Join(opts.OutputDir, export.MarkerName)
+			b, err := os.ReadFile(marker)
+			if err != nil {
+				t.Fatal(err)
+			}
+			unlisted := strings.Replace(string(b), "\ncaveats.html\n", "\n", 1)
+			if unlisted == string(b) {
+				t.Fatalf("the first export's manifest does not list caveats.html: %q", b)
+			}
+			if err = os.WriteFile(marker, []byte(unlisted), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			mine := filepath.Join(opts.OutputDir, "caveats.html")
+			if err = os.WriteFile(mine, []byte("mine\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			opts.Clean = clean
+			err = exportRun(context.Background(), opts)
+			var flagErr *cmdutil.FlagError
+			if !errors.As(err, &flagErr) {
+				t.Fatalf("got %v, want a FlagError", err)
+			}
+			if got, rerr := os.ReadFile(mine); rerr != nil || string(got) != "mine\n" {
+				t.Errorf("caveats.html holds %q, %v; want it untouched", got, rerr)
+			}
+			if got, _ := os.ReadFile(marker); string(got) != unlisted {
+				t.Errorf("the manifest was rewritten: %q", got)
+			}
+		})
 	}
 }
 

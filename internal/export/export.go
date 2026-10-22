@@ -1026,8 +1026,12 @@ func Prepare(o Options) (*plan, error) {
 // unparseable one lists nothing.
 //
 // Before writing anything it refuses, with an error matching ErrForeignDir,
-// a plan whose write would meet a leftover of the earlier export on its way
-// when clean is not set, since only clean may remove one.
+// a plan whose write would overwrite, write through or be blocked by
+// anything the previous valid manifest does not list -- a file somebody put
+// at a planned path, say -- since recording it in the first manifest would
+// license a later --clean to delete it. It refuses as well a plan whose write
+// would meet a leftover of the earlier export on its way when clean is not
+// set, since only clean may remove one.
 //
 // Everything else that can be decided has been. What is left can fail only on
 // I/O or stop on a cancelled ctx.
@@ -1046,7 +1050,7 @@ func (p *plan) Write(ctx context.Context, clean bool) ([]string, []string, error
 	}
 	planned := p.paths()
 	left := leftover(p.dir, prev, planned)
-	if err := screen(p.dir, planned, left, clean); err != nil {
+	if err := screen(p.dir, prev, planned, left, clean); err != nil {
 		return nil, nil, err
 	}
 	if err := ctx.Err(); err != nil {
@@ -1104,20 +1108,27 @@ func (p *plan) Obsolete() ([]string, error) {
 	}
 	planned := p.paths()
 	left := leftover(p.dir, prev, planned)
-	if err := screen(p.dir, planned, left, true); err != nil {
+	if err := screen(p.dir, prev, planned, left, true); err != nil {
 		return nil, err
 	}
 	return left, nil
 }
 
-// screen refuses a plan whose write would meet a leftover of the earlier
-// export on its way -- a file left where this plan needs a directory, or a
-// directory holding only leftovers where it needs a file -- unless clean is
-// set and so removes them first.
-func screen(dir string, planned, left []string, clean bool) error {
-	_, clears, err := obstruction(dir, planned, left)
+// screen refuses a plan whose write would meet, on its way, anything the
+// previous manifest prev does not list, and one whose write would meet a
+// leftover of the earlier export -- a file left where this plan needs a
+// directory, or a directory holding only leftovers where it needs a file --
+// unless clean is set and so removes them first.
+func screen(dir string, prev, planned, left []string, clean bool) error {
+	foreign, clears, err := obstruction(dir, prev, planned, left)
 	if err != nil {
 		return err
+	}
+	if foreign != nil {
+		return hint.With(refuse(
+			"output directory %q holds %q, which no earlier export's manifest lists, in the way of %q, which this export writes; refusing to write over it",
+			dir, foreign.at, foreign.rel),
+			"move it out of the output directory, or pass a different --output")
 	}
 	if clears != nil && !clean {
 		return hint.With(refuse(
@@ -1146,11 +1157,12 @@ type blocked struct{ at, rel string }
 // thing in the way of writing it that removing the leftovers in left clears,
 // and the first that nothing this export may do clears. In the way is
 // anything above the path but a real directory, and at the path anything but
-// a regular file the previous manifest lists. Removing left clears a leftover
+// a regular file the previous manifest prev lists. Removing left clears a leftover
 // above the path, and a directory at the path whose every leaf is a leftover,
 // since removeListed then prunes it. Both listings are sorted.
-func obstruction(dir string, planned, left []string) (foreign, clears *blocked, err error) {
+func obstruction(dir string, prev, planned, left []string) (foreign, clears *blocked, err error) {
 	isLeft := func(rel string) bool { _, ok := slices.BinarySearch(left, rel); return ok }
+	isPrev := func(rel string) bool { _, ok := slices.BinarySearch(prev, rel); return ok }
 	note := func(b blocked, clear bool) {
 		switch {
 		case clear && clears == nil:
@@ -1177,12 +1189,15 @@ func obstruction(dir string, planned, left []string) (foreign, clears *blocked, 
 				}
 				continue
 			}
-			if info.IsDir() {
+			switch {
+			case info.IsDir():
 				only, werr := onlyLeftovers(dir, at, isLeft)
 				if werr != nil {
 					return nil, nil, werr
 				}
 				note(blocked{at: at, rel: rel}, only)
+			case !info.Mode().IsRegular() || !isPrev(rel):
+				note(blocked{at: at, rel: rel}, false)
 			}
 		}
 	}

@@ -86,9 +86,10 @@ func refuse(format string, a ...any) error {
 // overwrite files fisc did not write. An unreadable directory or manifest is
 // an I/O error rather than a refusal, and neither is assumed empty.
 //
-// This is the one ownership rule. What else the directory holds does not
-// matter: --clean removes only what the manifest lists, so a file beside it
-// that no export wrote is never at risk.
+// What else the directory holds does not matter here: --clean removes only
+// what the manifest lists, and Write refuses to write over anything at a path
+// it writes that the manifest does not list, so a file beside it that no
+// export wrote is never at risk.
 func RefuseForeignDir(dir string) error {
 	info, err := os.Stat(dir)
 	if errors.Is(err, os.ErrNotExist) {

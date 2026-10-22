@@ -227,9 +227,11 @@ any other directory is refused before anything is written. A manifest an
 older fisc wrote is not one this fisc reads: remove that directory and export
 again.
 
-Writing never deletes. --clean removes only what the earlier export's manifest
-lists and this export does not write, then the directories that leaves empty;
-a file no export wrote is left where it is. --clean --dry-run prints the paths
+Writing never deletes, and never writes over a file the manifest does not
+list: one at a path the export writes is refused before anything is written.
+--clean removes only what the earlier export's manifest lists and this export
+does not write, then the directories that leaves empty; a file no export wrote
+is left where it is. --clean --dry-run prints the paths
 --clean would remove, one per line, and writes nothing.`,
 		Example: `  # Write the site to dist/ and read it in a browser
   fisc export
