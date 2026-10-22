@@ -18,7 +18,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/jcrussell/livermore-budget/internal/export"
-	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/repo"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/pkg/iostreams"
@@ -87,8 +86,10 @@ type Options struct {
 	// after validation it is absolute and symlink-resolved.
 	OutputDir string
 
-	// Clean empties OutputDir first. Validate has already refused a
-	// directory fisc does not own; see export.RefuseForeignDir.
+	// Clean removes the files the earlier export's manifest lists and this
+	// export does not write, and the directories that leaves empty. A file no
+	// manifest lists is never removed; see export.RefuseForeignDir for which
+	// directories carry one.
 	Clean bool
 
 	// SourceBrowseURL cites the committed page text at a remote — a forge's
@@ -213,12 +214,16 @@ It writes only into a directory that is missing, empty, or carries the
 manifest an earlier export left (.fisc-export, listing every file it wrote);
 any other directory is refused before anything is written. A manifest an
 older fisc wrote is not one this fisc reads: remove that directory and export
-again.`,
+again.
+
+Writing never deletes. --clean removes only what the earlier export's manifest
+lists and this export does not write, then the directories that leaves empty;
+a file no export wrote is left where it is.`,
 		Example: `  # Write the site to dist/ and read it in a browser
   fisc export
   python3 -m http.server -d dist 8000
 
-  # Refresh an earlier export, dropping files it no longer writes
+  # Refresh an earlier export, removing the files it wrote that this one does not
   fisc export --output build/site --clean
 
   # Cite the extracted page text on a forge instead of shipping it
@@ -236,7 +241,7 @@ again.`,
 	}
 
 	cmd.Flags().StringVarP(&opts.OutputDir, "output", "o", defaultOutputDir, "Directory to write the site into (missing, empty, or an earlier export)")
-	cmd.Flags().BoolVar(&opts.Clean, "clean", false, "Empty the output directory first")
+	cmd.Flags().BoolVar(&opts.Clean, "clean", false, "Remove the files the earlier export wrote and this one does not")
 	cmd.Flags().StringVar(&opts.SourceBrowseURL, "source-browse-url", "",
 		"Cite the extracted page text at this base URL instead of shipping it in the site (e.g. "+export.DefaultSourceBrowseURL+")")
 
@@ -322,10 +327,10 @@ func (o *Options) extractionTree(repoRoot string) string {
 	return filepath.Join(repoRoot, filepath.FromSlash(repo.ExtractedDir))
 }
 
-// exportRun checks ctx between stages, last immediately before --clean, and
-// between files: a cancellation seen before the clean leaves the output
-// directory as it was, and one during the write leaves a partial site whose
-// marker --clean recognises.
+// exportRun checks ctx between stages and Write checks it between files: a
+// cancellation seen before Write leaves the output directory as it was, and
+// one during it leaves a partial site whose manifest lists every file an
+// export may have put there, so the next run, with --clean, converges.
 func exportRun(ctx context.Context, o *Options) error {
 	root, err := o.RepoRoot()
 	if err != nil {
@@ -348,13 +353,12 @@ func exportRun(ctx context.Context, o *Options) error {
 		return err
 	}
 
-	// THE WHOLE SITE IS RESOLVED BEFORE --clean. Prepare validates, runs the
-	// siteOptions gate, renders every page, and resolves the cited page text out of
-	// the extraction tree, this command's PageIndex seeding included; after it
-	// returns, only I/O can fail. A caller that learns any of that from Write
-	// has already emptied the reader's site to find out -- `fisc export
-	// --clean` over a corpus that has just published an undeclared document
-	// would empty the output directory and then refuse.
+	// THE WHOLE SITE IS RESOLVED BEFORE ANYTHING IS WRITTEN. Prepare validates,
+	// runs the siteOptions gate, renders every page, and resolves the cited
+	// page text out of the extraction tree, this command's PageIndex seeding
+	// included; after it returns, only I/O can fail. A caller that learned any
+	// of that from Write would leave the reader's site half overwritten to find
+	// out.
 	plan, err := export.Prepare(site)
 	if err != nil {
 		return err
@@ -363,13 +367,7 @@ func exportRun(ctx context.Context, o *Options) error {
 		return fmt.Errorf("export: %w", cerr)
 	}
 
-	if o.Clean {
-		if cerr := export.SafeCleanDir(o.OutputDir); cerr != nil {
-			return hint.With(cerr, "pass a different --output, or empty that directory yourself")
-		}
-	}
-
-	written, err := plan.Write(ctx)
+	written, removed, err := plan.Write(ctx, o.Clean)
 	if err != nil {
 		return err
 	}
@@ -387,6 +385,9 @@ func exportRun(ctx context.Context, o *Options) error {
 		}
 	}
 	fmt.Fprintf(o.IO.ErrOut, "wrote %d files to %s\n", len(written), display)
+	if o.Clean {
+		fmt.Fprintf(o.IO.ErrOut, "removed %d files the earlier export wrote and this one does not\n", len(removed))
+	}
 	// Say this every time, not only on failure: the page fetches its data,
 	// and fetch() from a file:// origin is blocked in Chrome, so the obvious
 	// way to look at the output is the one way that does not work.

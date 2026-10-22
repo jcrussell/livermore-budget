@@ -517,7 +517,7 @@ func TestASiteWithNoCaveatsPageStatesEachCaveatOnceInItsList(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Prepare without the caveats view: %v", err)
 	}
-	if _, wErr := plan.Write(context.Background()); wErr != nil {
+	if _, _, wErr := plan.Write(context.Background(), false); wErr != nil {
 		t.Fatalf("Write: %v", wErr)
 	}
 	if _, statErr := os.Stat(filepath.Join(opts.OutputDir, "caveats.html")); statErr == nil {
@@ -831,7 +831,12 @@ func readPage(t *testing.T, dir string) string {
 	return string(b)
 }
 
-func TestExportRunCleanRefusesSomebodyElsesDirectory(t *testing.T) {
+// --clean removes only what a manifest lists, so even reached past
+// Validate, over a directory with no manifest, it removes nothing.
+//
+// Mutation: make Write's clean remove every file the plan does not write and
+// this goes red with "the file was removed anyway".
+func TestExportRunCleanRemovesNothingNoManifestLists(t *testing.T) {
 	opts, _, _, _ := testOptions(t)
 	opts.Clean = true
 	if err := os.MkdirAll(opts.OutputDir, 0o755); err != nil {
@@ -842,28 +847,19 @@ func TestExportRunCleanRefusesSomebodyElsesDirectory(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 
-	err := exportRun(context.Background(), opts)
-	if err == nil {
-		t.Fatal("got nil error, want a refusal to delete")
+	if err := exportRun(context.Background(), opts); err != nil {
+		t.Fatalf("exportRun: %v", err)
 	}
-	var h *hint.ErrHint
-	if !errors.As(err, &h) {
-		t.Errorf("got %T, want a *hint.ErrHint so the user is told what to do", err)
-	}
-	if _, serr := os.Stat(keep); serr != nil {
-		t.Errorf("the file was removed anyway: %v", serr)
+	if b, serr := os.ReadFile(keep); serr != nil || string(b) != "years of work" {
+		t.Errorf("the file was removed anyway: %q, %v", b, serr)
 	}
 }
 
 // TestExportRunRefusesBeforeCleanDestroysTheSite pins the ORDER of the
-// reachability check against --clean, which is the whole of its consequence.
-//
-// The check needs nothing SafeCleanDir produces. While it sat between Clean and
-// Write, `fisc export --clean` over a corpus that had just published an
-// undeclared document emptied the reader's output directory and THEN refused --
-// destroying a working site to report a fault that was detectable before
-// anything was touched. A validation that runs after a destructive step is a
-// validation in the wrong place, however correct its verdict.
+// reachability check against --clean, which is the whole of its consequence:
+// `fisc export --clean` over a corpus that has just published an undeclared
+// document refuses before it writes or removes anything, so the reader's site
+// survives a fault detectable before anything was touched.
 func TestExportRunRefusesBeforeCleanDestroysTheSite(t *testing.T) {
 	opts, _, _, _ := testOptions(t)
 	if err := exportRun(context.Background(), opts); err != nil {
@@ -926,29 +922,54 @@ func TestExportRunRefusesBeforeCleanDestroysTheSite(t *testing.T) {
 	}
 }
 
-func TestExportRunCleanEmptiesItsOwnOutput(t *testing.T) {
-	opts, _, _, _ := testOptions(t)
+// --clean removes a file the earlier export wrote and this one does not, and
+// the directories that leaves empty, and leaves a file no export wrote.
+//
+// Mutation: drop the clean branch from Write and this goes red with "a file
+// the earlier export wrote survived --clean"; skip the pruning and it goes
+// red with "facts/gone was left behind empty".
+func TestExportRunCleanRemovesWhatTheEarlierExportWrote(t *testing.T) {
+	opts, _, _, errOut := testOptions(t)
+	build := opts.Build
+	opts.Build = func(root string) (result, error) {
+		r, err := build(root)
+		if err != nil {
+			return r, err
+		}
+		r.Files = map[string][]byte{"facts/gone/p0001.jsonl": []byte("{}\n")}
+		return r, nil
+	}
 	if err := exportRun(context.Background(), opts); err != nil {
 		t.Fatalf("first export: %v", err)
 	}
-	// Seeded in a subdirectory, which is what --clean has to reach.
-	stale := filepath.Join(opts.OutputDir, "data", "gone.json")
-	if err := os.MkdirAll(filepath.Dir(stale), 0o750); err != nil {
-		t.Fatalf("seed: %v", err)
+	stale := filepath.Join(opts.OutputDir, "facts", "gone", "p0001.jsonl")
+	if _, err := os.Stat(stale); err != nil {
+		t.Fatalf("the first export did not write the file this test removes: %v", err)
 	}
-	if err := os.WriteFile(stale, []byte("{}"), 0o600); err != nil {
+	notes := filepath.Join(opts.OutputDir, "notes.md")
+	if err := os.WriteFile(notes, []byte("mine\n"), 0o600); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 
+	opts.Build = build
 	opts.Clean = true
 	if err := exportRun(context.Background(), opts); err != nil {
 		t.Fatalf("second export: %v", err)
 	}
 	if _, err := os.Stat(stale); err == nil {
-		t.Error("a stale file survived --clean")
+		t.Error("a file the earlier export wrote survived --clean")
+	}
+	if _, err := os.Stat(filepath.Dir(stale)); err == nil {
+		t.Error("facts/gone was left behind empty")
+	}
+	if _, err := os.Stat(notes); err != nil {
+		t.Errorf("a file no export wrote was removed: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(opts.OutputDir, "index.html")); err != nil {
 		t.Errorf("the site was not rewritten: %v", err)
+	}
+	if !strings.Contains(errOut(), "removed 1 files") {
+		t.Errorf("stderr %q does not say what --clean removed", errOut())
 	}
 }
 
@@ -1000,13 +1021,9 @@ func TestExportRunShipsTheBuildersFiles(t *testing.T) {
 // It is assetPath's refusal, asserted through the command rather than through
 // export.Write, because that is the path a Builder now takes.
 //
-// IT RUNS BOTH WITH AND WITHOUT --clean, and the second case is the one that
-// matters. The first version of this test ran only without, and stayed green
-// while `fisc export --clean` emptied the reader's site and THEN refused: Write
-// validates, but Write runs after SafeCleanDir. The fix hoisted
-// Options.Validate above the clean, which is the same ordering
-// assertPublishedReachable argues for one screen up; this is what would have
-// caught it.
+// IT RUNS BOTH WITH AND WITHOUT --clean: either way the refusal comes from
+// Prepare, before Write writes or removes anything, which is the same
+// ordering assertPublishedReachable holds one screen up.
 func TestExportRunRefusesAnAssetThatEscapesTheSite(t *testing.T) {
 	for _, clean := range []bool{false, true} {
 		name := "without --clean"
@@ -2760,6 +2777,9 @@ func TestNewCmdExportRefusesADirectoryItDoesNotOwn(t *testing.T) {
 		// The marker an older binary wrote is not a manifest, so the site
 		// beside it is nobody's export.
 		"older-marker": {export.MarkerName: "fisc export\n", "index.html": "<html>\n"},
+		// fisc-3s5d.65's directory: an older marker over nothing but
+		// subdirectories holding source.
+		"older-marker-over-source": {export.MarkerName: "fisc export\n", "cmd/fisc/main.go": "package main\n", "src/x.go": "package x\n"},
 	}
 	for name, seed := range dirs {
 		for _, extra := range [][]string{nil, {"--clean"}} {
@@ -2878,7 +2898,7 @@ func TestNewCmdExportAcceptsADirectoryItOwns(t *testing.T) {
 }
 
 // lateCancel is a context whose cancellation lands after its first Err():
-// a signal that arrives once the build has been checked and before the clean.
+// a signal that arrives once the build has been checked and before Write.
 type lateCancel struct {
 	context.Context
 	seen bool
@@ -2893,7 +2913,7 @@ func (c *lateCancel) Err() error {
 }
 
 // A cancellation that lands after the build, with --clean over an earlier
-// export, stops before SafeCleanDir: the reader's site stays as it was.
+// export, stops before Write: the reader's site stays as it was.
 //
 // Mutation: drop the ctx check that follows Prepare and this goes red with
 // "index.html was removed".

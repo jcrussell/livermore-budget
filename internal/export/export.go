@@ -29,6 +29,7 @@
 package export
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -878,7 +879,7 @@ func assetPath(rel string, reserved map[string]bool) error {
 
 // plan is a site resolved in full and not yet written: every byte of every
 // file, in the order it goes down. It exists so everything that can refuse an
-// export does so before `fisc export --clean` empties the output directory.
+// export does so before `fisc export` writes or removes anything.
 type plan struct {
 	dir   string
 	files []plannedFile
@@ -980,11 +981,11 @@ func Prepare(o Options) (*plan, error) {
 		}
 	}
 	// The pages are written last, and index.html last of all, so in a fresh
-	// or cleaned directory the entry point does not exist until the site
-	// around it does -- including the other views it links to, or it would
-	// appear while its own nav pointed at 404s. Over an earlier export
-	// written without --clean the old index.html is already there, and a
-	// write that stops partway leaves it beside a mix of old and new files
+	// directory the entry point does not exist until the site around it
+	// does -- including the other views it links to, or it would appear
+	// while its own nav pointed at 404s. Over an earlier export, with or
+	// without --clean, the old index.html is already there, and a write that
+	// stops partway leaves it beside a mix of old and new files
 	// (fisc-3s5d.69).
 	for _, pg := range pages {
 		if pg.Path == IndexPath {
@@ -1005,71 +1006,131 @@ func Prepare(o Options) (*plan, error) {
 	return plan, nil
 }
 
-// Write puts a prepared Plan on disk, creating o.Dir if needed, and returns the
-// slash-separated paths it wrote, relative to that directory and sorted, the
-// manifest included. It checks ctx before creating o.Dir and before each file,
-// and stops with an error wrapping ctx.Err(), leaving the files already
-// written in place.
+// Write puts a prepared Plan on disk, creating o.Dir if needed. It returns
+// the slash-separated paths it wrote, the manifest included, and with clean
+// the paths it removed, each relative to o.Dir and sorted. It checks ctx
+// before creating o.Dir, before each file, and before removing anything, and
+// stops with an error wrapping ctx.Err(), leaving what is on disk in place.
 //
 // The manifest goes down first and last. First it lists every path the
 // previous manifest did and every path this plan writes, so a run stopped at
 // any point leaves a manifest covering everything an export may have put
-// there; last it lists this plan's paths and whatever the previous export
-// wrote that is still there, which is what a later --clean may remove. A
-// previous manifest that is missing or does not parse lists nothing.
+// there. Without clean nothing is removed, and the last manifest lists this
+// plan's paths and whatever the earlier export wrote that is still there;
+// with clean those leftovers are removed first, then every directory the
+// removal leaves empty, and the last manifest lists this plan's paths alone.
+// Nothing the previous manifest does not list is ever removed, and a missing
+// or unparseable one lists nothing.
 //
 // Everything that can be decided has been. What is left can fail only on I/O
 // or stop on a cancelled ctx.
-func (p *plan) Write(ctx context.Context) ([]string, error) {
+func (p *plan) Write(ctx context.Context, clean bool) ([]string, []string, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, fmt.Errorf("create output directory: %w", err)
+		return nil, nil, fmt.Errorf("create output directory: %w", err)
 	}
 	// #nosec G301 -- the output is a web root; a directory a server running as
 	// another user cannot traverse is a broken deploy, not a hardened one.
 	if err := os.MkdirAll(p.dir, 0o755); err != nil {
-		return nil, fmt.Errorf("create output directory: %w", err)
+		return nil, nil, fmt.Errorf("create output directory: %w", err)
 	}
 	prev, err := previousManifest(p.dir)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	planned := make([]string, len(p.files))
-	for i, f := range p.files {
-		planned[i] = f.Path
-	}
-	slices.Sort(planned)
+	planned := p.paths()
 	if err := ctx.Err(); err != nil {
-		return nil, fmt.Errorf("write %q: %w", MarkerName, err)
+		return nil, nil, fmt.Errorf("write %q: %w", MarkerName, err)
 	}
 	if err := writeManifest(p.dir, union(prev, planned)); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	written := make([]string, 0, len(p.files)+1)
 	written = append(written, MarkerName)
 	for _, f := range p.files {
 		if err := ctx.Err(); err != nil {
-			return nil, fmt.Errorf("write %q: %w", f.Path, err)
+			return nil, nil, fmt.Errorf("write %q: %w", f.Path, err)
 		}
 		dst := filepath.Join(p.dir, filepath.FromSlash(f.Path))
 		// #nosec G301 -- as above: these are published directories.
 		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
-			return nil, fmt.Errorf("create %q: %w", path.Dir(f.Path), err)
+			return nil, nil, fmt.Errorf("create %q: %w", path.Dir(f.Path), err)
 		}
 		// #nosec G306 -- these are published web assets; 0600 would make the
 		// output unreadable to a web server running as another user.
 		if err := os.WriteFile(dst, f.Bytes, 0o644); err != nil {
-			return nil, fmt.Errorf("write %q: %w", f.Path, err)
+			return nil, nil, fmt.Errorf("write %q: %w", f.Path, err)
 		}
 		written = append(written, f.Path)
 	}
-	if err := ctx.Err(); err != nil {
-		return nil, fmt.Errorf("write %q: %w", MarkerName, err)
+	var removed []string
+	left := leftover(p.dir, prev, planned)
+	if clean {
+		if err := ctx.Err(); err != nil {
+			return nil, nil, fmt.Errorf("remove obsolete files: %w", err)
+		}
+		if err := removeListed(p.dir, left); err != nil {
+			return nil, nil, err
+		}
+		removed, left = left, nil
 	}
-	if err := writeManifest(p.dir, union(planned, leftover(p.dir, prev, planned))); err != nil {
-		return nil, err
+	if err := ctx.Err(); err != nil {
+		return nil, nil, fmt.Errorf("write %q: %w", MarkerName, err)
+	}
+	if err := writeManifest(p.dir, union(planned, left)); err != nil {
+		return nil, nil, err
 	}
 	sort.Strings(written)
-	return written, nil
+	return written, removed, nil
+}
+
+// paths is the plan's output paths, sorted.
+func (p *plan) paths() []string {
+	planned := make([]string, len(p.files))
+	for i, f := range p.files {
+		planned[i] = f.Path
+	}
+	slices.Sort(planned)
+	return planned
+}
+
+// removeListed removes each of rels from dir, then every directory between
+// them and dir that the removal leaves empty, deepest first. rels are what
+// leftover returned, so each is a file reached through real directories. A
+// directory still holding anything stays, and dir itself is never removed.
+func removeListed(dir string, rels []string) error {
+	parents := make(map[string]bool)
+	for _, rel := range rels {
+		if err := os.Remove(filepath.Join(dir, filepath.FromSlash(rel))); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("remove %q: %w", rel, err)
+		}
+		for d := path.Dir(rel); d != "."; d = path.Dir(d) {
+			parents[d] = true
+		}
+	}
+	// Longer first puts every directory before its parent.
+	dirs := slices.SortedFunc(maps.Keys(parents), func(a, b string) int {
+		if n := cmp.Compare(len(b), len(a)); n != 0 {
+			return n
+		}
+		return strings.Compare(a, b)
+	})
+	for _, d := range dirs {
+		full := filepath.Join(dir, filepath.FromSlash(d))
+		entries, err := os.ReadDir(full)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			return fmt.Errorf("read %q: %w", d, err)
+		}
+		if len(entries) > 0 {
+			continue
+		}
+		if err := os.Remove(full); err != nil {
+			return fmt.Errorf("remove emptied directory %q: %w", d, err)
+		}
+	}
+	return nil
 }
 
 // previousManifest is the listing dir's manifest holds, or nothing where it

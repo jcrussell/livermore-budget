@@ -43,83 +43,6 @@ func TestResolveOutputDirRefusesDangerousTargets(t *testing.T) {
 	}
 }
 
-func TestSafeCleanDirRefusesADirectoryItDidNotWrite(t *testing.T) {
-	// The failure this guards against: a typo'd --output naming a directory
-	// full of somebody's work.
-	dir := t.TempDir()
-	keep := filepath.Join(dir, "thesis.txt")
-	if err := os.WriteFile(keep, []byte("years of work"), 0o600); err != nil {
-		t.Fatalf("seed: %v", err)
-	}
-
-	err := export.SafeCleanDir(dir)
-	if err == nil {
-		t.Fatal("got nil error, want a refusal to delete")
-	}
-	if !strings.Contains(err.Error(), "refusing") {
-		t.Errorf("got error %q, want it to say it is refusing", err)
-	}
-	if _, serr := os.Stat(keep); serr != nil {
-		t.Errorf("the file was removed anyway: %v", serr)
-	}
-}
-
-func TestSafeCleanDirEmptiesASiteItRecognises(t *testing.T) {
-	cases := map[string][]string{
-		"a finished site":  {export.MarkerName, "index.html", "stale.json"},
-		"a partial export": {export.MarkerName, "stale.json"},
-	}
-	for name, files := range cases {
-		t.Run(name, func(t *testing.T) {
-			dir := t.TempDir()
-			seedFiles(t, dir, files...)
-			if err := export.SafeCleanDir(dir); err != nil {
-				t.Fatalf("SafeCleanDir: %v", err)
-			}
-			entries, err := os.ReadDir(dir)
-			if err != nil {
-				t.Fatalf("read cleaned dir: %v", err)
-			}
-			if len(entries) != 0 {
-				t.Errorf("got %d entries after cleaning, want 0", len(entries))
-			}
-		})
-	}
-}
-
-func TestSafeCleanDirAcceptsEmptyAndMissingDirectories(t *testing.T) {
-	dir := t.TempDir()
-	if err := export.SafeCleanDir(dir); err != nil {
-		t.Errorf("empty directory: %v", err)
-	}
-	missing := filepath.Join(dir, "nested", "site")
-	if err := export.SafeCleanDir(missing); err != nil {
-		t.Errorf("missing directory: %v", err)
-	}
-	info, err := os.Stat(missing)
-	if err != nil {
-		t.Fatalf("stat created directory: %v", err)
-	}
-	if !info.IsDir() {
-		t.Error("SafeCleanDir did not leave a directory behind")
-	}
-}
-
-func TestSafeCleanDirRefusesAFile(t *testing.T) {
-	dir := t.TempDir()
-	file := filepath.Join(dir, "notadir")
-	if err := os.WriteFile(file, []byte("x"), 0o600); err != nil {
-		t.Fatalf("seed: %v", err)
-	}
-	err := export.SafeCleanDir(file)
-	if err == nil {
-		t.Fatal("got nil error, want a refusal")
-	}
-	if !strings.Contains(err.Error(), "not a directory") {
-		t.Errorf("got error %q, want it to say the path is not a directory", err)
-	}
-}
-
 func TestWritableDir(t *testing.T) {
 	dir := t.TempDir()
 	if err := export.WritableDir(dir); err != nil {
@@ -210,6 +133,12 @@ func TestRefuseForeignDir(t *testing.T) {
 		{name: "a partial export", files: []string{export.MarkerName}},
 		{name: "a finished export", files: []string{export.MarkerName, "index.html"}, dirs: []string{"data"}},
 		{name: "a manifest listing files", marker: h + "index.html\nvendor/d3.js\n", files: []string{"index.html"}},
+		// The directory fisc-3s5d.65 is about: an older marker over nothing
+		// but subdirectories holding source. Only a manifest says fisc's.
+		{name: "the older binary's marker over source below", marker: "fisc export\n", files: []string{"cmd/fisc/main.go", "src/x/x.go"}, refuse: notManifest},
+		// A manifest is the whole rule: what else is there is never at risk,
+		// because --clean removes only what the manifest lists.
+		{name: "a manifest beside files no export wrote", files: []string{export.MarkerName, "notes.md", "sub/keep.go", ".git/HEAD"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -237,17 +166,6 @@ func TestRefuseForeignDir(t *testing.T) {
 				t.Errorf("got error %q, want it to say how to recover", err)
 			case tc.refuse == "" && err != nil:
 				t.Errorf("got %v, want the directory accepted", err)
-			}
-			if tc.refuse == "" {
-				return
-			}
-			if cerr := export.SafeCleanDir(dir); cerr == nil {
-				t.Error("SafeCleanDir accepted a directory RefuseForeignDir refuses")
-			}
-			for _, f := range append(tc.files, tc.dirs...) {
-				if _, serr := os.Stat(filepath.Join(dir, f)); serr != nil {
-					t.Errorf("%s was removed: %v", f, serr)
-				}
 			}
 		})
 	}
@@ -320,52 +238,6 @@ func TestRefuseForeignDirKeepsAProbeNamedDirectoryThatHoldsAFile(t *testing.T) {
 	}
 	if err := export.RefuseForeignDir(dir); err == nil {
 		t.Fatal("got nil error, want a refusal")
-	}
-}
-
-// A marker is not proof by itself: one a binary wrote into data/ or site/
-// before it refused those, or one copied by hand, sits beside source, and
-// --clean would RemoveAll the source with it. RefuseForeignDir refuses such a
-// directory for writing, and SafeCleanDir, which goes through it, leaves
-// every file in place.
-//
-// Mutation: make looksLikeSource report nothing and every case goes red with
-// "got nil error, want a refusal of a marked directory holding source".
-func TestSafeCleanDirRefusesASourceDirectory(t *testing.T) {
-	for _, tc := range []struct {
-		name  string
-		files []string
-		dirs  []string
-	}{
-		{name: "a Go package", files: []string{"embed.go", "index.html", export.MarkerName}},
-		{name: "data", files: []string{"sources.yaml", export.MarkerName}, dirs: []string{"pdf"}},
-		{name: "a checkout", files: []string{export.MarkerName}, dirs: []string{".git"}},
-		{name: "the fact store", files: []string{"facts.jsonl", export.MarkerName}},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			dir := t.TempDir()
-			seedFiles(t, dir, tc.files...)
-			for _, d := range tc.dirs {
-				if err := os.Mkdir(filepath.Join(dir, d), 0o750); err != nil {
-					t.Fatalf("seed %s: %v", d, err)
-				}
-			}
-			err := export.RefuseForeignDir(dir)
-			if err == nil {
-				t.Fatal("got nil error, want a refusal of a marked directory holding source")
-			}
-			if !strings.Contains(err.Error(), "no export writes") {
-				t.Errorf("error %q does not say why it refused", err)
-			}
-			if err := export.SafeCleanDir(dir); err == nil {
-				t.Error("SafeCleanDir on a marked directory holding source = nil error, want a refusal")
-			}
-			for _, f := range append(tc.files, tc.dirs...) {
-				if _, serr := os.Stat(filepath.Join(dir, f)); serr != nil {
-					t.Errorf("%s was removed anyway: %v", f, serr)
-				}
-			}
-		})
 	}
 }
 

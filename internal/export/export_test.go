@@ -332,7 +332,7 @@ func (c *cancelFromCall) Err() error {
 // cancellation".
 func TestWriteStopsOnACancelledContext(t *testing.T) {
 	type writer interface {
-		Write(context.Context) ([]string, error)
+		Write(context.Context, bool) ([]string, []string, error)
 	}
 	prepare := func(t *testing.T) (writer, string) {
 		t.Helper()
@@ -354,7 +354,7 @@ func TestWriteStopsOnACancelledContext(t *testing.T) {
 		p, dir := prepare(t)
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
-		written, err := p.Write(ctx)
+		written, _, err := p.Write(ctx, true)
 		if !errors.Is(err, context.Canceled) {
 			t.Errorf("got error %v, want it to wrap context.Canceled", err)
 		}
@@ -368,7 +368,7 @@ func TestWriteStopsOnACancelledContext(t *testing.T) {
 
 	t.Run("cancelled once the directory exists", func(t *testing.T) {
 		p, dir := prepare(t)
-		written, err := p.Write(&cancelFromCall{Context: context.Background(), n: 2})
+		written, _, err := p.Write(&cancelFromCall{Context: context.Background(), n: 2}, true)
 		if !errors.Is(err, context.Canceled) {
 			t.Errorf("got error %v, want it to wrap context.Canceled", err)
 		}
@@ -457,7 +457,7 @@ func TestAStoppedWriteLeavesAManifestOfBothExports(t *testing.T) {
 	planned := export.PlannedPaths(p)
 	// Err is asked before the directory, before the manifest, and before each
 	// file: the fourth call stops the write after its first file.
-	_, err = p.Write(&cancelFromCall{Context: context.Background(), n: 4})
+	_, _, err = p.Write(&cancelFromCall{Context: context.Background(), n: 4}, true)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("got error %v, want it to wrap context.Canceled", err)
 	}
@@ -494,7 +494,7 @@ func TestAWriteKeepsListingWhatTheEarlierExportLeft(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Prepare: %v", err)
 	}
-	if _, err := p.Write(context.Background()); err != nil {
+	if _, _, err := p.Write(context.Background(), false); err != nil {
 		t.Fatalf("Write: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "old", "gone.txt")); err != nil {
@@ -504,6 +504,116 @@ func TestAWriteKeepsListingWhatTheEarlierExportLeft(t *testing.T) {
 	slices.Sort(want)
 	if diff := cmp.Diff(want, manifestOf(t, dir)); diff != "" {
 		t.Errorf("manifest (-want +listed):\n%s", diff)
+	}
+}
+
+// --clean removes what the earlier export's manifest lists and this one does
+// not write, and the directories that leaves empty, and nothing else: not a
+// file the manifest never listed, wherever it sits, not a directory still
+// holding one, not a file reached through a symlinked directory, and not the
+// output directory itself.
+//
+// Mutation: make leftover return every earlier entry the plan does not
+// write, unchecked, and this goes red with "outside/x.txt was removed";
+// remove each leftover's parent directories with RemoveAll rather than only
+// when empty and it goes red with "old/mixed/mine.txt was removed"; skip the
+// pruning and it goes red with "old/sub was left behind empty".
+func TestCleanRemovesOnlyWhatTheEarlierExportListed(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "out")
+	outside := filepath.Join(root, "outside")
+	if err := os.MkdirAll(outside, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(outside, "x.txt"), []byte("not the export's"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	unlisted := []string{"notes.md", "sub/keep.go", ".git/HEAD", "old/mixed/mine.txt"}
+	listed := []string{"link/x.txt", "old/mixed/gone.txt", "old/sub/gone.txt", "top.txt"}
+	seedExport(t, dir, listed, append(slices.Clone(unlisted), "old/mixed/gone.txt", "old/sub/gone.txt", "top.txt"))
+	if err := os.Symlink(outside, filepath.Join(dir, "link")); err != nil {
+		t.Fatal(err)
+	}
+	p, err := export.Prepare(export.Options{
+		Dir:         dir,
+		Projections: map[string][]byte{"sankey": goldenSankey(t)},
+		Views:       spineOnly(),
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+	})
+	if err != nil {
+		t.Fatalf("Prepare: %v", err)
+	}
+	_, removed, err := p.Write(context.Background(), true)
+	if err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	if diff := cmp.Diff([]string{"old/mixed/gone.txt", "old/sub/gone.txt", "top.txt"}, removed); diff != "" {
+		t.Errorf("removed (-want +got):\n%s", diff)
+	}
+	for _, rel := range unlisted {
+		if _, serr := os.Stat(filepath.Join(dir, filepath.FromSlash(rel))); serr != nil {
+			t.Errorf("%s was removed: %v", rel, serr)
+		}
+	}
+	if _, serr := os.Stat(filepath.Join(outside, "x.txt")); serr != nil {
+		t.Errorf("outside/x.txt was removed: %v", serr)
+	}
+	for _, rel := range []string{"old/mixed/gone.txt", "old/sub/gone.txt", "top.txt"} {
+		if _, serr := os.Lstat(filepath.Join(dir, filepath.FromSlash(rel))); serr == nil {
+			t.Errorf("%s survived --clean", rel)
+		}
+	}
+	if _, serr := os.Stat(filepath.Join(dir, "old", "sub")); serr == nil {
+		t.Error("old/sub was left behind empty")
+	}
+	planned := export.PlannedPaths(p)
+	slices.Sort(planned)
+	if diff := cmp.Diff(planned, manifestOf(t, dir)); diff != "" {
+		t.Errorf("manifest (-planned +listed):\n%s", diff)
+	}
+}
+
+// --clean over a directory with no manifest, or one that does not parse,
+// removes nothing: there is no record of what an export wrote there.
+//
+// Mutation: make previousManifest return the paths of an invalid manifest as
+// though it were valid and the "unsorted" case goes red with "gone.txt was
+// removed".
+func TestCleanWithoutAValidManifestRemovesNothing(t *testing.T) {
+	for name, marker := range map[string]string{
+		"none":     "",
+		"older":    "fisc export\n",
+		"unsorted": export.ManifestHeader + "\nzz.txt\ngone.txt\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			dir := t.TempDir()
+			if err := os.WriteFile(filepath.Join(dir, "gone.txt"), []byte("x"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if marker != "" {
+				if err := os.WriteFile(filepath.Join(dir, export.MarkerName), []byte(marker), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			p, err := export.Prepare(export.Options{
+				Dir:         dir,
+				Projections: map[string][]byte{"sankey": goldenSankey(t)},
+				Views:       spineOnly(),
+				Docs:        budgetDocs(),
+				GeneratedBy: "fisc test",
+			})
+			if err != nil {
+				t.Fatalf("Prepare: %v", err)
+			}
+			_, removed, err := p.Write(context.Background(), true)
+			if err != nil {
+				t.Fatalf("Write: %v", err)
+			}
+			if _, serr := os.Stat(filepath.Join(dir, "gone.txt")); serr != nil || len(removed) > 0 {
+				t.Errorf("gone.txt was removed (removed %q, stat %v)", removed, serr)
+			}
+		})
 	}
 }
 
@@ -1413,7 +1523,8 @@ func writeSite(o export.Options) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return p.Write(context.Background())
+	written, _, err := p.Write(context.Background(), false)
+	return written, err
 }
 
 // What style.css DECLARES; nothing here renders CSS (fisc-6at).

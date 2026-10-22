@@ -86,10 +86,9 @@ func refuse(format string, a ...any) error {
 // overwrite files fisc did not write. An unreadable directory or manifest is
 // an I/O error rather than a refusal, and neither is assumed empty.
 //
-// The marker is not the whole rule: a marked directory that also looks like
-// source (looksLikeSource) is refused too, because a marker can be stale --
-// written by a binary that accepted `-o data` -- or copied by hand, and
-// --clean would RemoveAll whatever sits beside it.
+// This is the one ownership rule. What else the directory holds does not
+// matter: --clean removes only what the manifest lists, so a file beside it
+// that no export wrote is never at risk.
 func RefuseForeignDir(dir string) error {
 	info, err := os.Stat(dir)
 	if errors.Is(err, os.ErrNotExist) {
@@ -129,11 +128,6 @@ func RefuseForeignDir(dir string) error {
 			dir, MarkerName, invalid.reason)
 	case err != nil:
 		return err
-	}
-	if name, ok := looksLikeSource(entries); ok {
-		return refuse(
-			"output directory %q carries a %s marker and also holds %s, which no export writes; refusing to write a site into it or clean it",
-			dir, MarkerName, name)
 	}
 	return nil
 }
@@ -241,53 +235,6 @@ func strandedProbe(dir string, e os.DirEntry) bool {
 	}
 	inside, err := os.ReadDir(filepath.Join(dir, e.Name()))
 	return err == nil && len(inside) == 0
-}
-
-// looksLikeSource returns the first top-level entry of a directory that a
-// human's work or a checkout put there and no export writes: a .git, or a
-// file whose extension the site never carries. data/'s top level is YAML,
-// site/'s is Go and templates, facts/' is the JSONL fact store, and the
-// repository root's is a go.mod.
-func looksLikeSource(entries []os.DirEntry) (string, bool) {
-	for _, e := range entries {
-		if e.Name() == ".git" {
-			return e.Name(), true
-		}
-		if e.IsDir() {
-			continue
-		}
-		switch filepath.Ext(e.Name()) {
-		case ".go", ".tmpl", ".mod", ".sum", ".mjs", ".yaml", ".yml", ".py", ".pdf", ".md", ".jsonl":
-			return e.Name(), true
-		}
-	}
-	return "", false
-}
-
-// SafeCleanDir removes outputDir and recreates it empty, but only when
-// RefuseForeignDir accepts it, so `fisc export --clean -o ~/documents`
-// cannot wipe the documents. The path is canonicalised and screened by
-// ResolveOutputDir first.
-//
-// Checking the marker means reading the directory before removing it, so
-// this is a read-then-RemoveAll rather than a bare RemoveAll. The TOCTOU
-// window that opens is worth the guard for a single-user CLI: the failure it
-// prevents is unrecoverable data loss, and the failure it admits requires
-// someone to swap the directory mid-run.
-func SafeCleanDir(outputDir string) error {
-	resolved, err := ResolveOutputDir(outputDir)
-	if err != nil {
-		return err
-	}
-	if err := RefuseForeignDir(resolved); err != nil {
-		return err
-	}
-	if err := os.RemoveAll(resolved); err != nil {
-		return fmt.Errorf("clean output dir: %w", err)
-	}
-	// #nosec G301 -- the caller is building a web root; 0750 would hide
-	// the published site from a server running as another user.
-	return os.MkdirAll(resolved, 0o755)
 }
 
 // WritableDir reports whether path — or, if it does not exist yet, its

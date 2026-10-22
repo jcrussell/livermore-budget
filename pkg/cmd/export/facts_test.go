@@ -729,17 +729,10 @@ func TestTheIndexNamesOnlyFilesTheSiteWrites(t *testing.T) {
 }
 
 // TestCleanDoesNotDestroyASiteOverAFaultItCouldHaveSeen is the general form of
-// the ordering this command has argued for twice and got wrong twice.
-//
-// FIRST MISS: assetPath ran inside export.Write, after SafeCleanDir, so one bad
-// key from a Builder emptied the reader's site and then refused. Fixed by
-// hoisting validation.
-//
-// SECOND MISS, which is what this test is really for: the hoist covered
-// validation only, and withPageText was still inside Write. An export whose
-// fact store covers a page the extraction does not still destroyed the output
-// and then refused -- and the PageIndex seeding WIDENED that class, because it
-// makes pages cited that no projection names. p76 is exactly such a page.
+// the ordering this command holds: an export whose fact store covers a page
+// the extraction does not refuses in Prepare, before --clean removes
+// anything. The PageIndex seeding makes pages cited that no projection names,
+// and p76 is exactly such a page.
 //
 // So the assertion is not about page text. It is that a fault detectable
 // without touching the filesystem never costs a reader their site, and it is
