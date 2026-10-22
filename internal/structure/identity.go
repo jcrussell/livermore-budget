@@ -169,9 +169,12 @@ type Overlap struct {
 // (kind, category) pair an identity names that no shared cell bears. A covered
 // cell only one side prints is judged only on a basis both cuts print; a
 // misfiled one is reported on every basis.
+//
+// A pair not at one level, or one restrict refuses, is [ErrNotComparable];
+// any other error is about the data or the declarations.
 func Peers(facts []fact.Fact, a, b Cut, identities []Identity, exceptions []Exception) (Overlap, error) {
 	if a.Level != b.Level {
-		return Overlap{}, fmt.Errorf("peers %q (%s) and %q (%s): not at one level", a.Name, a.Level, b.Name, b.Level)
+		return Overlap{}, notComparablef("peers %q (%s) and %q (%s): not at one level", a.Name, a.Level, b.Name, b.Level)
 	}
 	at := a.Level
 	r, err := restrict(a, b, at)

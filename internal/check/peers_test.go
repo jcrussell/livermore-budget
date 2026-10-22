@@ -1,6 +1,8 @@
 package check
 
 import (
+	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -51,6 +53,9 @@ func TestTheCommittedPeersOverlapOnlyByDeclaredIdentity(t *testing.T) {
 		want := `"spine" prints [adopted] columns and "` + b + `" prints [audited]; there is no column both print`
 		if err == nil || !strings.Contains(err.Error(), want) {
 			t.Errorf("Peers(spine, %s) = %v, want %q", b, err, want)
+		}
+		if !errors.Is(err, structure.ErrNotComparable) {
+			t.Errorf("Peers(spine, %s) = %v, which is not structure.ErrNotComparable", b, err)
 		}
 	}
 }
@@ -240,5 +245,55 @@ func TestAnExceptionBetweenPeersIsThePeerChecks(t *testing.T) {
 		if f.Subject == stale.Name {
 			t.Errorf("the lattice check names an exception between peers: %s", f.Detail)
 		}
+	}
+}
+
+// peersOver is the registered peer check run over a lattice the test
+// declares, so what is proven is still the result fisc verify prints.
+type peersOver struct {
+	peersOverlapOnlyByDeclaredIdentity
+	cuts []structure.Cut
+}
+
+func (c *peersOver) Run(_ context.Context, s *Subject) (Result, error) {
+	return c.run(s, c.cuts)
+}
+
+// A pair Peers cannot compare for a reason in the declarations rather than
+// the lattice -- here two cuts at a level no lattice declares, which restrict
+// accepts and project refuses -- is a finding, not a refused pair.
+//
+// Mutation: count every error from structure.Peers as refused and the check
+// goes green with "x/y" among the refused pairs.
+func TestAPeerComparisonThatFailsOnItsDeclarationsIsAFinding(t *testing.T) {
+	t.Parallel()
+	s := committed(t)
+	var base structure.Cut
+	for _, c := range structure.AllCuts() {
+		if len(c.FundGroups) == 0 && c.DepartmentTier == "" && c.Scope != "" {
+			base = c
+			break
+		}
+	}
+	if base.Name == "" {
+		t.Fatal("no cut free of a fund-group footprint and a department tier to copy")
+	}
+	x, y := base, base
+	x.Name, y.Name = "x", "y"
+	x.Level, y.Level = "no-such-level", "no-such-level"
+	x.Reference, y.Reference = false, false
+	cuts := append(structure.AllCuts(), x, y)
+
+	_, err := structure.Peers(s.Facts, x, y, s.Identities, s.Exceptions)
+	if err == nil || errors.Is(err, structure.ErrNotComparable) {
+		t.Fatalf("Peers(x, y) = %v, want an error that is not structure.ErrNotComparable", err)
+	}
+
+	res := resultFor(t, runOne(t, s, &peersOver{cuts: cuts}), "peers-overlap-only-by-declared-identity")
+	if res.Status != StatusFail || len(res.Findings) != 1 {
+		t.Fatalf("status %s with %d findings, want one failure:\n  %v", res.Status, len(res.Findings), res.Findings)
+	}
+	if res.Findings[0].Subject != "x + y" || !strings.Contains(res.Findings[0].Detail, `"no-such-level" is not a declared level`) {
+		t.Errorf("finding = %s: %s, want the undeclared level on x + y", res.Findings[0].Subject, res.Findings[0].Detail)
 	}
 }

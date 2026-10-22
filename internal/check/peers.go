@@ -2,6 +2,7 @@ package check
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -20,7 +21,9 @@ import (
 // non-zero cell one side of an identity omits without an exception, an
 // identity or a category of one no shared cell bears out, and an exception
 // between two peers that is declared at another level or that does not meet
-// an absence at every cell it pins are each a finding.
+// an absence at every cell it pins are each a finding. A pair Peers refuses
+// as structure.ErrNotComparable is counted, not compared; any other error
+// from Peers is a finding on the pair.
 type peersOverlapOnlyByDeclaredIdentity struct{}
 
 var _ Check = (*peersOverlapOnlyByDeclaredIdentity)(nil)
@@ -35,8 +38,13 @@ func (*peersOverlapOnlyByDeclaredIdentity) Description() string {
 		"whose two readings agree to the cent, and every declared identity covers a cell"
 }
 
-func (*peersOverlapOnlyByDeclaredIdentity) Run(_ context.Context, s *Subject) (Result, error) {
-	cuts := structure.AllCuts()
+func (c *peersOverlapOnlyByDeclaredIdentity) Run(_ context.Context, s *Subject) (Result, error) {
+	return c.run(s, structure.AllCuts())
+}
+
+// run is Run over the cuts it is handed, so a test can declare one the
+// committed lattice does not.
+func (*peersOverlapOnlyByDeclaredIdentity) run(s *Subject, cuts []structure.Cut) (Result, error) {
 	identities := s.Identities
 	exceptions := s.Exceptions
 
@@ -75,8 +83,12 @@ func (*peersOverlapOnlyByDeclaredIdentity) Run(_ context.Context, s *Subject) (R
 				continue
 			}
 			o, err := structure.Peers(s.Facts, a, b, identities, exceptions)
-			if err != nil {
+			switch {
+			case errors.Is(err, structure.ErrNotComparable):
 				refused = append(refused, a.Name+"/"+b.Name)
+				continue
+			case err != nil:
+				findings = append(findings, finding(a.Name+" + "+b.Name, "%v", err))
 				continue
 			}
 			pairs++
