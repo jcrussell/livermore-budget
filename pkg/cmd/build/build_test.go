@@ -981,3 +981,48 @@ func TestBuildStopsWhenCancelled(t *testing.T) {
 		t.Errorf("got stdout %q, want no report", out)
 	}
 }
+
+// cancelFromCall is a context whose Err() reports a cancellation from its
+// nth call on: a signal that arrives once the earlier checks have passed.
+type cancelFromCall struct {
+	context.Context
+	n, calls int
+}
+
+func (c *cancelFromCall) Err() error {
+	c.calls++
+	if c.calls >= c.n {
+		return context.Canceled
+	}
+	return nil
+}
+
+// A cancellation that lands after every rule file has resolved stops the
+// build before the fact store is written. The spine is one rule file, so
+// resolve's per-file check is the first Err() and buildRun's check before the
+// write is the second.
+//
+// Mutation: drop buildRun's ctx check before cmdutil.WriteFile and this goes
+// red with "got nil error".
+func TestBuildStopsWhenCancelledBeforeTheWrite(t *testing.T) {
+	root := testRepo(t, spinePages(t), "spine.yaml")
+	opts, out, _ := testOptions(t, root)
+	ctx := &cancelFromCall{Context: context.Background(), n: 2}
+
+	err := buildRun(ctx, opts)
+	if err == nil {
+		t.Fatal("got nil error, want the build to stop before the write")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("got %v, want it to wrap context.Canceled", err)
+	}
+	if ctx.calls != 2 {
+		t.Errorf("Err() was called %d times, want 2: the test no longer reaches the check before the write", ctx.calls)
+	}
+	if _, serr := os.Stat(filepath.Join(root, defaultOutput)); !errors.Is(serr, os.ErrNotExist) {
+		t.Errorf("the fact store was written (stat: %v)", serr)
+	}
+	if out.Len() != 0 {
+		t.Errorf("got stdout %q, want no report", out)
+	}
+}
