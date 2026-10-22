@@ -8,6 +8,7 @@ package export
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -145,32 +146,62 @@ func (o *Options) Validate() error {
 // would not fail here — every citation on the site would be a dead link, and
 // the export would still finish cleanly.
 func validateBrowseURL(raw string) error {
+	// Every refusal names the value by shown, never raw: a token passed as
+	// the username is as secret as a password, and u.Redacted masks only the
+	// password.
+	shown := withoutUserinfo(raw)
 	u, err := url.Parse(raw)
 	if err != nil {
-		return fmt.Errorf("%q is not a URL: %w", raw, err)
-	}
-	if u.Scheme != "http" && u.Scheme != "https" {
-		return fmt.Errorf("%q must be an http or https URL", raw)
-	}
-	if u.Host == "" {
-		return fmt.Errorf("%q has no host", raw)
+		// A *url.Error quotes the whole input; its inner error does not.
+		var uerr *url.Error
+		if errors.As(err, &uerr) {
+			err = uerr.Err
+		}
+		return fmt.Errorf("%q is not a URL: %w", shown, err)
 	}
 	// The base is copied into every citation the site publishes, so a
 	// credential in it would be published too. An empty userinfo ("@host")
 	// still parses to a non-nil User.
 	if u.User != nil {
-		return fmt.Errorf("%q carries userinfo; the base is copied into every published citation", u.Redacted())
+		return fmt.Errorf("%q carries userinfo; the base is copied into every published citation", shown)
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("%q must be an http or https URL", shown)
+	}
+	if u.Host == "" {
+		return fmt.Errorf("%q has no host", shown)
 	}
 	// Each citation appends a repository path to the base, so a query or a
 	// fragment would sit in front of the path, and an empty one is still a
 	// "?" or a "#" there: url.URL keeps no flag for an empty fragment.
 	if u.RawQuery != "" || u.ForceQuery {
-		return fmt.Errorf("%q carries a query; every citation appends a path to the base, which would land after it", raw)
+		return fmt.Errorf("%q carries a query; every citation appends a path to the base, which would land after it", shown)
 	}
 	if strings.Contains(raw, "#") {
-		return fmt.Errorf("%q carries a fragment; every citation appends a path to the base, which would land after it", raw)
+		return fmt.Errorf("%q carries a fragment; every citation appends a path to the base, which would land after it", shown)
 	}
 	return nil
+}
+
+// withoutUserinfo is raw with everything up to the authority's last "@"
+// cut, from just after "//" where there is one and from the start where
+// there is not. It works on the string rather than a parse so that a value
+// url.Parse refuses is stripped too, and it over-cuts a schemeless or opaque
+// value ("user:pass@host", "ftp:user:pass@host") rather than echo it.
+func withoutUserinfo(raw string) string {
+	start := 0
+	if k := strings.Index(raw, "//"); k >= 0 {
+		start = k + len("//")
+	}
+	end := len(raw)
+	if k := strings.IndexAny(raw[start:], "/?#"); k >= 0 {
+		end = start + k
+	}
+	at := strings.LastIndex(raw[start:end], "@")
+	if at < 0 {
+		return raw
+	}
+	return raw[:start] + raw[start+at+1:]
 }
 
 // NewCmdExport builds the export command. runF is the test seam: when it is

@@ -2700,14 +2700,37 @@ func TestTheSourcesPageListsEachInferredCellOnce(t *testing.T) {
 	t.Logf("%d ribbon(s) repeat cells another draws; %d contra cell(s)", repeated, contra)
 }
 
-// A refused credential must not be echoed to the terminal either.
-func TestValidateBrowseURLRedactsPassword(t *testing.T) {
-	err := validateBrowseURL("https://user:hunter2@example.test/blob/main")
-	if err == nil {
-		t.Fatal("got nil error, want a refusal")
-	}
-	if strings.Contains(err.Error(), "hunter2") {
-		t.Errorf("error %q repeats the password", err)
+// A refused credential must not be echoed to the terminal either, by any
+// refusal: a token passed as the username is as secret as a password, and a
+// value refused for its scheme, its query or its parse still carries both.
+//
+// Mutations: print u.Redacted() in the userinfo arm and the token-as-username
+// case goes red with "repeats ghp_SECRET"; print raw in the scheme arm and the
+// opaque "ftp:" case goes red with "repeats hunter2"; wrap url.Parse's error
+// whole and the unparseable cases go red with "repeats ghp_SECRET".
+func TestValidateBrowseURLEchoesNoUserinfo(t *testing.T) {
+	for _, raw := range []string{
+		"https://ghp_SECRET@github.com/you/livermore-budget/blob/main",
+		"https://ghp_SECRET:hunter2@example.test/blob/main",
+		"ftp://ghp_SECRET:hunter2@example.test/blob/main",
+		"https://ghp_SECRET:hunter2@/blob/main",
+		"https://ghp_SECRET:hunter2@example.test/blob/main?ref=x",
+		"https://ghp_SECRET:hunter2@exa mple.test/blob/main",
+		"https://ghp_SECRET:hunter2@example.test:port/blob/main",
+		"ghp_SECRET:hunter2@example.test/blob/main",
+		"ftp:ghp_SECRET:hunter2@example.test",
+	} {
+		t.Run(raw, func(t *testing.T) {
+			err := validateBrowseURL(raw)
+			if err == nil {
+				t.Fatal("got nil error, want a refusal")
+			}
+			for _, secret := range []string{"ghp_SECRET", "hunter2"} {
+				if strings.Contains(err.Error(), secret) {
+					t.Errorf("error %q repeats %s", err, secret)
+				}
+			}
+		})
 	}
 }
 
