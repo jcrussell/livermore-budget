@@ -128,7 +128,8 @@ func strandedProbe(dir string, e os.DirEntry) bool {
 // looksLikeSource returns the first top-level entry of a directory that a
 // human's work or a checkout put there and no export writes: a .git, or a
 // file whose extension the site never carries. data/'s top level is YAML,
-// site/'s is Go and templates, and the repository root's is a go.mod.
+// site/'s is Go and templates, facts/' is the JSONL fact store, and the
+// repository root's is a go.mod.
 func looksLikeSource(entries []os.DirEntry) (string, bool) {
 	for _, e := range entries {
 		if e.Name() == ".git" {
@@ -138,7 +139,7 @@ func looksLikeSource(entries []os.DirEntry) (string, bool) {
 			continue
 		}
 		switch filepath.Ext(e.Name()) {
-		case ".go", ".tmpl", ".mod", ".sum", ".mjs", ".yaml", ".yml", ".py", ".pdf", ".md":
+		case ".go", ".tmpl", ".mod", ".sum", ".mjs", ".yaml", ".yml", ".py", ".pdf", ".md", ".jsonl":
 			return e.Name(), true
 		}
 	}

@@ -270,6 +270,7 @@ func TestSafeCleanDirRefusesASourceDirectory(t *testing.T) {
 		{name: "a Go package", files: []string{"embed.go", "index.html", export.MarkerName}},
 		{name: "data", files: []string{"sources.yaml", export.MarkerName}, dirs: []string{"pdf"}},
 		{name: "a checkout", files: []string{export.MarkerName}, dirs: []string{".git"}},
+		{name: "the fact store", files: []string{"facts.jsonl", export.MarkerName}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()
