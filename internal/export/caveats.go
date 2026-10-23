@@ -43,17 +43,19 @@ type caveatRef struct {
 	Href    string `json:"href"`
 }
 
-// caveatsHere is the one line a page states its caveats in: how many, and
-// the caveats page's section for this page. With no caveats page Href is ""
-// and the "caveats-line" template lists Entries' headings instead, each
-// summary with its Of, so a site without the page still states them and
-// tells apart two that share a summary.
+// caveatsHere is the one line a page states its caveats in: the themes of
+// its section that are limits, each counted and linked to that theme's list
+// in the section; ThemeChecked qualifies nothing and is left to the section.
+// With no caveats page Href is "" and the "caveats-line" template lists
+// Entries' summaries instead, so a site without the page still states them.
 //
-// Count is len(Entries), and Entries is the caveats page's own section for
-// this view (caveatIndex.views), so the line and the section cannot disagree.
+// Groups and Entries are the caveats page's own section for this view
+// (caveatIndex.views), so the line and the section cannot disagree.
 type caveatsHere struct {
+	// Count is how many limits apply, the entries of Groups.
 	Count   int
 	Href    string
+	Groups  []caveatGroup
 	Entries []*caveatEntry
 }
 
@@ -62,42 +64,54 @@ type caveatsHere struct {
 type caveatKey struct{ stem, id string }
 
 // caveatIndex is every distinct caveat the published documents carry, each
-// once, and every view's share of them.
+// id once, and every view's share of them.
 //
-// DISTINCT IS (id, summary, text), NOT id: one id carries different text in
-// different columns (transfer-legs-unpaired's sentence turns on whether that
-// column's legs balance), and one text under different summaries
-// (some-fund-group-money-is-not-by-fund counts the groups in its summary).
-// Merging either would publish one column's sentence as another's.
+// DISTINCT IS THE ID. buildCaveatIndex refuses one id under two summaries or
+// themes, so an entry has one heading; where documents carry the id with
+// different texts (transfer-legs-unpaired's turns on that column's arithmetic)
+// each text is a variant under it, told apart by the years carrying it.
 type caveatIndex struct {
 	// base is the caveats view's path, or "" when the site has none.
 	base    string
 	entries []*caveatEntry
 	byRef   map[caveatKey]*caveatEntry
-	// views is every view's section, in nav order, empty ones included.
+	// themes is every theme some entry is of, in project.CaveatThemes order.
+	themes []caveatGroup
+	// views is every view's section, in nav order, empty ones included; two
+	// views stating the same entries share one *caveatSection.
 	views []*caveatView
-	// unviewed are the entries no view states: every document carrying one
-	// is a document no view reaches.
+	// unviewed are the entries no view states and of no data-files theme,
+	// which has its own list: every document carrying one is one no view
+	// states caveats for, either drawn by no view or only stitched into an
+	// expansion one draws.
 	unviewed []*caveatEntry
 }
 
 // caveatEntry is one distinct caveat, rendered whole. Anchor is what every
 // other page's link lands on.
 type caveatEntry struct {
-	ID      string
-	Anchor  string
-	Summary string
-	// Of tells apart entries sharing one summary: the fiscal years of the
-	// documents carrying this one (its stem for one stating no year), or,
-	// when two entries under the summary would name the same years, every
-	// entry's carrying stems. "" when no other entry shares the summary.
-	Of   string
-	Text string
-	// About groups the documents that ship this caveat by what it is about
-	// in each of them, in the order the documents sort.
-	About []caveatAbout
+	ID           string
+	Anchor       string
+	Summary      string
+	Theme        project.CaveatTheme
+	ThemeHeading string
+	// Variants are its texts, in the order the documents sort; one, with
+	// no Of, where every document carrying it says the same.
+	Variants []*caveatVariant
 	// Pages are the views that state it, in nav order.
 	Pages []navItem
+}
+
+// caveatVariant is one text of an entry and the documents carrying it.
+type caveatVariant struct {
+	// Of is the fiscal years of the documents carrying this text, "" when
+	// the entry has one variant.
+	Of   string
+	Text string
+	// About groups the documents that ship this text by what it is about in
+	// each of them, in the order the documents sort.
+	About   []caveatAbout
+	carrier []string
 }
 
 // caveatAbout is the documents that ship one caveat about one set of nodes.
@@ -119,12 +133,30 @@ type caveatFile struct {
 	DataPath string
 }
 
-// caveatView is one view's section of the caveats page.
-type caveatView struct {
-	Label   string
-	Path    string
+// caveatGroup is the entries of one theme, in some list of the caveats page.
+type caveatGroup struct {
+	Theme   project.CaveatTheme
+	Heading string
+	Blurb   string
+	// Anchor is this group's fragment on the caveats page.
 	Anchor  string
 	Entries []*caveatEntry
+}
+
+// caveatSection is one section of the caveats page's by-page list: the
+// views that state exactly these entries, and the entries by theme.
+type caveatSection struct {
+	Pages   []navItem
+	Anchor  string
+	Groups  []caveatGroup
+	Entries []*caveatEntry
+}
+
+// caveatView is one view and the section stating its caveats, nil for a
+// view stating none.
+type caveatView struct {
+	Path    string
+	Section *caveatSection
 }
 
 // caveatsPathOf is the caveats view's path, or "" when the site has none.
@@ -132,12 +164,12 @@ type caveatView struct {
 // Derived from the view set, so it cannot drift out of step with it.
 func caveatsPathOf(o *Options) string { return templatePathOf(o, CaveatsTemplate) }
 
-// caveatSectionPrefix and caveatEntryPrefix are the two fragment spellings
-// the caveats page emits, so a view's section and a caveat's entry cannot
-// claim one id.
+// caveatSectionPrefix, caveatEntryPrefix and caveatThemePrefix are the
+// fragment spellings the caveats page emits, so no two kinds can claim one id.
 const (
 	caveatSectionPrefix = "caveats-on-"
 	caveatEntryPrefix   = "caveat-"
+	caveatThemePrefix   = "caveats-of-"
 )
 
 // slugUnsafe is everything a view path holds that a fragment slug does not.
@@ -150,15 +182,46 @@ func viewSlug(path string) string {
 	return strings.Trim(slugUnsafe.ReplaceAllString(s, "-"), "-")
 }
 
-// caveatsOfView is the documents whose caveats a view states:
-// [View.ReachedStems] for a view that renders a document, none otherwise.
-// The one place this is decided, so the caveats page's section and the
-// view's own line count the same documents.
+// caveatsOfView is the documents whose caveats a view states: those
+// [View.ReachedStems] names less the schedules an expansion is stitched from,
+// for a view that renders a document, none otherwise. A chart page states the
+// schedule it draws and the spine beside it; the stitched documents' caveats
+// are about marks the chart does not chip (site/app.js's caveatsFor reads the
+// drawn schedule's alone). The one place this is decided, so the caveats
+// page's section and the view's own line count the same documents.
 func caveatsOfView(v View, ix ColumnIndex) ([]string, error) {
 	if !templateRendersADocument(v.Template) {
 		return nil, nil
 	}
-	return v.ReachedStems(ix)
+	reached, err := v.ReachedStems(ix)
+	if err != nil || v.Draws != project.ExpansionProjection {
+		return reached, err
+	}
+	keep := map[string]bool{}
+	for _, year := range v.yearStems() {
+		keep[year] = true
+		column, folded := ix.Column(year)
+		if !folded {
+			continue
+		}
+		if stem, ok := ix.Stem(column, v.Draws); ok {
+			keep[stem] = true
+		}
+		read, err := v.readStems(year, ix)
+		if err != nil {
+			return nil, err
+		}
+		for _, stem := range read {
+			keep[stem] = true
+		}
+	}
+	out := reached[:0:0]
+	for _, stem := range reached {
+		if keep[stem] {
+			out = append(out, stem)
+		}
+	}
+	return out, nil
 }
 
 // flaggedStems are the documents whose caveats a chart chips on its marks:
@@ -182,13 +245,35 @@ func flaggedStems(o *Options, ix ColumnIndex) (map[string]bool, error) {
 	return out, nil
 }
 
+// groupByTheme is entries in project.CaveatThemes order, then their own,
+// one group per theme present. anchor is the fragment a group's is built on.
+func groupByTheme(entries []*caveatEntry, anchor string) []caveatGroup {
+	var out []caveatGroup
+	for _, t := range project.CaveatThemes() {
+		g := caveatGroup{
+			Theme: t, Heading: project.CaveatThemeHeading(t), Blurb: project.CaveatThemeBlurb(t),
+			Anchor: anchor + string(t),
+		}
+		for _, e := range entries {
+			if e.Theme == t {
+				g.Entries = append(g.Entries, e)
+			}
+		}
+		if len(g.Entries) > 0 {
+			out = append(out, g)
+		}
+	}
+	return out
+}
+
 // buildCaveatIndex reads every published document's caveats once.
 //
 // It refuses a caveat with no id, summary or text or with a theme of no
 // [project.CaveatThemes], a document carrying one id twice, one id under two
-// summaries or themes, two fragments the caveats page would emit alike, and
-// two entries whose headings (Summary and Of) would read alike. project.ValidateCaveats
-// never sees a document decoded from bytes, which is every document here.
+// summaries or themes, two ids under one summary, two texts of one id carried
+// by the same years, and two fragments the caveats page would emit alike.
+// project.ValidateCaveats never sees a document decoded from bytes, which is
+// every document here.
 func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, error) {
 	cx := &caveatIndex{base: caveatsPathOf(o), byRef: map[caveatKey]*caveatEntry{}}
 	flagged, err := flaggedStems(o, ix)
@@ -196,21 +281,16 @@ func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, 
 		return nil, err
 	}
 
-	type variant struct {
-		id, summary, text string
-	}
-	byVariant := map[variant]*caveatEntry{}
-	// firstStem is the first document carrying each entry, for its anchor.
-	firstStem := map[*caveatEntry]string{}
-	variants := map[string][]*caveatEntry{}
-	appliesOf := map[*caveatEntry]map[string][]string{}
-	carriers := map[*caveatEntry][]string{}
-	// carried is each document's entries, in the order it states them.
-	carried := map[string][]*caveatEntry{}
+	byID := map[string]*caveatEntry{}
 	// heading is each id's summary and theme, and the first document stating
 	// them: the caveats page heads an id once.
 	type heading struct{ summary, theme, stem string }
 	headingOf := map[string]heading{}
+	// summaryOf is the id each summary heads.
+	summaryOf := map[string]string{}
+	appliesOf := map[*caveatVariant]map[string][]string{}
+	// carried is each document's entries, in the order it states them.
+	carried := map[string][]*caveatEntry{}
 	for _, stem := range sortedKeys(o.Projections) {
 		var dc documentCaveats
 		if err := json.Unmarshal(o.Projections[stem], &dc); err != nil {
@@ -245,20 +325,36 @@ func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, 
 						"once, so a figure that varies by document belongs in its text",
 					c.ID, h.summary, h.theme, h.stem, c.Summary, c.Theme, stem)
 			}
-			vk := variant{c.ID, c.Summary, c.Text}
-			e, seen := byVariant[vk]
+			if prev, ok := summaryOf[c.Summary]; ok && prev != c.ID {
+				return nil, fmt.Errorf(
+					"caveats %q and %q share the summary %q, so the caveats page would head two different "+
+						"caveats alike and a reader could not tell which a link means",
+					min(prev, c.ID), max(prev, c.ID), c.Summary)
+			}
+			summaryOf[c.Summary] = c.ID
+			e, seen := byID[c.ID]
 			if !seen {
-				e = &caveatEntry{ID: c.ID, Summary: c.Summary, Text: c.Text}
-				byVariant[vk] = e
-				firstStem[e] = stem
-				variants[c.ID] = append(variants[c.ID], e)
-				appliesOf[e] = map[string][]string{}
+				theme := project.CaveatTheme(c.Theme)
+				e = &caveatEntry{
+					ID: c.ID, Anchor: caveatEntryPrefix + c.ID, Summary: c.Summary,
+					Theme: theme, ThemeHeading: project.CaveatThemeHeading(theme),
+				}
+				byID[c.ID] = e
 				cx.entries = append(cx.entries, e)
 			}
+			at := slices.IndexFunc(e.Variants, func(v *caveatVariant) bool { return v.Text == c.Text })
+			if at < 0 {
+				e.Variants = append(e.Variants, &caveatVariant{Text: c.Text})
+				at = len(e.Variants) - 1
+			}
+			va := e.Variants[at]
+			va.carrier = append(va.carrier, stem)
+			if appliesOf[va] == nil {
+				appliesOf[va] = map[string][]string{}
+			}
+			appliesOf[va][stem] = c.AppliesTo
 			cx.byRef[key] = e
 			carried[stem] = append(carried[stem], e)
-			appliesOf[e][stem] = c.AppliesTo
-			carriers[e] = append(carriers[e], stem)
 		}
 	}
 
@@ -275,83 +371,60 @@ func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, 
 		return nil
 	}
 	for _, e := range cx.entries {
-		e.Anchor = caveatEntryPrefix + e.ID
-		if len(variants[e.ID]) > 1 {
-			e.Anchor += "--" + firstStem[e]
-		}
-		if err := claim(e.Anchor, fmt.Sprintf("caveat %q of %s", e.ID, firstStem[e])); err != nil {
+		if err := claim(e.Anchor, fmt.Sprintf("caveat %q", e.ID)); err != nil {
 			return nil, err
 		}
-		for _, stem := range carriers[e] {
-			f := caveatFile{Stem: stem, Label: documentLabel(o, stem), DataPath: ix.PublishedPath(stem)}
-			applies := appliesOf[e][stem]
-			// Flagged only splits a group that names nodes: the page says
-			// nothing of it otherwise, and two groups would read alike.
-			flags := len(applies) > 0 && flagged[stem]
-			at := slices.IndexFunc(e.About, func(a caveatAbout) bool {
-				return slices.Equal(a.AppliesTo, applies) && a.Flagged == flags
-			})
-			if at < 0 {
-				e.About = append(e.About, caveatAbout{AppliesTo: applies, Flagged: flags})
-				at = len(e.About) - 1
-			}
-			e.About[at].Files = append(e.About[at].Files, f)
-		}
-	}
-
-	// One summary over several texts (a count in the text differs by column)
-	// would read as one link listed twice.
-	bySummary := map[string][]*caveatEntry{}
-	for _, e := range cx.entries {
-		bySummary[e.Summary] = append(bySummary[e.Summary], e)
-	}
-	for _, summary := range sortedKeys(bySummary) {
-		alike := bySummary[summary]
-		if len(alike) < 2 {
-			continue
-		}
-		// The years, unless two entries share them; then the stems, which
-		// no two entries share.
 		ofs := map[string]bool{}
-		for _, e := range alike {
-			var of []string
-			for _, stem := range carriers[e] {
-				label := documentLabel(o, stem)
-				if label == "" {
-					label = stem
+		for _, va := range e.Variants {
+			for _, stem := range va.carrier {
+				f := caveatFile{Stem: stem, Label: documentLabel(o, stem), DataPath: ix.PublishedPath(stem)}
+				applies := appliesOf[va][stem]
+				// Flagged only splits a group that names nodes: the page says
+				// nothing of it otherwise, and two groups would read alike.
+				flags := len(applies) > 0 && flagged[stem]
+				at := slices.IndexFunc(va.About, func(a caveatAbout) bool {
+					return slices.Equal(a.AppliesTo, applies) && a.Flagged == flags
+				})
+				if at < 0 {
+					va.About = append(va.About, caveatAbout{AppliesTo: applies, Flagged: flags})
+					at = len(va.About) - 1
 				}
-				if !slices.Contains(of, label) {
+				va.About[at].Files = append(va.About[at].Files, f)
+			}
+			if len(e.Variants) < 2 {
+				continue
+			}
+			var of []string
+			for _, stem := range va.carrier {
+				if label := documentLabel(o, stem); label != "" && !slices.Contains(of, label) {
 					of = append(of, label)
 				}
 			}
-			e.Of = strings.Join(of, ", ")
-			ofs[e.Of] = true
-		}
-		if len(ofs) < len(alike) {
-			for _, e := range alike {
-				e.Of = strings.Join(carriers[e], ", ")
-			}
-		}
-		// Two entries under one summary carried by the same documents have
-		// one Of either way, and would head two texts alike.
-		headings := map[string]*caveatEntry{}
-		for _, e := range alike {
-			if prev, dup := headings[e.Of]; dup {
+			va.Of = strings.Join(of, ", ")
+			if va.Of == "" || ofs[va.Of] {
 				return nil, fmt.Errorf(
-					"caveats %q and %q of %s share the summary %q, so the caveats page would head "+
-						"two different caveats alike and a reader could not tell which a link means",
-					prev.ID, e.ID, e.Of, e.Summary)
+					"caveat %q carries %d texts and two of them are of the same years (%q), so the caveats "+
+						"page could not say which document a text is of; say it once, or say it by year",
+					e.ID, len(e.Variants), va.Of)
 			}
-			headings[e.Of] = e
+			ofs[va.Of] = true
 		}
 	}
 
+	cx.themes = groupByTheme(cx.entries, caveatThemePrefix)
+	for _, g := range cx.themes {
+		if err := claim(g.Anchor, fmt.Sprintf("theme %q", g.Theme)); err != nil {
+			return nil, err
+		}
+	}
+
+	var sections []*caveatSection
 	for i, v := range o.Views {
 		stems, err := caveatsOfView(v, ix)
 		if err != nil {
 			return nil, err
 		}
-		cv := &caveatView{Label: nav[i].Label, Path: v.Path, Anchor: caveatSectionPrefix + viewSlug(v.Path)}
+		var entries []*caveatEntry
 		for _, stem := range stems {
 			// An unbuilt document is the view's builder's to refuse, in
 			// its own words; nothing of it can be stated here.
@@ -359,21 +432,45 @@ func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, 
 				continue
 			}
 			for _, e := range carried[stem] {
-				if !slices.Contains(cv.Entries, e) {
-					cv.Entries = append(cv.Entries, e)
-					e.Pages = append(e.Pages, navItem{Label: cv.Label, Path: v.Path})
+				if e.Theme != project.ThemeDataFiles && !slices.Contains(entries, e) {
+					entries = append(entries, e)
 				}
 			}
 		}
-		if len(cv.Entries) > 0 {
-			if err := claim(cv.Anchor, fmt.Sprintf("view %q", v.Path)); err != nil {
-				return nil, err
+		cv := &caveatView{Path: v.Path}
+		cx.views = append(cx.views, cv)
+		if len(entries) == 0 {
+			continue
+		}
+		page := navItem{Label: nav[i].Label, Path: v.Path}
+		for _, e := range entries {
+			e.Pages = append(e.Pages, page)
+		}
+		for _, s := range sections {
+			if slices.Equal(s.Entries, entries) {
+				cv.Section = s
+				s.Pages = append(s.Pages, page)
+				break
 			}
 		}
-		cx.views = append(cx.views, cv)
+		if cv.Section == nil {
+			anchor := caveatSectionPrefix + viewSlug(v.Path)
+			if err := claim(anchor, fmt.Sprintf("view %q", v.Path)); err != nil {
+				return nil, err
+			}
+			s := &caveatSection{Pages: []navItem{page}, Anchor: anchor, Entries: entries,
+				Groups: groupByTheme(entries, anchor+"--")}
+			for _, g := range s.Groups {
+				if err := claim(g.Anchor, fmt.Sprintf("view %q's %s", v.Path, g.Theme)); err != nil {
+					return nil, err
+				}
+			}
+			sections = append(sections, s)
+			cv.Section = s
+		}
 	}
 	for _, e := range cx.entries {
-		if len(e.Pages) == 0 {
+		if len(e.Pages) == 0 && e.Theme != project.ThemeDataFiles {
 			cx.unviewed = append(cx.unviewed, e)
 		}
 	}
@@ -417,15 +514,22 @@ func (cx *caveatIndex) refs(metas []caveatMeta, stem string) ([]caveatRef, error
 	return out, nil
 }
 
-// here is one view's line: its section's entries, counted, and the section.
+// here is one view's line: its section's themes, counted, and the section.
 func (cx *caveatIndex) here(path string) caveatsHere {
 	for _, cv := range cx.views {
-		if cv.Path != path {
+		if cv.Path != path || cv.Section == nil {
 			continue
 		}
-		out := caveatsHere{Count: len(cv.Entries), Entries: cv.Entries}
-		if cx.base != "" && len(cv.Entries) > 0 {
-			out.Href = cx.base + "#" + cv.Anchor
+		s := cv.Section
+		out := caveatsHere{Entries: s.Entries}
+		for _, g := range s.Groups {
+			if g.Theme != project.ThemeChecked {
+				out.Groups = append(out.Groups, g)
+				out.Count += len(g.Entries)
+			}
+		}
+		if cx.base != "" {
+			out.Href = cx.base
 		}
 		return out
 	}
@@ -435,8 +539,11 @@ func (cx *caveatIndex) here(path string) caveatsHere {
 // caveatsPageData is every distinct caveat, once, and each view's share.
 type caveatsPageData struct {
 	chrome
-	// Views are the sections of the views that state a caveat, in nav order.
-	Views []*caveatView
+	// Themes are every entry by theme, in project.CaveatThemes order.
+	Themes []caveatGroup
+	// Sections are the by-page list, one per distinct set of entries, in
+	// nav order of the first view stating it.
+	Sections []*caveatSection
 	// Unviewed are the caveats no page states, carried only by documents no
 	// page draws and owed to whoever fetches the file.
 	Unviewed []*caveatEntry
@@ -446,26 +553,26 @@ type caveatsPageData struct {
 }
 
 // buildCaveatsPage lists every distinct caveat once, under an anchor every
-// other page's link lands on, and a section per view listing that view's.
-// It names no projection: it is an index across documents. It refuses an
-// empty page; buildCaveatIndex refuses the rest.
+// other page's link lands on, by theme, and a section per set of views
+// stating the same caveats. It names no projection: it is an index across
+// documents. It refuses an empty page; buildCaveatIndex refuses the rest.
 func buildCaveatsPage(o *Options, v View, nav []navItem, cx *caveatIndex, ix ColumnIndex) (caveatsPageData, error) {
 	if len(cx.entries) == 0 {
 		return caveatsPageData{}, fmt.Errorf(
 			"view %q renders the caveats index and no published document carries a caveat, "+
 				"so the site would ship a nav entry to a page with nothing on it", v.Path)
 	}
-	var views []*caveatView
+	var sections []*caveatSection
 	for _, cv := range cx.views {
-		if len(cv.Entries) > 0 {
-			views = append(views, cv)
+		if cv.Section != nil && !slices.Contains(sections, cv.Section) {
+			sections = append(sections, cv.Section)
 		}
 	}
 	carrying := map[string]bool{}
 	for _, e := range cx.entries {
-		for _, a := range e.About {
-			for _, f := range a.Files {
-				carrying[f.Stem] = true
+		for _, va := range e.Variants {
+			for _, stem := range va.carrier {
+				carrying[stem] = true
 			}
 		}
 	}
@@ -485,7 +592,8 @@ func buildCaveatsPage(o *Options, v View, nav []navItem, cx *caveatIndex, ix Col
 			// NO DataPath either, for buildProvenancePage's reason: this page
 			// draws no projection.
 		},
-		Views:     views,
+		Themes:    cx.themes,
+		Sections:  sections,
 		Unviewed:  cx.unviewed,
 		Entries:   cx.entries,
 		Documents: len(carrying),

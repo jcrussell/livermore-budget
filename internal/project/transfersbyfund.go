@@ -449,6 +449,23 @@ func FundNumber(id string) (int, bool) {
 const twoRibbonsSummary = "Every printed transfer is drawn from both ends, so adding every " +
 	"ribbon in this file counts each transfer twice."
 
+// fundDrawnOncePerEndCaveat is on both transfer documents, one text for
+// both because the caveats page lists the id once.
+func fundDrawnOncePerEndCaveat() Caveat {
+	return Caveat{
+		ID:    "a-fund-is-drawn-once-per-end",
+		Theme: ThemeSameMoneyTwice,
+		Summary: "A fund that both pays and receives appears in more than one column, " +
+			"under the same name.",
+		Text: "This is money moving between the city's own funds, and a flow diagram " +
+			"cannot draw a box pointing at itself. So a fund's paying end and its " +
+			"receiving end are separate marks, each with the words the city prints for " +
+			"it. Two marks with one name on this chart are one fund seen from two ends, " +
+			"not two funds.",
+		AppliesTo: []string{},
+	}
+}
+
 // transfersByFundCaveats are the things a reader of this file has to be told.
 // Each is about the whole schedule, so none names a node; the first is the
 // disclosure every document drawing a fund node carries.
@@ -469,19 +486,7 @@ func transfersByFundCaveats() []Caveat {
 				"FY 2025-26 and $21,624,633 in FY 2026-27.",
 			AppliesTo: []string{},
 		},
-		{
-			ID:    "a-fund-is-drawn-once-per-end",
-			Theme: ThemeSameMoneyTwice,
-			Summary: "A fund that both pays and receives appears in more than one column, " +
-				"under the same name.",
-			Text: "This schedule is money moving between the city's own funds, and a flow " +
-				"diagram cannot draw a box pointing at itself. So a fund's paying end and " +
-				"its receiving end are separate marks: the General Fund receives four " +
-				"transfers and pays five in both budget years, and is drawn once for each " +
-				"role, with the words the city prints for it either way. Two marks with " +
-				"one name on this chart are one fund seen from two ends, not two funds.",
-			AppliesTo: []string{},
-		},
+		fundDrawnOncePerEndCaveat(),
 		{
 			ID:    "only-the-budget-columns-are-published",
 			Theme: ThemeLeftOut,
@@ -563,17 +568,6 @@ func transfersOutCaveats(rows map[transferKey]transferRow) []Caveat {
 				"what the CIP funds spend it on is not drawn.",
 			AppliesTo: []string{},
 		},
-		{
-			ID:    "a-fund-is-drawn-once-per-end",
-			Theme: ThemeSameMoneyTwice,
-			Summary: "A fund that both pays and receives appears in more than one column, " +
-				"under the same name.",
-			Text: "This is money moving between the city's own funds, and a flow diagram " +
-				"cannot draw a box pointing at itself. So a fund's paying end and its " +
-				"receiving end are separate marks, each with the words the city prints for " +
-				"it. Two marks with one name on this chart are one fund seen from two ends, " +
-				"not two funds.",
-			AppliesTo: []string{},
-		},
+		fundDrawnOncePerEndCaveat(),
 	}
 }

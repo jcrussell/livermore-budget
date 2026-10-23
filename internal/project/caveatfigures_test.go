@@ -31,31 +31,20 @@ func caveatNamed(t *testing.T, cs []Caveat, id string) string {
 func TestTheCaveatsQuoteWhatTheCorpusPrints(t *testing.T) {
 	transfers := transfersByFundCaveats()
 
-	t.Run("p76's grand totals and the General Fund's legs", func(t *testing.T) {
+	t.Run("p76's grand totals", func(t *testing.T) {
 		text := caveatNamed(t, transfers, "one-figure-is-two-ribbons")
-		ends := caveatNamed(t, transfers, "a-fund-is-drawn-once-per-end")
 		for _, year := range []int{2026, 2027} {
 			d := committedDocs(t, year)[TransfersByFundProjection]
 			if d == nil {
 				t.Fatalf("FY%d: no %s document", year, TransfersByFundProjection)
 			}
 			var all int64
-			receives, pays := 0, 0
 			for _, l := range d.Links {
 				all += l.ValueCents
-				if l.Target == PrefixFund+"100" {
-					receives++
-				}
-				if l.Source == PrefixFund+"100" {
-					pays++
-				}
 			}
 			if all%2 != 0 || !strings.Contains(text, amount.Cents(all/2).Dollars()) {
 				t.Errorf("FY%d: the ribbons sum to %s and the caveat does not quote half of it: %q",
 					year, amount.Cents(all).Dollars(), text)
-			}
-			if want := fmt.Sprintf("receives %s transfers and pays %s", numberWord(t, receives), numberWord(t, pays)); !strings.Contains(ends, want) {
-				t.Errorf("FY%d: the General Fund %s, which the caveat does not say: %q", year, want, ends)
 			}
 		}
 	})

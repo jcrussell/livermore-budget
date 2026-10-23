@@ -25,7 +25,7 @@ func deptDocs() map[string][]byte {
 		return fmt.Sprintf(`"metadata":{"generated_by":"fisc (test)","fiscal_year":2027,`+
 			`"fiscal_year_label":"FY 2026-27","basis":"adopted","scopes":[%q],"currency":"USD","units":"cents",`+
 			`"sources":[{"doc_id":"livermore-budget-fy2026-2027","pages":[%s]}],"counts":{"facts":1,"nodes":1,"links":1},`+
-			`"caveats":[{"id":"a-%s-caveat","summary":"A summary.","theme":"left-out","text":"A text.","applies_to":[]}]}`, scope, pages, scope)
+			`"caveats":[{"id":"a-%s-caveat","summary":"A %s summary.","theme":"left-out","text":"A text.","applies_to":[]}]}`, scope, pages, scope, scope)
 	}
 	link := func(from, to string, cents int64, kind string, page int) string {
 		return fmt.Sprintf(`{"source":%q,"target":%q,"value_cents":%d,"kind":%q,"fact_ids":["fisc-f-%s"],`+

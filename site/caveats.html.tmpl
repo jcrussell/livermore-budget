@@ -26,46 +26,62 @@
 
 <p class="lede">
   {{len .Entries}} caveat{{if ne (len .Entries) 1}}s{{end}}, each stated once, across {{.Documents}}
-  published document{{if ne .Documents 1}}s{{end}}. Every page that draws a schedule carrying a caveat
-  links here in one line, to its own list below; each list links to the caveats in full further
-  down.
+  published document{{if ne .Documents 1}}s{{end}}, in {{len .Themes}} kind{{if ne (len .Themes) 1}}s{{end}}.
 </p>
 
-{{- /* A view's section lists the caveats of every document it reaches
-       (caveatsOfView), which is what that view's own line counts. */}}
-{{- range .Views}}
+<section class="caveat-themes" aria-labelledby="caveats-kinds">
+  <h2 id="caveats-kinds">The kinds</h2>
+  <dl class="caveat-kinds">
+    {{- range .Themes}}
+    <dt><a href="#{{.Anchor}}">{{.Heading}}</a> <span class="subtle">({{len .Entries}})</span></dt>
+    <dd>{{.Blurb}}</dd>
+    {{- end}}
+  </dl>
+</section>
+
+{{- /* A section lists the caveats of every document its views reach
+       (caveatsOfView), which is what each view's own line counts; views
+       stating the same caveats share one. */}}
+{{- range .Sections}}
 <section class="caveat-page" id="{{.Anchor}}">
-  <h2>On <a href="{{.Path}}">{{.Label}}</a></h2>
-  <p class="subtle">{{len .Entries}} caveat{{if eq (len .Entries) 1}} applies{{else}}s apply{{end}} to this page.</p>
+  <h2>On {{range $i, $p := .Pages}}{{if $i}} and {{end}}<a href="{{$p.Path}}">{{$p.Label}}</a>{{end}}</h2>
+  {{- range .Groups}}
+  <h3 id="{{.Anchor}}">{{.Heading}}</h3>
   <ul class="caveats">
     {{- range .Entries}}
-    <li><a href="#{{.Anchor}}">{{.Summary}}</a>{{if .Of}} <span class="subtle">({{.Of}})</span>{{end}}</li>
+    <li><a href="#{{.Anchor}}">{{.Summary}}</a></li>
     {{- end}}
   </ul>
+  {{- end}}
 </section>
 {{- end}}
 
 {{- if .Unviewed}}
 <section class="caveat-page" id="caveats-in-data-no-page-draws">
-  <h2>In data no page draws</h2>
+  <h2>In data no page states caveats for</h2>
   <p class="subtle">
-    The site publishes some documents as data that no page draws yet. These caveats are carried
-    only by those files, so no page above states them; they are owed to whoever fetches the file.
+    These are carried only by documents no page above lists caveats for: schedules no page draws
+    yet, and the finer schedules a chart opens into when you click through. They are owed to
+    whoever fetches the file.
   </p>
   <ul class="caveats">
     {{- range .Unviewed}}
-    <li><a href="#{{.Anchor}}">{{.Summary}}</a>{{if .Of}} <span class="subtle">({{.Of}})</span>{{end}}</li>
+    <li><a href="#{{.Anchor}}">{{.Summary}}</a></li>
     {{- end}}
   </ul>
 </section>
 {{- end}}
 
-<section class="caveat-doc" aria-labelledby="caveats-in-full">
-  <h2 id="caveats-in-full">In full</h2>
+{{- range .Themes}}
+<section class="caveat-doc" id="{{.Anchor}}" aria-labelledby="{{.Anchor}}-h">
+  <h2 id="{{.Anchor}}-h">{{.Heading}}</h2>
+  <p class="subtle">{{.Blurb}}</p>
   {{- range .Entries}}
   <article class="caveat" id="{{.Anchor}}">
-    <h3><a href="#{{.Anchor}}" class="anchor-link">{{.Summary}}</a>{{if .Of}} <span class="subtle">({{.Of}})</span>{{end}}</h3>
-    <p>{{.Text}}</p>
+    <h3><a href="#{{.Anchor}}" class="anchor-link">{{.Summary}}</a></h3>
+    {{- range .Variants}}
+    <div class="caveat-variant">
+    <p>{{if .Of}}<strong>{{.Of}}:</strong> {{end}}{{.Text}}</p>
     {{- range .About}}
     <p class="subtle">
       {{- if .AppliesTo}}
@@ -79,17 +95,22 @@
       {{- if and .AppliesTo .Flagged}} — the chart flags these marks where it draws them{{end}}.
     </p>
     {{- end}}
+    </div>
+    {{- end}}
     <p class="subtle">
       {{- if .Pages}}
       Stated on
       {{- range $i, $p := .Pages}}{{if $i}},{{end}} <a href="{{$p.Path}}">{{$p.Label}}</a>{{end}}.
+      {{- else if eq .Theme "data-files"}}
+      Stated on no page: it is about adding up a downloaded file.
       {{- else}}
-      No page draws a document that carries it.
+      No page states it: see "In data no page states caveats for".
       {{- end}}
     </p>
   </article>
   {{- end}}
 </section>
+{{- end}}
 
 </main>
 

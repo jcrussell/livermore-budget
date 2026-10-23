@@ -430,3 +430,36 @@ func TestColumnsOfRefusesADocumentNamingNoProjection(t *testing.T) {
 		t.Fatalf("ColumnsOf: err = %v, want the missing projection named", err)
 	}
 }
+
+// TestAChartPageStatesTheCaveatsOfWhatItDrawsAndNotWhatThatIsStitchedFrom:
+// a view drawing the expansion states the expansion's caveats and the
+// spine's, and not those of the schedules the expansion is stitched from,
+// which site/app.js's caveatsFor chips on no mark.
+//
+// Mutation: have caveatsOfView return ReachedStems unfiltered and fund-flows
+// is among the stems.
+func TestAChartPageStatesTheCaveatsOfWhatItDrawsAndNotWhatThatIsStitchedFrom(t *testing.T) {
+	doc := func(schedule string, year int) []byte {
+		return []byte(fmt.Sprintf(`{"projection":%q,"nodes":[{"id":"n","label":"N","tier":0}],"links":[],`+
+			`"metadata":{"fiscal_year":%d,"basis":"adopted"}}`, schedule, year))
+	}
+	built := map[string][]byte{"year": doc("year", 2026),
+		"expansion": doc(project.ExpansionProjection, 2026), "fund-flows": doc(project.FundFlowsProjection, 2026),
+		"department-funding": doc(project.DepartmentFundingProjection, 2026)}
+	_, ix, err := ColumnsOf(built, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(project.ExpansionStitches(), project.FundFlowsProjection) {
+		t.Fatalf("the expansion is stitched from %v, so the stems below prove nothing", project.ExpansionStitches())
+	}
+	v := View{Path: "flows.html", Template: SankeyTemplate, Projection: "year", YearStems: []string{"year"},
+		Overview: Chart{Form: SankeyForm, Sankey: &SankeyHints{Tiers: []int{0}}}, Draws: project.ExpansionProjection}
+	got, err := caveatsOfView(v, ix)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diff := cmp.Diff([]string{"year", "expansion"}, got); diff != "" {
+		t.Errorf("caveatsOfView (-want +got):\n%s", diff)
+	}
+}

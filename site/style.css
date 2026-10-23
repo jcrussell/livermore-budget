@@ -1324,16 +1324,39 @@ details > summary {
 
 /* One page's list, and the caveats in full. The rule above each is what
    separates one from the next without a box around either. */
+.caveat-themes,
 .caveat-page,
 .caveat-doc {
   margin-top: 32px;
   border-top: 1px solid var(--grid);
 }
 
+.caveat-themes > h2,
 .caveat-page > h2,
 .caveat-doc > h2 {
   font-size: 18px;
   margin-bottom: 4px;
+}
+
+/* The kinds, each a heading and its sentence, before any instance. */
+.caveat-kinds {
+  max-width: var(--measure);
+}
+
+.caveat-kinds dt {
+  font-weight: 600;
+  margin-top: 12px;
+}
+
+.caveat-kinds dd {
+  margin: 2px 0 0;
+}
+
+/* One kind's caveats within a page's section. */
+.caveat-page > h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 14px 0 4px;
 }
 
 /* The summary is the heading, and the text below it is the caveat. The left
@@ -1366,7 +1389,8 @@ details > summary {
   text-decoration: underline;
 }
 
-.caveat > p {
+.caveat > p,
+.caveat-variant > p {
   margin: 0 0 6px;
   color: var(--ink-2);
   font-size: 14px;

@@ -399,15 +399,14 @@ func TestTheCaveatsPageRefusesWhatWouldRender(t *testing.T) {
 			"twice",
 		},
 		{
-			// TWO TEXTS OF ONE ID take "caveat-a--<stem>", which a third
-			// caveat whose id is "a--other" composes alike.
-			"two caveats claiming one anchor",
+			// Two texts of one id in documents of one year could not be told
+			// apart under the one heading.
+			"two texts of one id in one year",
 			map[string][]byte{
-				export.PrimaryProjection: doc(`[{"id":"a","summary":"s","theme":"left-out","text":"t","applies_to":[]},` +
-					`{"id":"a--other","summary":"s3","theme":"left-out","text":"t3","applies_to":[]}]`)[export.PrimaryProjection],
-				"other": doc(`[{"id":"a","summary":"s","theme":"left-out","text":"another t","applies_to":[]}]`)[export.PrimaryProjection],
+				export.PrimaryProjection: doc(`[{"id":"a","summary":"s","theme":"left-out","text":"t","applies_to":[]}]`)[export.PrimaryProjection],
+				"other":                  doc(`[{"id":"a","summary":"s","theme":"left-out","text":"another t","applies_to":[]}]`)[export.PrimaryProjection],
 			},
-			"is claimed by both",
+			"of the same years",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

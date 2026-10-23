@@ -643,8 +643,10 @@ describe("the expansion's drawing", () => {
 
   /** The href Go emitted for a caveat id in one year's refs, or "". */
   const emittedHref = (year, id) => (year.config.caveats.find((c) => c.id === id) || {}).href || "";
-  /** Whether the pinned years link one id to several anchors: its variants. */
-  const hasVariants = (id) => new Set(YEARS.map((y) => emittedHref(y, id)).filter(Boolean)).size > 1;
+  /** Whether every pinned year carrying an id links it to one anchor. */
+  const oneAnchor = (id) => new Set(YEARS.map((y) => emittedHref(y, id)).filter(Boolean)).size === 1;
+  /** Whether more than one pinned year carries an id. */
+  const inSeveralYears = (id) => YEARS.filter((y) => emittedHref(y, id)).length > 1;
 
   for (const entries of [[], ["fund-group/capital"]]) {
     const name = entries.length ? "with " + entries.join(" > ") + " split" : "at the root";
@@ -652,12 +654,16 @@ describe("the expansion's drawing", () => {
       const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem });
       const chart = document.getElementById("chart");
       await split(app, ...entries);
-      // A mark one of whose caveats has several variants, so a bare anchor
-      // would land on none of them. At the root a fund group carries the
+      // A mark one of whose caveats more than one year carries: the caveats
+      // page lists an id once, so every year links it to one anchor, and the
+      // drawer links what Go emitted. At the root a fund group carries the
       // caveat its own remainder node is named in: the remainder is folded
       // inside it, as a tail's members are inside the tail.
-      const marked = marksIn(chart).find((m) => app.caveatsFor(m.__data__.id).some((c) => hasVariants(c.id)));
-      assert.ok(marked, "no drawn node carries a caveat with several variants, so this asserts nothing");
+      //
+      // Mutation: give each document's entry its own anchor in Go's
+      // buildCaveatIndex and oneAnchor fails.
+      const marked = marksIn(chart).find((m) => app.caveatsFor(m.__data__.id).some((c) => inSeveralYears(c.id)));
+      assert.ok(marked, "no drawn node carries a caveat two years carry, so this asserts nothing");
       const laid = marked.__data__;
       app.showTip({ target: chart, clientX: 0, clientY: 0 }, laid);
       const tip = document.getElementById("tooltip").textContent;
@@ -668,7 +674,8 @@ describe("the expansion's drawing", () => {
       const drawn = [...document.querySelectorAll("#detail a")]
         .filter((a) => a.textContent === "Read it in full").map((a) => a.getAttribute("href"));
       t.diagnostic(`${laid.id}: tooltip mentions ${tip.includes("caveat") ? "a caveat" : "NO caveat"}; ` +
-        `drawer links ${JSON.stringify(drawn)}; ${ids.filter(hasVariants).join(", ")} with several variants`);
+        `drawer links ${JSON.stringify(drawn)}; ${ids.filter(inSeveralYears).join(", ")} in several years`);
+      assert.ok(ids.every(oneAnchor), `one of ${ids.join(", ")} links to two anchors across the years`);
       assert.ok(tip.includes("caveat"), tip);
       assert.ok(panel.includes("Read it in full"), panel);
       assert.ok(want.every(Boolean), `Go emitted no href for one of ${ids.join(", ")}`);
