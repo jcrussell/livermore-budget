@@ -134,6 +134,18 @@ func HoldRestatement(facts []fact.Fact, cuts []Cut, r Restatement) ([]Comparison
 				"declares unrestated, so the hold would leave it out unseen", r.Name, f.ID, f.Kind, f.Category)
 		}
 	}
+	// And the Against side, symmetrically: a fact Against admits that no
+	// line's Against matches enters no comparison.
+	for i := range facts {
+		f := &facts[i]
+		if !against.admits(f) {
+			continue
+		}
+		if !slices.ContainsFunc(r.Lines, func(l RestatedLine) bool { return l.Against.Matches(f) }) {
+			return nil, fmt.Errorf("restatement %q: fact %s (%s %s) of %q is on no line it restates, "+
+				"so the hold would leave it out unseen", r.Name, f.ID, f.Kind, f.Category, r.Against)
+		}
+	}
 	// The columns are every one Against prints, on any line: a line's own
 	// reference cells would let a column where Against prints nothing on
 	// that line drop the residue's figures there unseen.

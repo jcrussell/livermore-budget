@@ -517,13 +517,14 @@ type Part struct {
 	// See ColumnHeader.
 	ColumnHeaders columnHeaders `yaml:"column_headers"`
 
-	// Grid names which of its page's column grids this part reads, for a
-	// page printing two schedules under different headers: Budget Book p80
-	// prints the debt service budget under Principal, Interest and Total and,
-	// below it, the requirements under two fund types' Principal and
-	// Interest. Parts naming one grid of one page declare one header list,
-	// and two grids of a page may not declare the same list. Absent, a part
-	// reads the page's one grid.
+	// Grid names a header list, for a page printing two schedules under
+	// different headers: Budget Book p80 prints the debt service budget under
+	// Principal, Interest and Total and, below it, the requirements under two
+	// fund types' Principal and Interest. Only checkColumnGrids reads it:
+	// parts naming one grid of one page declare one header list, two grids of
+	// a page may not declare the same list, and a part naming a grid must
+	// declare its headers. The columns are placed by ColumnHeaders, not by
+	// this name.
 	Grid string `yaml:"grid"`
 
 	// WrappedLabels are the printed fragments this part's page wraps onto a
@@ -838,10 +839,13 @@ type Column struct {
 // Counterpart is the far end of a figure that moves money between two funds.
 //
 // Every field is the counterpart leg's own: the category it classifies as, the
-// kind it is, and the fund it belongs to. Nothing is inherited from the row,
-// because a counterpart that defaulted to its row's classification would be a
-// second fact saying the same thing about the same fund, which is a
+// kind it is, and the fund it belongs to. None of them is inherited from the
+// row, because a counterpart that defaulted to its row's classification would
+// be a second fact saying the same thing about the same fund, which is a
 // double-count wearing a different id.
+//
+// The row's sign IS inherited, having no field here: netted only where both
+// ends are transfers (validateNettedSign), and contra never (checkCounterpart).
 type Counterpart struct {
 	Category  string     `yaml:"category"`
 	Kind      vocab.Kind `yaml:"kind"`

@@ -83,6 +83,24 @@ func TestTheCIPFundsBlockIsHeldToP222LineByLine(t *testing.T) {
 		}
 	})
 
+	// The Against side's own hole: a p222 fact on no line enters no
+	// comparison. Mutation: drop HoldRestatement's Against-side loop and this
+	// holds clean.
+	t.Run("an against fact on no line", func(t *testing.T) {
+		extra := slices.Clone(facts)
+		i := slices.IndexFunc(extra, func(f fact.Fact) bool { return f.Scope == structure.ScopeCIPFundingSources })
+		if i < 0 {
+			t.Fatal("no CIP funding source fact to clone")
+		}
+		f := extra[i]
+		f.ID, f.Category = "fisc-f-unrestated00", "charges-for-services"
+		extra = append(extra, f)
+		if _, err := structure.HoldRestatement(extra, cuts, rs[0]); err == nil ||
+			!strings.Contains(err.Error(), "is on no line it restates, so") {
+			t.Errorf("HoldRestatement with an against fact on no line = %v, want refused", err)
+		}
+	})
+
 	got := hold(moved)
 	if len(got) != 1 || !strings.Contains(got[0], "fund="+strconv.Itoa(n)) {
 		t.Errorf("moving fund %d's transfer in by a dollar gave %q, want one finding naming it", n, got)

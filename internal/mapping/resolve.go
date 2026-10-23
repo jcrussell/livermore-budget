@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/geom"
@@ -529,7 +530,7 @@ func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *block, guard *column
 	used := map[string]bool{}
 	cursor := 0
 	for i, row := range rows {
-		j := strings.Index(blk.Text[cursor:], row.Label)
+		j := indexWord(blk.Text, cursor, row.Label)
 		if j < 0 {
 			return nil, fail("rows",
 				fmt.Sprintf("row %q does not occur after %s", row.Label, precedingRow(rows, i)),
@@ -574,6 +575,19 @@ func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *block, guard *column
 				row.PrintedLabel(), len(toks), len(cols)), "check the part's columns against the page")
 		}
 		toks = toks[:len(cols)]
+		// A ROW'S FIGURES ARE ON ITS LABEL'S LINE. Taken wherever they fall, a
+		// short row borrows the next line's. The column guard refuses that
+		// with the page's line numbers; this is the same rule for a part
+		// that declares no column_headers and so has no guard.
+		if guard == nil && len(toks) > 0 {
+			if last := toks[len(toks)-1]; strings.Contains(blk.Text[after:last.off-blk.Start], "\n") {
+				return nil, fail("rows", fmt.Sprintf(
+					"row %q prints fewer than %d values on its own line",
+					row.PrintedLabel(), len(cols)),
+					"a row's figures are on the line its label is; check the part's "+
+						"columns against the page, or declare the row's skipped columns")
+			}
+		}
 		vals, err := r.parseRow(rule, p, row, rowIndex[i], toks, cols, guard)
 		if err != nil {
 			return nil, err
@@ -711,6 +725,23 @@ func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int,
 					"column headers, or the first row's figures will be read as "+
 					"part of the header")
 		}
+		// A LINE ENDING IN A DASH IS A ROW OF PRINTED ZEROS, which the digit
+		// refusal above never sees. Words are a header; a dash is a cell.
+		for _, l := range strings.Split(gap, "\n") {
+			fs := strings.Fields(l)
+			if len(fs) == 0 {
+				continue
+			}
+			if _, err := amount.Parse(fs[len(fs)-1], amount.Dollars); err == nil {
+				return hint.With(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
+					Page: p.Page, Field: "section", Err: ErrNotFound,
+					Msg: fmt.Sprintf("a line of printed zeros appears before the first row %q: %q",
+						rows[0].Label, strings.TrimSpace(l))},
+					"a dash is a printed zero, so this line is a row the rule has "+
+						"not mapped: map it, with skip: true if it should not "+
+						"produce facts, or move the section anchor past it")
+			}
+		}
 		return nil
 	}
 	trimmed := strings.TrimSpace(gap)
@@ -799,6 +830,34 @@ func declaredGap(p *Part, gap string, used map[string]bool, figures bool, raised
 // returns its offset and length, or -1. A tail spanning several printed fields
 // names each field and not the kerning between them, which is what p222's
 // "600       Airport" after a label of "601" needs.
+// indexWord is the offset after from at which label occurs in s as whole
+// words, or -1: an end of label that is a letter or digit may not abut one in
+// s, so "Fund 2" is not found in "Fund 20". The offset is relative to from.
+func indexWord(s string, from int, label string) int {
+	if label == "" {
+		return strings.Index(s[from:], label)
+	}
+	first, _ := utf8.DecodeRuneInString(label)
+	last, _ := utf8.DecodeLastRuneInString(label)
+	for at := from; ; {
+		i := strings.Index(s[at:], label)
+		if i < 0 {
+			return -1
+		}
+		start, end := at+i, at+i+len(label)
+		before, _ := utf8.DecodeLastRuneInString(s[:start])
+		after, _ := utf8.DecodeRuneInString(s[end:])
+		joinsBefore := wordRune(first) && start > 0 && wordRune(before)
+		joinsAfter := wordRune(last) && end < len(s) && wordRune(after)
+		if !joinsBefore && !joinsAfter {
+			return start - from
+		}
+		at = start + 1
+	}
+}
+
+func wordRune(r rune) bool { return unicode.IsLetter(r) || unicode.IsDigit(r) }
+
 func findFields(s, tail string) (int, int) {
 	fields := strings.Fields(tail)
 	for from := 0; ; {

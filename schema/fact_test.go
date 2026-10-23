@@ -70,8 +70,8 @@ func TestTheSchemaAllowsDeclaredValuesTheCorpusHasNotReachedYet(t *testing.T) {
 	base := map[string]any{
 		"id": "fisc-f-000000000000", "doc_id": "d", "page": 1, "offset": 0,
 		"token": "1", "rule_id": "r", "kind": "revenue", "basis": "adopted",
-		"scope": "s", "fiscal_year": 2026, "fiscal_year_through": nil, "row_path": "", "row_label": "",
-		"category": "", "department": "", "column_path": "", "fund_group": "",
+		"scope": "s", "fiscal_year": 2026, "fiscal_year_through": nil, "row_path": "c", "row_label": "l",
+		"category": "c", "department": "", "column_path": "f", "fund_group": "",
 		"fund": nil, "sign": "positive", "units": "dollars",
 		"amount_cents": 1, "derived": false,
 	}
@@ -88,6 +88,50 @@ func TestTheSchemaAllowsDeclaredValuesTheCorpusHasNotReachedYet(t *testing.T) {
 			if err := resolved.Validate(rec); err != nil {
 				t.Errorf("the schema refuses %s %q, which internal/mapping declares: %v",
 					tc.key, tc.value, err)
+			}
+		})
+	}
+}
+
+// The fields fact.FromValues never writes empty, and the fund it never writes
+// as 0, are refused here too, so a hand-edited facts.jsonl line carrying one
+// fails verify's schema arm rather than only CI's rebuild-and-cmp.
+// Removing any minLength or the fund minimum from fact.schema.json turns its
+// row red.
+func TestTheSchemaRefusesWhatTheFactConstructorNeverWrites(t *testing.T) {
+	resolved, err := schema.Load(schema.Fact)
+	if err != nil {
+		t.Fatalf("load %s: %v", schema.Fact, err)
+	}
+	base := map[string]any{
+		"id": "fisc-f-000000000000", "doc_id": "d", "page": 1, "offset": 0,
+		"token": "1", "rule_id": "r", "kind": "revenue", "basis": "adopted",
+		"scope": "s", "fiscal_year": 2026, "fiscal_year_through": nil, "row_path": "c", "row_label": "l",
+		"category": "c", "department": "", "column_path": "f", "fund_group": "",
+		"fund": nil, "sign": "positive", "units": "dollars",
+		"amount_cents": 1, "derived": false,
+	}
+	if err := resolved.Validate(base); err != nil {
+		t.Fatalf("the base record must validate, or every refusal below is vacuous: %v", err)
+	}
+	for _, tc := range []struct {
+		key   string
+		value any
+	}{
+		{"category", ""},
+		{"row_path", ""},
+		{"row_label", ""},
+		{"column_path", ""},
+		{"fund", 0},
+	} {
+		t.Run(tc.key, func(t *testing.T) {
+			rec := map[string]any{}
+			for k, v := range base {
+				rec[k] = v
+			}
+			rec[tc.key] = tc.value
+			if err := resolved.Validate(rec); err == nil {
+				t.Errorf("the schema accepts %s %#v, which fact.FromValues never writes", tc.key, tc.value)
 			}
 		})
 	}

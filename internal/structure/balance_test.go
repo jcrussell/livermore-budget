@@ -94,6 +94,19 @@ func TestAnExceptionOnAScopeTheStoreDoesNotCarryIsStale(t *testing.T) {
 	}
 }
 
+// TestAnExceptionOverABalanceThatHoldsIsRefused: a balance whose sides now
+// agree holds on its own, and the exception over it would excuse a figure
+// that later moved. Mutation: drop HoldBalances' got[0] == got[1] case and
+// the pin-moved arm below it reports this instead, quoting the wrong reason.
+func TestAnExceptionOverABalanceThatHoldsIsRefused(t *testing.T) {
+	e := fund101Break(t)
+	sides := map[structure.BalanceAt][2]int64{e.At: {e.Left, e.Left}}
+	held, findings := structure.HoldBalances(structure.BalanceCarryForward, sides, []structure.BalanceException{e})
+	if len(held) != 0 || len(findings) != 1 || !strings.Contains(findings[0], "names a balance that holds") {
+		t.Fatalf("held %v, findings %q; want the exception refused over a balance that holds", held, findings)
+	}
+}
+
 // TestABlankExemptsTheIdentityWhoseFigureItIs: a blank flow is summed as
 // nothing, and a blank stock or change leaves its side no figure. Where the
 // spine prints its change, a blank stock still leaves sources = uses that

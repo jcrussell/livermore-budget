@@ -52,6 +52,7 @@ func TestACounterpartIsRefusedWhenItCouldNotBeToldApart(t *testing.T) {
 		{"a group but no fund", func(r *Row) { r.Counterpart.Fund = 0 },
 			"counterpart declares fund_group"},
 		{"row with a department", func(r *Row) { r.Department = "police" }, "carries department"},
+		{"row with a contra sign", func(r *Row) { r.Sign = vocab.SignContra }, "carries sign"},
 		{"same category and fund", func(r *Row) {
 			r.Counterpart.Category = r.Category
 			r.Counterpart.Fund, r.Counterpart.FundGroup = r.Fund, r.FundGroup

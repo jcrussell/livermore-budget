@@ -26,6 +26,13 @@ func TestParseAccepts(t *testing.T) {
 		{"em dash is zero", "—", Dollars, 0},
 		{"double dash is zero", "--", Dollars, 0},
 
+		// A dash reached only once currency or brackets are stripped, which is
+		// the second zeroTokens arm in Parse.
+		{"dash with spaced dollar sign is zero", "$ -", Dollars, 0},
+		{"dash with dollar sign is zero", "$-", Dollars, 0},
+		{"parenthesized dash is zero", "(-)", Dollars, 0},
+		{"dash with trailing dollar sign is zero", "- $", Dollars, 0},
+
 		{"parenthesized is negative", "(71.8)", Millions, -7_180_000_000},
 		{"parenthesized integer", "(1,034,154)", Dollars, -103_415_400},
 		{"ERAF contra revenue", "(15,857,875)", Dollars, -1_585_787_500},

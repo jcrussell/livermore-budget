@@ -238,6 +238,16 @@ func TestTwoGridsOfOnePageAreNamedApart(t *testing.T) {
 			`but rule "a" in grid.yaml declares`},
 		{"two grids, one list", two("budget", `["X", "Y"]`, "requirements", `["X", "Y"]`),
 			`one header list is one grid`},
+		// A headerless part escapes the all-or-none rule by naming no grid on
+		// a page whose grids are all named, or by naming one nobody declares.
+		// Mutation: look the headerless part up by (doc, page, grid) again and
+		// both read unguarded.
+		{"a headerless part beside a named grid", two("budget", `["X", "Y"]`, `""`, `[]`),
+			`declares no column_headers`},
+		{"a headerless part naming a grid", two("budget", `["X", "Y"]`, "budgte", `[]`),
+			`names grid "budgte" but declares no column_headers`},
+		{"a headerless part naming a grid on a page with none", two(`""`, `[]`, "budget", `[]`),
+			`names grid "budget" but declares no column_headers`},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			f, err := parse(strings.NewReader(tt.src), "grid.yaml")

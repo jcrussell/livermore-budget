@@ -174,6 +174,9 @@ func Covered(facts []fact.Fact, cuts []Cut, residue []Residue) (findings []strin
 		for j, r := range residue {
 			if r.matches(f) {
 				declared = append(declared, j)
+				// A residue that matches a fact is not one matching none,
+				// whatever else is wrong with the claim on that fact.
+				matched[j]++
 			}
 		}
 		switch {
@@ -190,7 +193,6 @@ func Covered(facts []fact.Fact, cuts []Cut, residue []Residue) (findings []strin
 		case len(in) == 0 && len(declared) > 1:
 			findings = append(findings, fmt.Sprintf("fact %s is declared a residue %d times", f.ID, len(declared)))
 		case len(in) == 0:
-			matched[declared[0]]++
 			uncovered++
 		}
 	}

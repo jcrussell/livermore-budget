@@ -1150,6 +1150,22 @@ func checkColumnGrids(files []*File) error {
 		}
 	}
 
+	// Any grid of a page, for the all-or-none half: a headerless part naming
+	// a grid nobody declares, or naming none on a page whose grids are all
+	// named, must not escape it by missing the (doc, page, grid) key.
+	type pageKey struct {
+		docID string
+		page  int
+	}
+	// The first grid by name, so the message does not depend on map order.
+	anyGrid := map[pageKey]key{}
+	for k := range declared {
+		pk := pageKey{k.docID, k.page}
+		if prev, ok := anyGrid[pk]; !ok || k.grid < prev.grid {
+			anyGrid[pk] = k
+		}
+	}
+
 	// Second pass, because a part with no headers may be read before the part
 	// that declares them.
 	for _, f := range files {
@@ -1160,10 +1176,19 @@ func checkColumnGrids(files []*File) error {
 				if len(p.ColumnHeaders) != 0 {
 					continue
 				}
-				prev, ok := declared[key{docID: f.DocID, page: p.Page, grid: p.Grid}]
+				if p.Grid != "" {
+					return hint.With(
+						&parseError{Path: f.Path, RuleID: r.ID,
+							Field: fmt.Sprintf("parts[page %d].grid", p.Page),
+							Msg:   fmt.Sprintf("names grid %q but declares no column_headers", p.Grid)},
+						"a grid is a header list this part reads its columns by; "+
+							"name one only on a part that declares the headers")
+				}
+				k, ok := anyGrid[pageKey{f.DocID, p.Page}]
 				if !ok {
 					continue
 				}
+				prev := declared[k]
 				return hint.With(
 					&parseError{Path: f.Path, RuleID: r.ID,
 						Field: fmt.Sprintf("parts[page %d]", p.Page),
@@ -1264,6 +1289,17 @@ func checkCounterpart(r *Rule, row Row, errf errFunc) error {
 			"the far leg has no department of its own to declare, and inheriting "+
 				"this one would attribute the paying fund's outflow to the "+
 				"receiving department")
+	}
+	// A contra sign says the row reduces ITS category, and fact.FromValues
+	// stamps the row's sign onto the far leg too, which would mark the paying
+	// fund's outflow as reducing a category nobody said it reduces. Netted is
+	// inherited on purpose and validateNettedSign holds both of its ends.
+	if row.Sign == vocab.SignContra {
+		return hint.With(
+			errf(r.ID, "rows", "row %q carries sign %q and declares a counterpart",
+				row.Label, row.Sign),
+			"the far leg would inherit the contra sign, and a reduction of the "+
+				"receiving row's category says nothing about the paying fund's")
 	}
 	// The two legs must differ where a fact's identity is built from: its
 	// category (the row path) and its fund (the column path). Equal on both,

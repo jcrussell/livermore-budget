@@ -258,6 +258,37 @@ func TestAnExceptionGoesRed(t *testing.T) {
 		}
 	})
 
+	// The Cut side's own arm. Mutation: drop Reconcile's cell.Cut != p.Cut
+	// case and the Against comparison below it matches, so the moved pin is
+	// excused silently.
+	t.Run("a pinned cut amount that moves is named with both figures", func(t *testing.T) {
+		e := exceptionNamed(t, "p0067-internal-service-is-250000-high-by-fund-group")
+		e.Cells[0].Cut.Cents += 100
+		e.Residual -= 100
+		r := structure.Reconcile(compared(t, facts, "funding-sources", "spine"), []structure.Exception{e})
+		if len(r.Findings) != 1 || !strings.Contains(r.Findings[0], `pins "funding-sources"`) {
+			t.Fatalf("findings = %v, want the moved cut pin named", r.Findings)
+		}
+		if len(r.Excused) != 0 {
+			t.Errorf("a refused exception was also held apart: %v", r.Excused)
+		}
+	})
+
+	// Mutation: drop Reconcile's e.At != c.At arm and the exception's cells
+	// are looked up at a level the pair does not meet at.
+	t.Run("an exception declared at another level is refused", func(t *testing.T) {
+		e := exceptionNamed(t, "p0067-internal-service-is-250000-high-by-fund-group")
+		e.At = structure.LevelDepartment
+		r := structure.Reconcile(compared(t, facts, "funding-sources", "spine"), []structure.Exception{e})
+		// Two findings: the refusal, and the cell it no longer excuses.
+		if len(r.Findings) != 2 || !strings.Contains(r.Findings[0], "is declared at") {
+			t.Fatalf("findings = %v, want the exception refused for its level and its cell unexcused", r.Findings)
+		}
+		if len(r.Excused) != 0 {
+			t.Errorf("a refused exception was also held apart: %v", r.Excused)
+		}
+	})
+
 	t.Run("a mistyped residual is refused before the store is consulted", func(t *testing.T) {
 		e := exceptionNamed(t, "pp.127-130-print-no-general-fund-transfer-in-2026")
 		e.Residual += 1

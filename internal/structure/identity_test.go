@@ -102,6 +102,53 @@ func TestEveryScopeInTheStoreIsACut(t *testing.T) {
 		}
 	})
 
+	// Covered's three double-claim arms, each over a one-fact store. Mutation:
+	// drop any of the len(in) > 1, cut-and-residue or residue-twice cases and
+	// its row holds clean.
+	t.Run("a fact claimed twice is refused", func(t *testing.T) {
+		i := slices.IndexFunc(facts, func(f fact.Fact) bool {
+			got, _ := structure.Covered([]fact.Fact{f}, cuts, nil)
+			return len(got) == 0
+		})
+		if i < 0 {
+			t.Fatal("no fact a single cut admits")
+		}
+		inCut := facts[i]
+		j := slices.IndexFunc(facts, func(f fact.Fact) bool { return f.RuleID == "dw-maintenance" && f.Kind == vocab.KindTransferOut })
+		if j < 0 {
+			t.Fatal("no dw-maintenance fact")
+		}
+		residual := facts[j]
+		asResidue := structure.Residue{Scope: inCut.Scope, Rule: inCut.RuleID, Kind: inCut.Kind, Reason: "planted"}
+		dw := structure.Residue{Scope: residual.Scope, Rule: residual.RuleID, Kind: residual.Kind, Reason: "planted"}
+		var twice []structure.Cut
+		for _, c := range cuts {
+			twice = append(twice, c)
+			if got, _ := structure.Covered([]fact.Fact{inCut}, []structure.Cut{c}, nil); len(got) == 0 {
+				c.Name += "-again"
+				twice = append(twice, c)
+			}
+		}
+		for _, tc := range []struct {
+			name    string
+			f       fact.Fact
+			cuts    []structure.Cut
+			residue []structure.Residue
+			want    string
+		}{
+			{"by two cuts", inCut, twice, nil, "is admitted by 2 cuts"},
+			{"by a cut and a residue", inCut, cuts, []structure.Residue{asResidue}, "and declared a residue"},
+			{"as residue twice", residual, cuts, []structure.Residue{dw, dw}, "is declared a residue 2 times"},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				got, _ := structure.Covered([]fact.Fact{tc.f}, tc.cuts, tc.residue)
+				if len(got) != 1 || !strings.Contains(got[0], tc.want) {
+					t.Errorf("findings = %v, want one containing %q", got, tc.want)
+				}
+			})
+		}
+	})
+
 	t.Run("a residue on a scope the store does not carry is refused", func(t *testing.T) {
 		residue := structure.BudgetBookResidue()
 		i := slices.IndexFunc(residue, func(r structure.Residue) bool { return r.Rule == "dw-maintenance" })

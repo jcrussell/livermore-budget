@@ -81,19 +81,27 @@
       "minimum": 1901
     },
     "row_path": {
-      "type": "string"
+      "description": "Never empty: the row path is hashed into id, and a fact without one cannot be addressed.",
+      "type": "string",
+      "minLength": 1
     },
     "row_label": {
-      "type": "string"
+      "description": "Never empty: the label the page prints for the row.",
+      "type": "string",
+      "minLength": 1
     },
     "category": {
-      "type": "string"
+      "description": "Never empty: a department is a second axis, not a substitute for a category.",
+      "type": "string",
+      "minLength": 1
     },
     "department": {
       "type": "string"
     },
     "column_path": {
-      "type": "string"
+      "description": "Never empty: the column path is hashed into id, and a fact without one cannot be addressed.",
+      "type": "string",
+      "minLength": 1
     },
     "fund_group": {
       "type": "string"
@@ -103,7 +111,8 @@
       "type": [
         "integer",
         "null"
-      ]
+      ],
+      "minimum": 1
     },
     "sign": {
       "description": "How this row relates to its category. NOT an instruction to negate: amount_cents is always the figure as printed.",
