@@ -1128,3 +1128,17 @@ func TestOneRowCaveatIsAboutEveryLineSoLabelled(t *testing.T) {
 		t.Errorf("a document with no relabelled line carries %d caveats", len(cs))
 	}
 }
+
+// TestACellsFactIDsAscendWhateverOrderItsFactsArrive: add publishes a cell's
+// ids as its link's fact_ids, which the contract states ascending, and the
+// store is not sorted by id. Mutation: append in add instead of inserting in
+// order and this goes red.
+func TestACellsFactIDsAscendWhateverOrderItsFactsArrive(t *testing.T) {
+	m := map[int]*cellSum{}
+	for _, id := range []string{"fisc-f-c", "fisc-f-a", "fisc-f-b"} {
+		add(m, 0, &fact.Fact{ID: id, AmountCents: 1})
+	}
+	if diff := cmp.Diff([]string{"fisc-f-a", "fisc-f-b", "fisc-f-c"}, m[0].factIDs); diff != "" {
+		t.Errorf("fact ids (-want +got):\n%s", diff)
+	}
+}

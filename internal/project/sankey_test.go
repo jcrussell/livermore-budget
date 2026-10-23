@@ -554,6 +554,9 @@ func TestGraphRejects(t *testing.T) {
 		{"no fund group", func(f *fact.Fact) { f.FundGroup = "" }, "has no fund group"},
 		{"a department", func(f *fact.Fact) { f.Department = "police" }, "carries department"},
 		{"unknown kind", func(f *fact.Fact) { f.Kind = "grant" }, "unknown kind"},
+		// Mutation: drop netCells' netted arm and the fact is summed as
+		// printed, cancelling where it should accumulate.
+		{"a netted sign", func(f *fact.Fact) { f.Sign = vocab.SignNetted }, "is printed netted"},
 	}
 
 	for _, c := range cases {

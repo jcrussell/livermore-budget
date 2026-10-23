@@ -772,3 +772,52 @@ func TestALeafBetweenAHubAndItsOwnMemberIsRefused(t *testing.T) {
 		}
 	}
 }
+
+// TestAGroupDrawnWholeIsHeldToItsFundsNet: where a group's funds change both
+// ways, the group's change is drawn whole on the caveat's word that it is the
+// net of its funds' changes, so changeOf holds it to that, and refuses a
+// group with no fund changing at all. Both refusals come before the stitch
+// is touched, which is why nil serves for it here; the committed store
+// builds the case that ties. Mutation: drop either arm and its row reaches the
+// stitch instead of refusing.
+func TestAGroupDrawnWholeIsHeldToItsFundsNet(t *testing.T) {
+	col := Column{FiscalYear: 2026, Basis: vocab.BasisAdopted}
+	group := PrefixFundGroup + "capital"
+	spine := Link{Source: group, Target: NodeFundBalanceContribution, ValueCents: 300}
+	draw := Link{Source: NodeFundBalanceDraw, Target: PrefixFund + "1", ValueCents: 100}
+	add := Link{Source: PrefixFund + "2", Target: NodeFundBalanceContribution, ValueCents: 500}
+	for _, tt := range []struct {
+		name  string
+		funds []Link
+		want  string
+	}{
+		{"no fund changes", nil, "no fund of it changes"},
+		{"funds net to another figure", []Link{draw, add}, "change by a net 400 cents"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			err := (*expansion)(nil).changeOf(nil, nil, spine, group, tt.funds, nil, nil, col, nil)
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("changeOf = %v, want an error containing %q", err, tt.want)
+			}
+		})
+	}
+}
+
+// TestAFundChangingInAGroupWithNoPrintedChangeIsRefused: such a fund would be
+// drawn with in and out differing by its own change and no caveat saying so,
+// even where its group's funds net to nothing. Mutation: hold only the
+// group's net to zero, as before, and the netting pair below draws.
+func TestAFundChangingInAGroupWithNoPrintedChangeIsRefused(t *testing.T) {
+	col := Column{FiscalYear: 2026, Basis: vocab.BasisAdopted}
+	group := PrefixFundGroup + "capital"
+	draw := Link{Source: NodeFundBalanceDraw, Target: PrefixFund + "1", ValueCents: 100}
+	add := Link{Source: PrefixFund + "2", Target: NodeFundBalanceContribution, ValueCents: 100}
+	zero := Link{Source: PrefixFund + "3", Target: NodeFundBalanceContribution}
+	if err := unprintedChanges(map[string][]Link{group: {zero}}, col); err != nil {
+		t.Fatalf("a fund changing by nothing was refused: %v", err)
+	}
+	err := unprintedChanges(map[string][]Link{group: {draw, add}}, col)
+	if err == nil || !strings.Contains(err.Error(), "fund/1 changes by 100 cents") {
+		t.Fatalf("unprintedChanges = %v, want fund/1's change refused", err)
+	}
+}

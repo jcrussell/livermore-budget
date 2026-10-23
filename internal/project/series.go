@@ -2,6 +2,7 @@ package project
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
@@ -124,6 +125,15 @@ func (sp seriesSpec) document(facts []fact.Fact, o Options) (*TrendsDocument, er
 				sp.name, id, f.DocID, f.Page, f.RowLabel, f.Kind, f.Category,
 				fact.FundString(f.Fund), f.FundGroup,
 				s.Kind, s.Category, fact.FundString(s.Fund), s.FundGroup)
+		}
+		// One point per column: a second fact of the series in a filled
+		// column is two printed figures for one cell, and drawing both
+		// would publish the series twice there.
+		if j := slices.IndexFunc(s.Points, func(p Point) bool {
+			return p.FiscalYear == f.FiscalYear && p.Basis == string(f.Basis)
+		}); j >= 0 {
+			return nil, fmt.Errorf("%s: series %s has two points in %s: facts %s and %s",
+				sp.name, id, ColumnOf(&f), s.Points[j].FactID, f.ID)
 		}
 		s.Points = append(s.Points, Point{
 			FiscalYear:  f.FiscalYear,

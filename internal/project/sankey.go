@@ -829,7 +829,8 @@ func isStock(f *fact.Fact) bool {
 }
 
 // headlineOver sums the four published totals over the facts a view admits,
-// rather than per drawn cell, which has no notion of grain.
+// rather than per drawn cell, which has no notion of grain. It sums amounts as
+// printed; netCells refuses a netted fact in the same slice.
 func headlineOver(v structure.View, facts []fact.Fact) Headline {
 	var h Headline
 	identities := structure.BudgetBookIdentities()
@@ -936,6 +937,16 @@ func netCells(facts []fact.Fact) (map[cellKey]*cell, error) {
 				fmt.Errorf("sankey: fact %s (%s p%d %q) has no fund group", f.ID, f.DocID, f.Page, f.RowLabel),
 				"the spine is a fund-group graph: every flow has to start or end at one")
 		}
+		// A netted row arrives negative too, printed against its kind's
+		// direction, and summed as printed it would cancel where it should
+		// accumulate, in these cells and in headlineOver's totals alike. No
+		// projection reads one, so one arriving is refused.
+		if f.Sign == vocab.SignNetted {
+			return nil, hint.With(
+				fmt.Errorf("sankey: fact %s (%s p%d %q) is printed netted", f.ID, f.DocID, f.Page, f.RowLabel),
+				"a netted row is printed against its kind's direction; this "+
+					"projection sums amounts as printed and would cancel it")
+		}
 		k := cellKey{kind: f.Kind, category: f.Category, fundGroup: f.FundGroup, fund: fact.FundString(f.Fund)}
 		c := cells[k]
 		if c == nil {
@@ -945,11 +956,6 @@ func netCells(facts []fact.Fact) (map[cellKey]*cell, error) {
 		// The amount is added as the document printed it. A contra row arrives
 		// already negative and nothing here re-signs it; sign says how the row
 		// relates to its category, it is not an instruction to negate.
-		//
-		// A netted row arrives negative too, for a different reason, and this
-		// sum does not distinguish them. It does not have to yet: no projection
-		// selects a scope carrying one. One that did would have to read Sign
-		// before adding, or it would cancel where it meant to accumulate.
 		c.cents += f.AmountCents
 		c.factIDs = append(c.factIDs, f.ID)
 		c.locs.add(&facts[i])

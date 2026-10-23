@@ -309,6 +309,19 @@ func TestTrendsRefusesASeriesThatIsTwoRows(t *testing.T) {
 	}
 }
 
+// TestTrendsRefusesTwoPointsInOneColumn: a second fact of one series in a
+// column it already fills. Mutation: drop the series builder's one-point-per-
+// column arm and the series publishes both points.
+func TestTrendsRefusesTwoPointsInOneColumn(t *testing.T) {
+	facts := trendsFixture(t)
+	again := facts[0]
+	again.ID = "fisc-f-again000000"
+	_, err := buildTrendsErr(t, append(facts, again))
+	if err == nil || !strings.Contains(err.Error(), "has two points in") {
+		t.Fatalf("Document = %v over a series with two points in one column, want a refusal", err)
+	}
+}
+
 func buildTrendsErr(t *testing.T, facts []fact.Fact) (*TrendsDocument, error) {
 	t.Helper()
 	return (&Trends{}).Document(facts, trendsOptions())

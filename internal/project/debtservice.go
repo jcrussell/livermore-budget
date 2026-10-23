@@ -160,7 +160,13 @@ func debtCaveats() []Caveat {
 		short[i] = fmt.Sprintf("%s in %s", amount.Cents(s.cents).Dollars(), fiscalYearLabel(s.year))
 	}
 	drift := make([]string, len(debtRequirementDrift))
+	var lo, hi int64
 	for i, d := range debtRequirementDrift {
+		size := max(d.cents, -d.cents)
+		if i == 0 || size < lo {
+			lo = size
+		}
+		hi = max(hi, size)
 		dir := "more"
 		c := d.cents
 		if c < 0 {
@@ -216,8 +222,10 @@ func debtCaveats() []Caveat {
 			AppliesTo: []string{},
 		},
 		{
-			ID:      "requirements-are-not-the-budget",
-			Summary: "The requirements' 2026 and 2027 rows are close to the budget above them but not equal: four cells differ by $1 to $5.",
+			ID: "requirements-are-not-the-budget",
+			Summary: fmt.Sprintf("The requirements' 2026 and 2027 rows are close to the budget above them "+
+				"but not equal: %s differ by %s to %s.", counted(len(debtRequirementDrift), "cell"),
+				amount.Cents(lo).Dollars(), amount.Cents(hi).Dollars()),
 			Text: fmt.Sprintf("Each fund type's requirement for 2026 and 2027 can be held against the "+
 				"issues it pays in the budget above it. Most agree to the dollar. These do not: %s. "+
 				"Both are published as printed.", strings.Join(drift, "; ")),

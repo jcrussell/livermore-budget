@@ -761,6 +761,36 @@ func TestLinkValueMustEqualItsFacts(t *testing.T) {
 	}
 }
 
+// TestLinkFactIDsMustAscend holds the contract's fact_ids order. Mutation:
+// drop the strictlyAscending arm from link-values-tie-to-facts and a link
+// citing its facts reversed passes, since the sum is the same.
+func TestLinkFactIDsMustAscend(t *testing.T) {
+	t.Parallel()
+	s := isolated(t)
+	var link *project.Link
+	for _, p := range s.linkedDocuments() {
+		for i := range p.Links {
+			if l := &p.Links[i]; len(l.FactIDs) > 1 && link == nil {
+				link = l
+			}
+		}
+	}
+	if link == nil {
+		t.Fatal("no link in the committed corpus cites two facts")
+	}
+	slices.Reverse(link.FactIDs)
+	res, err := (&linkValuesTieToFacts{}).Run(t.Context(), s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Status != StatusFail || !strings.Contains(findingDetails(res), "not strictly ascending") {
+		t.Fatalf("status = %s, findings %v; want the reversed fact_ids refused", res.Status, res.Findings)
+	}
+	if strictlyAscending([]string{"a", "a"}) {
+		t.Error("an id cited twice reads as ascending")
+	}
+}
+
 // TestLinkLocatorsMustBeThePagesOfItsFacts proves the locator check can fail,
 // in the two ways a real defect would produce.
 //

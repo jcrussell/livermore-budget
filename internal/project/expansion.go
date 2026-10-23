@@ -492,21 +492,8 @@ func (e *expansion) Document(facts []fact.Fact, o Options) (*Document, error) {
 		}
 		delete(changes, group)
 	}
-	// A group the spine prints no change for draws none fund by fund either,
-	// so its funds' changes must net to nothing.
-	for _, group := range sortedKeys(changes) {
-		var net int64
-		for _, l := range changes[group] {
-			if l.Source == NodeFundBalanceDraw {
-				net -= l.ValueCents
-			} else {
-				net += l.ValueCents
-			}
-		}
-		if net != 0 {
-			return nil, fmt.Errorf("expansion: %q's funds change by %d cents in %s and pp.66-67 print no change for it",
-				group, net, col)
-		}
+	if err := unprintedChanges(changes, col); err != nil {
+		return nil, err
 	}
 
 	// An object category's cell a fund group's own rows do not reach, held
@@ -800,6 +787,27 @@ func (e *expansion) groupOf(id string) string {
 	return PrefixFundGroup + t
 }
 
+// unprintedChanges refuses a fund that changes in a group the spine prints no
+// change for. Such a group draws no change fund by fund, so the fund would be
+// drawn with in and out differing by its own change, and no caveat has words
+// for a group with no change to be the net of.
+func unprintedChanges(changes map[string][]Link, col Column) error {
+	for _, group := range sortedKeys(changes) {
+		for _, l := range changes[group] {
+			if l.ValueCents == 0 {
+				continue
+			}
+			fund := l.Source
+			if l.Source == NodeFundBalanceDraw {
+				fund = l.Target
+			}
+			return fmt.Errorf("expansion: %s changes by %d cents in %s and pp.66-67 print no change for %q",
+				fund, l.ValueCents, col, group)
+		}
+	}
+	return nil
+}
+
 // changeOf stitches one fund group's change in working capital: fund by fund
 // where every fund's change runs the group's way, with any difference from
 // pp.66-67 carried by a remainder an exception licenses; whole, on the
@@ -814,6 +822,29 @@ func (*expansion) changeOf(st *stitch, rem *groupRemainders, spineLink Link, gro
 		sum += l.ValueCents
 	}
 	if !oneWay {
+		// The caveat says the group's change is the net of its funds'
+		// changes, so it is held to be: a group with no fund changing, or
+		// whose funds net to another figure, is not this case.
+		if len(funds) == 0 {
+			return fmt.Errorf("expansion: pp.66-67 print a change for %s in %s and no fund of it changes on pp.186-209",
+				group, col)
+		}
+		var net int64
+		for _, l := range funds {
+			if l.Source == NodeFundBalanceDraw {
+				net -= l.ValueCents
+			} else {
+				net += l.ValueCents
+			}
+		}
+		spineNet := spineLink.ValueCents
+		if draw {
+			spineNet = -spineNet
+		}
+		if net != spineNet {
+			return fmt.Errorf("expansion: %s's funds change by a net %d cents in %s and pp.66-67 print %d",
+				group, net, col, spineNet)
+		}
 		r, err := rem.node(group)
 		if err != nil {
 			return err

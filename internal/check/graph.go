@@ -220,6 +220,12 @@ func (*linkValuesTieToFacts) Run(_ context.Context, s *Subject) (Result, error) 
 					amount.Cents(l.ValueCents)))
 				continue
 			}
+			// Strictly ascending, as the contract states: an id cited twice
+			// is summed twice.
+			if !strictlyAscending(l.FactIDs) {
+				findings = append(findings, finding(subject,
+					"cites fact_ids %v, which are not strictly ascending", l.FactIDs))
+			}
 			var cited []fact.Fact
 			unknown := false
 			for _, id := range l.FactIDs {
@@ -257,6 +263,15 @@ func (*linkValuesTieToFacts) Run(_ context.Context, s *Subject) (Result, error) 
 		nothing:  "no projection carries a link",
 		findings: findings,
 	}.result(), nil
+}
+
+func strictlyAscending(ids []string) bool {
+	for i := 1; i < len(ids); i++ {
+		if ids[i-1] >= ids[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // linkLocatorsMatchTheirFacts asserts every link's locators are exactly the
