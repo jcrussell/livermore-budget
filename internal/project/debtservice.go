@@ -182,6 +182,7 @@ func debtCaveats() []Caveat {
 	return []Caveat{
 		{
 			ID:      "requirements-are-projected",
+			Theme:   ThemeKindsOfYear,
 			Summary: "The requirements are payments the city's debt agreements schedule through 2055. None of them is an appropriation.",
 			Text: "pp.80-81 print the debt service requirements beside the budget. They are what the " +
 				"city's certificates, loans and lease oblige it to pay each year, as the city " +
@@ -192,6 +193,7 @@ func debtCaveats() []Caveat {
 		},
 		{
 			ID:      "a-band-is-five-years",
+			Theme:   ThemeKindsOfYear,
 			Summary: "From 2031 each row is five years in one figure. A band is not a year, and its figure is not a year's.",
 			Text: "The schedule prints one row a year through the year ending June 30, 2030, and then " +
 				"one row for each five years, 2031-2035 to 2051-2055. Each band's figure is the total " +
@@ -202,6 +204,7 @@ func debtCaveats() []Caveat {
 		},
 		{
 			ID:      "the-last-band-ends-in-2052",
+			Theme:   ThemeBooksDisagree,
 			Summary: "The last band is printed as 2051-2055. The annual report prints the same figures as 2051-2052.",
 			Text: "The Budget Book labels its last row 2051-2055. The city's FY2025 annual financial " +
 				"report prints the same principal and interest, by activity, on p86 under " +
@@ -210,7 +213,8 @@ func debtCaveats() []Caveat {
 			AppliesTo: []string{},
 		},
 		{
-			ID: "by-issue-short-of-the-funds-debt-services",
+			ID:    "by-issue-short-of-the-funds-debt-services",
+			Theme: ThemeBooksDisagree,
 			Summary: fmt.Sprintf("The by-issue budget totals fall short of the funds' Debt Services by %s.",
 				strings.Join(short, " and ")),
 			Text: fmt.Sprintf("The issues' adopted totals are not the Debt Services the budget's "+
@@ -222,7 +226,8 @@ func debtCaveats() []Caveat {
 			AppliesTo: []string{},
 		},
 		{
-			ID: "requirements-are-not-the-budget",
+			ID:    "requirements-are-not-the-budget",
+			Theme: ThemeBooksDisagree,
 			Summary: fmt.Sprintf("The requirements' 2026 and 2027 rows are close to the budget above them "+
 				"but not equal: %s differ by %s to %s.", counted(len(debtRequirementDrift), "cell"),
 				amount.Cents(lo).Dollars(), amount.Cents(hi).Dollars()),
@@ -233,6 +238,7 @@ func debtCaveats() []Caveat {
 		},
 		{
 			ID:      "the-equipment-lease-is-one-lender",
+			Theme:   ThemeSameMoneyTwice,
 			Summary: "Both Lease/Purchase rows are one Banc of America equipment purchase agreement, paid by the Internal Service Fund and by the Airport.",
 			Text: "p80 prints the governmental lease across three lines: Internal Service Fund, then " +
 				"Banc of America Equipment with a dash in every column, then Lease/Purchase Loan " +

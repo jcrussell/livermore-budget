@@ -82,8 +82,8 @@ func trendsDoc(pages ...int) []byte {
 			// predicate behind it worked or not. No real revenue-trends caveat
 			// names a node today; this fixture is where that case lives.
 			"caveats": []map[string]any{{
-				"id":         "a-caveat-this-document-carries",
-				"summary":    "a caveat this document carries",
+				"id":      "a-caveat-this-document-carries",
+				"summary": "a caveat this document carries", "theme": "left-out",
 				"text":       "a caveat this document carries, at length",
 				"applies_to": []string{"fund/100"},
 			}},
@@ -364,7 +364,7 @@ func TestTheCaveatsPageRefusesWhatWouldRender(t *testing.T) {
 				`"fiscal_year_label":"FY 2025-26","basis":"adopted","sources":[],` +
 				`"caveats":` + caveats + `}}`)}
 	}
-	const good = `[{"id":"a","summary":"s","text":"t","applies_to":[]}]`
+	const good = `[{"id":"a","summary":"s","theme":"left-out","text":"t","applies_to":[]}]`
 
 	for _, tc := range []struct {
 		name        string
@@ -379,23 +379,23 @@ func TestTheCaveatsPageRefusesWhatWouldRender(t *testing.T) {
 		},
 		{
 			"a caveat with no id",
-			doc(`[{"id":"","summary":"s","text":"t","applies_to":[]}]`),
+			doc(`[{"id":"","summary":"s","theme":"left-out","text":"t","applies_to":[]}]`),
 			"carries a caveat with no id",
 		},
 		{
 			"a caveat with no summary",
-			doc(`[{"id":"a","summary":"","text":"t","applies_to":[]}]`),
+			doc(`[{"id":"a","summary":"","theme":"left-out","text":"t","applies_to":[]}]`),
 			"has no summary",
 		},
 		{
 			"a caveat with no text",
-			doc(`[{"id":"a","summary":"s","text":"","applies_to":[]}]`),
+			doc(`[{"id":"a","summary":"s","theme":"left-out","text":"","applies_to":[]}]`),
 			"has no text",
 		},
 		{
 			"one document carrying an id twice",
-			doc(`[{"id":"a","summary":"s","text":"t","applies_to":[]},` +
-				`{"id":"a","summary":"s2","text":"t2","applies_to":[]}]`),
+			doc(`[{"id":"a","summary":"s","theme":"left-out","text":"t","applies_to":[]},` +
+				`{"id":"a","summary":"s2","theme":"left-out","text":"t2","applies_to":[]}]`),
 			"twice",
 		},
 		{
@@ -403,9 +403,9 @@ func TestTheCaveatsPageRefusesWhatWouldRender(t *testing.T) {
 			// caveat whose id is "a--other" composes alike.
 			"two caveats claiming one anchor",
 			map[string][]byte{
-				export.PrimaryProjection: doc(`[{"id":"a","summary":"s","text":"t","applies_to":[]},` +
-					`{"id":"a--other","summary":"s3","text":"t3","applies_to":[]}]`)[export.PrimaryProjection],
-				"other": doc(`[{"id":"a","summary":"s","text":"another t","applies_to":[]}]`)[export.PrimaryProjection],
+				export.PrimaryProjection: doc(`[{"id":"a","summary":"s","theme":"left-out","text":"t","applies_to":[]},` +
+					`{"id":"a--other","summary":"s3","theme":"left-out","text":"t3","applies_to":[]}]`)[export.PrimaryProjection],
+				"other": doc(`[{"id":"a","summary":"s","theme":"left-out","text":"another t","applies_to":[]}]`)[export.PrimaryProjection],
 			},
 			"is claimed by both",
 		},
@@ -2539,7 +2539,7 @@ func TestTheTablePagesFoldTheirApparatusAndNotTheirWarnings(t *testing.T) {
 		t.Fatal(err)
 	}
 	hdoc["metadata"].(map[string]any)["caveats"] = []map[string]any{{
-		"id": "a-caveat-the-balances-carry", "summary": "a caveat the balances carry",
+		"id": "a-caveat-the-balances-carry", "summary": "a caveat the balances carry", "theme": "left-out",
 		"text": "a caveat the balances carry, at length",
 	}}
 	hbytes, err := json.Marshal(hdoc)

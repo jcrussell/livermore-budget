@@ -1579,8 +1579,8 @@ func TestConfigCannotCloseItsScriptElement(t *testing.T) {
 			// attacked only the field it used to have would leave the new one
 			// untested while looking like it covered the case.
 			"caveats": []map[string]any{{
-				"id":         `</script><script>alert("pwned")</script>`,
-				"summary":    `</script><script>alert("pwned")</script>`,
+				"id":      `</script><script>alert("pwned")</script>`,
+				"summary": `</script><script>alert("pwned")</script>`, "theme": "left-out",
 				"text":       `</script><script>alert("pwned")</script>`,
 				"applies_to": []string{},
 			}},

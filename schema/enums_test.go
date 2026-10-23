@@ -63,17 +63,18 @@ func enumAt(t *testing.T, file string, path ...string) []string {
 // never writes is a promise about nothing.
 func TestEverySharedEnumIsItsGoSet(t *testing.T) {
 	for def, want := range map[string][]string{
-		"basis":      strs(vocab.Bases()),
-		"kind":       strs(vocab.Kinds()),
-		"sign":       strs(vocab.Signs()),
-		"units":      strs(amount.AllUnits()),
-		"link_kind":  strs(project.LinkKinds()),
-		"role":       strs(project.Roles()),
-		"chart_form": strs(export.ChartForms()),
-		"split_form": strs(project.SplitForms()),
-		"split_side": strs(project.SplitSides()),
-		"split_key":  strs(project.SplitKeys()),
-		"mark_role":  strs(export.MarkRoles()),
+		"basis":        strs(vocab.Bases()),
+		"kind":         strs(vocab.Kinds()),
+		"sign":         strs(vocab.Signs()),
+		"units":        strs(amount.AllUnits()),
+		"link_kind":    strs(project.LinkKinds()),
+		"role":         strs(project.Roles()),
+		"chart_form":   strs(export.ChartForms()),
+		"split_form":   strs(project.SplitForms()),
+		"split_side":   strs(project.SplitSides()),
+		"split_key":    strs(project.SplitKeys()),
+		"mark_role":    strs(export.MarkRoles()),
+		"caveat_theme": strs(project.CaveatThemes()),
 	} {
 		if diff := cmp.Diff(want, enumAt(t, "enums.schema.json", "$defs", def)); diff != "" {
 			t.Errorf("enums.schema.json's %s and its Go set differ (-go +schema):\n%s", def, diff)

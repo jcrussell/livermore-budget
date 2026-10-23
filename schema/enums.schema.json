@@ -29,6 +29,11 @@
       "type": "string",
       "enum": ["external", "internal_transfer", "internal_service", "fund_balance"]
     },
+    "caveat_theme": {
+      "description": "What kind of limit a caveat states; project.CaveatThemes.",
+      "type": "string",
+      "enum": ["left-out", "books-disagree", "same-money-twice", "kinds-of-year", "our-reading", "checked", "data-files"]
+    },
     "mark_role": {
       "description": "What a node the client makes is for; export.MarkRoles. No document carries one.",
       "type": "string",

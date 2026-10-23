@@ -889,12 +889,14 @@ func TestContestedCaveatIsEmittedOnlyForTheColumnThatDrawsIt(t *testing.T) {
 	if want := "contested-total-" + c.FundGroup; got.ID != want {
 		t.Errorf("caveat id is %q, want %q", got.ID, want)
 	}
-	// The summary is what a reader sees in a list of its peers, so it has to
-	// name the group and the size of the disagreement on its own.
-	for _, want := range []string{amount.Cents(c.Published - c.Elsewhere).Dollars()} {
-		if !strings.Contains(got.Summary, want) {
-			t.Errorf("summary does not mention %q:\n%s", want, got.Summary)
-		}
+	// The summary names the group, and no figure: the caveats page heads an
+	// id once across columns, and the size is the text's.
+	label := builtinLabels[PrefixFundGroup+c.FundGroup]
+	if !strings.Contains(got.Summary, label) {
+		t.Errorf("summary does not name %q:\n%s", label, got.Summary)
+	}
+	if strings.Contains(got.Summary, "$") {
+		t.Errorf("summary carries a figure, which varies by column:\n%s", got.Summary)
 	}
 	// And it marks the group it is about, so a chart can flag that node.
 	if len(got.AppliesTo) != 1 || got.AppliesTo[0] != PrefixFundGroup+c.FundGroup {

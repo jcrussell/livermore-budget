@@ -62,24 +62,28 @@
         "id": "constraint-tier-is-our-reading",
         "summary": "A fund's constraint tier is our reading of the Description of Funds narrative, not a figure the city printed.",
         "text": "A fund's constraint tier is OUR reading of the Description of Funds narrative (Budget Book pp. 258-261), not something the city printed. Each fund node carries the note it was read from. \"unknown\" means the document does not establish a restriction; it is a classification, not a gap.",
+        "theme": "our-reading",
         "applies_to": []
       },
       {
         "id": "the-revenue-schedule-is-published-twice",
         "summary": "Budget Book pp.127-140 are published twice on this site: the chart draws their adopted columns one year at a time, and the Over time page prints all four.",
         "text": "Budget Book pp.127-140 are published in two places on this site, and the two are the same money rather than two figures. The site's chart draws ONE adopted column of that schedule at a time, while the Over time page prints its revenue lines in all four columns it carries: FY2023-24 actual, FY2024-25 revised, and both adopted years. A row found in both places is one printed figure shown once in each, so neither view is a second measurement of it and the two are never to be added.",
+        "theme": "same-money-twice",
         "applies_to": []
       },
       {
         "id": "mixed-grain-double-counts",
         "summary": "This document holds the same money at two grains, so summing every link double-counts.",
         "text": "This document holds the same money at more than one grain, so summing every link double-counts: 228 fact(s) are behind more than one link. A revenue row is behind its own flow into a fund, the rollup of its line into the category it is printed under, and the rollup of its fund under the group that fund belongs to; an expenditure row is behind both its department's object rows and the fund-to-department link that totals them. Fold within one tier pair, never across the whole graph. It publishes no headline for this reason.",
+        "theme": "data-files",
         "applies_to": []
       },
       {
         "id": "only-the-general-fund-has-divisions",
         "summary": "Only the General Fund opens into divisions; every other fund's spending goes straight to its object categories.",
         "text": "Budget Book pp.167-170 break the General Fund down by division and then by object category. pp.173-183 print every other fund by object category alone, with no division, so their spending is drawn from the fund straight to its categories and the division column holds the General Fund's alone. The revenue and spending schedules are read side by side and do not balance fund by fund: a fund pp.127-140 print revenue for and pp.173-183 print no spending for is drawn with money arriving and none leaving, and one that spends with no printed revenue with money leaving and none arriving.",
+        "theme": "left-out",
         "applies_to": [
           "fund-group/capital",
           "fund-group/debt-service",
@@ -93,6 +97,7 @@
         "id": "one-row-is-one-printed-line",
         "summary": "A revenue line marked \"one row\" is one Budget Book pp.127-140 print as a single row for its whole category.",
         "text": "Budget Book pp.127-140 print some funds' revenue under a category as one row named for the category itself, such as Charges for Services. Where no fund printing that row prints another row of the category on those pages, this site labels the line \"<category>, one row\": pp.127-140 print it as a single row for its category, so the figure is that printed row and not a gap in this site's reading of them.",
+        "theme": "our-reading",
         "applies_to": [
           "revenue-line/charges-for-services/charges-for-services",
           "revenue-line/contributions-outsourced/contributionsoutsrce",
@@ -107,6 +112,7 @@
         "id": "the-line-so-named-is-one-row-of-several",
         "summary": "A revenue line marked \"the line so named\" is one printed row that shares its category's name, not the category's total.",
         "text": "Budget Book pp.127-140 print some funds' revenue under a category as one row named for the category itself. Where a fund prints that row beside other rows of the category, this site labels the line \"<row>, the line so named\": its figure is that one row, and the category's other rows are drawn beside it rather than inside it.",
+        "theme": "our-reading",
         "applies_to": [
           "revenue-line/miscellaneous-revenue/miscellaneous-revenue"
         ]

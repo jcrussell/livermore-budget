@@ -43,9 +43,9 @@ func caveatSite(a, b, c string) (*Options, []navItem) {
 // unreached document carries and x is in it beside a's and b's sections.
 func TestTheCaveatIndexStatesEachCaveatOnce(t *testing.T) {
 	o, nav := caveatSite(
-		`[{"id":"x","summary":"X.","text":"Same.","applies_to":[]},{"id":"y","summary":"Y.","text":"In a.","applies_to":[]}]`,
-		`[{"id":"x","summary":"X.","text":"Same.","applies_to":[]},{"id":"y","summary":"Y.","text":"In b.","applies_to":[]}]`,
-		`[{"id":"x","summary":"X.","text":"Same.","applies_to":[]},{"id":"z","summary":"Z.","text":"Only c.","applies_to":[]}]`,
+		`[{"id":"x","summary":"X.","theme":"left-out","text":"Same.","applies_to":[]},{"id":"y","summary":"Y.","theme":"left-out","text":"In a.","applies_to":[]}]`,
+		`[{"id":"x","summary":"X.","theme":"left-out","text":"Same.","applies_to":[]},{"id":"y","summary":"Y.","theme":"left-out","text":"In b.","applies_to":[]}]`,
+		`[{"id":"x","summary":"X.","theme":"left-out","text":"Same.","applies_to":[]},{"id":"z","summary":"Z.","theme":"left-out","text":"Only c.","applies_to":[]}]`,
 	)
 	cx, err := buildCaveatIndex(o, ColumnIndex{}, nav)
 	if err != nil {
@@ -115,7 +115,7 @@ func TestTheCaveatIndexStatesEachCaveatOnce(t *testing.T) {
 // headed "S. (a)".
 func TestTwoCaveatsTheIndexWouldHeadAlikeAreRefused(t *testing.T) {
 	o, nav := caveatSite(
-		`[{"id":"x","summary":"S.","text":"One.","applies_to":[]},{"id":"y","summary":"S.","text":"Two.","applies_to":[]}]`,
+		`[{"id":"x","summary":"S.","theme":"left-out","text":"One.","applies_to":[]},{"id":"y","summary":"S.","theme":"left-out","text":"Two.","applies_to":[]}]`,
 		`[]`, `[]`,
 	)
 	_, err := buildCaveatIndex(o, ColumnIndex{}, nav)
@@ -124,28 +124,44 @@ func TestTwoCaveatsTheIndexWouldHeadAlikeAreRefused(t *testing.T) {
 	}
 }
 
-// TestOneTextUnderTwoSummariesIsTwoEntries: the summary is part of what a
-// caveat says (some-fund-group-money-is-not-by-fund counts its groups in
-// it), so a merge would publish one column's count as another's.
-func TestOneTextUnderTwoSummariesIsTwoEntries(t *testing.T) {
-	o, nav := caveatSite(
-		`[{"id":"x","summary":"3 groups.","text":"Same.","applies_to":[]}]`,
-		`[{"id":"x","summary":"4 groups.","text":"Same.","applies_to":[]}]`,
-		`[]`,
-	)
-	cx, err := buildCaveatIndex(o, ColumnIndex{}, nav)
-	if err != nil {
-		t.Fatalf("buildCaveatIndex: %v", err)
+// TestOneIDUnderTwoHeadingsIsRefused: the caveats page lists an id once, so
+// a summary or theme that varies by document would publish one document's
+// heading over another's text.
+//
+// Mutation: drop buildCaveatIndex's heading arm and both go red with
+// "buildCaveatIndex = nil".
+func TestOneIDUnderTwoHeadingsIsRefused(t *testing.T) {
+	for name, b := range map[string]string{
+		"two summaries": `[{"id":"x","summary":"4 groups.","theme":"left-out","text":"Same.","applies_to":[]}]`,
+		"two themes":    `[{"id":"x","summary":"3 groups.","theme":"our-reading","text":"Same.","applies_to":[]}]`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			o, nav := caveatSite(
+				`[{"id":"x","summary":"3 groups.","theme":"left-out","text":"Same.","applies_to":[]}]`, b, `[]`)
+			_, err := buildCaveatIndex(o, ColumnIndex{}, nav)
+			if err == nil || !strings.Contains(err.Error(), "lists an id once") {
+				t.Errorf("buildCaveatIndex = %v, want one id under two headings refused", err)
+			}
+		})
 	}
-	if len(cx.entries) != 2 || cx.entries[0].Anchor != "caveat-x--a" || cx.entries[1].Anchor != "caveat-x--b" {
-		t.Errorf("got %d entries, want caveat-x--a and caveat-x--b", len(cx.entries))
+}
+
+// TestACaveatOfNoThemeIsRefused: the caveats page lists a caveat under its
+// theme, so one of no theme would be listed nowhere.
+//
+// Mutation: drop buildCaveatIndex's theme arm and it goes red with
+// "buildCaveatIndex = nil".
+func TestACaveatOfNoThemeIsRefused(t *testing.T) {
+	o, nav := caveatSite(`[{"id":"x","summary":"X.","theme":"caveat","text":"T.","applies_to":[]}]`, `[]`, `[]`)
+	if _, err := buildCaveatIndex(o, ColumnIndex{}, nav); err == nil || !strings.Contains(err.Error(), "none of project.CaveatThemes") {
+		t.Errorf("buildCaveatIndex = %v, want a theme of no set refused", err)
 	}
 }
 
 // TestASiteWithNoCaveatsPageLinksNoCaveat: with no caveats view every href
 // is empty and the line carries the headings the fallback list prints.
 func TestASiteWithNoCaveatsPageLinksNoCaveat(t *testing.T) {
-	o, nav := caveatSite(`[{"id":"x","summary":"X.","text":"T.","applies_to":[]}]`, `[]`, `[]`)
+	o, nav := caveatSite(`[{"id":"x","summary":"X.","theme":"left-out","text":"T.","applies_to":[]}]`, `[]`, `[]`)
 	o.Views, nav = o.Views[:2], nav[:2]
 	cx, err := buildCaveatIndex(o, ColumnIndex{}, nav)
 	if err != nil {
@@ -165,8 +181,8 @@ func TestASiteWithNoCaveatsPageLinksNoCaveat(t *testing.T) {
 // by map order, so twenty runs disagree.
 func TestTheHeadingsRefusalNamesOnePairEveryRun(t *testing.T) {
 	o, nav := caveatSite(
-		`[{"id":"x","summary":"S.","text":"One.","applies_to":[]},{"id":"y","summary":"S.","text":"Two.","applies_to":[]},`+
-			`{"id":"v","summary":"T.","text":"One.","applies_to":[]},{"id":"w","summary":"T.","text":"Two.","applies_to":[]}]`,
+		`[{"id":"x","summary":"S.","theme":"left-out","text":"One.","applies_to":[]},{"id":"y","summary":"S.","theme":"left-out","text":"Two.","applies_to":[]},`+
+			`{"id":"v","summary":"T.","theme":"left-out","text":"One.","applies_to":[]},{"id":"w","summary":"T.","theme":"left-out","text":"Two.","applies_to":[]}]`,
 		`[]`, `[]`,
 	)
 	for range 20 {
@@ -185,7 +201,7 @@ func TestTheHeadingsRefusalNamesOnePairEveryRun(t *testing.T) {
 // Mutation: have flaggedStems skip a view drawnStems refuses and the index
 // builds, flagging no document.
 func TestASankeyViewWhoseYearDrawsNoScheduleIsRefused(t *testing.T) {
-	o, nav := caveatSite(`[{"id":"x","summary":"X.","text":"T.","applies_to":[]}]`, `[]`, `[]`)
+	o, nav := caveatSite(`[{"id":"x","summary":"X.","theme":"left-out","text":"T.","applies_to":[]}]`, `[]`, `[]`)
 	o.Views[0].Template, o.Views[0].Draws = SankeyTemplate, "fund-flows"
 	_, err := buildCaveatIndex(o, ColumnIndex{}, nav)
 	if err == nil || !strings.Contains(err.Error(), "carries none") {

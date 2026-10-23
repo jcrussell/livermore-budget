@@ -242,6 +242,7 @@ func (t *Trends) Document(facts []fact.Fact, o Options) (*TrendsDocument, error)
 var (
 	caveatGeneralFundTransfersIn = Caveat{
 		ID:      "no-general-fund-transfers-in-row",
+		Theme:   ThemeLeftOut,
 		Summary: "pp.127-130 print no General Fund Transfers In row, so that total sits below the city's own summary.",
 		Text: "Budget Book pp.127-130 print no General Fund " +
 			"Transfers In row, so this schedule's General Fund total is below the city's own " +
@@ -252,6 +253,7 @@ var (
 	}
 	caveatCapitalReserves = Caveat{
 		ID:      "capital-reserves-are-not-in-this-schedule",
+		Theme:   ThemeLeftOut,
 		Summary: "General Fund CIP Reserves has no section on pp.131-140, so FY2024-25's Capital column is short by $4,125,627.",
 		Text: "The Capital Funds column for FY2024-25 sums to $30,713,648 " +
 			"against the $34,839,275 the city prints on p63, because General Fund CIP Reserves " +
@@ -261,6 +263,7 @@ var (
 	}
 	caveatComparability = Caveat{
 		ID:      "four-columns-are-four-measurements",
+		Theme:   ThemeKindsOfYear,
 		Summary: "The four columns are four different measurements, so growth across them is not published.",
 		Text: "The four columns are four different measurements: FY2023-24 is " +
 			"money that moved, FY2024-25 is a mid-year re-forecast, and the two later years are " +

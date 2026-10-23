@@ -1281,7 +1281,8 @@ func expansionCaveats(twice int, nodes []Node, apart []string) []Caveat {
 		ConstraintTierCaveat(),
 		revenueSchedulePublishedTwiceCaveat(),
 		{
-			ID: "the-expansion-is-the-spine-at-finer-grain",
+			ID:    "the-expansion-is-the-spine-at-finer-grain",
+			Theme: ThemeChecked,
 			Summary: "Every cell of the citywide chart opens into the finer schedules that print it, " +
 				"and they sum back to it to the cent.",
 			Text: fmt.Sprintf("This document is the citywide chart's cells read from the finer "+
@@ -1308,16 +1309,17 @@ func expansionCaveats(twice int, nodes []Node, apart []string) []Caveat {
 		}
 	}
 	if len(netted) > 0 {
-		summary := fmt.Sprintf("%s money pp.66-67 print that no fund's own page carries, drawn "+
-			"on a node of the group's own.", plural(len(netted), "fund group"))
+		lead := fmt.Sprintf("%s money pp.66-67 print that no fund's own page carries is "+
+			"drawn on a node of the group's own.", plural(len(netted), "fund group"))
 		if len(apart) > 0 {
-			summary += " A fund of such a group is drawn with what it takes in and spends, so its " +
+			lead += " A fund of such a group is drawn with what it takes in and spends, so its " +
 				"in and out differ by its own change in balance."
 		}
 		out = append(out, Caveat{
 			ID:      "some-fund-group-money-is-not-by-fund",
-			Summary: summary,
-			Text: "Budget Book pp.66-67 print each fund group's change in working capital as one " +
+			Theme:   ThemeOurReading,
+			Summary: "Some fund groups carry money that no single fund's own page prints.",
+			Text: lead + " Budget Book pp.66-67 print each fund group's change in working capital as one " +
 				"figure. Where some of the group's funds draw on their balances and others add to " +
 				"them, pp.186-209 print each fund's own beginning and ending balance and the " +
 				"group's change is the net of the funds' changes, which no single fund carries; it " +

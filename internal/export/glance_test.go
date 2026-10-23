@@ -40,7 +40,7 @@ func glanceFunding(short int64) []byte {
 		`"basis":"adopted","scopes":["department-funding-sources"],"currency":"USD","units":"cents",` +
 		`"sources":[{"doc_id":"livermore-budget-fy2026-2027","pages":[85, 119, 120]}],` +
 		`"counts":{"facts":3,"nodes":6,"links":3},` +
-		`"caveats":[{"id":"a-department-here-is-not-a-division","summary":"Departments, not divisions.","text":"A text.","applies_to":[]}]}}`)
+		`"caveats":[{"id":"a-department-here-is-not-a-division","summary":"Departments, not divisions.","theme":"left-out","text":"A text.","applies_to":[]}]}}`)
 }
 
 // glanceOptions is a site with the spine and the glance page over the golden

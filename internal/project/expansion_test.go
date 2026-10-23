@@ -496,8 +496,8 @@ func TestAFundDrawnApartFromItsChangeIsToldSo(t *testing.T) {
 					got = append(got, id)
 				}
 			}
-			if !strings.Contains(c.Summary, "in and out differ by its own change in balance") {
-				t.Errorf("FY%d: the caveat's summary does not say a fund's in and out differ: %q", year, c.Summary)
+			if !strings.Contains(c.Text, "in and out differ by its own change in balance") {
+				t.Errorf("FY%d: the caveat's text does not say a fund's in and out differ: %q", year, c.Text)
 			}
 		}
 		if !slices.Equal(want, got) {

@@ -55,6 +55,7 @@ const constraintTierCaveat = "A fund's constraint tier is OUR reading of the " +
 func ConstraintTierCaveat() Caveat {
 	return Caveat{
 		ID:      ConstraintTierCaveatID,
+		Theme:   ThemeOurReading,
 		Summary: "A fund's constraint tier is our reading of the Description of Funds narrative, not a figure the city printed.",
 		Text:    constraintTierCaveat,
 		// Document-wide: every fund carries a tier, so marking all marks none.
@@ -406,6 +407,7 @@ func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 		revenueSchedulePublishedTwiceCaveat(),
 		{
 			ID:      "mixed-grain-double-counts",
+			Theme:   ThemeDataFiles,
 			Summary: "This document holds the same money at two grains, so summing every link double-counts.",
 			Text: fmt.Sprintf("This document holds the same money at more than one grain, so summing "+
 				"every link double-counts: %d fact(s) are behind more than one link. A revenue "+
@@ -422,7 +424,8 @@ func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 	divided, direct := spendingSides(nodes)
 	if len(divided) == 1 && divided[PrefixFundGroup+registry.FundTypeGeneral] && len(direct) > 0 {
 		out = append(out, Caveat{
-			ID: "only-the-general-fund-has-divisions",
+			ID:    "only-the-general-fund-has-divisions",
+			Theme: ThemeLeftOut,
 			Summary: "Only the General Fund opens into divisions; every other fund's spending " +
 				"goes straight to its object categories.",
 			Text: "Budget Book pp.167-170 break the General Fund down by division and then by " +
@@ -440,7 +443,8 @@ func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 	out = append(out, categoryNamedCaveats(nodes)...)
 	if stopped := truncatedGroups(nodes); len(stopped) > 0 {
 		out = append(out, Caveat{
-			ID: "some-funds-show-no-spending",
+			ID:    "some-funds-show-no-spending",
+			Theme: ThemeLeftOut,
 			// The count is the document's: columns differ in which groups stop.
 			Summary: fmt.Sprintf("The %s money ends at their funds.", plural(len(stopped), "fund group")),
 			Text: fmt.Sprintf("The schedules this document reads for spending, Budget Book "+
@@ -944,7 +948,8 @@ func categoryNamedCaveats(nodes []Node) []Caveat {
 	if len(oneRow) > 0 {
 		sort.Strings(oneRow)
 		out = append(out, Caveat{
-			ID: OneRowCaveatID,
+			ID:    OneRowCaveatID,
+			Theme: ThemeOurReading,
 			Summary: "A revenue line marked \"one row\" is one Budget Book pp.127-140 print as a single row " +
 				"for its whole category.",
 			Text: "Budget Book pp.127-140 print some funds' revenue under a category as one row named for " +
@@ -958,7 +963,8 @@ func categoryNamedCaveats(nodes []Node) []Caveat {
 	if len(soNamed) > 0 {
 		sort.Strings(soNamed)
 		out = append(out, Caveat{
-			ID: SoNamedCaveatID,
+			ID:    SoNamedCaveatID,
+			Theme: ThemeOurReading,
 			Summary: "A revenue line marked \"the line so named\" is one printed row that shares its " +
 				"category's name, not the category's total.",
 			Text: "Budget Book pp.127-140 print some funds' revenue under a category as one row named for " +

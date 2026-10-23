@@ -37,7 +37,7 @@ func debtDoc(t *testing.T, figures int) []byte {
 				{"fiscal_year": 2031, "fiscal_year_through": through, "basis": "projected"}},
 			"sources": []map[string]any{{"doc_id": budgetDocID, "pages": []int{80, 81}}},
 			"counts":  map[string]any{"facts": figures, "figures": figures},
-			"caveats": []map[string]any{{"id": "a-band-is-five-years", "summary": "A band is not a year.",
+			"caveats": []map[string]any{{"id": "a-band-is-five-years", "summary": "A band is not a year.", "theme": "left-out",
 				"text": "Five years in one figure.", "applies_to": []string{}}},
 		},
 		"issue_columns": []map[string]any{{"fiscal_year": 2026, "fiscal_year_label": "FY 2025-26", "basis": "adopted"}},

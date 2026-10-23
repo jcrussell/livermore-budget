@@ -138,6 +138,7 @@ const UnauditedCaveatID = "statistical-section-unaudited"
 var (
 	caveatBalancesDoNotTieToP41 = Caveat{
 		ID:      "p167-does-not-tie-to-p41",
+		Theme:   ThemeBooksDisagree,
 		Summary: "MD&A's in-millions table (p41) does not tie to this schedule's 2025 General Fund balance; the audited statement (p54) does, to the dollar.",
 		Text: "This schedule's five General Fund components for 2025 sum to $87,043,576, " +
 			"and the ACFR's audited Statement of Revenues, Expenditures and Changes in " +
@@ -151,6 +152,7 @@ var (
 	}
 	caveatNoAssignedRow = Caveat{
 		ID:      "all-other-funds-print-no-assigned-row",
+		Theme:   ThemeLeftOut,
 		Summary: "All Other Governmental Funds prints no Assigned row, so that block has four components, not five.",
 		Text: "p167's All Other Governmental Funds block prints Nonspendable, Restricted, " +
 			"Committed and Unassigned, and no Assigned line in any year. The row is absent " +
@@ -160,6 +162,7 @@ var (
 	}
 	caveatGovernmentalFundsOnly = Caveat{
 		ID:      "governmental-funds-only",
+		Theme:   ThemeLeftOut,
 		Summary: "Governmental funds only: water, sewer and the other enterprise activities are not in this schedule.",
 		Text: "This schedule covers the governmental funds — the General Fund plus " +
 			"special revenue, debt service and capital projects funds — on the " +
@@ -171,6 +174,7 @@ var (
 	}
 	caveatOtherFinancingNotPublished = Caveat{
 		ID:      "other-financing-not-published",
+		Theme:   ThemeLeftOut,
 		Summary: "The schedule's Other financing block and Net change lines are not published, so this table ends at the excess line.",
 		Text: "pp.168-169 continue past the excess line with an Other financing sources " +
 			"(uses) block and a Net change in fund balances line. Neither is published: " +
@@ -182,6 +186,7 @@ var (
 	}
 	caveatStatisticalSectionIsUnaudited = Caveat{
 		ID:      UnauditedCaveatID,
+		Theme:   ThemeKindsOfYear,
 		Summary: "These ten-year schedules sit in the section the ACFR itself labels (Unaudited); the auditor's opinion does not cover them.",
 		Text: "p161, the section divider, reads \"Statistical Section (Unaudited)\", and " +
 			"the auditor's report (p29) says of this section: \"Our opinions on the " +
@@ -193,6 +198,7 @@ var (
 	}
 	caveatChangesTieToP54 = Caveat{
 		ID:      "pp168-169-tie-to-p54",
+		Theme:   ThemeChecked,
 		Summary: "The audited statement (p54) corroborates this schedule's 2025 column: five printed lines, Total revenues through Net change, tie to the dollar.",
 		Text: "The 2025 column can be checked against the audited Statement of Revenues, " +
 			"Expenditures and Changes in Fund Balances (p54): on five printed lines — " +
@@ -206,6 +212,7 @@ var (
 	}
 	caveatVLFReclassification = Caveat{
 		ID:      "property-tax-reclassified",
+		Theme:   ThemeKindsOfYear,
 		Summary: "Property taxes and Intergovernmental change definition at FY2024-25, by the page's own footnote.",
 		Text: "p168's footnote on the Property Taxes row reads: \"VLF Comp revenue " +
 			"reclassified to Property tax in FY 2024-25. Previously reported under " +

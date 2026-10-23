@@ -2550,24 +2550,28 @@
      "id": "constraint-tier-is-our-reading",
      "summary": "A fund's constraint tier is our reading of the Description of Funds narrative, not a figure the city printed.",
      "text": "A fund's constraint tier is OUR reading of the Description of Funds narrative (Budget Book pp. 258-261), not something the city printed. Each fund node carries the note it was read from. \"unknown\" means the document does not establish a restriction; it is a classification, not a gap.",
+     "theme": "our-reading",
      "applies_to": []
     },
     {
      "id": "a-department-here-is-not-a-division",
      "summary": "These rows are printed once per DEPARTMENT; the divisions drawn elsewhere on this site are a finer tier, and five names belong to both.",
      "text": "Budget Book pp.85-125 print two blocks per page and they are keyed on different things. The upper block is Expenditures by Category, printed by DIVISION; this one is Department Funding Sources, printed once per DEPARTMENT. data/departments.yaml keeps those as two tiers because the city's own pages do, and five names are in both -- City Council, City Manager, City Attorney, General Services and Administrative Services each name a department and a division beneath it. A mark here is the whole department across every fund; a mark named the same on the General Fund's drill-down is one division of it. Do not read one as the other, and do not add them.",
+     "theme": "same-money-twice",
      "applies_to": []
     },
     {
      "id": "what-a-fund-pays-departments-is-not-what-it-takes-in",
      "summary": "What a fund pays departments here is not what that fund takes in, and the two are printed by different schedules.",
      "text": "What a fund takes in is printed by Budget Book pp.127-140. What leaves the fund here is what pp.85-125 print the city's departments drawing on it. Those are two schedules and not one figure read twice, and either side may be the larger.",
+     "theme": "same-money-twice",
      "applies_to": []
     },
     {
      "id": "two-of-the-four-columns-tie-to-no-citywide-total",
      "summary": "The FY2023-24 actual and FY2024-25 revised columns reconcile to each department's own printed total and to nothing citywide.",
      "text": "Budget Book pp.66-67 print two adopted columns and no actual and no revised one, so the citywide check this project runs over these rows (cuts-tie-along-the-lattice) can compare only the two adopted years. The other two columns reconcile to each department's own printed Total Department Funding Sources at build time and to no citywide figure at all. Five of the eleven departments miss that printed total by exactly one dollar, every one of them in the FY2023-24 actual column and every one declared in the mapping as the city's own rounding.",
+     "theme": "kinds-of-year",
      "applies_to": []
     }
    ],
@@ -3953,18 +3957,21 @@
      "id": "no-fund-axis-on-these-pages",
      "summary": "These rows say what a division spends, not what pays for it: the schedule has no fund and no fund group.",
      "text": "Budget Book pp.85-125's upper block prints what each division spends under each object heading whatever fund pays for it, so no row here carries a fund or a fund group. That is the page rather than a gap -- the fund breakdown is the LOWER block of the same eleven pages, Department Funding Sources, which this site draws as its own chart. The two are not the same grain and are not to be joined: that block prints one row per DEPARTMENT and this one per DIVISION. A division drawn here therefore belongs to no fund group, and a chart that colours by group leaves it unshaded.",
+     "theme": "left-out",
      "applies_to": []
     },
     {
      "id": "the-ribbons-are-a-cross-tab",
      "summary": "Each ribbon is a cell of one printed table read along a second axis, not money moving in the direction drawn.",
      "text": "These pages print one matrix: divisions down, object categories across. A chart can read it either way round and neither reading is money moving, so every ribbon here carries the partition flag and the chart says so on each one. Summing a whole column is the printed total of that column and nothing more; there is no flow to follow from one end of this document to the other.",
+     "theme": "our-reading",
      "applies_to": []
     },
     {
      "id": "the-boundary-is-not-classified-here",
      "summary": "Every expenditure ribbon is published as external because these rows name no fund group to classify it by.",
      "text": "Elsewhere in this project a flow is external or an internal service charge according to the fund group at its far end, read off the section header the row sits under. These rows have no such header, so that question cannot be asked of them and every expenditure ribbon is published as external. Internal Service Fund spending is INSIDE these figures rather than beside them. Do not add a figure from this document to an external total taken from another.",
+     "theme": "our-reading",
      "applies_to": []
     }
    ],
@@ -5300,24 +5307,28 @@
      "id": "constraint-tier-is-our-reading",
      "summary": "A fund's constraint tier is our reading of the Description of Funds narrative, not a figure the city printed.",
      "text": "A fund's constraint tier is OUR reading of the Description of Funds narrative (Budget Book pp. 258-261), not something the city printed. Each fund node carries the note it was read from. \"unknown\" means the document does not establish a restriction; it is a classification, not a gap.",
+     "theme": "our-reading",
      "applies_to": []
     },
     {
      "id": "the-revenue-schedule-is-published-twice",
      "summary": "Budget Book pp.127-140 are published twice on this site: the chart draws their adopted columns one year at a time, and the Over time page prints all four.",
      "text": "Budget Book pp.127-140 are published in two places on this site, and the two are the same money rather than two figures. The site's chart draws ONE adopted column of that schedule at a time, while the Over time page prints its revenue lines in all four columns it carries: FY2023-24 actual, FY2024-25 revised, and both adopted years. A row found in both places is one printed figure shown once in each, so neither view is a second measurement of it and the two are never to be added.",
+     "theme": "same-money-twice",
      "applies_to": []
     },
     {
      "id": "mixed-grain-double-counts",
      "summary": "This document holds the same money at two grains, so summing every link double-counts.",
      "text": "This document holds the same money at more than one grain, so summing every link double-counts: 246 fact(s) are behind more than one link. A revenue row is behind its own flow into a fund, the rollup of its line into the category it is printed under, and the rollup of its fund under the group that fund belongs to; an expenditure row is behind both its department's object rows and the fund-to-department link that totals them. Fold within one tier pair, never across the whole graph. It publishes no headline for this reason.",
+     "theme": "data-files",
      "applies_to": []
     },
     {
      "id": "only-the-general-fund-has-divisions",
      "summary": "Only the General Fund opens into divisions; every other fund's spending goes straight to its object categories.",
      "text": "Budget Book pp.167-170 break the General Fund down by division and then by object category. pp.173-183 print every other fund by object category alone, with no division, so their spending is drawn from the fund straight to its categories and the division column holds the General Fund's alone. The revenue and spending schedules are read side by side and do not balance fund by fund: a fund pp.127-140 print revenue for and pp.173-183 print no spending for is drawn with money arriving and none leaving, and one that spends with no printed revenue with money leaving and none arriving.",
+     "theme": "left-out",
      "applies_to": [
       "fund-group/capital",
       "fund-group/debt-service",
@@ -5331,6 +5342,7 @@
      "id": "one-row-is-one-printed-line",
      "summary": "A revenue line marked \"one row\" is one Budget Book pp.127-140 print as a single row for its whole category.",
      "text": "Budget Book pp.127-140 print some funds' revenue under a category as one row named for the category itself, such as Charges for Services. Where no fund printing that row prints another row of the category on those pages, this site labels the line \"\u003ccategory\u003e, one row\": pp.127-140 print it as a single row for its category, so the figure is that printed row and not a gap in this site's reading of them.",
+     "theme": "our-reading",
      "applies_to": [
       "revenue-line/charges-for-services/charges-for-services",
       "revenue-line/contributions-outsourced/contributionsoutsrce",
@@ -5346,6 +5358,7 @@
      "id": "the-line-so-named-is-one-row-of-several",
      "summary": "A revenue line marked \"the line so named\" is one printed row that shares its category's name, not the category's total.",
      "text": "Budget Book pp.127-140 print some funds' revenue under a category as one row named for the category itself. Where a fund prints that row beside other rows of the category, this site labels the line \"\u003crow\u003e, the line so named\": its figure is that one row, and the category's other rows are drawn beside it rather than inside it.",
+     "theme": "our-reading",
      "applies_to": [
       "revenue-line/miscellaneous-revenue/miscellaneous-revenue"
      ]
@@ -15705,18 +15718,21 @@
      "id": "constraint-tier-is-our-reading",
      "summary": "A fund's constraint tier is our reading of the Description of Funds narrative, not a figure the city printed.",
      "text": "A fund's constraint tier is OUR reading of the Description of Funds narrative (Budget Book pp. 258-261), not something the city printed. Each fund node carries the note it was read from. \"unknown\" means the document does not establish a restriction; it is a classification, not a gap.",
+     "theme": "our-reading",
      "applies_to": []
     },
     {
      "id": "the-cip-funds-block-is-not-drawn",
      "summary": "The Capital Improvement Program funds pp.186-209 print are not drawn here; their money is Budget Book p222's.",
      "text": "Budget Book pp.190, 196, 202 and 208 print a block of Capital Improvement Program funds below the operating funds, among them the capital-project sides of enterprise and internal service funds, which data/funds.yaml types with those groups. That money is what p222 lists the CIP receiving and spending, outside the operating budget pp.66-67 total, so this chart draws the operating funds alone. Adding the block would publish group totals no page prints.",
+     "theme": "left-out",
      "applies_to": []
     },
     {
      "id": "each-fund-change-is-gross",
      "summary": "Each fund's draw on or contribution to its balance is its own, so these sum to more than a fund group's net change.",
      "text": "Budget Book pp.186-209 print each fund's beginning and ending balance, and this chart draws the difference fund by fund: a fund whose balance falls draws on it, and one whose balance rises contributes to it. Summed here, 30 funds draw $35,949,908 and 36 funds contribute $25,403,328. Netted within each fund group, the same changes come to draws of $17,009,977 and contributions of $6,463,397. pp.66-67, in the years they print, show a group's CHANGE IN WORKING CAPITAL as one signed row, so the citywide chart's Fund Balance Draw and Contribution are net in this way and read from pp.66-67's own figures, not from these.",
+     "theme": "same-money-twice",
      "applies_to": [
       "fund-balance/draw",
       "fund-balance/contribution"
@@ -15724,8 +15740,9 @@
     },
     {
      "id": "sources-and-uses-differ",
-     "summary": "For 18 funds drawn here, sources do not equal uses.",
+     "summary": "For some funds drawn here, money in does not equal money out.",
      "text": "Each fund's page prints its beginning balance plus its sources equal to its uses plus its ending balance, and for 18 funds drawn here what flows in differs from what flows out. For 18 funds the printed figures themselves miss the identity, by at most $1, and are drawn as printed.",
+     "theme": "books-disagree",
      "applies_to": [
       "fund/201",
       "fund/210",

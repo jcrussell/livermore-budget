@@ -1193,6 +1193,7 @@ func fiscalYearLabel(year int) string {
 var (
 	caveatStocks = Caveat{
 		ID:      "working-capital-is-a-stock",
+		Theme:   ThemeLeftOut,
 		Summary: "Beginning and ending working capital are stocks, not flows, so the chart carries no link for them.",
 		Text: "The Sankey shows flows only. BEGINNING and ENDING WORKING CAPITAL are " +
 			"stocks and are recorded as facts but carry no link, so the chart will not " +
@@ -1201,6 +1202,7 @@ var (
 	}
 	caveatPermanentFunds = Caveat{
 		ID:      "permanent-funds-have-no-column",
+		Theme:   ThemeLeftOut,
 		Summary: "Permanent Funds are a seventh fund type, and this schedule prints no column for them.",
 		Text: "Permanent Funds are a seventh fund type in data/funds.yaml " +
 			"(2 funds) with no column on this schedule.",
@@ -1208,6 +1210,7 @@ var (
 	}
 	caveatInternalService = Caveat{
 		ID:      "internal-service-is-outside-the-external-headline",
+		Theme:   ThemeLeftOut,
 		Summary: "Internal Service charges are billed between city departments, so they are outside the external headline.",
 		Text: "Internal Service Fund charges are billed to other City " +
 			"departments, so they are classified internal_service and excluded from the " +
@@ -1436,10 +1439,11 @@ func contestedCaveat(c contestedTotal, col Column, links []Link) (Caveat, bool) 
 	// dropping a caveat rather than naming it. One entry today; the list is
 	// meant to stay short, not to stay length one.
 	return Caveat{
-		ID: "contested-total-" + c.FundGroup,
+		ID:    "contested-total-" + c.FundGroup,
+		Theme: ThemeBooksDisagree,
 		Summary: fmt.Sprintf(
-			"The city's own book prints two different figures for %s expenditure, %s apart; this chart draws the one on %s.",
-			label, amount.Cents(c.Published-c.Elsewhere).Dollars(), c.SpinePages),
+			"The city's budget book prints two different totals for %s spending; this chart draws the one on %s.",
+			label, c.SpinePages),
 		Text: fmt.Sprintf(
 			"THE CITY'S OWN BOOK DISAGREES WITH ITSELF ABOUT THIS ONE FIGURE. %s "+
 				"expenditure is drawn at %s, which is what %s print for %s. Other "+
@@ -1482,10 +1486,12 @@ func toCIP(facts []fact.Fact, col Column) cipTransfers {
 // not because p76 is unmapped. The residual is named as p222's transfers to
 // the CIP only when it is their sum in this column.
 func transferCaveat(h Headline, links []Link, cip cipTransfers) Caveat {
-	// One id over three texts: which one a document gets depends on its own
-	// arithmetic, so a page listing several documents' caveats keys on
-	// (id, summary, text).
+	// One id and one summary over four texts: which text a document gets
+	// depends on its own arithmetic, and the caveats page lists the id once
+	// with each document's text beneath it.
 	const id = "transfer-legs-unpaired"
+	const transferSummary = "This chart draws transfers out and transfers in as two separate totals, " +
+		"and no ribbon pairs a payment with its receipt."
 	const unpaired = "Transfer legs are unpaired IN THIS DOCUMENT: no link here carries a " +
 		"transfer_id. Budget Book p76's transfers are published one document over, in " +
 		"transfers-by-fund, which draws each end of every figure p76 prints as its own link " +
@@ -1501,10 +1507,9 @@ func transferCaveat(h Headline, links []Link, cip cipTransfers) Caveat {
 	if out == in {
 		// No residual, so nothing for p222 to account for.
 		return Caveat{
-			ID: id,
-			Summary: fmt.Sprintf(
-				"No link pairs a transfer's two legs; that both sides total %s is not evidence they match.",
-				amount.Cents(out).Dollars()),
+			ID:      id,
+			Theme:   ThemeLeftOut,
+			Summary: transferSummary,
 			Text: unpaired + fmt.Sprintf(
 				"That transfers out and transfers in both total %s is not evidence the "+
 					"legs pair up; nothing has checked them against each other.", amount.Cents(out).Dollars()),
@@ -1527,10 +1532,9 @@ func transferCaveat(h Headline, links []Link, cip cipTransfers) Caveat {
 	// published facts, so a schedule that stops tying cannot publish it.
 	if cip.Printed && signed == cip.Cents {
 		return Caveat{
-			ID: id,
-			Summary: fmt.Sprintf(
-				"No link pairs a transfer's two legs; transfers out %s transfers in by %s, the transfers to the Capital Improvement Program.",
-				verb, amount.Cents(residual).Dollars()),
+			ID:      id,
+			Theme:   ThemeLeftOut,
+			Summary: transferSummary,
 			Text: unpaired + fmt.Sprintf(
 				"Transfers out (%s) %s transfers in (%s), and the %s difference is not an "+
 					"unexplained gap: it is what the operating funds transfer to the Capital "+
@@ -1544,10 +1548,9 @@ func transferCaveat(h Headline, links []Link, cip cipTransfers) Caveat {
 	// that is this project's schedules disagreeing, and the caveat says so.
 	if cip.Printed {
 		return Caveat{
-			ID: id,
-			Summary: fmt.Sprintf(
-				"No link pairs a transfer's two legs; transfers out %s transfers in by %s, which Budget Book p222's transfers to the Capital Improvement Program do not account for.",
-				verb, amount.Cents(residual).Dollars()),
+			ID:      id,
+			Theme:   ThemeLeftOut,
+			Summary: transferSummary,
 			Text: unpaired + fmt.Sprintf(
 				"Transfers out (%s) %s transfers in (%s) by %s, and the transfers to the "+
 					"Capital Improvement Program that Budget Book p222 lists total %s in this "+
@@ -1558,10 +1561,9 @@ func transferCaveat(h Headline, links []Link, cip cipTransfers) Caveat {
 		}
 	}
 	return Caveat{
-		ID: id,
-		Summary: fmt.Sprintf(
-			"No link pairs a transfer's two legs; transfers out %s transfers in by %s, and mapping p76 did not close it.",
-			verb, amount.Cents(residual).Dollars()),
+		ID:      id,
+		Theme:   ThemeLeftOut,
+		Summary: transferSummary,
 		Text: unpaired + fmt.Sprintf(
 			"Transfers out (%s) %s transfers in (%s), and mapping p76 did not close the %s "+
 				"difference: that schedule's own grand total is the transfers-in side, so the "+

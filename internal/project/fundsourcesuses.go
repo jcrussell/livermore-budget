@@ -453,6 +453,7 @@ func fundSourcesUsesCaveats(links []Link, nodes []Node) []Caveat {
 		}
 		out = append(out, Caveat{
 			ID:      "each-fund-change-is-gross",
+			Theme:   ThemeSameMoneyTwice,
 			Summary: summary,
 			Text: fmt.Sprintf("Budget Book pp.186-209 print each fund's beginning and ending "+
 				"balance, and this chart draws the difference fund by fund: a fund whose balance "+
@@ -501,9 +502,9 @@ func fundSourcesUsesCaveats(links []Link, nodes []Node) []Caveat {
 				amount.Cents(largest).Dollars())
 		}
 		out = append(out, Caveat{
-			ID: "sources-and-uses-differ",
-			Summary: fmt.Sprintf("For %s drawn here, sources do not equal uses.",
-				counted(len(ids), "fund")),
+			ID:        "sources-and-uses-differ",
+			Theme:     ThemeBooksDisagree,
+			Summary:   "For some funds drawn here, money in does not equal money out.",
 			Text:      text,
 			AppliesTo: ids,
 		})
@@ -532,7 +533,8 @@ func changeEnds(links []Link) []string {
 
 // cipBlockCaveat says which block of the pages is not drawn.
 var cipBlockCaveat = Caveat{
-	ID: "the-cip-funds-block-is-not-drawn",
+	ID:    "the-cip-funds-block-is-not-drawn",
+	Theme: ThemeLeftOut,
 	Summary: "The Capital Improvement Program funds pp.186-209 print are not drawn here; " +
 		"their money is Budget Book p222's.",
 	Text: "Budget Book pp.190, 196, 202 and 208 print a block of Capital Improvement Program " +

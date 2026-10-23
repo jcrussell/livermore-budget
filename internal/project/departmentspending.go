@@ -256,7 +256,8 @@ func (d *departmentSpending) label(e endpoint) string { return nodeLabel(d.Label
 func departmentSpendingCaveats() []Caveat {
 	return []Caveat{
 		{
-			ID: "no-fund-axis-on-these-pages",
+			ID:    "no-fund-axis-on-these-pages",
+			Theme: ThemeLeftOut,
 			Summary: "These rows say what a division spends, not what pays for it: the " +
 				"schedule has no fund and no fund group.",
 			Text: "Budget Book pp.85-125's upper block prints what each division spends " +
@@ -270,7 +271,8 @@ func departmentSpendingCaveats() []Caveat {
 			AppliesTo: []string{},
 		},
 		{
-			ID: "the-ribbons-are-a-cross-tab",
+			ID:    "the-ribbons-are-a-cross-tab",
+			Theme: ThemeOurReading,
 			Summary: "Each ribbon is a cell of one printed table read along a second axis, " +
 				"not money moving in the direction drawn.",
 			Text: "These pages print one matrix: divisions down, object categories across. " +
@@ -282,7 +284,8 @@ func departmentSpendingCaveats() []Caveat {
 			AppliesTo: []string{},
 		},
 		{
-			ID: "the-boundary-is-not-classified-here",
+			ID:    "the-boundary-is-not-classified-here",
+			Theme: ThemeOurReading,
 			Summary: "Every expenditure ribbon is published as external because these rows " +
 				"name no fund group to classify it by.",
 			Text: "Elsewhere in this project a flow is external or an internal service " +

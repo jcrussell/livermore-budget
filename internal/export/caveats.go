@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/jcrussell/livermore-budget/internal/project"
 )
 
 // documentCaveats is as much of ANY document as the caveats page needs.
@@ -20,15 +22,15 @@ type documentCaveats struct {
 
 // caveatMeta is a decoded caveat.
 //
-// A SEPARATE TYPE FROM project.Caveat, like every other decode struct in this
-// file, because this package consumes projections as bytes and does not import
-// internal/project. The field set is the contract, and it is pinned by
+// A SEPARATE TYPE FROM project.Caveat because this package consumes
+// projections as bytes. The field set is the contract, and it is pinned by
 // TestEveryNameThisPackageDecodesIsOneAProjectionStates rather than by the two
 // declarations happening to agree.
 type caveatMeta struct {
 	ID        string   `json:"id"`
 	Summary   string   `json:"summary"`
 	Text      string   `json:"text"`
+	Theme     string   `json:"theme"`
 	AppliesTo []string `json:"applies_to"`
 }
 
@@ -182,9 +184,10 @@ func flaggedStems(o *Options, ix ColumnIndex) (map[string]bool, error) {
 
 // buildCaveatIndex reads every published document's caveats once.
 //
-// It refuses a caveat with no id, summary or text, a document carrying one id
-// twice, two fragments the caveats page would emit alike, and two entries
-// whose headings (Summary and Of) would read alike. project.ValidateCaveats
+// It refuses a caveat with no id, summary or text or with a theme of no
+// [project.CaveatThemes], a document carrying one id twice, one id under two
+// summaries or themes, two fragments the caveats page would emit alike, and
+// two entries whose headings (Summary and Of) would read alike. project.ValidateCaveats
 // never sees a document decoded from bytes, which is every document here.
 func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, error) {
 	cx := &caveatIndex{base: caveatsPathOf(o), byRef: map[caveatKey]*caveatEntry{}}
@@ -204,6 +207,10 @@ func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, 
 	carriers := map[*caveatEntry][]string{}
 	// carried is each document's entries, in the order it states them.
 	carried := map[string][]*caveatEntry{}
+	// heading is each id's summary and theme, and the first document stating
+	// them: the caveats page heads an id once.
+	type heading struct{ summary, theme, stem string }
+	headingOf := map[string]heading{}
 	for _, stem := range sortedKeys(o.Projections) {
 		var dc documentCaveats
 		if err := json.Unmarshal(o.Projections[stem], &dc); err != nil {
@@ -220,11 +227,23 @@ func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, 
 			case c.Text == "":
 				return nil, fmt.Errorf(
 					"%s caveat %q has no text, so the caveats page would publish a heading over nothing", stem, c.ID)
+			case project.CaveatThemeHeading(project.CaveatTheme(c.Theme)) == "":
+				return nil, fmt.Errorf(
+					"%s caveat %q has theme %q, which is none of project.CaveatThemes, so the caveats page has nowhere to list it",
+					stem, c.ID, c.Theme)
 			}
 			key := caveatKey{stem, c.ID}
 			if _, dup := cx.byRef[key]; dup {
 				return nil, fmt.Errorf(
 					"%s carries caveat %q twice, so a link to it could land on either", stem, c.ID)
+			}
+			if h, ok := headingOf[c.ID]; !ok {
+				headingOf[c.ID] = heading{c.Summary, c.Theme, stem}
+			} else if h.summary != c.Summary || h.theme != c.Theme {
+				return nil, fmt.Errorf(
+					"caveat %q is headed %q under %s in %s and %q under %s in %s; the caveats page lists an id "+
+						"once, so a figure that varies by document belongs in its text",
+					c.ID, h.summary, h.theme, h.stem, c.Summary, c.Theme, stem)
 			}
 			vk := variant{c.ID, c.Summary, c.Text}
 			e, seen := byVariant[vk]

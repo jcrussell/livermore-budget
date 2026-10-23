@@ -144,19 +144,18 @@ type Source struct {
 	Pages []int  `json:"pages"`
 }
 
-// Caveat is one thing a document cannot show, said in three registers.
-//
-// IT USED TO BE A BARE STRING, and the reason it is not any more is that a
-// reader met four of them at once -- 254 words between them on the FY2025-26
-// spine, the longest 174 -- at the same altitude as the chart they qualify. A page can now show [Caveat.Summary] and link to
-// [Caveat.Text] somewhere a reader goes when they want it. Nothing was
-// shortened to achieve that: Text is the string that used to be the whole
-// caveat, verbatim.
+// Caveat is one thing a document cannot show, said in three registers: a
+// [Caveat.Summary] a page lists, a [Caveat.Text] the caveats page prints, and
+// a [Caveat.Theme] that page groups it under.
 //
 // THE ID IS A PUBLISHED URL FRAGMENT, which is why [ValidateCaveats] refuses a
 // document that repeats one. Two caveats sharing an anchor is a link that lands
 // on the wrong paragraph, and it fails silently -- the page renders, the anchor
 // resolves, and the reader is shown a sentence about something else.
+//
+// ONE ID IS ONE HEADING ACROSS EVERY DOCUMENT: the caveats page lists an id
+// once, so its Summary and Theme must not vary by year or schedule, and a
+// figure that does belongs in Text. The export refuses an id that breaks this.
 type Caveat struct {
 	// ID is a stable slug. Stable is the load-bearing word: it outlives edits
 	// to Summary and Text, because a URL somebody has bookmarked or cited must
@@ -166,8 +165,10 @@ type Caveat struct {
 	// authored beside Text rather than derived from it -- a first sentence is
 	// not a summary, and truncating a paragraph produces neither.
 	Summary string `json:"summary"`
-	// Text is the caveat in full, and is the string this field replaced.
+	// Text is the caveat in full.
 	Text string `json:"text"`
+	// Theme is which kind of limit this is, one of [CaveatThemes].
+	Theme CaveatTheme `json:"theme"`
 	// AppliesTo names the node ids this caveat is about, so a chart can mark
 	// them. EMPTY MEANS DOCUMENT-WIDE, not "not filled in yet" -- most of these
 	// are statements about what a schedule does not contain, which no single
@@ -175,11 +176,70 @@ type Caveat struct {
 	AppliesTo []string `json:"applies_to"`
 }
 
+// CaveatTheme is the kind of limit a caveat states, so a reader can take in
+// the kinds before the instances.
+type CaveatTheme string
+
+const (
+	// ThemeLeftOut is money or a column the drawn schedule does not carry.
+	ThemeLeftOut CaveatTheme = "left-out"
+	// ThemeBooksDisagree is two of the city's own pages printing different
+	// figures for one thing.
+	ThemeBooksDisagree CaveatTheme = "books-disagree"
+	// ThemeSameMoneyTwice is one printed figure a reader could add twice.
+	ThemeSameMoneyTwice CaveatTheme = "same-money-twice"
+	// ThemeKindsOfYear is a column that is not the same kind of number as its
+	// neighbours: actual, revised, adopted, projected, unaudited.
+	ThemeKindsOfYear CaveatTheme = "kinds-of-year"
+	// ThemeOurReading is a classification or label this site chose.
+	ThemeOurReading CaveatTheme = "our-reading"
+	// ThemeChecked is a check that passed. It qualifies nothing, so a page's
+	// caveat line does not count it as a limit.
+	ThemeChecked CaveatTheme = "checked"
+	// ThemeDataFiles matters only to someone summing a published file. No
+	// page states it and no chart marks it, so it may name no node.
+	ThemeDataFiles CaveatTheme = "data-files"
+)
+
+// caveatThemeWords is each theme as the caveats page heads and explains it.
+var caveatThemeWords = map[CaveatTheme][2]string{
+	ThemeLeftOut: {"What isn't in the picture",
+		"Money or columns a schedule doesn't carry, or that this site reads and doesn't draw. A total here can be smaller than one printed elsewhere for that reason alone."},
+	ThemeBooksDisagree: {"Where the city's own books disagree",
+		"Two of the city's pages print different figures for the same thing, usually by a few dollars. This site draws one as printed and says which; it corrects neither."},
+	ThemeSameMoneyTwice: {"Don't add these together",
+		"The same printed dollars appear in two places, or are drawn from both ends. Adding them counts the money twice."},
+	ThemeKindsOfYear: {"Not every year is the same kind of number",
+		"Actual, revised, adopted, projected and unaudited columns measure different things. A change from one to another isn't growth."},
+	ThemeOurReading: {"Where this site, not the city, decided",
+		"A label, a grouping or a classification this site chose to draw the city's figures. The figures are printed; these choices are ours."},
+	ThemeChecked: {"What we checked and found to agree",
+		"Not limits: places where one schedule was held against another and they agree."},
+	ThemeDataFiles: {"For anyone using the data files",
+		"Only matters if you add up the figures in a downloaded file. No page draws them this way."},
+}
+
+// CaveatThemes is the closed set of caveat themes, in the order the caveats
+// page lists them.
+func CaveatThemes() []CaveatTheme {
+	return []CaveatTheme{ThemeLeftOut, ThemeBooksDisagree, ThemeSameMoneyTwice,
+		ThemeKindsOfYear, ThemeOurReading, ThemeChecked, ThemeDataFiles}
+}
+
+// CaveatThemeHeading is a theme as the caveats page heads it, "" for no theme
+// of [CaveatThemes].
+func CaveatThemeHeading(t CaveatTheme) string { return caveatThemeWords[t][0] }
+
+// CaveatThemeBlurb is a theme in a sentence or two, "" for no theme of
+// [CaveatThemes].
+func CaveatThemeBlurb(t CaveatTheme) string { return caveatThemeWords[t][1] }
+
 // revenueSchedulePublishedTwiceCaveat is on every document that draws Budget
 // Book pp.127-140, shared so the two cannot disagree.
 func revenueSchedulePublishedTwiceCaveat() Caveat {
 	return Caveat{
-		ID: "the-revenue-schedule-is-published-twice",
+		ID:    "the-revenue-schedule-is-published-twice",
+		Theme: ThemeSameMoneyTwice,
 		Summary: "Budget Book pp.127-140 are published twice on this site: the chart draws their " +
 			"adopted columns one year at a time, and the Over time page prints all four.",
 		Text: "Budget Book pp.127-140 are published in two places on this site, and the two " +
@@ -223,6 +283,10 @@ func validateCaveats(caveats []Caveat, nodes map[string]struct{}) error {
 			return fmt.Errorf("caveat %q has no summary, and a summary is what a page shows in place of the text", c.ID)
 		case c.Text == "":
 			return fmt.Errorf("caveat %q has no text, so its summary summarises nothing", c.ID)
+		case CaveatThemeHeading(c.Theme) == "":
+			return fmt.Errorf("caveat %q has theme %q, which is none of CaveatThemes; the caveats page lists a caveat under its theme", c.ID, c.Theme)
+		case c.Theme == ThemeDataFiles && len(c.AppliesTo) > 0:
+			return fmt.Errorf("caveat %q is about the data files and names nodes; no page states a data-files caveat, so a chart must not mark one", c.ID)
 		}
 		for _, prose := range []string{c.Summary, c.Text} {
 			if ids := beadid.Cited(prose); len(ids) > 0 {

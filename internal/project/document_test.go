@@ -48,7 +48,7 @@ func jsonTags(t *testing.T, v any) []string {
 // and an AppliesTo naming an absent node marks nothing, which is
 // indistinguishable from having nothing to mark.
 func TestValidateCaveatsRefusesEveryShapeThatWouldRender(t *testing.T) {
-	ok := Caveat{ID: "a", Summary: "s", Text: "t", AppliesTo: []string{}}
+	ok := Caveat{ID: "a", Theme: ThemeLeftOut, Summary: "s", Text: "t", AppliesTo: []string{}}
 	nodes := map[string]struct{}{"fund-group/general": {}}
 
 	for _, tc := range []struct {
@@ -59,28 +59,47 @@ func TestValidateCaveatsRefusesEveryShapeThatWouldRender(t *testing.T) {
 	}{
 		{"a well-formed set passes", []Caveat{ok}, nodes, ""},
 		{"no id", []Caveat{{Summary: "s", Text: "t"}}, nodes, "has no id"},
-		{"no summary", []Caveat{{ID: "a", Text: "t"}}, nodes, "has no summary"},
-		{"no text", []Caveat{{ID: "a", Summary: "s"}}, nodes, "has no text"},
+		{"no summary", []Caveat{{ID: "a", Theme: ThemeLeftOut, Text: "t"}}, nodes, "has no summary"},
+		{"no text", []Caveat{{ID: "a", Theme: ThemeLeftOut, Summary: "s"}}, nodes, "has no text"},
+		// Mutation: drop the theme arm of validateCaveats and both go red
+		// with "ValidateCaveats = nil".
+		{"no theme", []Caveat{{ID: "a", Summary: "s", Text: "t"}}, nodes, "which is none of CaveatThemes"},
+		{"a theme of no set", []Caveat{{ID: "a", Theme: "caveats", Summary: "s", Text: "t"}}, nodes, "which is none of CaveatThemes"},
+		// A data-files caveat is stated on no page, so a chart marking one
+		// would chip a mark with a caveat its page never lists.
+		//
+		// Mutation: drop the data-files arm and the first goes red with
+		// "ValidateCaveats = nil".
+		{
+			"a data-files caveat naming a node",
+			[]Caveat{{ID: "a", Theme: ThemeDataFiles, Summary: "s", Text: "t", AppliesTo: []string{"fund-group/general"}}},
+			nodes, "is about the data files and names nodes",
+		},
+		{
+			"a document-wide data-files caveat",
+			[]Caveat{{ID: "a", Theme: ThemeDataFiles, Summary: "s", Text: "t", AppliesTo: []string{}}},
+			nodes, "",
+		},
 		{
 			"two caveats under one anchor",
-			[]Caveat{ok, {ID: "a", Summary: "s2", Text: "t2"}},
+			[]Caveat{ok, {ID: "a", Theme: ThemeLeftOut, Summary: "s2", Text: "t2"}},
 			nodes, "used twice in one document",
 		},
 		{
 			"a tracker id in the text",
-			[]Caveat{{ID: "a", Summary: "s", Text: "Which figure to publish is open (fisc-av0w).", AppliesTo: []string{}}},
+			[]Caveat{{ID: "a", Theme: ThemeLeftOut, Summary: "s", Text: "Which figure to publish is open (fisc-av0w).", AppliesTo: []string{}}},
 			nodes, `prints the tracker id "fisc-av0w"`,
 		},
 		{
 			"a tracker id in the summary",
-			[]Caveat{{ID: "a", Summary: "Neither block is published (fisc-ig9h).", Text: "t", AppliesTo: []string{}}},
+			[]Caveat{{ID: "a", Theme: ThemeLeftOut, Summary: "Neither block is published (fisc-ig9h).", Text: "t", AppliesTo: []string{}}},
 			nodes, `prints the tracker id "fisc-ig9h"`,
 		},
 		// Mutation: drop the dotted tail from beadid's fisc pattern and this
 		// goes red naming "fisc-yj4w" rather than the child.
 		{
 			"a dotted child's tracker id",
-			[]Caveat{{ID: "a", Summary: "s", Text: "That is settled (fisc-yj4w.35.10).", AppliesTo: []string{}}},
+			[]Caveat{{ID: "a", Theme: ThemeLeftOut, Summary: "s", Text: "That is settled (fisc-yj4w.35.10).", AppliesTo: []string{}}},
 			nodes, `prints the tracker id "fisc-yj4w.35.10"`,
 		},
 		// A byob decision is a row of the same tracker, and a reader can no
@@ -90,12 +109,12 @@ func TestValidateCaveatsRefusesEveryShapeThatWouldRender(t *testing.T) {
 		// "ValidateCaveats = nil".
 		{
 			"a byob id",
-			[]Caveat{{ID: "a", Summary: "s", Text: "The layout follows byob-layout.1.", AppliesTo: []string{}}},
+			[]Caveat{{ID: "a", Theme: ThemeLeftOut, Summary: "s", Text: "The layout follows byob-layout.1.", AppliesTo: []string{}}},
 			nodes, `prints the tracker id "byob-layout.1"`,
 		},
 		{
 			"a hyphenated byob id",
-			[]Caveat{{ID: "a", Summary: "Shaped by byob-command-shape.1, as decided.", Text: "t", AppliesTo: []string{}}},
+			[]Caveat{{ID: "a", Theme: ThemeLeftOut, Summary: "Shaped by byob-command-shape.1, as decided.", Text: "t", AppliesTo: []string{}}},
 			nodes, `prints the tracker id "byob-command-shape.1"`,
 		},
 		// A fact id, a series id and the export marker begin with what a bead
@@ -107,27 +126,27 @@ func TestValidateCaveatsRefusesEveryShapeThatWouldRender(t *testing.T) {
 		// red naming the marker without its dot.
 		{
 			"a fact id",
-			[]Caveat{{ID: "a", Summary: "s", Text: "Printed as fisc-f-0ba7b00dfaf7.", AppliesTo: []string{}}},
+			[]Caveat{{ID: "a", Theme: ThemeLeftOut, Summary: "s", Text: "Printed as fisc-f-0ba7b00dfaf7.", AppliesTo: []string{}}},
 			nodes, "",
 		},
 		{
 			"a series id",
-			[]Caveat{{ID: "a", Summary: "Series fisc-s-1c2d3e4f5a6b.", Text: "t", AppliesTo: []string{}}},
+			[]Caveat{{ID: "a", Theme: ThemeLeftOut, Summary: "Series fisc-s-1c2d3e4f5a6b.", Text: "t", AppliesTo: []string{}}},
 			nodes, "",
 		},
 		{
 			"the export marker",
-			[]Caveat{{ID: "a", Summary: "s", Text: "The site carries .fisc-export.", AppliesTo: []string{}}},
+			[]Caveat{{ID: "a", Theme: ThemeLeftOut, Summary: "s", Text: "The site carries .fisc-export.", AppliesTo: []string{}}},
 			nodes, "",
 		},
 		{
 			"applies to a node the document does not carry",
-			[]Caveat{{ID: "a", Summary: "s", Text: "t", AppliesTo: []string{"fund-group/nope"}}},
+			[]Caveat{{ID: "a", Theme: ThemeLeftOut, Summary: "s", Text: "t", AppliesTo: []string{"fund-group/nope"}}},
 			nodes, "which this document does not carry",
 		},
 		{
 			"applies to a node the document does carry",
-			[]Caveat{{ID: "a", Summary: "s", Text: "t", AppliesTo: []string{"fund-group/general"}}},
+			[]Caveat{{ID: "a", Theme: ThemeLeftOut, Summary: "s", Text: "t", AppliesTo: []string{"fund-group/general"}}},
 			nodes, "",
 		},
 		// nil NODES IS THE not-a-graph CALLER, and the arm has to be skipped
@@ -138,12 +157,12 @@ func TestValidateCaveatsRefusesEveryShapeThatWouldRender(t *testing.T) {
 		// from the rule.
 		{
 			"a document with no nodes to check against",
-			[]Caveat{{ID: "a", Summary: "s", Text: "t", AppliesTo: []string{"anything"}}},
+			[]Caveat{{ID: "a", Theme: ThemeLeftOut, Summary: "s", Text: "t", AppliesTo: []string{"anything"}}},
 			nil, "",
 		},
 		{
 			"a graph that drew no nodes still refuses",
-			[]Caveat{{ID: "a", Summary: "s", Text: "t", AppliesTo: []string{"anything"}}},
+			[]Caveat{{ID: "a", Theme: ThemeLeftOut, Summary: "s", Text: "t", AppliesTo: []string{"anything"}}},
 			map[string]struct{}{}, "which this document does not carry",
 		},
 	} {

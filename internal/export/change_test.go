@@ -89,7 +89,7 @@ func TestChangePagePrintsADocumentsCaveatsOnce(t *testing.T) {
 		t.Fatal("the changes document's caveats are not where this test expects them")
 	}
 	o.Projections[project.ChangesProjection] = []byte(strings.Replace(changes, bare,
-		`"caveats":[{"id":"ten-years-unaudited","summary":"Ten unaudited years.","text":"A text.","applies_to":[]}]},"series"`, 1))
+		`"caveats":[{"id":"ten-years-unaudited","summary":"Ten unaudited years.","theme":"left-out","text":"A text.","applies_to":[]}]},"series"`, 1))
 	if _, err := writeSite(o); err != nil {
 		t.Fatalf("Write: %v", err)
 	}

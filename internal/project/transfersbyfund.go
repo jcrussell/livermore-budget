@@ -444,6 +444,11 @@ func FundNumber(id string) (int, bool) {
 	return 0, false
 }
 
+// twoRibbonsSummary heads one-figure-is-two-ribbons in both transfer
+// documents, which the caveats page lists once.
+const twoRibbonsSummary = "Every printed transfer is drawn from both ends, so adding every " +
+	"ribbon in this file counts each transfer twice."
+
 // transfersByFundCaveats are the things a reader of this file has to be told.
 // Each is about the whole schedule, so none names a node; the first is the
 // disclosure every document drawing a fund node carries.
@@ -451,9 +456,9 @@ func transfersByFundCaveats() []Caveat {
 	return []Caveat{
 		ConstraintTierCaveat(),
 		{
-			ID: "one-figure-is-two-ribbons",
-			Summary: "Every printed transfer is drawn twice, once from each end; summing " +
-				"every ribbon here comes to twice what the city transfers.",
+			ID:      "one-figure-is-two-ribbons",
+			Theme:   ThemeDataFiles,
+			Summary: twoRibbonsSummary,
 			Text: "Budget Book p76 names both ends of every movement it prints, and this " +
 				"document publishes both: a receiving leg from the payer's end into the " +
 				"fund that gets the money, and a paying leg out of the fund that sends it. " +
@@ -465,7 +470,8 @@ func transfersByFundCaveats() []Caveat {
 			AppliesTo: []string{},
 		},
 		{
-			ID: "a-fund-is-drawn-once-per-end",
+			ID:    "a-fund-is-drawn-once-per-end",
+			Theme: ThemeSameMoneyTwice,
 			Summary: "A fund that both pays and receives appears in more than one column, " +
 				"under the same name.",
 			Text: "This schedule is money moving between the city's own funds, and a flow " +
@@ -477,7 +483,8 @@ func transfersByFundCaveats() []Caveat {
 			AppliesTo: []string{},
 		},
 		{
-			ID: "only-the-budget-columns-are-published",
+			ID:    "only-the-budget-columns-are-published",
+			Theme: ThemeLeftOut,
 			Summary: "p76 prints four columns and this draws the two adopted ones; its " +
 				"historical columns do not add up to its own printed total.",
 			Text: "The page's FY2023-24 and FY2024-25 columns miss p76's own printed grand " +
@@ -490,7 +497,8 @@ func transfersByFundCaveats() []Caveat {
 			AppliesTo: []string{},
 		},
 		{
-			ID: "the-paying-side-is-not-the-whole-of-transfers-out",
+			ID:    "the-paying-side-is-not-the-whole-of-transfers-out",
+			Theme: ThemeLeftOut,
 			Summary: "p76's grand total is the transfers-IN side; the city's transfers out " +
 				"are larger, and the difference is a column this page does not list.",
 			Text: "Each receiving section of p76 equals the matching TRANSFER IN cell on " +
@@ -520,9 +528,9 @@ func transfersOutCaveats(rows map[transferKey]transferRow) []Caveat {
 	return []Caveat{
 		ConstraintTierCaveat(),
 		{
-			ID: "one-figure-is-two-ribbons",
-			Summary: "Every printed transfer is drawn twice, once from each end; summing " +
-				"every ribbon here comes to twice what the city transfers out.",
+			ID:      "one-figure-is-two-ribbons",
+			Theme:   ThemeDataFiles,
+			Summary: twoRibbonsSummary,
 			Text: fmt.Sprintf("Budget Book p76 and p222 name both ends of every movement they "+
 				"print, and this document publishes both: a receiving leg into the fund that "+
 				"gets the money and a paying leg out of the fund that sends it, under one "+
@@ -531,7 +539,8 @@ func transfersOutCaveats(rows map[transferKey]transferRow) []Caveat {
 			AppliesTo: []string{},
 		},
 		{
-			ID: "transfers-out-are-two-schedules",
+			ID:    "transfers-out-are-two-schedules",
+			Theme: ThemeSameMoneyTwice,
 			Summary: "The city's transfers out are two printed lists: p76's transfers between " +
 				"operating funds, and p222's transfers to the Capital Improvement Program.",
 			Text: fmt.Sprintf("Budget Book p76 lists the transfers the operating funds make to "+
@@ -542,7 +551,8 @@ func transfersOutCaveats(rows map[transferKey]transferRow) []Caveat {
 			AppliesTo: []string{},
 		},
 		{
-			ID: "the-cip-funds-are-outside-the-operating-budget",
+			ID:    "the-cip-funds-are-outside-the-operating-budget",
+			Theme: ThemeLeftOut,
 			Summary: "The Capital Improvement Program funds that receive p222's transfers are " +
 				"not on the citywide chart; their receipts are not part of its Transfers In.",
 			Text: "Budget Book p204 prints the Capital Improvement Program funds on a line of " +
@@ -554,7 +564,8 @@ func transfersOutCaveats(rows map[transferKey]transferRow) []Caveat {
 			AppliesTo: []string{},
 		},
 		{
-			ID: "a-fund-is-drawn-once-per-end",
+			ID:    "a-fund-is-drawn-once-per-end",
+			Theme: ThemeSameMoneyTwice,
 			Summary: "A fund that both pays and receives appears in more than one column, " +
 				"under the same name.",
 			Text: "This is money moving between the city's own funds, and a flow diagram " +

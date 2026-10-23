@@ -77,7 +77,7 @@ func capitalDoc(counts int, series ...capitalSeries) []byte {
 			"columns": cols,
 			"sources": []map[string]any{{"doc_id": budgetDocID, "pages": []int{225, 227}}},
 			"counts":  map[string]any{"facts": counts, "series": len(series), "points": counts},
-			"caveats": []map[string]any{{"id": "a-caveat", "summary": "A caveat summary.",
+			"caveats": []map[string]any{{"id": "a-caveat", "summary": "A caveat summary.", "theme": "left-out",
 				"text": "A caveat's whole text.", "applies_to": []string{}}},
 		},
 		"series": out,

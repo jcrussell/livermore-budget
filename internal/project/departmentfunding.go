@@ -296,7 +296,8 @@ func departmentFundingCaveats() []Caveat {
 	return []Caveat{
 		ConstraintTierCaveat(),
 		{
-			ID: "a-department-here-is-not-a-division",
+			ID:    "a-department-here-is-not-a-division",
+			Theme: ThemeSameMoneyTwice,
 			Summary: "These rows are printed once per DEPARTMENT; the divisions drawn " +
 				"elsewhere on this site are a finer tier, and five names belong to both.",
 			Text: "Budget Book pp.85-125 print two blocks per page and they are keyed on " +
@@ -312,7 +313,8 @@ func departmentFundingCaveats() []Caveat {
 			AppliesTo: []string{},
 		},
 		{
-			ID: "what-a-fund-pays-departments-is-not-what-it-takes-in",
+			ID:    "what-a-fund-pays-departments-is-not-what-it-takes-in",
+			Theme: ThemeSameMoneyTwice,
 			Summary: "What a fund pays departments here is not what that fund takes in, " +
 				"and the two are printed by different schedules.",
 			Text: "What a fund takes in is printed by Budget Book pp.127-140. What leaves " +
@@ -322,7 +324,8 @@ func departmentFundingCaveats() []Caveat {
 			AppliesTo: []string{},
 		},
 		{
-			ID: "two-of-the-four-columns-tie-to-no-citywide-total",
+			ID:    "two-of-the-four-columns-tie-to-no-citywide-total",
+			Theme: ThemeKindsOfYear,
 			Summary: "The FY2023-24 actual and FY2024-25 revised columns reconcile to each " +
 				"department's own printed total and to nothing citywide.",
 			Text: "Budget Book pp.66-67 print two adopted columns and no actual and no " +

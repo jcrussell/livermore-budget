@@ -145,7 +145,8 @@ func cipProjectsCaveats() []Caveat {
 		fund611 += fmt.Sprintf(", so the rows here sum to %s", dollars(c.RowsPublished()))
 	}
 	return []Caveat{{
-		ID: "cip-listing-carries-forward",
+		ID:    "cip-listing-carries-forward",
+		Theme: ThemeKindsOfYear,
 		Summary: "The adopted budget years include appropriations carried forward from earlier " +
 			"years, so they are larger than the new money p222 appropriates, and no page says " +
 			"how much of each project's figure is carried forward.",
@@ -157,13 +158,15 @@ func cipProjectsCaveats() []Caveat {
 		AppliesTo: []string{},
 	}, {
 		ID:      "cip-listing-plan-years-are-projected",
+		Theme:   ThemeKindsOfYear,
 		Summary: "FY 2027-28 to FY 2029-30 are the plan's projections, not adopted budgets.",
 		Text: "The city adopts a two-year budget. The listing's three later columns, FY 2027-28, " +
 			"FY 2028-29 and FY 2029-30, are projected: the Capital Improvement Program's plan, " +
 			"nothing has been appropriated for them, and a later budget may change any of them.",
 		AppliesTo: []string{},
 	}, {
-		ID: "cip-listing-fund-611-unpublished",
+		ID:    "cip-listing-fund-611-unpublished",
+		Theme: ThemeLeftOut,
 		Summary: "Fund 611's two storm grant blocks publish nothing, so the rows here sum to " +
 			"less than the listing's printed grand total.",
 		Text: "p230 lists fund 611's storm projects twice, under a federal grant block and " +
@@ -172,7 +175,8 @@ func cipProjectsCaveats() []Caveat {
 			"total. " + fund611 + ".",
 		AppliesTo: []string{},
 	}, {
-		ID: "cip-listing-columns-not-published",
+		ID:    "cip-listing-columns-not-published",
+		Theme: ThemeLeftOut,
 		Summary: "FY 2024-25, FY 2030-45 and each row's TOTAL are read and checked against the " +
 			"printed totals, and not published.",
 		Text: "pp.224-235 also print an FY 2024-25 column, whose basis nothing on these pages " +
