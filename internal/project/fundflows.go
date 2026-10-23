@@ -1,6 +1,7 @@
 package project
 
 import (
+	"cmp"
 	"fmt"
 	"maps"
 	"slices"
@@ -1105,83 +1106,32 @@ func nameContraLinks(links []Link, nodes map[string]Node) {
 // total orders over the cell maps, so a node's first touch does not depend on
 // map iteration order.
 func sortedRevKeys(m map[revKey]*cellSum) []revKey {
-	out := make([]revKey, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	sort.Slice(out, func(i, j int) bool {
-		a, b := out[i], out[j]
-		switch {
-		case a.kind != b.kind:
-			return a.kind < b.kind
-		case a.category != b.category:
-			return a.category < b.category
-		case a.line != b.line:
-			return a.line < b.line
-		case a.fundGroup != b.fundGroup:
-			return a.fundGroup < b.fundGroup
-		default:
-			return a.fund < b.fund
-		}
+	return slices.SortedFunc(maps.Keys(m), func(a, b revKey) int {
+		return cmp.Or(cmp.Compare(a.kind, b.kind), cmp.Compare(a.category, b.category),
+			cmp.Compare(a.line, b.line), cmp.Compare(a.fundGroup, b.fundGroup), cmp.Compare(a.fund, b.fund))
 	})
-	return out
 }
 
 func sortedRollupKeys(m map[rollupKey]*lineRollup) []rollupKey {
-	out := make([]rollupKey, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].line != out[j].line {
-			return out[i].line < out[j].line
-		}
-		return out[i].kind < out[j].kind
+	return slices.SortedFunc(maps.Keys(m), func(a, b rollupKey) int {
+		return cmp.Or(cmp.Compare(a.line, b.line), cmp.Compare(a.kind, b.kind))
 	})
-	return out
 }
 
 func sortedFundRollupKeys(m map[fundRollupKey]*cellSum) []fundRollupKey {
-	out := make([]fundRollupKey, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].fund != out[j].fund {
-			return out[i].fund < out[j].fund
-		}
-		return out[i].kind < out[j].kind
+	return slices.SortedFunc(maps.Keys(m), func(a, b fundRollupKey) int {
+		return cmp.Or(cmp.Compare(a.fund, b.fund), cmp.Compare(a.kind, b.kind))
 	})
-	return out
 }
 
 func sortedFundExpKeys(m map[fundExpKey]*cellSum) []fundExpKey {
-	out := make([]fundExpKey, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].fund != out[j].fund {
-			return out[i].fund < out[j].fund
-		}
-		if out[i].category != out[j].category {
-			return out[i].category < out[j].category
-		}
-		return out[i].fundGroup < out[j].fundGroup
+	return slices.SortedFunc(maps.Keys(m), func(a, b fundExpKey) int {
+		return cmp.Or(cmp.Compare(a.fund, b.fund), cmp.Compare(a.category, b.category), cmp.Compare(a.fundGroup, b.fundGroup))
 	})
-	return out
 }
 
 func sortedExpKeys(m map[expKey]*cellSum) []expKey {
-	out := make([]expKey, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].division != out[j].division {
-			return out[i].division < out[j].division
-		}
-		return out[i].category < out[j].category
+	return slices.SortedFunc(maps.Keys(m), func(a, b expKey) int {
+		return cmp.Or(cmp.Compare(a.division, b.division), cmp.Compare(a.category, b.category))
 	})
-	return out
 }

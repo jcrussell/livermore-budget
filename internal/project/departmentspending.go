@@ -1,8 +1,10 @@
 package project
 
 import (
+	"cmp"
 	"fmt"
-	"sort"
+	"maps"
+	"slices"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/hint"
@@ -292,34 +294,15 @@ func departmentSpendingCaveats() []Caveat {
 // sortedSpendKeys is a total order over the cell map, so a node's first touch
 // does not depend on map iteration order.
 func sortedSpendKeys(m map[spendKey]*cellSum) []spendKey {
-	out := make([]spendKey, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	sort.Slice(out, func(i, j int) bool {
-		a, b := out[i], out[j]
-		switch {
-		case a.kind != b.kind:
-			return a.kind < b.kind
-		case a.division != b.division:
-			return a.division < b.division
-		default:
-			return a.category < b.category
-		}
+	return slices.SortedFunc(maps.Keys(m), func(a, b spendKey) int {
+		return cmp.Or(cmp.Compare(a.kind, b.kind), cmp.Compare(a.division, b.division), cmp.Compare(a.category, b.category))
 	})
-	return out
 }
 
 // sortColumns orders a column list the way every Slices implementation does:
 // fiscal year, then basis.
 func sortColumns(cols []Column) {
-	sort.Slice(cols, func(i, j int) bool {
-		if cols[i].FiscalYear != cols[j].FiscalYear {
-			return cols[i].FiscalYear < cols[j].FiscalYear
-		}
-		if cols[i].Through != cols[j].Through {
-			return cols[i].Through < cols[j].Through
-		}
-		return cols[i].Basis < cols[j].Basis
+	slices.SortFunc(cols, func(a, b Column) int {
+		return cmp.Or(cmp.Compare(a.FiscalYear, b.FiscalYear), cmp.Compare(a.Through, b.Through), cmp.Compare(a.Basis, b.Basis))
 	})
 }

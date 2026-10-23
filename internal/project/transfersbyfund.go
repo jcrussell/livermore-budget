@@ -1,9 +1,10 @@
 package project
 
 import (
+	"cmp"
 	"fmt"
+	"maps"
 	"slices"
-	"sort"
 	"strconv"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
@@ -389,35 +390,28 @@ func pairTransferLegs(facts []fact.Fact, o Options) (map[transferKey]transferRow
 // sortedTransferKeys is a total order over the printed figures, so a node's
 // first touch does not depend on map iteration order.
 func sortedTransferKeys(m map[transferKey]transferRow) []transferKey {
-	out := make([]transferKey, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	sort.Slice(out, func(i, j int) bool {
-		a, b := out[i], out[j]
-		switch {
-		case a.docID != b.docID:
-			return a.docID < b.docID
-		case a.page != b.page:
-			return a.page < b.page
-		default:
-			return a.offset < b.offset
-		}
+	return slices.SortedFunc(maps.Keys(m), func(a, b transferKey) int {
+		return cmp.Or(cmp.Compare(a.docID, b.docID), cmp.Compare(a.page, b.page), cmp.Compare(a.offset, b.offset))
 	})
-	return out
 }
 
 // addNode records a node the first time a link touches it, and hangs the
 // constraint tier on a fund's own node through annotateFund. The two ends of
 // a movement are ends and not the fund, and carry none.
 func (t *transfersByFund) addNode(nodes map[string]Node, e endpoint) {
+	addFundNode(nodes, e, t.label(e), t.Labels)
+}
+
+// addFundNode records a node the first time a link touches it, with the
+// constraint tier on a fund's own node through annotateFund.
+func addFundNode(nodes map[string]Node, e endpoint, label string, l labels) {
 	if _, ok := nodes[e.id]; ok {
 		return
 	}
-	n := Node{ID: e.id, Label: t.label(e), Tier: e.tier(), Role: e.role, Parent: e.parent}
+	n := Node{ID: e.id, Label: label, Tier: e.tier(), Role: e.role, Parent: e.parent}
 	if e.tier() == tierFund {
 		if number, err := strconv.Atoi(e.id[len(PrefixFund):]); err == nil {
-			annotateFund(&n, t.Labels, number)
+			annotateFund(&n, l, number)
 		}
 	}
 	nodes[e.id] = n

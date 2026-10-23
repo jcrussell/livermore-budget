@@ -2,8 +2,8 @@ package project
 
 import (
 	"fmt"
+	"maps"
 	"slices"
-	"sort"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/hint"
@@ -42,16 +42,8 @@ func (sp seriesSpec) slices(facts []fact.Fact, version string) []Options {
 	if len(seen) == 0 {
 		return nil
 	}
-	cols := make([]Column, 0, len(seen))
-	for c := range seen {
-		cols = append(cols, c)
-	}
-	sort.Slice(cols, func(i, j int) bool {
-		if cols[i].FiscalYear != cols[j].FiscalYear {
-			return cols[i].FiscalYear < cols[j].FiscalYear
-		}
-		return cols[i].Basis < cols[j].Basis
-	})
+	cols := slices.Collect(maps.Keys(seen))
+	sortColumns(cols)
 	return []Options{{Columns: cols, Scopes: []string{sp.scope}, Version: version}}
 }
 

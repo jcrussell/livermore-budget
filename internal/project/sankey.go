@@ -1,6 +1,7 @@
 package project
 
 import (
+	"cmp"
 	"fmt"
 	"maps"
 	"slices"
@@ -971,22 +972,10 @@ func netCells(facts []fact.Fact) (map[cellKey]*cell, error) {
 // intermediate steps — headline accumulation, node creation — deterministic
 // too.
 func sortedCellKeys(cells map[cellKey]*cell) []cellKey {
-	keys := make([]cellKey, 0, len(cells))
-	for k := range cells {
-		keys = append(keys, k)
-	}
-	sort.Slice(keys, func(i, j int) bool {
-		a, b := keys[i], keys[j]
-		switch {
-		case a.kind != b.kind:
-			return a.kind < b.kind
-		case a.category != b.category:
-			return a.category < b.category
-		default:
-			return a.fundGroup < b.fundGroup
-		}
+	return slices.SortedFunc(maps.Keys(cells), func(a, b cellKey) int {
+		return cmp.Or(cmp.Compare(a.kind, b.kind), cmp.Compare(a.category, b.category),
+			cmp.Compare(a.fundGroup, b.fundGroup), cmp.Compare(a.fund, b.fund))
 	})
-	return keys
 }
 
 // boundaryKind classifies a revenue or expenditure link by the fund group it
@@ -1103,37 +1092,23 @@ func slugLabel(id string) string {
 
 // sortedNodes orders nodes by (tier, id): tier so the diagram's columns come
 // out left to right, id so two builds of the same facts agree.
+// The slice is never nil: an empty document encodes "nodes": [].
 func sortedNodes(nodes map[string]Node) []Node {
-	out := make([]Node, 0, len(nodes))
-	for _, n := range nodes {
-		out = append(out, n)
-	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].Tier != out[j].Tier {
-			return out[i].Tier < out[j].Tier
-		}
-		return out[i].ID < out[j].ID
+	out := slices.AppendSeq(make([]Node, 0, len(nodes)), maps.Values(nodes))
+	slices.SortFunc(out, func(a, b Node) int {
+		return cmp.Or(cmp.Compare(a.Tier, b.Tier), cmp.Compare(a.ID, b.ID))
 	})
 	return out
 }
 
-// sortLinks orders links by (source, target, kind, repeats).
-//
-// The kind and the repeated leaf are in the order because sort.Slice is not
-// stable, a pair may carry one ribbon per kind, and on the expansion schedule
-// one per leaf it repeats.
+// sortLinks orders links by (source, target, kind, repeats, alternative): a
+// pair may carry one ribbon per kind, and on the expansion schedule one per
+// leaf it repeats and per alternative, so every field that tells two apart is
+// in the order.
 func sortLinks(links []Link) {
-	sort.Slice(links, func(i, j int) bool {
-		if links[i].Source != links[j].Source {
-			return links[i].Source < links[j].Source
-		}
-		if links[i].Target != links[j].Target {
-			return links[i].Target < links[j].Target
-		}
-		if links[i].Kind != links[j].Kind {
-			return links[i].Kind < links[j].Kind
-		}
-		return links[i].Repeats < links[j].Repeats
+	slices.SortFunc(links, func(a, b Link) int {
+		return cmp.Or(cmp.Compare(a.Source, b.Source), cmp.Compare(a.Target, b.Target),
+			cmp.Compare(a.Kind, b.Kind), cmp.Compare(a.Repeats, b.Repeats), cmp.Compare(a.Alternative, b.Alternative))
 	})
 }
 

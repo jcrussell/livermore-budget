@@ -2,6 +2,8 @@ package project
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -315,17 +317,26 @@ func (u *fundSourcesUses) fundNode(number int, lines fundLines) (Node, string, e
 // either is blank. A zero change is stated: two printed balances that agree
 // are a change of nothing, where a blank is no change at all.
 func nodeChange(lines fundLines) *NodeChange {
-	beginning, ending := lines[lineBeginning], lines[lineEnding]
-	if beginning == nil || ending == nil {
+	cited, ids, ok := bothBalances(lines)
+	if !ok {
 		return nil
 	}
-	cited := []fact.Fact{*beginning, *ending}
-	ids := []string{beginning.ID, ending.ID}
-	sort.Strings(ids)
 	return &NodeChange{ValueCents: ChangeCents(cited), Derived: true,
 		Rationale:  NodeChangeRationale,
 		SourceNote: NodeChangeSourceNote,
 		FactIDs:    ids, Locators: SourcesOf(cited)}
+}
+
+// bothBalances is a fund's beginning and ending balance and their sorted ids,
+// and false where either is blank.
+func bothBalances(lines fundLines) ([]fact.Fact, []string, bool) {
+	beginning, ending := lines[lineBeginning], lines[lineEnding]
+	if beginning == nil || ending == nil {
+		return nil, nil, false
+	}
+	ids := []string{beginning.ID, ending.ID}
+	slices.Sort(ids)
+	return []fact.Fact{*beginning, *ending}, ids, true
 }
 
 // NodeChangeRationale and NodeChangeSourceNote are every [NodeChange]'s words.
@@ -347,23 +358,19 @@ func nodeBalance(f *fact.Fact) *NodeBalance {
 // when the change is zero or a balance is not printed: a blank is absent,
 // and reading it as zero would invent the change.
 func changeLink(fund string, lines fundLines) (Link, bool) {
-	beginning, ending := lines[lineBeginning], lines[lineEnding]
-	if beginning == nil || ending == nil {
+	cited, ids, ok := bothBalances(lines)
+	if !ok {
 		return Link{}, false
 	}
-	cited := []fact.Fact{*beginning, *ending}
 	change := ChangeCents(cited)
 	if change == 0 {
 		return Link{}, false
 	}
 	l := Link{Source: fund, Target: NodeFundBalanceContribution, ValueCents: change,
-		Kind: KindFundBalance, Derived: true}
+		Kind: KindFundBalance, Derived: true, FactIDs: ids, Locators: SourcesOf(cited)}
 	if change < 0 {
 		l.Source, l.Target, l.ValueCents = NodeFundBalanceDraw, fund, -change
 	}
-	l.FactIDs = []string{beginning.ID, ending.ID}
-	sort.Strings(l.FactIDs)
-	l.Locators = SourcesOf(cited)
 	return l, true
 }
 
@@ -383,14 +390,7 @@ func (u *fundSourcesUses) addEndpoint(nodes map[string]Node, e endpoint) {
 func (u *fundSourcesUses) label(e endpoint) string { return nodeLabel(u.Labels, e.id, e.slug) }
 
 // sortedFundNumbers is the funds in ascending order.
-func sortedFundNumbers(m map[int]fundLines) []int {
-	out := make([]int, 0, len(m))
-	for n := range m {
-		out = append(out, n)
-	}
-	sort.Ints(out)
-	return out
-}
+func sortedFundNumbers(m map[int]fundLines) []int { return slices.Sorted(maps.Keys(m)) }
 
 // FundImbalance is each fund node's drawn sources less its drawn uses, for
 // every fund where they differ.

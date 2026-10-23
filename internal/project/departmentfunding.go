@@ -1,10 +1,10 @@
 package project
 
 import (
+	"cmp"
 	"fmt"
 	"maps"
 	"slices"
-	"sort"
 	"strconv"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
@@ -253,16 +253,7 @@ func (d *departmentFunding) fundEndpoint(number int) (endpoint, error) {
 // addNode records a node the first time a link touches it, and hangs the
 // constraint tier on a fund through annotateFund.
 func (d *departmentFunding) addNode(nodes map[string]Node, e endpoint) {
-	if _, ok := nodes[e.id]; ok {
-		return
-	}
-	n := Node{ID: e.id, Label: d.label(e), Tier: e.tier(), Role: e.role, Parent: e.parent}
-	if e.tier() == tierFund {
-		if number, err := strconv.Atoi(e.id[len(PrefixFund):]); err == nil {
-			annotateFund(&n, d.Labels, number)
-		}
-	}
-	nodes[e.id] = n
+	addFundNode(nodes, e, d.label(e), d.Labels)
 }
 
 // addFundGroups adds the tier-2 node above every fund, which this document
@@ -334,20 +325,7 @@ func departmentFundingCaveats() []Caveat {
 // sortedFundingKeys is a total order over the cell map, so a node's first touch
 // does not depend on map iteration order.
 func sortedFundingKeys(m map[fundingCell]*cellSum) []fundingCell {
-	out := make([]fundingCell, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	sort.Slice(out, func(i, j int) bool {
-		a, b := out[i], out[j]
-		switch {
-		case a.fund != b.fund:
-			return a.fund < b.fund
-		case a.department != b.department:
-			return a.department < b.department
-		default:
-			return a.fundGroup < b.fundGroup
-		}
+	return slices.SortedFunc(maps.Keys(m), func(a, b fundingCell) int {
+		return cmp.Or(cmp.Compare(a.fund, b.fund), cmp.Compare(a.department, b.department), cmp.Compare(a.fundGroup, b.fundGroup))
 	})
-	return out
 }
