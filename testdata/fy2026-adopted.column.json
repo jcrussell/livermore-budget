@@ -6475,6 +6475,13 @@
      "applies_to": []
     },
     {
+     "id": "an-opened-box-repeats-its-members",
+     "summary": "In this file an opened box repeats its members' links, so adding every link counts money twice.",
+     "text": "An opened node draws a link to each of its members, and every node but the General Fund's repeats each link arriving at a member, or leaving it, with the same figure and facts; a remainder cites the members it is the difference of. So 369 printed figures sit behind more than one link, and summing every value_cents in this file counts them more than once.",
+     "theme": "data-files",
+     "applies_to": []
+    },
+    {
      "id": "one-row-is-one-printed-line",
      "summary": "A revenue line marked \"one row\" is how Budget Book pp.127-140 print that whole category.",
      "text": "Some funds' revenue in a category is one row named for the category, such as Charges for Services. Where a fund prints no other row of that category, this site labels the line \"\u003ccategory\u003e, one row\": pp.127-140 print it as a single row for its category, so nothing is missing from it.",
@@ -6501,7 +6508,7 @@
     {
      "id": "some-fund-group-money-is-not-by-fund",
      "summary": "Some fund groups carry money that no single fund's own page prints.",
-     "text": "Budget Book pp.66-67 print each fund group's change in balance as one figure. Where some of a group's funds draw on their balances and others add to them, that figure is the net of the funds' changes, which no single fund carries, so for 3 fund groups it is drawn on a box of the group's own. A fund of such a group is drawn with what it takes in and spends, so its in and out differ by its own change in balance; its details show its two printed balances from pp.186-209 and the change between them. Where pp.66-67 print more for a group than its funds' pages do, the difference sits on the same box, and the box's note says why.",
+     "text": "Budget Book pp.66-67 print each fund group's change in balance as one figure. Where some of a group's funds draw on their balances and others add to them, that figure is the net of the funds' changes, which no single fund carries, so for 3 fund groups each group's net is drawn on a box of its own. A fund of such a group is drawn with what it takes in and spends, so its in and out differ by its own change in balance; its details show its two printed balances from pp.186-209 and the change between them. Where pp.66-67 print more for a group than its funds' pages do, the difference sits on the same box, and the box's note says why.",
      "theme": "our-reading",
      "applies_to": [
       "fund-group-only/capital",

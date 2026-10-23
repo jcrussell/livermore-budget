@@ -194,7 +194,7 @@ const (
 	// ThemeOurReading is a classification or label this site chose.
 	ThemeOurReading CaveatTheme = "our-reading"
 	// ThemeChecked is a check that passed. It qualifies nothing, so a page's
-	// caveat line does not count it as a limit.
+	// caveat line does not count it as a limit, and it may name no node.
 	ThemeChecked CaveatTheme = "checked"
 	// ThemeDataFiles matters only to someone summing a published file. No
 	// page states it and no chart marks it, so it may name no node.
@@ -281,8 +281,8 @@ func validateCaveats(caveats []Caveat, nodes map[string]struct{}) error {
 			return fmt.Errorf("caveat %q has no text, so its summary summarises nothing", c.ID)
 		case CaveatThemeHeading(c.Theme) == "":
 			return fmt.Errorf("caveat %q has theme %q, which is none of CaveatThemes; the caveats page lists a caveat under its theme", c.ID, c.Theme)
-		case c.Theme == ThemeDataFiles && len(c.AppliesTo) > 0:
-			return fmt.Errorf("caveat %q is about the data files and names nodes; no page states a data-files caveat, so a chart must not mark one", c.ID)
+		case (c.Theme == ThemeDataFiles || c.Theme == ThemeChecked) && len(c.AppliesTo) > 0:
+			return fmt.Errorf("caveat %q is of theme %s and names nodes; no page counts it as a limit, so a chart must not mark one", c.ID, c.Theme)
 		}
 		for _, prose := range []string{c.Summary, c.Text} {
 			if ids := beadid.Cited(prose); len(ids) > 0 {

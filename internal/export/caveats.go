@@ -47,7 +47,7 @@ type caveatRef struct {
 // its section that are limits, each counted and linked to that theme's list
 // in the section; ThemeChecked qualifies nothing and is left to the section.
 // With no caveats page Href is "" and the "caveats-line" template lists
-// Entries' summaries instead, so a site without the page still states them.
+// Groups' summaries instead, so a site without the page still states them.
 //
 // Groups and Entries are the caveats page's own section for this view
 // (caveatIndex.views), so the line and the section cannot disagree.
@@ -94,14 +94,15 @@ type caveatEntry struct {
 	Anchor  string
 	Summary string
 	Theme   project.CaveatTheme
-	// DataFiles is Theme == project.ThemeDataFiles, which the template asks.
-	DataFiles bool
 	// Variants are its texts, in year order; one, with no Of, where every
 	// document carrying it says the same.
 	Variants []*caveatVariant
 	// Pages are the views that state it, in nav order.
 	Pages []navItem
 }
+
+// DataFiles is whether e is of project.ThemeDataFiles, which the template asks.
+func (e *caveatEntry) DataFiles() bool { return e.Theme == project.ThemeDataFiles }
 
 // caveatVariant is one text of an entry and the documents carrying it.
 type caveatVariant struct {
@@ -284,14 +285,8 @@ func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, 
 	}
 
 	// labelOf is each document's fiscal year and basis, or its stem for a
-	// document stating neither, read once.
+	// document stating neither.
 	labelOf := map[string]string{}
-	for stem := range o.Projections {
-		labelOf[stem] = documentLabel(o, stem)
-		if labelOf[stem] == "" {
-			labelOf[stem] = stem
-		}
-	}
 	byID := map[string]*caveatEntry{}
 	// heading is each id's summary and theme, and the first document stating
 	// them: the caveats page heads an id once.
@@ -306,6 +301,10 @@ func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, 
 		var dc documentCaveats
 		if err := json.Unmarshal(o.Projections[stem], &dc); err != nil {
 			return nil, fmt.Errorf("decode %s caveats: %w", stem, err)
+		}
+		labelOf[stem] = dc.label()
+		if labelOf[stem] == "" {
+			labelOf[stem] = stem
 		}
 		for _, c := range dc.Metadata.Caveats {
 			switch {
@@ -353,7 +352,7 @@ func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, 
 				theme := project.CaveatTheme(c.Theme)
 				e = &caveatEntry{
 					ID: c.ID, Anchor: caveatEntryPrefix + c.ID, Summary: c.Summary,
-					Theme: theme, DataFiles: theme == project.ThemeDataFiles,
+					Theme: theme,
 				}
 				byID[c.ID] = e
 				cx.entries = append(cx.entries, e)
@@ -375,7 +374,11 @@ func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, 
 	}
 
 	// Anchors, and every fragment the page emits, refused when two collide.
-	fragments := map[string]string{}
+	// The template's fixed ids are claimed first.
+	fragments := map[string]string{
+		"caveats-kinds":                 "the kinds list",
+		"caveats-in-data-no-page-draws": "the list no page states",
+	}
 	claim := func(fragment, by string) error {
 		if prev, dup := fragments[fragment]; dup {
 			return fmt.Errorf(
@@ -427,14 +430,17 @@ func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, 
 			}
 			va.Of = strings.Join(of, ", ")
 		}
-		// Of opens with a fiscal year label, so it sorts by year.
+		// A year's label opens "FY ", so years sort in order, and before any
+		// stem standing for a document of no year.
 		slices.SortStableFunc(e.Variants, func(a, b *caveatVariant) int { return strings.Compare(a.Of, b.Of) })
 	}
 
 	cx.themes = groupByTheme(cx.entries, caveatThemePrefix)
 	for _, g := range cx.themes {
-		if err := claim(g.Anchor, fmt.Sprintf("theme %q", g.Theme)); err != nil {
-			return nil, err
+		for _, f := range []string{g.Anchor, g.Anchor + "-h"} {
+			if err := claim(f, fmt.Sprintf("theme %q", g.Theme)); err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -510,13 +516,9 @@ func sameEntries(a, b []*caveatEntry) bool {
 	return true
 }
 
-// documentLabel is a document's fiscal year and basis as the caveats page
-// names it, or "" for a document stating neither.
-func documentLabel(o *Options, stem string) string {
-	var dc documentCaveats
-	if json.Unmarshal(o.Projections[stem], &dc) != nil {
-		return ""
-	}
+// label is a document's fiscal year and basis as the caveats page names
+// it, or "" for a document stating neither.
+func (dc documentCaveats) label() string {
 	label := dc.Metadata.FiscalYearLabel
 	if label != "" && dc.Metadata.Basis != "" {
 		label += " " + dc.Metadata.Basis

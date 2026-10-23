@@ -63,19 +63,19 @@
 {{- /* "caveats-line" is a page's caveats in one line, executed against the
        page's .CaveatsHere: each theme of this page's section of the caveats
        page with how many of its caveats apply, linking to that theme's list
-       there. With no caveats page (an empty .Href) it lists each caveat's
-       summary instead, so a site without that page still states them. */}}
+       there. With no caveats page (an empty .Href) it lists those caveats'
+       summaries instead, so a site without that page still states them. */}}
 {{define "caveats-line"}}
 {{- if .Href}}
 {{- if .Groups}}
 <p class="caveats-line">Limits on these figures:
   {{- range $i, $g := .Groups}}{{if $i}} ·{{end}} <a href="{{$.Href}}#{{$g.Anchor}}">{{$g.Heading}} ({{len $g.Entries}})</a>{{end}}</p>
 {{- end}}
-{{- else if .Entries}}
+{{- else if .Groups}}
 <ul class="caveats" aria-label="What these figures do not say">
-  {{- range .Entries}}
+  {{- range .Groups}}{{range .Entries}}
   <li>{{.Summary}}</li>
-  {{- end}}
+  {{- end}}{{end}}
 </ul>
 {{- end}}
 {{- end}}

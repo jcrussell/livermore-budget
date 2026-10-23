@@ -2707,9 +2707,9 @@ export function nodeDescription(d) {
 /**
  * Where a caveat's full text is, or "" when this site has no caveats page.
  *
- * LOOKED UP IN THE REFS GO HANDED THE PAGE, never rebuilt from the id: the
- * anchor is per (document, caveat). A caveat the year carries no ref for gets
- * no anchor: a missing link is visible, a link to the wrong document is not.
+ * LOOKED UP IN THE REFS GO HANDED THE PAGE, never rebuilt from the id: Go
+ * owns the caveats page's fragments. A caveat the year carries no ref for gets
+ * no anchor: a missing link is visible, a link to the wrong paragraph is not.
  *
  * @param {string} id
  * @returns {string}

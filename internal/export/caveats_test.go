@@ -379,13 +379,14 @@ func TestViewsStatingOneSetInTwoOrdersShareASection(t *testing.T) {
 	}
 }
 
-// TestTheFallbackLineListsACheckedCaveat: with no caveats page a page's line
-// lists every entry of its section, a checked one included, though the
-// linked line counts only limits.
+// TestTheFallbackLineListsTheLimitsTheLinkedLineCounts: with no caveats page a
+// page's line lists the summaries of the limits the linked line would count,
+// under "What these figures do not say", and not a check that passed.
 //
-// Mutation: gate the fallback list on .Groups and a.html prints nothing.
-func TestTheFallbackLineListsACheckedCaveat(t *testing.T) {
-	o, nav := caveatSite(`[{"id":"k","summary":"K.","theme":"checked","text":"T.","applies_to":[]}]`, `[]`, `[]`)
+// Mutation: list .Entries in the fallback and K. is listed as a limit.
+func TestTheFallbackLineListsTheLimitsTheLinkedLineCounts(t *testing.T) {
+	o, nav := caveatSite(`[{"id":"x","summary":"X.","theme":"left-out","text":"T.","applies_to":[]},`+
+		`{"id":"k","summary":"K.","theme":"checked","text":"T.","applies_to":[]}]`, `[]`, `[]`)
 	o.Views, nav = o.Views[:2], nav[:2]
 	cx, err := buildCaveatIndex(o, ColumnIndex{}, nav)
 	if err != nil {
@@ -399,7 +400,7 @@ func TestTheFallbackLineListsACheckedCaveat(t *testing.T) {
 	if err := tmpl.ExecuteTemplate(&buf, "caveats-line", cx.here("a.html")); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(buf.String(), "<li>K.</li>") {
-		t.Errorf("a.html's fallback line is %q, want K. listed", buf.String())
+	if got := buf.String(); !strings.Contains(got, "<li>X.</li>") || strings.Contains(got, "K.") {
+		t.Errorf("a.html's fallback line is %q, want X. listed and K. not", got)
 	}
 }

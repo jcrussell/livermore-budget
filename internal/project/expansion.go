@@ -1293,6 +1293,17 @@ func expansionCaveats(twice int, nodes []Node, apart []string) []Caveat {
 				"page prints for a group and no finer page breaks down.",
 			AppliesTo: []string{},
 		},
+		{
+			ID:      "an-opened-box-repeats-its-members",
+			Theme:   ThemeDataFiles,
+			Summary: "In this file an opened box repeats its members' links, so adding every link counts money twice.",
+			Text: fmt.Sprintf("An opened node draws a link to each of its members, and every "+
+				"node but the General Fund's repeats each link arriving at a member, or leaving "+
+				"it, with the same figure and facts; a remainder cites the members it is the "+
+				"difference of. So %s behind more than one link, and summing every value_cents "+
+				"in this file counts them more than once.", countedFigures(twice)),
+			AppliesTo: []string{},
+		},
 	}
 	out = append(out, categoryNamedCaveats(nodes)...)
 	var netted []string
@@ -1305,7 +1316,7 @@ func expansionCaveats(twice int, nodes []Node, apart []string) []Caveat {
 		text := fmt.Sprintf("Budget Book pp.66-67 print each fund group's change in balance as "+
 			"one figure. Where some of a group's funds draw on their balances and others add to "+
 			"them, that figure is the net of the funds' changes, which no single fund carries, so "+
-			"for %s it is drawn on a box of the group's own.", counted(len(netted), "fund group"))
+			"for %s each group's net is drawn on a box of its own.", counted(len(netted), "fund group"))
 		if len(apart) > 0 {
 			text += " A fund of such a group is drawn with what it takes in and spends, so its " +
 				"in and out differ by its own change in balance; its details show its two printed " +

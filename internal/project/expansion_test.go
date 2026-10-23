@@ -821,3 +821,28 @@ func TestAFundChangingInAGroupWithNoPrintedChangeIsRefused(t *testing.T) {
 		t.Fatalf("unprintedChanges = %v, want fund/1's change refused", err)
 	}
 }
+
+// TestTheExpansionSaysItsLinksDoubleCount: an opened node repeats its
+// members' links, so the committed expansion states how many printed figures
+// sit behind more than one link, the document's own count.
+//
+// Mutation: drop an-opened-box-repeats-its-members from expansionCaveats and
+// both years go red.
+func TestTheExpansionSaysItsLinksDoubleCount(t *testing.T) {
+	for _, year := range []int{2026, 2027} {
+		exp := committedDocs(t, year)[ExpansionProjection]
+		if exp.Metadata.Counts.FactsCitedTwice == 0 {
+			t.Fatalf("FY%d: no fact is behind two links, so this asserts nothing", year)
+		}
+		want := countedFigures(exp.Metadata.Counts.FactsCitedTwice)
+		found := false
+		for _, c := range exp.Metadata.Caveats {
+			if c.ID == "an-opened-box-repeats-its-members" {
+				found = c.Theme == ThemeDataFiles && strings.Contains(c.Text, want)
+			}
+		}
+		if !found {
+			t.Errorf("FY%d: no data-files caveat says %q", year, want)
+		}
+	}
+}

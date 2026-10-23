@@ -73,7 +73,14 @@ func TestValidateCaveatsRefusesEveryShapeThatWouldRender(t *testing.T) {
 		{
 			"a data-files caveat naming a node",
 			[]Caveat{{ID: "a", Theme: ThemeDataFiles, Summary: "s", Text: "t", AppliesTo: []string{"fund-group/general"}}},
-			nodes, "is about the data files and names nodes",
+			nodes, "is of theme data-files and names nodes",
+		},
+		// Mutation: drop ThemeChecked from that arm and this goes red with
+		// "ValidateCaveats = nil".
+		{
+			"a checked caveat naming a node",
+			[]Caveat{{ID: "a", Theme: ThemeChecked, Summary: "s", Text: "t", AppliesTo: []string{"fund-group/general"}}},
+			nodes, "is of theme checked and names nodes",
 		},
 		{
 			"a document-wide data-files caveat",
