@@ -825,11 +825,6 @@ func declaredGap(p *Part, gap string, used map[string]bool, figures bool, raised
 	return true
 }
 
-// findFields finds the first run of s that is tail's whitespace-separated
-// fields in order, separated by spaces or tabs and never by a line break, and
-// returns its offset and length, or -1. A tail spanning several printed fields
-// names each field and not the kerning between them, which is what p222's
-// "600       Airport" after a label of "601" needs.
 // indexWord is the offset after from at which label occurs in s as whole
 // words, or -1: an end of label that is a letter or digit may not abut one in
 // s, so "Fund 2" is not found in "Fund 20". The offset is relative to from.
@@ -858,6 +853,11 @@ func indexWord(s string, from int, label string) int {
 
 func wordRune(r rune) bool { return unicode.IsLetter(r) || unicode.IsDigit(r) }
 
+// findFields finds the first run of s that is tail's whitespace-separated
+// fields in order, separated by spaces or tabs and never by a line break, and
+// returns its offset and length, or -1. A tail spanning several printed fields
+// names each field and not the kerning between them, which is what p222's
+// "600       Airport" after a label of "601" needs.
 func findFields(s, tail string) (int, int) {
 	fields := strings.Fields(tail)
 	for from := 0; ; {

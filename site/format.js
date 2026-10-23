@@ -404,8 +404,8 @@ export function refuseFigure(section, err) {
     if (heading && heading.parentElement === section) heading.after(el);
     else section.prepend(el);
   }
-  el.textContent = `This figure could not be drawn: ${err instanceof Error ? err.message : String(err)}. ` +
-    "The table below is what the page carries.";
+  const why = (err instanceof Error ? err.message : String(err)).replace(/\.$/, "");
+  el.textContent = `This figure could not be drawn: ${why}. The table below is what the page carries.`;
 }
 
 /**
