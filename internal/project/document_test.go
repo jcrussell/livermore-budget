@@ -287,3 +287,20 @@ func TestRefuseUncitedAdmitsOnlyPrintedZeros(t *testing.T) {
 		}
 	}
 }
+
+// TestEveryThemeHasItsWordsAndNoWordsAreOfNoTheme: membership is read off the
+// words and order off CaveatThemes, so the two must name one set; a theme with
+// words and no place in the order would validate and be listed nowhere.
+//
+// Mutation: add a theme to caveatThemeWords alone and this goes red.
+func TestEveryThemeHasItsWordsAndNoWordsAreOfNoTheme(t *testing.T) {
+	var words []CaveatTheme
+	for k := range caveatThemeWords {
+		words = append(words, k)
+	}
+	slices.Sort(words)
+	order := slices.Sorted(slices.Values(CaveatThemes()))
+	if !slices.Equal(words, order) {
+		t.Errorf("caveatThemeWords names %v and CaveatThemes %v", words, order)
+	}
+}

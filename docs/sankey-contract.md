@@ -86,27 +86,26 @@ dropped.
 ### A caveat is an object, not a string
 
 It carries an **`id`**, a one-line **`summary`**, the **`text`** of the caveat
-itself, and **`applies_to`**: the node ids the caveat is about.
+itself, a **`theme`** naming which of `project.CaveatThemes` it is, and
+**`applies_to`**: the node ids the caveat is about.
 
-The id goes into a **published URL fragment**, spelled as the next paragraph
-says. That spelling survives an edit to a sentence only while the id has one
-(`id`, `summary`, `text`) triple across the site: rewording one document's copy
-of a shared id adds a variant, and moves every fragment of that id onto its
-`--<stem>` spelling. A document repeating an id is refused at build time by
-`project.ValidateCaveats`.
+The id goes into a **published URL fragment**, `caveats.html#caveat-<id>`, one
+per id across the site, so it survives an edit to any sentence. A document
+repeating an id is refused at build time by `project.ValidateCaveats`.
 
-**caveats.html states each distinct caveat once**, distinct being the triple
-(`id`, `summary`, `text`): the same id carries different text in different
-documents (see below), and one text carries different summaries. The fragment is
-`caveats.html#caveat-<id>` when the id has one such triple across the site, and
-`caveats.html#caveat-<id>--<stem>` for each of several, `<stem>` being the first
-document, in sorted order, carrying that triple. `buildCaveatIndex` composes both and
-refuses two fragments the page would emit alike, a repeated id inside a document
-among them, and two entries it would head alike. An anchor
-collision fails silently — the page renders, the anchor resolves, and the reader
-is shown a sentence about something else — which is why it is refused rather
-than left to a reader to notice. Each page links its own section,
-`caveats.html#caveats-on-<view>`, in one line.
+**caveats.html states each id once**, under its theme. One id carries one
+`summary` and one `theme` in every document, and `buildCaveatIndex` refuses one
+that does not, so a figure that varies by year or schedule belongs in the text.
+Where documents carry one id with different texts, each text is listed under the
+one heading, headed by the years carrying it; two texts sharing a year are
+refused. The index also refuses two ids under one summary, a data-files or
+checked caveat naming a node, and two fragments the page would emit alike. An
+anchor collision fails silently — the page renders, the anchor resolves, and
+the reader is shown a sentence about something else — which is why it is
+refused rather than left to a reader to notice. Views stating the same caveats
+share one section, and each page's line links each of its themes' lists there,
+`caveats.html#caveats-on-<view>--<theme>`; a checked or data-files caveat is on
+no page's line.
 
 `applies_to` is **empty for a caveat about the schedule rather than about a
 mark**, and empty means document-wide rather than not-yet-filled-in. Where it is
@@ -115,12 +114,10 @@ is given the drawn node set and refuses otherwise, because a caveat pointing at 
 node that is not there marks nothing, and marking nothing is indistinguishable
 from having nothing to mark.
 
-**One id may carry more than one text.** `transfer-legs-unpaired` has three,
+**One id may carry more than one text.** `transfer-legs-unpaired` has four,
 picked by whether the legs balance and whether the residual meets the printed
 to-CIP column; which sentence a document gets is a fact about that document's
-own arithmetic, not three different caveats. A page listing more than one
-document's caveats must therefore key on the whole caveat, or on
-`(id, document)`, and must not assume one text per id.
+own arithmetic, not four different caveats, and all four share its summary.
 
 Determinism: nodes sorted by `(tier, id)`, links by `(source, target, kind)`,
 `fact_ids` ascending, `locators` by `doc_id` with `pages` ascending inside each

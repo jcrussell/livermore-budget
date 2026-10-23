@@ -67,7 +67,7 @@ capital project under the fund that pays for it, and what the city budgets and
 is scheduled to pay on each debt. `provenance.html` is the record store itself: every fact, its
 page, and the text it was read from. `caveats.html` states every
 published caveat once, in full, with a list per page of the caveats that apply
-to it. Every page that draws a schedule carrying a caveat says in one line how many apply and links its list, and
+to it, grouped into a few kinds of limit. Every page that draws a schedule carrying one names in one line the kinds that apply, each linking its list, and
 `flows.html` also flags a caveat in the drawer on each mark it applies to, so a
 reader meets the chart before the apparatus.
 
