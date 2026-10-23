@@ -131,8 +131,15 @@ describe("the client's whole is the city's figure, or the declared residual shor
       const printed = centsOf(b.section.querySelector("[data-whole-cents]").textContent);
       const whole = rowsOf(b.section).reduce((a, r) => a + r.cents, 0);
       const caption = b.section.querySelector(".glance-sum").textContent;
-      assert.ok(caption.startsWith("◇ Our sum of the"), caption);
-      assert.ok(caption.includes(new Intl.NumberFormat("en-US").format(whole / 100)), caption);
+      // A bar that ties states its total once, in the printed line under it;
+      // one held apart states the client's own sum too. Mutation: say the
+      // sum in the caption whatever data-ties says, and the tied arm goes red.
+      const said = caption.includes(new Intl.NumberFormat("en-US").format(whole / 100));
+      if (b.section.dataset.ties === "true") {
+        assert.ok(caption.startsWith("◇ The shares are ours") && !said, caption);
+      } else {
+        assert.ok(caption.startsWith("◇ Our sum of the") && said, caption);
+      }
       if (b.section.dataset.ties === "true") {
         assert.equal(whole, printed, `${b.label} ${b.id}: rows do not reach the printed whole`);
         assert.equal(b.section.querySelector(".glance-apart"), null);

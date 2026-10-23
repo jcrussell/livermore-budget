@@ -182,8 +182,12 @@ export function draw(section, tips = tipper(section.ownerDocument)) {
     legend.appendChild(li);
   });
 
-  caption.textContent = `◇ Our sum of the ${rows.length} printed cells: ${dollars(whole)}. ` +
-    "The shares are ours too, each rounded to a tenth of a percent, so they may not add to 100% exactly.";
+  // Where Go declares the cells tie to the total printed under the figure,
+  // that line already states the sum, so the caption does not say it twice.
+  const shares = "each rounded to a tenth of a percent, so they may not add to 100% exactly.";
+  caption.textContent = section.dataset.ties === "true"
+    ? `◇ The shares are ours: each a part of the ${rows.length} printed cells, which sum to the total below, ${shares}`
+    : `◇ Our sum of the ${rows.length} printed cells: ${dollars(whole)}. The shares are ours too, ${shares}`;
   figure.hidden = false;
   // The table was the bar's data; the figure now says what it held.
   const cells = section.querySelector(".glance-cells");

@@ -15,7 +15,7 @@ test("format.js imports with no DOM and no global, and exports only functions", 
   delete globalThis.d3;
   assert.equal(typeof globalThis.document, "undefined", "nothing installed a DOM before the import");
   const mod = await import(MODULE);
-  assert.deepEqual(Object.keys(mod).sort(), ["carryYear", "citedPages", "configOf", "dollars", "hashFields", "hashValue", "linkedPage", "pageLinks", "pageOf", "pinnable", "placeTip", "refuseFigure", "selectYear", "share", "tipHint", "tipper", "wireYearSelect", "yearKey"]);
+  assert.deepEqual(Object.keys(mod).sort(), ["carryYear", "citedPages", "configOf", "dollars", "hashFields", "hashValue", "hiddenEdges", "linkedPage", "pageLinks", "pageOf", "pinnable", "placeTip", "refuseFigure", "scrollCues", "selectYear", "share", "tipHint", "tipper", "wireYearSelect", "yearKey"]);
   assert.ok(Object.values(mod).every((v) => typeof v === "function"));
 });
 
@@ -165,4 +165,26 @@ test("linkedPage reads the page, text and PDF a table's page link names", async 
   const [both, bare] = Array.from(doc.querySelectorAll("a[data-page]")).map(linkedPage);
   assert.deepEqual(both, { page: 97, text: "extracted/d/pages/p0097.txt", pdf: "d.pdf#page=97" });
   assert.deepEqual(bare, { page: 98, text: "extracted/d/pages/p0098.txt", pdf: "" });
+});
+
+// A sideways scroller says which edges hide more, kept current as it scrolls.
+// jsdom lays nothing out, so the element's widths are stubbed. Mutation: drop
+// the scroll listener in scrollCues and the second read stays "right".
+test("hiddenEdges and scrollCues mark the edges a scroller hides", async () => {
+  const mod = await import(MODULE);
+  const at = (scrollLeft) => ({ scrollLeft, scrollWidth: 1320, clientWidth: 1176 });
+  assert.deepEqual([at(0), at(70), at(144), { scrollLeft: 0, scrollWidth: 500, clientWidth: 500 }].map(mod.hiddenEdges),
+    ["right", "both", "left", ""]);
+  const { window } = new JSDOM('<div class="table-scroll"><table></table></div><div class="other"></div>');
+  const box = window.document.querySelector(".table-scroll");
+  let left = 0;
+  Object.defineProperty(box, "scrollWidth", { value: 1320 });
+  Object.defineProperty(box, "clientWidth", { value: 1176 });
+  Object.defineProperty(box, "scrollLeft", { get: () => left });
+  mod.scrollCues(window.document);
+  assert.equal(box.dataset.more, "right");
+  left = 144;
+  box.dispatchEvent(new window.Event("scroll"));
+  assert.equal(box.dataset.more, "left");
+  assert.equal(window.document.querySelector(".other").dataset.more, undefined);
 });

@@ -1,13 +1,15 @@
 // @ts-check
 /**
- * fisc — the controls in every page's top bar: the theme toggle, and the menu
- * button the view list folds behind on a narrow screen. Importing this
- * module does nothing; boot() wires the page it is handed.
+ * fisc — the chrome every page shares: the theme toggle and the menu button
+ * in its top bar, and the cue on every box that scrolls sideways. Importing
+ * this module does nothing; boot() wires the page it is handed.
  *
  * A switch dispatches THEME_EVENT on the document, so a page that writes
  * resolved colours onto its marks (app.js) repaints without wiring a second
  * click handler onto the same button.
  */
+
+import { scrollCues } from "./format.js";
 
 /** The localStorage key the head's theme-stamp script reads. */
 export const THEME_KEY = "fisc-theme";
@@ -74,13 +76,15 @@ export function wireMenu(win) {
 }
 
 /**
- * Wires the top bar: the menu (wireMenu), and the page's theme toggle,
+ * Wires the page's chrome: the menu (wireMenu), the cue on every box that
+ * scrolls sideways (format.js scrollCues), and the page's theme toggle,
  * shown and following the OS setting so the button never announces the
  * opposite of what it does. A page with no toggle keeps no theme control.
  * @param {Window} [win]
  */
 export function boot(win = globalThis.window) {
   wireMenu(win);
+  scrollCues(win.document);
   const doc = win.document;
   const button = doc.getElementById("theme-toggle");
   if (!button) return;

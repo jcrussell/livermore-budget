@@ -432,3 +432,41 @@ export function pinnable(mark, tips, fill) {
     tips.pin(mark, fill);
   });
 }
+
+/** The boxes that scroll sideways and say so at the edge they hide. */
+const SCROLL_CUED = ".table-scroll, .chart-scroll";
+
+/**
+ * Which edges of a sideways scroller hide more: "left", "right", "both", or
+ * "" where all of it shows. A pixel of slack absorbs sub-pixel widths.
+ * @param {{scrollLeft: number, scrollWidth: number, clientWidth: number}} el
+ * @returns {string}
+ */
+export function hiddenEdges(el) {
+  const left = el.scrollLeft > 1;
+  const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+  return left && right ? "both" : left ? "left" : right ? "right" : "";
+}
+
+/**
+ * Marks every SCROLL_CUED box with data-more naming the edges that hide more
+ * (hiddenEdges), kept current as it scrolls and as the window resizes, so
+ * style.css can fade that edge: a table or chart cut at the card's edge
+ * otherwise reads as broken rather than as more to the side.
+ * @param {Document} doc
+ */
+export function scrollCues(doc) {
+  const win = doc.defaultView;
+  const boxes = /** @type {HTMLElement[]} */ (Array.from(doc.querySelectorAll(SCROLL_CUED)));
+  const mark = (/** @type {HTMLElement} */ el) => {
+    const more = hiddenEdges(el);
+    if (more) el.dataset.more = more;
+    else delete el.dataset.more;
+  };
+  for (const el of boxes) {
+    mark(el);
+    el.addEventListener("scroll", () => mark(el), { passive: true });
+    if (win && typeof win.ResizeObserver === "function") new win.ResizeObserver(() => mark(el)).observe(el);
+  }
+  if (win) win.addEventListener("resize", () => boxes.forEach(mark));
+}

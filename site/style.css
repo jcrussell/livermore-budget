@@ -402,7 +402,12 @@ button[aria-pressed="true"] {
   background: var(--wash);
 }
 
+/* inline-block, because the mark key under the rail sets its swatches in a
+   plain span of text, where an inline box takes no width and drew as a 2px
+   sliver. */
 .legend .key {
+  display: inline-block;
+  vertical-align: -1px;
   width: 12px;
   height: 12px;
   border-radius: 3px;
@@ -417,6 +422,16 @@ button[aria-pressed="true"] {
 .legend .key.published {
   background: none;
   border: 1.5px solid var(--muted);
+}
+
+/* The heading over the fund-group buttons, in the filter panel's summary
+   type: the buttons follow one group's money, which their swatches alone do
+   not say beside the checkboxes that hide groups. */
+.legend-head {
+  display: block;
+  margin: 0 0 4px;
+  font-size: 13px;
+  color: var(--ink-2);
 }
 
 /* ---------- filters ---------- */
@@ -2147,10 +2162,30 @@ noscript p {
   display: flex;
   flex-direction: column;
   gap: 0.25em;
+  font-size: 14px;
+  color: var(--ink-2);
 }
 .capital-shown {
   margin: 0;
   color: var(--muted);
+}
+.capital-filters select,
+.capital-filters input {
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink-1);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px 8px;
+}
+.capital-filters select {
+  font-weight: 600;
+}
+/* The fund is named at the head of its run of rows (capital.js marks the
+   rest); blanked, not removed, so a screen reader still reads it per row. */
+.capital-table tr[data-fund-repeat] > td:first-child {
+  color: transparent;
 }
 .capital-table tfoot .capital-sum th,
 .capital-table tfoot .capital-sum td {
@@ -2303,11 +2338,12 @@ noscript p {
 .bar-row:focus-visible {
   box-shadow: inset 0 0 0 2px var(--focus);
 }
+/* A long label wraps rather than ending in an ellipsis: the words cut would
+   be its tail, "(inferred)" or "(internal service)", which is the point of
+   the suffix. */
 .bar-label {
   font-size: 13px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 .bar-row[data-depth="0"] .bar-label {
   font-weight: 600;
@@ -2510,6 +2546,11 @@ noscript p {
   align-self: center;
   flex: none;
 }
+/* A kind's name is said whole; only the detail beside it wraps, so the
+   tail's long member list does not squeeze "Everything else" onto two lines. */
+.change-name {
+  flex: none;
+}
 .change-detail {
   font-size: 12px;
 }
@@ -2549,3 +2590,31 @@ noscript p {
 .debt-band-note { display: block; font-size: 0.8em; font-weight: normal; color: var(--muted, #777); }
 
 /* end debt.html */
+
+/* AN EDGE THAT HIDES MORE FADES OUT: format.js scrollCues marks a sideways
+   scroller with the edges that hide more, and the mask fades the last 48px
+   inside its padding box there, so a table or chart cut at its card's edge
+   reads as continuing rather than as broken. The two solid layers make the
+   border a ring the fade does not touch: border-box exclude padding-box,
+   then the fade added inside it. */
+.table-scroll[data-more],
+.chart-scroll[data-more] {
+  --fade: linear-gradient(#000 0 0);
+  mask:
+    var(--fade) padding-box,
+    linear-gradient(#000 0 0) padding-box,
+    linear-gradient(#000 0 0) border-box;
+  mask-composite: add, exclude;
+}
+.table-scroll[data-more="right"],
+.chart-scroll[data-more="right"] {
+  --fade: linear-gradient(to right, #000 calc(100% - 48px), transparent);
+}
+.table-scroll[data-more="left"],
+.chart-scroll[data-more="left"] {
+  --fade: linear-gradient(to left, #000 calc(100% - 48px), transparent);
+}
+.table-scroll[data-more="both"],
+.chart-scroll[data-more="both"] {
+  --fade: linear-gradient(to right, transparent, #000 48px, #000 calc(100% - 48px), transparent);
+}

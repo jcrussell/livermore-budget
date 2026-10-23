@@ -3195,6 +3195,9 @@ export function buildLegend() {
     button.addEventListener("click", () => setIsolated(filter.isolated === id ? "" : id));
     legend.append(button);
   }
+  // The heading ships hidden: with no script there are no buttons to head.
+  const head = maybeEl("legend-head");
+  if (head) head.hidden = legend.children.length === 0;
 }
 
 /* ------------------------------------------------------------------ *

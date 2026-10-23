@@ -96,10 +96,19 @@ export function sumShown(rows, columns, filter) {
 export function apply(table, status, filter) {
   const { rows, columns } = readTable(table);
   let shown = 0;
+  // A shown row whose fund is the shown row above it says so by
+  // data-fund-repeat, which style.css blanks, so a fund's name is read once
+  // at the head of its run of rows rather than wrapped on every row.
+  let above = "";
   for (const row of rows) {
     const on = isShown(row, filter);
     row.el.hidden = !on;
-    if (on) shown++;
+    const fund = row.el.getAttribute("data-fund") || "";
+    row.el.toggleAttribute("data-fund-repeat", on && fund === above);
+    if (on) {
+      shown++;
+      above = fund;
+    }
   }
   for (const cell of Array.from(table.querySelectorAll("[data-column]"))) {
     const el = /** @type {HTMLElement} */ (cell);

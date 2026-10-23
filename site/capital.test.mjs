@@ -173,3 +173,24 @@ test("a hash naming no column opens every year", async () => {
   assert.equal(doc.defaultView.location.hash, "");
   assert.ok([...doc.querySelectorAll("#capital-table [data-column]")].every((el) => !el.hidden));
 });
+
+// A fund is named once at the head of each run of shown rows: every shown
+// row after the first of its fund is marked data-fund-repeat, and a search
+// that hides a run's head marks the next shown row as the head instead.
+// Mutation: compare each row with the row above whether or not that row is
+// shown, and the search arm goes red.
+test("a fund is named once at the head of each run of shown rows", async () => {
+  const { doc } = await booted();
+  const heads = () => bodyRows(doc).filter((tr) => !tr.hidden && !tr.hasAttribute("data-fund-repeat"))
+    .map((tr) => tr.getAttribute("data-fund"));
+  const funds = [...new Set(bodyRows(doc).map((tr) => tr.getAttribute("data-fund")))];
+  assert.deepEqual(heads(), funds, "a fund is named other than once per run");
+  const [first, second] = bodyRows(doc);
+  assert.equal(second.getAttribute("data-fund"), first.getAttribute("data-fund"), "the first fund has one row");
+  const name = second.querySelector("th").textContent.trim();
+  set(doc, "capital-search", name, "input");
+  assert.ok(first.hidden, "the search left the fund's first row shown, so this proves less than it says");
+  const shown = bodyRows(doc).filter((tr) => !tr.hidden);
+  assert.ok(shown.length > 0 && !shown[0].hasAttribute("data-fund-repeat"), "the first shown row does not name its fund");
+  assert.ok(bodyRows(doc).filter((tr) => tr.hidden).every((tr) => !tr.hasAttribute("data-fund-repeat")), "a hidden row is marked");
+});

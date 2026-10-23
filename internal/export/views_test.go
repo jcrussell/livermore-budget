@@ -783,7 +783,9 @@ func TestTheTableViewRendersWhatTheDocumentPublishes(t *testing.T) {
 		"FY 2025-26",     // the column, with its own basis beside it
 		"adopted",        //
 		"a caveat this document carries",
-		"revenue-by-fund", // the scope, stated rather than assumed
+		// The scope, stated rather than assumed: on the table, where a reader
+		// checking the page finds it, and not in the caption a reader reads.
+		`data-scope="revenue-by-fund"`,
 	} {
 		if !strings.Contains(html, want) {
 			t.Errorf("the revenue page does not render %q", want)

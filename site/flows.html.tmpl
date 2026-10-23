@@ -70,7 +70,8 @@
            and the rail's contents are shown. */}}
     <button type="button" class="rail-toggle" id="rail-toggle" aria-controls="rail-content" aria-expanded="true" hidden>{{.Wording.Rail}}</button>
     <div class="rail-content" id="rail-content">
-    <div class="legend" id="legend" aria-label="Fund groups"></div>
+    <span class="legend-head" id="legend-head" hidden>Follow one fund group's money</span>
+    <div class="legend" id="legend" aria-labelledby="legend-head"></div>
     {{- /* SHIPPED HIDDEN AND EMPTY: what to show is the client's, so with
            JavaScript off these controls would change nothing. app.js fills the
            fund groups from the column on screen and the kinds from the page's

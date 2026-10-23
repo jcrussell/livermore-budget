@@ -556,6 +556,11 @@ describe("the expansion's drawing", () => {
     const chart = document.getElementById("chart");
     const swatches = () => [...document.querySelectorAll("#legend [data-group]")];
     const atRoot = swatches().map((b) => b.dataset.group);
+    // The heading over the buttons ships hidden and shows once they are
+    // drawn. Mutation: drop buildLegend's unhiding and it stays hidden.
+    const head = document.getElementById("legend-head");
+    assert.ok(head && !head.hidden && document.getElementById("legend").getAttribute("aria-labelledby") === "legend-head",
+      "the legend's heading is missing, hidden or not its label");
     // EVERY GROUP SPLIT INTO ITS FUNDS: funds of every group drawn beside
     // their group's node, which the swatch keys the hues of.
     for (const sp of app.fetched.splits.filter((x) => x.key === "funds")) await split(app, sp.node);
