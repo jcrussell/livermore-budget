@@ -1329,3 +1329,24 @@ describe("a link repeating a leaf through a split is not called printed", () => 
     });
   }
 });
+
+// On a narrow screen the chart gives way to a note pointing to the bars of
+// the same money: the template ships the note's button hidden, app.js shows
+// it, and a press marks the root data-chart-anyway, which unfolds the card
+// under style.css's narrow query. The note's link carries the year on
+// screen as the top bar's do. Mutation: drop wireNarrow from boot and the
+// button stays hidden; narrow carryYear back to the nav and the link keeps
+// no year.
+test("the narrow screen's note shows its button, which puts the chart back, and its link carries the year", async () => {
+  const { app, document } = await bootedApp();
+  const button = document.getElementById("narrow-show");
+  const link = document.querySelector("#narrow-note a[data-years]");
+  assert.ok(button && !button.hidden, "the note's button is missing or hidden");
+  assert.ok(link, "the note does not link a view that offers years");
+  assert.match(link.getAttribute("href"), new RegExp("#y=" + document.getElementById("year-select").value + "$"));
+  assert.ok(!document.documentElement.hasAttribute("data-chart-anyway"));
+  fire(button, "click");
+  await settle();
+  assert.ok(document.documentElement.hasAttribute("data-chart-anyway"), "the press did not unfold the card");
+  assert.ok(app.chartDrawn(), "no chart is drawn after the press");
+});

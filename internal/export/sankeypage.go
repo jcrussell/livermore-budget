@@ -108,6 +108,9 @@ type pageData struct {
 	Links int
 	// Description is [View.Description].
 	Description string
+	// Narrow is the view a narrow screen is pointed to in place of the
+	// chart, the site's bars; its Path is "" on a site with none.
+	Narrow navItem
 	// ConfigJSON is window.FISC_CONFIG. json.Marshal escapes <, > and & to
 	// their \u form, so the blob cannot close the script element it sits in.
 	ConfigJSON template.JS
@@ -406,12 +409,27 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		Nodes:       open.Counts.Nodes,
 		Links:       open.Counts.Links,
 		Description: v.Description,
+		Narrow:      narrowRoute(o, nav),
 		// #nosec G203 -- blob is encoding/json's output, which escapes <, >
 		// and & to their \u form, so it cannot terminate the script element
 		// or inject markup. The alternative, letting html/template escape a
 		// string, would corrupt the JSON.
 		ConfigJSON: template.JS(blob),
 	}, nil
+}
+
+// narrowRoute is the nav's item for the view rendering LedgerTemplate, the
+// bars of the same money a narrow screen is pointed to, or the zero item on a
+// site with none.
+func narrowRoute(o *Options, nav []navItem) navItem {
+	path := templatePathOf(o, LedgerTemplate)
+	for _, n := range nav {
+		if path != "" && n.Path == path {
+			n.Current = false
+			return n
+		}
+	}
+	return navItem{}
 }
 
 // templatePathOf is the path of the view rendering template name, or "" when

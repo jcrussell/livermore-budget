@@ -27,12 +27,15 @@
 
 <main>
 
+<details class="how-to-read" open>
+<summary>About these figures</summary>
 <p class="lede">
   {{.Count}} printed project lines across {{len .Columns}} columns, {{.Facts}} figures in all,
   from the Budget Book's project listing by fund. Every figure is one the city printed and
   links to the extracted text of the page it was read from; a dash is a zero the page prints
   as a dash.
 </p>
+</details>
 
 {{- template "caveats-line" .CaveatsHere}}
 

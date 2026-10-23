@@ -37,6 +37,8 @@
 
 <section class="department-bars" aria-labelledby="bars-heading">
   <h2 id="bars-heading">Every department</h2>
+  <details class="how-to-read" open>
+  <summary>How to read this page</summary>
   <p class="department-bars-how">
     Each bar is a department, longest first, on the one scale the longest sets,
     split by the group of funds that pays for it. Click a department, or press
@@ -44,6 +46,7 @@
     where its money comes from and where it goes, each bar naming the Budget
     Book page its figure was read from.
   </p>
+  </details>
   <ul class="department-legend" id="department-legend" aria-label="Fund groups, largest across every department first"></ul>
   <ol class="department-list" id="department-list"></ol>
   <p class="department-bars-sum" id="department-bars-sum">
@@ -108,6 +111,8 @@
 
 <div class="tooltip" id="tooltip" role="status" aria-live="polite" hidden></div>
 
+<details class="how-to-read" open>
+<summary>How to read these bars</summary>
 <p class="subtle">
   Both sides are drawn on one scale, the longest bar of either filling its track.
   Point at a bar, or focus it, for the pages its figure was read from;
@@ -118,6 +123,7 @@
   a figure, so neither sum is presented as the department's total. A share
   marked ◇ is ours too: one bar as a percentage of its side's sum.
 </p>
+</details>
 
 {{- template "caveats-line" .CaveatsHere}}
 

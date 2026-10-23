@@ -92,14 +92,15 @@ export function yearKey(path) {
 }
 
 /**
- * Points each top-bar link whose view offers the year (its `data-years`) at
- * that year, `#y=<key>`, and every other at its view as it opens: a year a
- * view does not publish is not carried there to be refused. "" carries none.
+ * Points each link whose view offers the year (its `data-years`: the top
+ * bar's, and any other link to a view) at that year, `#y=<key>`, and every
+ * other at its view as it opens: a year a view does not publish is not
+ * carried there to be refused. "" carries none.
  * @param {Document} doc
  * @param {string} key
  */
 export function carryYear(doc, key) {
-  for (const a of Array.from(doc.querySelectorAll("nav.site-nav a[data-years]"))) {
+  for (const a of Array.from(doc.querySelectorAll("a[data-years]"))) {
     const base = (a.getAttribute("href") || "").replace(/#.*$/, "");
     const offers = (a.getAttribute("data-years") || "").split(" ").includes(key);
     a.setAttribute("href", key && offers ? base + "#y=" + hashValue(key) : base);

@@ -15,7 +15,7 @@ const PAGES = readdirSync(TESTDATA).filter((f) => f.endsWith(".golden.html")).so
 test("theme.js imports with no DOM and runs nothing", async () => {
   assert.equal(typeof globalThis.document, "undefined", "nothing installed a DOM before the import");
   const mod = await import(MODULE);
-  assert.deepEqual(Object.keys(mod).sort(), ["THEME_EVENT", "THEME_KEY", "boot", "prefersDark", "syncTheme", "wireMenu"]);
+  assert.deepEqual(Object.keys(mod).sort(), ["THEME_EVENT", "THEME_KEY", "boot", "prefersDark", "syncTheme", "wireHowTo", "wireLede", "wireMenu"]);
 });
 
 /** One pinned page in a browser, theme.js booted against it as its top bar does. */
@@ -153,5 +153,48 @@ describe("the narrow-screen menu in every pinned page's top bar", () => {
       assert.equal(state(), "true/false/false/false");
       assert.equal(document.activeElement, button);
     });
+  }
+});
+
+// How-to-read prose folds on a narrow screen and opens on a wide one,
+// following the window across the breakpoint. jsdom has no media queries, so
+// matchMedia is stubbed. Mutation: open every block whatever matches says,
+// and the narrow arm goes red.
+test("wireHowTo folds the how-to-read prose on a narrow screen and opens it on a wide one", async () => {
+  const { JSDOM } = await import("jsdom");
+  const mod = await import(MODULE);
+  const html = readFileSync(path.join(TESTDATA, "ledger.golden.html"), "utf8");
+  const { window } = new JSDOM(html);
+  const listeners = [];
+  const mq = { matches: true, addEventListener: (_, f) => listeners.push(f) };
+  window.matchMedia = () => mq;
+  mod.wireHowTo(window);
+  const blocks = [...window.document.querySelectorAll("details.how-to-read")];
+  assert.ok(blocks.length > 0, "the pinned ledger page folds no prose");
+  assert.ok(blocks.every((d) => !d.open), "a block stayed open on a narrow screen");
+  mq.matches = false;
+  listeners.forEach((f) => f());
+  assert.ok(blocks.every((d) => d.open), "a block stayed closed on a wide screen");
+});
+
+// The page lede gets "More" only where the clamp cuts it, and a press drops
+// the clamp for good. jsdom lays nothing out, so the heights are stubbed.
+// Mutation: add the button whatever the heights, and the uncut arm goes red.
+test("wireLede offers More only where the lede is cut, and a press shows it whole", async () => {
+  const { JSDOM } = await import("jsdom");
+  const mod = await import(MODULE);
+  const html = readFileSync(path.join(TESTDATA, "ledger.golden.html"), "utf8");
+  for (const [scroll, client, want] of [[120, 72, true], [72, 72, false]]) {
+    const { window } = new JSDOM(html);
+    const lede = window.document.querySelector(".page-head .lede");
+    Object.defineProperty(lede, "scrollHeight", { value: scroll });
+    Object.defineProperty(lede, "clientHeight", { value: client });
+    mod.wireLede(window);
+    const more = window.document.querySelector(".lede-more");
+    assert.equal(Boolean(more), want, `a lede ${scroll}px in ${client}px`);
+    if (more) {
+      more.click();
+      assert.ok(lede.hasAttribute("data-full") && !more.isConnected);
+    }
   }
 });

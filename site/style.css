@@ -2618,3 +2618,67 @@ noscript p {
 .chart-scroll[data-more="both"] {
   --fade: linear-gradient(to right, transparent, #000 48px, #000 calc(100% - 48px), transparent);
 }
+
+
+/* FLOWS ON A NARROW SCREEN: the note pointing to the bars shows and the
+   chart's card folds, until the reader asks for the chart anyway (app.js
+   sets data-chart-anyway on the root). 700px is where the opening chart's
+   labels draw under 6px tall. */
+.narrow-note {
+  display: none;
+}
+@media (max-width: 700px) {
+  html:not([data-chart-anyway]) .narrow-note {
+    display: block;
+    margin: 12px 0;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface-1);
+  }
+  .narrow-note p {
+    margin: 0 0 10px;
+  }
+  html:not([data-chart-anyway]) #chart-card {
+    display: none;
+  }
+}
+
+/* HOW-TO-READ PROSE FOLDS ON A NARROW SCREEN: each block is a <details>
+   shipped open, with its summary hidden where there is room, so a wide page
+   reads as before. Under 760px the summary shows and theme.js wireHowTo
+   closes the block, so the figures come first. With no script it stays open. */
+.how-to-read > summary {
+  display: none;
+}
+@media (max-width: 760px) {
+  .how-to-read > summary {
+    display: list-item;
+    cursor: pointer;
+    margin: 8px 0;
+    font-size: 14px;
+    color: var(--ink-2);
+  }
+}
+
+/* A TIGHTER PAGE HEAD ON A NARROW SCREEN: a smaller title, and the lede held
+   to three lines until the reader asks for the rest (theme.js wireLede adds
+   the "More" button only where the clamp cuts). */
+@media (max-width: 760px) {
+  .page-head h1 {
+    font-size: 1.55em;
+    line-height: 1.2;
+  }
+  .page-head .lede:not([data-full]) {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    overflow: hidden;
+  }
+  .lede-more {
+    margin: 4px 0 0;
+    min-height: 28px;
+    padding: 2px 12px;
+  }
+}

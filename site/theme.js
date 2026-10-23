@@ -75,15 +75,69 @@ export function wireMenu(win) {
   button.removeAttribute("hidden");
 }
 
+/** Where how-to-read prose folds; style.css's media query says the same. */
+const NARROW = "(max-width: 760px)";
+
 /**
- * Wires the page's chrome: the menu (wireMenu), the cue on every box that
- * scrolls sideways (format.js scrollCues), and the page's theme toggle,
- * shown and following the OS setting so the button never announces the
- * opposite of what it does. A page with no toggle keeps no theme control.
+ * Folds every details.how-to-read on a narrow screen and opens it on a wide
+ * one, following the window across the breakpoint. Where the summary is
+ * hidden (wide) a closed block would hide its prose with no way to open it,
+ * so wide always opens. Without matchMedia every block stays as shipped,
+ * open.
+ * @param {Window} win
+ */
+export function wireHowTo(win) {
+  if (typeof win.matchMedia !== "function") return;
+  const blocks = /** @type {HTMLDetailsElement[]} */ (Array.from(win.document.querySelectorAll("details.how-to-read")));
+  if (!blocks.length) return;
+  const mq = win.matchMedia(NARROW);
+  const apply = () => {
+    for (const d of blocks) d.open = !mq.matches;
+  };
+  apply();
+  if (typeof mq.addEventListener === "function") mq.addEventListener("change", apply);
+  else if (typeof mq.addListener === "function") mq.addListener(apply);
+}
+
+/**
+ * Offers "More" (the top bar's "lede-more" template) under the page head's
+ * lede wherever style.css's narrow clamp cuts it short, kept current as the window resizes, and drops the clamp
+ * (data-full) for good on a press. A lede the clamp does not cut has no
+ * button.
+ * @param {Window} win
+ */
+export function wireLede(win) {
+  const doc = win.document;
+  const lede = /** @type {HTMLElement | null} */ (doc.querySelector(".page-head .lede"));
+  const tmpl = /** @type {HTMLTemplateElement | null} */ (doc.getElementById("lede-more"));
+  const cloned = tmpl && tmpl.content.firstElementChild;
+  if (!lede || !cloned) return;
+  const more = /** @type {HTMLElement} */ (cloned.cloneNode(true));
+  more.addEventListener("click", () => {
+    lede.setAttribute("data-full", "");
+    more.remove();
+  });
+  const check = () => {
+    const cut = !lede.hasAttribute("data-full") && lede.scrollHeight > lede.clientHeight + 1;
+    if (cut && !more.isConnected) lede.after(more);
+    else if (!cut && more.isConnected) more.remove();
+  };
+  check();
+  win.addEventListener("resize", check);
+}
+
+/**
+ * Wires the page's chrome: the menu (wireMenu), the folding prose
+ * (wireHowTo), the clamped page lede (wireLede), the cue on every box that
+ * scrolls sideways (format.js scrollCues), and the page's theme toggle, shown
+ * and following the OS setting so the button never announces the opposite of
+ * what it does. A page with no toggle keeps no theme control.
  * @param {Window} [win]
  */
 export function boot(win = globalThis.window) {
   wireMenu(win);
+  wireHowTo(win);
+  wireLede(win);
   scrollCues(win.document);
   const doc = win.document;
   const button = doc.getElementById("theme-toggle");

@@ -37,6 +37,7 @@
   </ul>
   <button type="button" id="theme-toggle" hidden>Dark mode</button>
 </nav>
+<template id="lede-more"><button type="button" class="lede-more">More</button></template>
 <div class="year-bar">
   <label class="year-select">Budget year
     <select id="year-select" disabled>
@@ -58,6 +59,8 @@
 
 <main id="sides-main">
 
+<details class="how-to-read" open>
+<summary>How to read this page</summary>
 <p class="sides-how">
   Each side is a list of bars, largest first, every bar on the one scale the page's largest bar sets. Click a bar that opens to see its parts under it, indented; click it again to close it. Shift-click opens a bar its other way where the budget prints one. A bar marked <em>inferred</em> is a figure the city prints only
   as a difference; one with a leading minus is printed as a reduction and
@@ -65,6 +68,7 @@
   and pointing at a bar, or focusing it, names the pages it was read from. A share
   marked ◇ is ours: one bar as a percentage of its side.
 </p>
+</details>
 
 <ul class="sides-key" aria-label="Key">
   <li><span class="key-swatch can-open" aria-hidden="true"></span> opens with a click</li>

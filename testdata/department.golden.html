@@ -35,6 +35,7 @@
   </ul>
   <button type="button" id="theme-toggle" hidden>Dark mode</button>
 </nav>
+<template id="lede-more"><button type="button" class="lede-more">More</button></template>
 <div class="year-bar">
   <label class="year-select">Budget year
     <select id="year-select" disabled>
@@ -76,6 +77,8 @@
 
 <section class="department-bars" aria-labelledby="bars-heading">
   <h2 id="bars-heading">Every department</h2>
+  <details class="how-to-read" open>
+  <summary>How to read this page</summary>
   <p class="department-bars-how">
     Each bar is a department, longest first, on the one scale the longest sets,
     split by the group of funds that pays for it. Click a department, or press
@@ -83,6 +86,7 @@
     where its money comes from and where it goes, each bar naming the Budget
     Book page its figure was read from.
   </p>
+  </details>
   <ul class="department-legend" id="department-legend" aria-label="Fund groups, largest across every department first"></ul>
   <ol class="department-list" id="department-list"></ol>
   <p class="department-bars-sum" id="department-bars-sum">
@@ -143,6 +147,8 @@
 
 <div class="tooltip" id="tooltip" role="status" aria-live="polite" hidden></div>
 
+<details class="how-to-read" open>
+<summary>How to read these bars</summary>
 <p class="subtle">
   Both sides are drawn on one scale, the longest bar of either filling its track.
   Point at a bar, or focus it, for the pages its figure was read from; the <a href="provenance.html">Sources and data</a> page lists every cited page.
@@ -151,6 +157,7 @@
   a figure, so neither sum is presented as the department's total. A share
   marked ◇ is ours too: one bar as a percentage of its side's sum.
 </p>
+</details>
 <p class="caveats-line"><a href="caveats.html#caveats-on-department">7 caveats apply to this page &rarr;</a></p>
 
 </main>

@@ -3716,6 +3716,22 @@ function layRoom() {
   return chartDrawn() && sameWindow(windowNow()) ? heldRoom : roomHeight();
 }
 
+/**
+ * Shows and wires the narrow screen's "Show the chart anyway" button: it
+ * marks the root data-chart-anyway, which unfolds the card under style.css's
+ * narrow media query, and asks for the room the chart now has (askRoom),
+ * since the card was drawn folded. A page with no button is left alone.
+ */
+export function wireNarrow() {
+  const button = maybeEl("narrow-show");
+  if (!button) return;
+  button.removeAttribute("hidden");
+  button.addEventListener("click", () => {
+    document.documentElement.setAttribute("data-chart-anyway", "");
+    askRoom();
+  });
+}
+
 /** Follows the window's size with the chart's room (askRoom). */
 export function wireRoom() {
   window.addEventListener("resize", askRoom);
@@ -4732,6 +4748,7 @@ export async function main() {
   wireSearch();
   wireBulk();
   wireFullscreen();
+  wireNarrow();
   wireRoom();
   wireZoom();
 

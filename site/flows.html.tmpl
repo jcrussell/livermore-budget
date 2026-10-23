@@ -154,6 +154,18 @@
   </noscript>
 </div>
 
+{{- /* ON A NARROW SCREEN THE CHART GIVES WAY TO A POINTER: its labels would
+       draw a few px tall. style.css shows the note and folds the card above
+       it under its narrow media query; app.js shows the button, which puts
+       the chart back for this visit. After the card, so the chart is still
+       what the page opens on wherever it is drawn. */}}
+{{- with .Narrow}}{{if .Path}}
+<div class="narrow-note" id="narrow-note">
+  <p>This flow chart needs a wider screen than this one to be read. <a href="{{.Path}}"{{with .YearKeys}} data-years="{{.}}"{{end}}>{{.Label}}</a> shows the same money as lists of bars, each opening into its parts.</p>
+  <button type="button" id="narrow-show" hidden>Show the chart anyway</button>
+</div>
+{{- end}}{{end}}
+
 {{- /* #hero and #lede-year are repainted per year by paintYearWords. */}}
 <p class="lede">
   <span id="hero"><span class="label">{{.Hero.Label}}</span>: <strong class="value">{{.Hero.Value}}</strong></span>

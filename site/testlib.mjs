@@ -148,6 +148,8 @@ function mediaStub(width, osDark, motion) {
   const answer = (q) => {
     if (q === OS_DARK) return state.osDark;
     if (q === REDUCED) return !state.motion;
+    const max = /^\(max-width:\s*(\d+)px\)$/.exec(q);
+    if (max) return state.width <= Number(max[1]);
     const m = /^\(min-width:\s*(\d+)px\)$/.exec(q);
     if (!m) throw new Error("the matchMedia stub cannot answer " + JSON.stringify(q));
     return state.width >= Number(m[1]);
