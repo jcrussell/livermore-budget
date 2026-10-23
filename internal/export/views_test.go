@@ -406,7 +406,7 @@ func TestTheCaveatsPageRefusesWhatWouldRender(t *testing.T) {
 				export.PrimaryProjection: doc(`[{"id":"a","summary":"s","theme":"left-out","text":"t","applies_to":[]}]`)[export.PrimaryProjection],
 				"other":                  doc(`[{"id":"a","summary":"s","theme":"left-out","text":"another t","applies_to":[]}]`)[export.PrimaryProjection],
 			},
-			"of the same years",
+			"two texts with one year",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

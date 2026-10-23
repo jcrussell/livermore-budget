@@ -1,12 +1,16 @@
 package export
 
 import (
+	"bytes"
 	"fmt"
+	"html/template"
 	"slices"
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+
+	"github.com/jcrussell/livermore-budget/site"
 )
 
 // caveatDoc is a shape-blind document of one year carrying caveats, as
@@ -135,7 +139,7 @@ func TestTwoTextsOfOneYearAreRefused(t *testing.T) {
 		`[{"id":"x","summary":"X.","theme":"left-out","text":"One.","applies_to":[]}]`,
 		`[{"id":"x","summary":"X.","theme":"left-out","text":"Two.","applies_to":[]}]`, `[]`)
 	o.Projections["a"] = caveatDoc("FY 2025-26", `[{"id":"x","summary":"X.","theme":"left-out","text":"One.","applies_to":[]}]`)
-	if _, err := buildCaveatIndex(o, ColumnIndex{}, nav); err == nil || !strings.Contains(err.Error(), "of the same years") {
+	if _, err := buildCaveatIndex(o, ColumnIndex{}, nav); err == nil || !strings.Contains(err.Error(), "two of them are of FY 2025-26 adopted") {
 		t.Errorf("buildCaveatIndex = %v, want two texts of one year refused", err)
 	}
 }
@@ -300,5 +304,102 @@ func TestASectionsThemeAnchorIsClaimedLikeAnyOther(t *testing.T) {
 	_, err := buildCaveatIndex(o, ColumnIndex{}, nav)
 	if err == nil || !strings.Contains(err.Error(), "is claimed by both") {
 		t.Errorf("buildCaveatIndex = %v, want caveats-on-a--left-out claimed twice", err)
+	}
+}
+
+// TestOneYearInTwoTextsIsRefused: a text of one id carried by two years and
+// another carried by one of them would head two texts with that year.
+//
+// Mutation: compare whole Of strings rather than each year and it builds,
+// "FY 2024-25 adopted" over one text and "FY 2024-25 adopted, FY 2025-26
+// adopted" over another.
+func TestOneYearInTwoTextsIsRefused(t *testing.T) {
+	o, nav := caveatSite(
+		`[{"id":"x","summary":"X.","theme":"left-out","text":"Both.","applies_to":[]}]`,
+		`[{"id":"x","summary":"X.","theme":"left-out","text":"Both.","applies_to":[]}]`, `[]`)
+	o.Projections["c"] = caveatDoc("FY 2024-25", `[{"id":"x","summary":"X.","theme":"left-out","text":"Other.","applies_to":[]}]`)
+	if _, err := buildCaveatIndex(o, ColumnIndex{}, nav); err == nil || !strings.Contains(err.Error(), "two of them are of FY 2024-25 adopted") {
+		t.Errorf("buildCaveatIndex = %v, want one year under two texts refused", err)
+	}
+}
+
+// TestATextOfADocumentStatingNoYearIsHeadedByItsStem: a document stating no
+// fiscal year is named by its stem rather than dropped from the heading.
+//
+// Mutation: skip a carrier whose label is "" and the second text's Of is
+// "FY 2025-26 adopted" alone.
+func TestATextOfADocumentStatingNoYearIsHeadedByItsStem(t *testing.T) {
+	o, nav := caveatSite(
+		`[{"id":"x","summary":"X.","theme":"left-out","text":"One.","applies_to":[]}]`,
+		`[{"id":"x","summary":"X.","theme":"left-out","text":"Two.","applies_to":[]}]`, `[]`)
+	o.Projections["c"] = []byte(`{"schema_version":1,"projection":"p","metadata":{"caveats":` +
+		`[{"id":"x","summary":"X.","theme":"left-out","text":"Two.","applies_to":[]}]}}`)
+	cx, err := buildCaveatIndex(o, ColumnIndex{}, nav)
+	if err != nil {
+		t.Fatalf("buildCaveatIndex: %v", err)
+	}
+	var ofs []string
+	for _, va := range cx.entries[0].Variants {
+		ofs = append(ofs, va.Of)
+	}
+	if diff := cmp.Diff([]string{"FY 2024-25 adopted", "FY 2025-26 adopted, c"}, ofs); diff != "" {
+		t.Errorf("variants' Of (-want +got):\n%s", diff)
+	}
+}
+
+// TestACaveatNoPageCountsNamesNoNode: a data-files or checked caveat is no
+// limit on any page, so a chart chipping one on a mark would warn of what
+// the page does not count; the export refuses it as validateCaveats does,
+// since it reads bytes.
+//
+// Mutation: drop the arm and both build.
+func TestACaveatNoPageCountsNamesNoNode(t *testing.T) {
+	for _, theme := range []string{"data-files", "checked"} {
+		o, nav := caveatSite(`[{"id":"x","summary":"X.","theme":"`+theme+`","text":"T.","applies_to":["fund/100"]}]`, `[]`, `[]`)
+		if _, err := buildCaveatIndex(o, ColumnIndex{}, nav); err == nil || !strings.Contains(err.Error(), "names nodes") {
+			t.Errorf("%s: buildCaveatIndex = %v, want a caveat naming nodes refused", theme, err)
+		}
+	}
+}
+
+// TestViewsStatingOneSetInTwoOrdersShareASection: sections are matched as
+// sets, so two views reaching the same documents in another order share one.
+//
+// Mutation: match sections with slices.Equal and b.html gets its own.
+func TestViewsStatingOneSetInTwoOrdersShareASection(t *testing.T) {
+	two := `[{"id":"x","summary":"X.","theme":"left-out","text":"T.","applies_to":[]},{"id":"y","summary":"Y.","theme":"left-out","text":"T.","applies_to":[]}]`
+	owt := `[{"id":"y","summary":"Y.","theme":"left-out","text":"T.","applies_to":[]},{"id":"x","summary":"X.","theme":"left-out","text":"T.","applies_to":[]}]`
+	o, nav := caveatSite(two, owt, `[]`)
+	cx, err := buildCaveatIndex(o, ColumnIndex{}, nav)
+	if err != nil {
+		t.Fatalf("buildCaveatIndex: %v", err)
+	}
+	if cx.views[0].Section == nil || cx.views[0].Section != cx.views[1].Section {
+		t.Error("a.html and b.html state x and y in two orders and do not share a section")
+	}
+}
+
+// TestTheFallbackLineListsACheckedCaveat: with no caveats page a page's line
+// lists every entry of its section, a checked one included, though the
+// linked line counts only limits.
+//
+// Mutation: gate the fallback list on .Groups and a.html prints nothing.
+func TestTheFallbackLineListsACheckedCaveat(t *testing.T) {
+	o, nav := caveatSite(`[{"id":"k","summary":"K.","theme":"checked","text":"T.","applies_to":[]}]`, `[]`, `[]`)
+	o.Views, nav = o.Views[:2], nav[:2]
+	cx, err := buildCaveatIndex(o, ColumnIndex{}, nav)
+	if err != nil {
+		t.Fatalf("buildCaveatIndex: %v", err)
+	}
+	tmpl, err := template.New("t").ParseFS(site.FS(), ChromePartial)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	if err := tmpl.ExecuteTemplate(&buf, "caveats-line", cx.here("a.html")); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(buf.String(), "<li>K.</li>") {
+		t.Errorf("a.html's fallback line is %q, want K. listed", buf.String())
 	}
 }

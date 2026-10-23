@@ -1285,14 +1285,12 @@ func expansionCaveats(twice int, nodes []Node, apart []string) []Caveat {
 			Theme: ThemeChecked,
 			Summary: "Click into any part of the citywide chart and the pages it opens into add " +
 				"back up to it, to the cent.",
-			Text: fmt.Sprintf("Each part of the citywide chart opens into the finer pages of the "+
-				"budget book that break it down: revenue lines (pp.127-140), funds, General Fund "+
-				"divisions (pp.167-170), spending categories (pp.167-183) or departments "+
-				"(pp.85-125), transfers (p76 and p222) and fund balances (pp.186-209). Added up, "+
-				"they equal the citywide figures on pp.66-67. A box marked derived holds money a "+
-				"page prints for a group and no finer page breaks down. In the downloaded file, %s "+
-				"behind more than one ribbon, so adding every ribbon counts them twice.",
-				countedFigures(twice)),
+			Text: "Each part of the citywide chart opens into the finer pages of the " +
+				"budget book that break it down: revenue lines (pp.127-140), funds, General Fund " +
+				"divisions (pp.167-170), spending categories (pp.167-183) or departments " +
+				"(pp.85-125), transfers (p76 and p222) and fund balances (pp.186-209). Added up, " +
+				"they equal the citywide figures on pp.66-67. A box marked derived holds money a " +
+				"page prints for a group and no finer page breaks down.",
 			AppliesTo: []string{},
 		},
 	}

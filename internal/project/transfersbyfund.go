@@ -444,8 +444,8 @@ func FundNumber(id string) (int, bool) {
 	return 0, false
 }
 
-// twoRibbonsSummary heads one-figure-is-two-ribbons in both transfer
-// documents, which the caveats page lists once.
+// twoRibbonsSummary heads one-figure-is-two-ribbons in both years of
+// transfers-by-fund, which the caveats page lists once.
 const twoRibbonsSummary = "Every printed transfer is drawn from both ends, so adding every " +
 	"ribbon in this file counts each transfer twice."
 
@@ -519,9 +519,9 @@ func transfersOutCaveats(rows map[transferKey]transferRow) []Caveat {
 	return []Caveat{
 		ConstraintTierCaveat(),
 		{
-			ID:      "one-figure-is-two-ribbons",
+			ID:      "every-transfer-out-is-two-ribbons",
 			Theme:   ThemeDataFiles,
-			Summary: twoRibbonsSummary,
+			Summary: "Every transfer out is drawn from both ends, so adding every ribbon in this file counts each twice.",
 			Text: fmt.Sprintf("Budget Book p76 and p222 name both ends of every transfer they "+
 				"print, and this file draws both, under one transfer_id and at one value. "+
 				"Adding every value_cents gives twice the %s the city transfers out.",

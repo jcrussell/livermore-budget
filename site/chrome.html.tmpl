@@ -66,17 +66,17 @@
        there. With no caveats page (an empty .Href) it lists each caveat's
        summary instead, so a site without that page still states them. */}}
 {{define "caveats-line"}}
-{{- if .Groups}}
 {{- if .Href}}
+{{- if .Groups}}
 <p class="caveats-line">Limits on these figures:
   {{- range $i, $g := .Groups}}{{if $i}} ·{{end}} <a href="{{$.Href}}#{{$g.Anchor}}">{{$g.Heading}} ({{len $g.Entries}})</a>{{end}}</p>
-{{- else}}
+{{- end}}
+{{- else if .Entries}}
 <ul class="caveats" aria-label="What these figures do not say">
   {{- range .Entries}}
   <li>{{.Summary}}</li>
   {{- end}}
 </ul>
-{{- end}}
 {{- end}}
 {{- end}}
 {{- /* "footer" closes every page, executed against the page's own data. With

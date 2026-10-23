@@ -206,7 +206,7 @@ var caveatThemeWords = map[CaveatTheme][2]string{
 	ThemeLeftOut: {"What isn't in the picture",
 		"Money or columns a schedule doesn't carry, or that this site reads and doesn't draw. A total here can be smaller than one printed elsewhere for that reason alone."},
 	ThemeBooksDisagree: {"Where the city's own books disagree",
-		"Two of the city's pages print different figures for the same thing, usually by a few dollars. This site draws one as printed and says which; it corrects neither."},
+		"Two of the city's pages print different figures or labels for the same thing, by anything from a dollar to hundreds of thousands. This site draws one as printed and says which; it corrects neither."},
 	ThemeSameMoneyTwice: {"Don't add these together",
 		"The same printed dollars appear in two places, or are drawn from both ends. Adding them counts the money twice."},
 	ThemeKindsOfYear: {"Not every year is the same kind of number",

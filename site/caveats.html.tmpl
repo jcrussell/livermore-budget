@@ -101,7 +101,7 @@
       {{- if .Pages}}
       Stated on
       {{- range $i, $p := .Pages}}{{if $i}},{{end}} <a href="{{$p.Path}}">{{$p.Label}}</a>{{end}}.
-      {{- else if eq .Theme "data-files"}}
+      {{- else if .DataFiles}}
       Stated on no page: it is about adding up a downloaded file.
       {{- else}}
       No page states it: see "In data no page states caveats for".

@@ -6470,7 +6470,7 @@
     {
      "id": "the-expansion-is-the-spine-at-finer-grain",
      "summary": "Click into any part of the citywide chart and the pages it opens into add back up to it, to the cent.",
-     "text": "Each part of the citywide chart opens into the finer pages of the budget book that break it down: revenue lines (pp.127-140), funds, General Fund divisions (pp.167-170), spending categories (pp.167-183) or departments (pp.85-125), transfers (p76 and p222) and fund balances (pp.186-209). Added up, they equal the citywide figures on pp.66-67. A box marked derived holds money a page prints for a group and no finer page breaks down. In the downloaded file, 369 printed figures sit behind more than one ribbon, so adding every ribbon counts them twice.",
+     "text": "Each part of the citywide chart opens into the finer pages of the budget book that break it down: revenue lines (pp.127-140), funds, General Fund divisions (pp.167-170), spending categories (pp.167-183) or departments (pp.85-125), transfers (p76 and p222) and fund balances (pp.186-209). Added up, they equal the citywide figures on pp.66-67. A box marked derived holds money a page prints for a group and no finer page breaks down.",
      "theme": "checked",
      "applies_to": []
     },
@@ -52992,8 +52992,8 @@
      "applies_to": []
     },
     {
-     "id": "one-figure-is-two-ribbons",
-     "summary": "Every printed transfer is drawn from both ends, so adding every ribbon in this file counts each transfer twice.",
+     "id": "every-transfer-out-is-two-ribbons",
+     "summary": "Every transfer out is drawn from both ends, so adding every ribbon in this file counts each twice.",
      "text": "Budget Book p76 and p222 name both ends of every transfer they print, and this file draws both, under one transfer_id and at one value. Adding every value_cents gives twice the $59,612,734 the city transfers out.",
      "theme": "data-files",
      "applies_to": []
