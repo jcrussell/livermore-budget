@@ -174,6 +174,21 @@ export function share(part, whole) {
 }
 
 /**
+ * The total a side's shares are of: its roots that are not printed
+ * reductions, their count and their cents, and how many roots are left out.
+ * @param {Side} side
+ * @returns {{roots: number, cents: number, reductions: number}}
+ */
+export function shareTotal(side) {
+  const counted = side.tree.roots.filter((r) => !r.contra);
+  return {
+    roots: counted.length,
+    cents: counted.reduce((a, r) => a + r.cents, 0),
+    reductions: side.tree.roots.length - counted.length,
+  };
+}
+
+/**
  * A tile's share of its side marked ours, or "" for a printed reduction:
  * a reduction takes no share and its side's total leaves out every root
  * that is one.
@@ -182,7 +197,7 @@ export function share(part, whole) {
  */
 export function tileShare(tile, side) {
   if (tile.contra) return "";
-  const whole = side.tree.roots.reduce((a, r) => (r.contra ? a : a + r.cents), 0);
+  const whole = shareTotal(side).cents;
   const pct = share(tile.cents, whole);
   return pct ? "◇ " + pct : "";
 }
@@ -319,7 +334,9 @@ export function render(win, config, column, st, renderer, toggle, tips) {
     const section = /** @type {HTMLElement | null} */ (doc.querySelector(`section.sides-side[data-tier="${side.tier}"]`));
     if (!section) throw new Error(`the page has no section for tier ${side.tier}`);
     const total = section.querySelector(".sides-total");
-    if (total) total.textContent = `◇ our sum of the ${side.tree.roots.length} drawn at this tier: ${dollars(side.tree.cents)}`;
+    const whole = shareTotal(side);
+    if (total) total.textContent = `◇ our sum of the ${whole.roots} drawn at this tier` +
+      (whole.reductions ? " that are not printed reductions" : "") + `: ${dollars(whole.cents)}`;
     renderer.draw(section, side, ctx);
   }
   const year = config.years.find((/** @type {any} */ y) => y.path === st.year);

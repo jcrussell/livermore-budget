@@ -15,18 +15,17 @@
  * and never computed here.
  */
 
+import { sumReading } from "./core.js";
 import { rank } from "./glance.js";
 import { configOf, dollars, hashFields, hashValue, selectYear, share, tipper, wireYearSelect, yearKey } from "./format.js";
 import { LEDGER } from "./ledger.js";
-import { clone, fillTip, tileShare } from "./sides.js";
+import { clone, fillTip, shareTotal, tileShare } from "./sides.js";
 
 /** @typedef {import("./core.js").SideTile} SideTile */
 /** @typedef {{doc_id: string, pages: number[]}} Locator */
 /**
  * @typedef {{id: string, label: string, cents: number, factIds: string[], locators: Locator[], derived: boolean, contra: string}} Row
- *   derived where any link it sums is, since a sum over an inferred figure is
- *   not a printed one; contra the sentence its links share as a printed
- *   reduction, "" where they are not one.
+ *   derived and contra as core.sumReading reads the row's node and links.
  */
 
 /**
@@ -101,10 +100,8 @@ function unionLocators(a, b) {
 
 /**
  * One row per distinct node at one end of the links, its cents summed and
- * its fact ids and locators unioned, largest first. FAILS CLOSED on a row
- * whose links disagree on the reduction they are printed as: part reduction
- * and part not, its sum is neither, and would take a share of a total it is
- * no part of or be left out of one it is.
+ * its fact ids and locators unioned, largest first, read as core.sumReading
+ * reads the node and the links it sums.
  * @param {any[]} links
  * @param {any[]} nodes
  * @param {"from" | "to"} end
@@ -112,26 +109,27 @@ function unionLocators(a, b) {
  * @returns {Row[]}
  */
 function rowsBy(links, nodes, end, schedule) {
-  /** @type {Map<number, Row>} */
+  /** @type {Map<number, {row: Row, links: any[]}>} */
   const by = new Map();
   for (const l of links) {
     const i = l[end];
-    const contra = String(l.contra || "");
-    let r = by.get(i);
-    if (!r) {
-      r = { id: nodes[i].id, label: nodes[i].label, cents: 0, factIds: [], locators: [], derived: false, contra };
-      by.set(i, r);
+    let at = by.get(i);
+    if (!at) {
+      at = { row: { id: nodes[i].id, label: nodes[i].label, cents: 0, factIds: [], locators: [], derived: false, contra: "" }, links: [] };
+      by.set(i, at);
     }
-    if (r.contra !== contra) {
-      throw new Error(`${schedule} draws ${r.id} with links that disagree on the reduction they are printed as ` +
-        `(${JSON.stringify(r.contra)} and ${JSON.stringify(contra)}), so its sum is neither`);
-    }
-    r.derived = r.derived || Boolean(l.derived);
+    const r = at.row;
+    at.links.push(l);
     r.cents += l.value_cents;
     for (const id of l.fact_ids) if (!r.factIds.includes(id)) r.factIds.push(id);
     r.locators = unionLocators(r.locators, l.locators);
   }
-  return [...by.values()].sort((a, b) => b.cents - a.cents || a.label.localeCompare(b.label));
+  for (const [i, at] of by) {
+    const reading = sumReading(nodes[i], at.links, schedule + " draws " + at.row.id);
+    at.row.derived = reading.derived;
+    at.row.contra = reading.contra;
+  }
+  return [...by.values()].map((at) => at.row).sort((a, b) => b.cents - a.cents || a.label.localeCompare(b.label));
 }
 
 /**
@@ -401,7 +399,9 @@ export function render(doc, config, column, st, groups = [], tips = tipper(doc))
     const section = /** @type {HTMLElement | null} */ (doc.querySelector(`section.department-side[data-side="${key}"]`));
     if (!section) throw new Error(`the page has no section for the ${key} side`);
     const total = section.querySelector(".sides-total");
-    if (total) total.textContent = `◇ our sum of the ${side.tree.roots.length} bars on this side: ${dollars(side.tree.cents)}`;
+    const whole = shareTotal(/** @type {any} */ (side));
+    if (total) total.textContent = `◇ our sum of the ${whole.roots} bars on this side` +
+      (whole.reductions ? " that are not printed reductions" : "") + `: ${dollars(whole.cents)}`;
     LEDGER.draw(section, /** @type {any} */ (side), ctx);
     for (const li of Array.from(section.querySelectorAll("li.bar-row"))) {
       const el = /** @type {HTMLElement} */ (li);

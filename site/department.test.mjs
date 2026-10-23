@@ -433,6 +433,19 @@ describe("a department row carries its links' inference, reduction and kind", ()
     assert.deepEqual(inferred, [wages], "a row with no derived link was drawn inferred");
   });
 
+  // core.sumReading reads the node too. Mutation: read a row's inference off
+  // its links alone and the wages row, whose node is derived and whose links
+  // are not, reads as printed.
+  test("a spending row whose node is derived is drawn inferred", () => {
+    const column = structuredClone(columnFixture("fy2026-adopted"));
+    const node = column.nodes.find((n) => n.id === wages);
+    assert.ok(node !== undefined && !node.derived, "no printed wages node");
+    node.derived = true;
+    const f = mod.departmentFigures(column, config, works);
+    const row = f.spending.rows.find((r) => r.id === wages);
+    assert.ok(row !== undefined && row.derived, "the wages row reads as printed");
+  });
+
   test("a spending row printed as a reduction takes no share and is in no share's total", () => {
     const column = structuredClone(columnFixture("fy2026-adopted"));
     for (const l of mineOf(column, works, wages)) {
@@ -450,6 +463,11 @@ describe("a department row carries its links' inference, reduction and kind", ()
     const other = rows.find((li) => li.dataset.id !== wages);
     const r = f.spending.rows.find((x) => x.id === other.dataset.id);
     assert.equal(other.querySelector(".bar-share").textContent, "◇ " + share(r.cents, whole), `${r.id}'s share counts the reduction`);
+    // The header states the total the shares are of. Mutation: sum every
+    // root into it again and it states the net of the reduction.
+    const kept = f.spending.rows.filter((x) => !x.contra).length;
+    const header = document.querySelector('section.department-side[data-side="spending"] .sides-total').textContent;
+    assert.equal(header, `◇ our sum of the ${kept} bars on this side that are not printed reductions: ${dollars(whole)}`);
   });
 
   test("a spending row only part of which is a printed reduction is refused", () => {

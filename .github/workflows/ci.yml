@@ -106,7 +106,7 @@ jobs:
       # happily "fix" the wrong way; the lint job is what catches that.
       - name: Check formatting
         run: |
-          unformatted=$(gofmt -l ./cmd ./internal ./pkg ./site ./tools)
+          unformatted=$(gofmt -l ./cmd ./internal ./pkg ./schema ./site ./tools)
           if [ -n "$unformatted" ]; then
             echo "these files are not gofmt-clean; run 'make fmt':" >&2
             echo "$unformatted" >&2
@@ -202,6 +202,17 @@ jobs:
       # A full gate, for the same reason beadrefs is: it resolves against
       # AGENTS.md, which every checkout carries.
       - run: make doccheck
+
+  extract-schema:
+    name: extract.py schema subset
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          lfs: false # ~67 MB of PDFs no Go code reads; see the header note.
+      # The runner's own python3 and no poppler: the test drives only
+      # check_against_schema, over a committed manifest.
+      - run: make extract-test
 
   vet:
     name: go vet

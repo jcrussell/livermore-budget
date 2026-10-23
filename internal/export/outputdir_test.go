@@ -148,6 +148,10 @@ func TestRefuseForeignDir(t *testing.T) {
 		// because --clean removes no file the manifest does not list but a
 		// stranded manifest temp file.
 		{name: "a manifest beside files no export wrote", files: []string{export.MarkerName, "notes.md", "sub/keep.go", ".git/HEAD"}},
+		// An unmarked GitHub Pages checkout is refused, and the refusal
+		// names the route: export elsewhere and copy. Mutation: drop that
+		// sentence and this case goes red.
+		{name: "an unmarked pages checkout", files: []string{".git/HEAD", "CNAME", "README.md"}, refuse: "export into a new directory and copy its files across"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

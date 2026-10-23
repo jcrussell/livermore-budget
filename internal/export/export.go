@@ -981,14 +981,11 @@ func Prepare(o Options) (*plan, error) {
 			return nil, err
 		}
 	}
-	// The pages are written last, and index.html last of all, so in a fresh
-	// directory the entry point does not exist until the site around it
-	// does -- including the other views it links to, or it would appear
-	// while its own nav pointed at 404s. Over an earlier export, with or
-	// without --clean, the old index.html is already there, and a write that
-	// stops partway leaves it beside a mix of old and new files, missing at
-	// most what --clean removed from the way of a planned path
-	// (fisc-3s5d.69).
+	// The pages are written last, and index.html last of all, so the entry
+	// point does not exist until the site around it does -- including the
+	// other views it links to, or it would appear while its own nav pointed
+	// at 404s. Over an earlier export, Write removes that export's pages
+	// first, so the same holds there.
 	for _, pg := range pages {
 		if pg.Path == IndexPath {
 			continue
@@ -1095,6 +1092,18 @@ func (p *plan) Write(ctx context.Context, clean bool) ([]string, Removal, error)
 			return nil, Removal{}, hint.With(err, "pass a different --output, or remove the files yourself")
 		}
 		removed.Dirs = dirs
+	}
+	// An earlier export's pages go before anything is written, since the
+	// pages are written last: a write that stops partway then leaves no page
+	// beside a mix of old and new data for a server to go on serving. Only a
+	// page the manifest lists is fisc's to remove.
+	for _, f := range p.files {
+		if path.Ext(f.Path) != ".html" || !slices.Contains(prev, f.Path) {
+			continue
+		}
+		if err := os.Remove(filepath.Join(p.dir, filepath.FromSlash(f.Path))); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return nil, Removal{}, fmt.Errorf("remove the earlier export's %q: %w", f.Path, err)
+		}
 	}
 	written := make([]string, 0, len(p.files)+1)
 	written = append(written, MarkerName)
@@ -1339,11 +1348,14 @@ func removeListed(dir string, rels, dirs []string) ([]string, error) {
 	}
 	var removed []string
 	for _, d := range dirs {
-		err := os.Remove(filepath.Join(dir, filepath.FromSlash(d)))
+		// Rmdir and not os.Remove: a file another process put where the
+		// directory was is listed by no manifest, and os.Remove would unlink
+		// it. ENOTDIR is that file, and it is left alone.
+		err := syscall.Rmdir(filepath.Join(dir, filepath.FromSlash(d)))
 		switch {
 		case err == nil:
 			removed = append(removed, d)
-		case errors.Is(err, os.ErrNotExist), notEmpty(err):
+		case errors.Is(err, os.ErrNotExist), notEmpty(err), errors.Is(err, syscall.ENOTDIR):
 		default:
 			return nil, fmt.Errorf("remove emptied directory %q: %w", d, err)
 		}

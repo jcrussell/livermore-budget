@@ -546,7 +546,8 @@ Why, measured: [`docs/review-loop-evidence.md`](docs/review-loop-evidence.md).
   shells out to `tools/extract.py`, and `fisc` reads only the committed artifacts
   under `data/extracted/` — which is what lets CI verify without a venv or an LFS
   checkout.
-- `tools/extract.py` is the only Python here: standard library only, poppler as a
+- `tools/extract.py` and its test `tools/extract_test.py` (`make extract-test`)
+  are the only Python here: standard library only, poppler as a
   system package, PyPI unreachable from the extraction environment.
 - **Two substrates per page, both needed**: `-layout` text for the printed column
   grid, `-bbox` geometry for column identity. Page text is `.txt` and not `.md`

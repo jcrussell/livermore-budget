@@ -1749,14 +1749,40 @@ export function reducedOf(arriving, leaving) {
  */
 
 /**
+ * What a sum of links is, beside its cents: inferred where its node is or any
+ * link it sums is, since a sum over an inferred figure is not a printed one;
+ * and the reduction it is printed as, the words its links share. FAILS CLOSED
+ * on links that disagree on the reduction: part reduction and part not, the
+ * sum is neither, and would take a share of a total it is no part of or be
+ * left out of one it is.
+ * @param {{derived?: boolean}} node
+ * @param {{derived?: boolean, contra?: string}[]} links
+ * @param {string} what names the sum, for the refusal
+ * @returns {{derived: boolean, contra: string}}
+ */
+export function sumReading(node, links, what) {
+  /** @type {string | null} */
+  let contra = null;
+  for (const l of links) {
+    const c = String(l.contra || "");
+    if (contra === null) contra = c;
+    else if (contra !== c) {
+      throw new Error(what + " with links that disagree on the reduction they are printed as (" +
+        JSON.stringify(contra) + " and " + JSON.stringify(c) + "), so its sum is neither");
+    }
+  }
+  return { derived: Boolean(node.derived) || links.some((l) => Boolean(l.derived)), contra: contra || "" };
+}
+
+/**
  * The tree one side of the expansion schedule draws at a frontier: every root
  * at `tier`, each with the members the frontier opens under it, and so on
  * down. A root's figure is the sum of the folded ribbons joining it to what
  * is outside it, signed as the fold sums them, so a printed reduction counts
  * against it; a member's is the sum of the ribbons joining it to its parent
  * hub. Both are sums of figures Go cited, at memberships Go declared, and
- * `size` is the magnitude a tile or bar is laid out at. A tile is inferred
- * where its node is, or where every ribbon it sums is.
+ * `size` is the magnitude a tile or bar is laid out at. A tile reads as
+ * sumReading says of its node and the ribbons it sums.
  *
  * FAILS CLOSED on a root whose outside ribbons both arrive and leave, since
  * no one figure is its size, and on a drawn member joined to its parent by
@@ -1810,10 +1836,10 @@ export function sideTree(doc, frontier, tier) {
       }
       return tile(m, joining);
     }) : null;
+    const reading = sumReading(n, ribbons, "cannot draw " + doc.projection + ": " + n.id);
     return {
       id: n.id, label: String(n.label), tier: n.tier, parent: n.parent || "",
-      derived: Boolean(n.derived) || (ribbons.length > 0 && ribbons.every((l) => l.derived)),
-      contra: ribbons.length === 1 ? (ribbons[0].contra || "") : "",
+      derived: reading.derived, contra: reading.contra,
       cents: f.cents, size: Math.abs(f.cents), fact_ids: f.fact_ids, locators: f.locators,
       splits, open: splits.length ? openSplitOf(doc, open, n.id) : "",
       children,

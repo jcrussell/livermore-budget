@@ -384,6 +384,48 @@ func TestWriteStopsOnACancelledContext(t *testing.T) {
 	})
 }
 
+// A write over an earlier export that stops partway leaves none of that
+// export's pages beside the mix of old and new data. Without --clean, Err is
+// asked before the directory, before the manifest, and before each file: the
+// fourth call stops the write after its first file.
+//
+// Mutation: drop Write's removal of the earlier export's pages and this goes
+// red naming index.html.
+func TestAWriteStoppedOverAnEarlierExportLeavesNoPage(t *testing.T) {
+	dir, written := writeGolden(t)
+	pages := slices.DeleteFunc(slices.Clone(written), func(rel string) bool { return !strings.HasSuffix(rel, ".html") })
+	if !slices.Contains(pages, export.IndexPath) {
+		t.Fatalf("the earlier export wrote %q, want index.html among them", written)
+	}
+	p, err := export.Prepare(export.Options{
+		Dir:         dir,
+		Projections: map[string][]byte{"sankey": goldenSankey(t)},
+		Views:       spineOnly(),
+		Docs:        budgetDocs(),
+		PageText:    pageTextFS(),
+		GeneratedBy: "fisc test",
+	})
+	if err != nil {
+		t.Fatalf("Prepare: %v", err)
+	}
+	if _, _, err := p.Write(&cancelFromCall{Context: context.Background(), n: 4}, false); !errors.Is(err, context.Canceled) {
+		t.Fatalf("got error %v, want it to wrap context.Canceled", err)
+	}
+	for _, rel := range pages {
+		if _, serr := os.Stat(filepath.Join(dir, filepath.FromSlash(rel))); serr == nil {
+			t.Errorf("%s, the earlier export's page, is still served beside a partial write", rel)
+		}
+	}
+	if _, _, err := p.Write(context.Background(), false); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	for _, rel := range pages {
+		if _, serr := os.Stat(filepath.Join(dir, filepath.FromSlash(rel))); serr != nil {
+			t.Errorf("a completed re-run did not write %s: %v", rel, serr)
+		}
+	}
+}
+
 // manifestOf is the listing dir's manifest holds, failing the test where it
 // holds none a later export would accept.
 func manifestOf(t *testing.T, dir string) []string {
@@ -982,6 +1024,26 @@ func TestRemovalSkipsADirectoryThatIsNoLongerEmpty(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dir, "b")); err == nil {
 		t.Error("b, still empty, was not removed")
+	}
+}
+
+// A file that took a chosen directory's place is listed by no manifest, and
+// the prune leaves it. Mutation: prune with os.Remove again and the file is
+// unlinked.
+func TestRemovalLeavesAFileWhereADirectoryWas(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "old"), []byte("not fisc's"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	removed, err := export.RemoveListed(dir, nil, []string{"old"})
+	if err != nil {
+		t.Fatalf("RemoveListed: %v", err)
+	}
+	if len(removed) != 0 {
+		t.Errorf("removed %v, want nothing", removed)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "old")); err != nil {
+		t.Errorf("the file in the directory's place is gone: %v", err)
 	}
 }
 

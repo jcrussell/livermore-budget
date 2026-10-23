@@ -64,9 +64,9 @@ func TestTheManifestSchemaToleratesAReportingKeyGoIgnores(t *testing.T) {
 	}
 }
 
-// The two languages refuse the same manifests. tools/extract.py's
-// check_against_schema is driven with the same first four cases; if either list
-// changes, both move.
+// The two languages refuse the same manifests. tools/extract_test.py drives
+// tools/extract.py's check_against_schema with the same first four cases; if
+// either list changes, both move.
 func TestGoRefusesTheManifestsPythonRefuses(t *testing.T) {
 	resolved, err := schema.Load(schema.Manifest)
 	if err != nil {

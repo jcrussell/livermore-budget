@@ -42,7 +42,7 @@ lint: ## Run golangci-lint (warns if the version differs from .golangci-version)
 
 .PHONY: fmt
 fmt: ## Format Go sources
-	gofmt -w ./cmd ./internal ./pkg ./site ./tools
+	gofmt -w ./cmd ./internal ./pkg ./schema ./site ./tools
 
 .PHONY: vet
 vet: ## Run go vet
@@ -118,7 +118,7 @@ tidy: ## Tidy go.mod/go.sum
 # advisory check over the database.
 .PHONY: narration
 narration: ## Refuse review credits and errata in Go sources, beads and memories
-	@go run ./tools/narration ./cmd ./internal ./pkg ./site ./tools
+	@go run ./tools/narration ./cmd ./internal ./pkg ./schema ./site ./tools
 	@go run ./tools/beadcheck .beads/issues.jsonl
 	@command -v bd >/dev/null 2>&1 || { \
 		echo "warning: bd not on PATH, skipping the memory errata check" >&2; \
@@ -424,6 +424,13 @@ hooks: ## Install the local pre-commit hook where git reads it, or refuse and sa
 .PHONY: extract
 extract: ## Re-extract PDFs with poppler (DOC=<id> for one)
 	$(PYTHON) tools/extract.py $(if $(DOC),--doc $(DOC))
+
+# -B so the import leaves no tools/__pycache__; -E -s so neither PYTHON*
+# variables nor user site-packages reach it. Not -I, which would also drop
+# the script's own directory, where extract.py is.
+.PHONY: extract-test
+extract-test: ## Hold extract.py's schema subset to the cases Go refuses
+	$(PYTHON) -B -E -s tools/extract_test.py
 
 .PHONY: extract-list
 extract-list: ## List extractable documents

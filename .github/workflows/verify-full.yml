@@ -9,7 +9,7 @@ name: verify --full
 # work from data/pdf/<doc-id>.pdf and records the hash it computed itself), so
 # the registry and the manifest are two parties agreeing about the same bytes.
 # Give Python a YAML parser and the check collapses into one party agreeing
-# with itself; see the `python-has-no-yaml-by-design` memory.
+# with itself.
 #
 # WHY THIS IS ITS OWN FILE AND NOT A JOB IN ci.yml
 #
@@ -98,11 +98,8 @@ jobs:
             exit 1
           fi
           git lfs ls-files
-      # Not --strict, for the same reason ci.yml's `verify` job is not: several
-      # checks are vacuous until later work lands, and a permanently red gate
-      # gets commented out. `verify` still exits non-zero the moment a check
-      # actually fails, which is what this run is for. --full adds exactly one
+      # --strict, as ci.yml's `verify` job runs it. --full adds exactly one
       # check to the ci.yml run -- source-pdfs-match-both-records, reported
       # there as SKIPPED on every push.
       - name: Hash the source PDFs against both records
-        run: ./bin/fisc verify --full
+        run: ./bin/fisc verify --full --strict

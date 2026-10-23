@@ -122,7 +122,9 @@ func RefuseForeignDir(dir string) error {
 	case errors.Is(err, errNoManifest):
 		return refuse(
 			"output directory %q is not empty and carries no %s manifest from an earlier export; refusing to write a site into it. "+
-				"If an earlier export wrote it, remove the directory and export again, or name a new one",
+				"If an earlier export wrote it, remove the directory and export again, or name a new one. "+
+				"To publish into a checkout that holds other files, such as a GitHub Pages branch, export into a new "+
+				"directory and copy its files across",
 			dir, MarkerName)
 	case errors.As(err, &invalid):
 		return refuse(

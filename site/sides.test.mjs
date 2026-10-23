@@ -71,7 +71,7 @@ function refusal(document) {
 test("the modules import with no page config, no d3 and no DOM, and run nothing", () => {
   assert.ok(domless, "nothing installed a DOM before the import");
   assert.deepEqual(Object.keys(sides).sort(), ["KEY_MARK", "boot", "clone", "closing",
-    "fillTip", "frontierOf", "hashOf", "opensAs", "outside", "parseHash", "readConfig", "render", "say", "share", "sidesAt", "sidesOf", "tileShare"]);
+    "fillTip", "frontierOf", "hashOf", "opensAs", "outside", "parseHash", "readConfig", "render", "say", "share", "shareTotal", "sidesAt", "sidesOf", "tileShare"]);
   assert.deepEqual(Object.keys(forms.ledger).sort(), ["LEDGER", "RANKED", "boot", "widthOf"]);
 });
 
@@ -133,6 +133,30 @@ describe("core.sideTree keeps every sum through every split", () => {
     const again = core.sideTiles(core.sideTree(doc, core.expand(doc, roots, parent, key), 0).roots);
     assert.ok(again.find((x) => x.tile.id === marked.id).tile.derived, `${marked.id} reads as printed`);
     assert.ok(!again.find((x) => x.tile.id === other.id).tile.derived, `${other.id} reads as inferred`);
+  });
+  // The any-derived rule core.sumReading holds for both pages. Mutation:
+  // read a tile inferred only where every ribbon is and the root below,
+  // one of whose ribbons is marked inferred, reads as printed.
+  test("a tile summing one inferred ribbon among printed ones is drawn inferred", () => {
+    const doc = structuredClone(expansionOf("fy2026-adopted", config));
+    const roots = core.rootFrontier(doc);
+    const folded = core.foldDocument(doc, new Set(roots));
+    // A ribbon that is one link of the document and completes no set, so
+    // the fold keeps the mark this test puts on it.
+    const lone = (/** @type {any} */ r) => doc.links.find((l) => !l.derived && !l.completes &&
+      folded.links.some((f) => f.source === l.source && f.target === l.target && f.kind === l.kind &&
+        f.fact_ids.length === l.fact_ids.length) && (l.source === r.id || l.target === r.id));
+    const printed = core.sideTree(doc, roots, 0).roots.find((r) => !r.derived && lone(r) &&
+      folded.links.filter((l) => l.source === r.id || l.target === r.id).length > 1);
+    assert.ok(printed !== undefined, "no printed root sums two ribbons, one of them a lone link");
+    lone(printed).derived = true;
+    const again = core.sideTree(doc, roots, 0).roots.find((r) => r.id === printed.id);
+    assert.ok(again.derived, `${printed.id} sums an inferred ribbon and reads as printed`);
+  });
+  test("a sum of links that disagree on their reduction is refused", () => {
+    assert.throws(() => core.sumReading({}, [{ contra: "ERAF" }, {}], "x"), /x with links that disagree on the reduction/);
+    const r = core.sumReading({ derived: true }, [{ contra: "ERAF" }, { contra: "ERAF" }], "x");
+    assert.ok(r.derived && r.contra === "ERAF", JSON.stringify(r));
   });
   test("a tier whose roots both take in and pay out is refused", () => {
     const doc = expansionOf("fy2026-adopted", config);
