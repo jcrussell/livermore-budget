@@ -1145,6 +1145,14 @@ func (*constraintTierVocabulary) Run(_ context.Context, s *Subject) (Result, err
 					"SUMMARY is not the one internal/project declares. The summary is what "+
 					"the chart pages print in place of the text, so a reader who does not "+
 					"follow the link meets this sentence and no other", project.ConstraintTierCaveatID))
+		// AND THE THEME, which decides whether a page states it at all: the
+		// caveats page leaves a data-files caveat off every page and a checked
+		// one off every page's line.
+		case caveats[i].Theme != project.ConstraintTierCaveat().Theme:
+			findings = append(findings, finding(p.String(),
+				"nodes here carry constraint tiers and metadata.caveats carries %q under theme %q, "+
+					"not the %q internal/project declares, so the pages drawing these nodes may not "+
+					"state it", project.ConstraintTierCaveatID, caveats[i].Theme, project.ConstraintTierCaveat().Theme))
 		}
 	}
 

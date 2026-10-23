@@ -75,7 +75,6 @@
 {{- range .Themes}}
 <section class="caveat-doc" id="{{.Anchor}}" aria-labelledby="{{.Anchor}}-h">
   <h2 id="{{.Anchor}}-h">{{.Heading}}</h2>
-  <p class="subtle">{{.Blurb}}</p>
   {{- range .Entries}}
   <article class="caveat" id="{{.Anchor}}">
     <h3><a href="#{{.Anchor}}" class="anchor-link">{{.Summary}}</a></h3>
@@ -98,7 +97,10 @@
     </div>
     {{- end}}
     <p class="subtle">
-      {{- if .Pages}}
+      {{- if and .Pages .Checked}}
+      Checked for
+      {{- range $i, $p := .Pages}}{{if $i}},{{end}} <a href="{{$p.Path}}">{{$p.Label}}</a>{{end}}.
+      {{- else if .Pages}}
       Stated on
       {{- range $i, $p := .Pages}}{{if $i}},{{end}} <a href="{{$p.Path}}">{{$p.Label}}</a>{{end}}.
       {{- else if .DataFiles}}

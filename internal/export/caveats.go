@@ -104,6 +104,10 @@ type caveatEntry struct {
 // DataFiles is whether e is of project.ThemeDataFiles, which the template asks.
 func (e *caveatEntry) DataFiles() bool { return e.Theme == project.ThemeDataFiles }
 
+// Checked is whether e is of project.ThemeChecked, which no page's line
+// states, so the template names the pages it was checked for instead.
+func (e *caveatEntry) Checked() bool { return e.Theme == project.ThemeChecked }
+
 // caveatVariant is one text of an entry and the documents carrying it.
 type caveatVariant struct {
 	// Of is the fiscal years of the documents carrying this text, "" when

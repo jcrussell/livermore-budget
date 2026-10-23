@@ -139,7 +139,7 @@ var (
 	caveatBalancesDoNotTieToP41 = Caveat{
 		ID:      "p167-does-not-tie-to-p41",
 		Theme:   ThemeBooksDisagree,
-		Summary: "The annual report's summary table (p41) rounds the General Fund's 2025 balance wrong.",
+		Summary: "The annual report's summary table (p41) does not match the General Fund's audited 2025 balance.",
 		Text: "This schedule's five General Fund parts for 2025 add up to $87,043,576, and the " +
 			"audited statement (p54) prints exactly that. The management discussion on p41 " +
 			"shows the same balance in millions as $87.10, which is not where $87,043,576 " +

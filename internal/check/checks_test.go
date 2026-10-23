@@ -1407,6 +1407,14 @@ func TestAConstraintTierWithoutItsDisclosureIsAFinding(t *testing.T) {
 				c.Summary = "Fund restrictions, as printed by the city."
 				s.Projections[0].Graph.Metadata.Caveats = []project.Caveat{c}
 			}, "whose SUMMARY is not the one"},
+		// Mutation: drop the theme arm of constraint-tier-vocabulary and
+		// this goes green.
+		{"the disclosure is filed under a theme no page states",
+			func(_ *testing.T, s *Subject) {
+				c := project.ConstraintTierCaveat()
+				c.Theme = project.ThemeDataFiles
+				s.Projections[0].Graph.Metadata.Caveats = []project.Caveat{c}
+			}, "under theme \"data-files\""},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

@@ -396,6 +396,13 @@ func TestEveryCaveatSummaryLinksToAnAnchorThatExists(t *testing.T) {
 			}
 		}
 	}
+	// A checked caveat is on no page's line, so the caveats page names the
+	// pages it was checked for rather than saying a page states it.
+	// Mutation: drop the template's Checked branch and this goes red.
+	checked := regexp.MustCompile(`(?s)<article class="caveat" id="caveat-pp168-169-tie-to-p54">(.*?)</article>`).FindStringSubmatch(caveatsPage)
+	if checked == nil || strings.Contains(checked[1], "Stated on") || !strings.Contains(checked[1], "Checked for") {
+		t.Error("caveats.html says a page states caveat-pp168-169-tie-to-p54, a check no page's line lists")
+	}
 	ids := map[string]bool{}
 	for _, m := range regexp.MustCompile(`id="([^"]+)"`).FindAllStringSubmatch(caveatsPage, -1) {
 		if ids[m[1]] {

@@ -222,7 +222,7 @@ func debtCaveats() []Caveat {
 		{
 			ID:      "requirements-are-not-the-budget",
 			Theme:   ThemeBooksDisagree,
-			Summary: "The scheduled 2026 and 2027 payments differ from the budget above them by a few dollars.",
+			Summary: "A few scheduled 2026 and 2027 payments differ from the budget above them by a few dollars.",
 			Text: fmt.Sprintf("Each fund type's scheduled payment for 2026 and 2027 can be held "+
 				"against the issues it pays in the budget above it. Most agree to the dollar; "+
 				"%s differ by %s to %s: %s. Both are published as printed.",
@@ -232,8 +232,8 @@ func debtCaveats() []Caveat {
 		},
 		{
 			ID:      "the-equipment-lease-is-one-lender",
-			Theme:   ThemeSameMoneyTwice,
-			Summary: "The two Lease/Purchase rows are one equipment loan, paid by two funds; it is one debt.",
+			Theme:   ThemeOurReading,
+			Summary: "The two Lease/Purchase rows are one equipment loan, each row one fund's share of its payments.",
 			Text: "p80 prints the governmental lease across three lines, which this site joins as " +
 				"Banc of America Equipment Lease/Purchase Loan, the name the Airport's row carries. " +
 				"The city's FY2025 annual financial report (p86) describes one equipment purchase " +

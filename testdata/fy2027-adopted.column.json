@@ -52479,7 +52479,7 @@
      "id": "transfers-out-are-two-schedules",
      "summary": "The city's transfers out come from two printed lists, so a fund can appear on both.",
      "text": "Budget Book p76 lists what the operating funds transfer to one another, $21,624,633 here, and p222 what they transfer to capital project funds, $50,762,251. pp.66-67 print Transfers Out as the two together, and the build checks that sum by fund group to the cent. A fund on both lists pays both.",
-     "theme": "same-money-twice",
+     "theme": "left-out",
      "applies_to": []
     },
     {
