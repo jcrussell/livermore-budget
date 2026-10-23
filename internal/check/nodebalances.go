@@ -48,7 +48,7 @@ func (*nodeBalancesTieToFacts) Run(_ context.Context, s *Subject) (Result, error
 		if err != nil {
 			return Result{}, err
 		}
-		selected := factIndex(slice)
+		selected := fact.ByID(slice)
 		switch p.Name {
 		case project.FundSourcesUsesProjection:
 			findings = append(findings, unpublishedBalances(p, selected, nil)...)

@@ -81,7 +81,7 @@ func (*linkEndsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, erro
 		if err != nil {
 			return Result{}, err
 		}
-		selected := factIndex(slice)
+		selected := fact.ByID(slice)
 		nodes := make(map[string]project.Node, len(p.Nodes))
 		sides := project.PrimarySides(p.Graph.Splits)
 		for _, n := range p.Nodes {

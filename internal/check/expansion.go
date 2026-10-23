@@ -3,6 +3,7 @@ package check
 import (
 	"context"
 	"fmt"
+	"maps"
 	"slices"
 	"sort"
 	"strconv"
@@ -57,7 +58,7 @@ func stitchedDocuments(s *Subject) ([]stitched, []Finding, error) {
 		for _, n := range p.Nodes {
 			nodes[n.ID] = n
 		}
-		out = append(out, stitched{doc: p, spine: spine, nodes: nodes, facts: factIndex(slice),
+		out = append(out, stitched{doc: p, spine: spine, nodes: nodes, facts: fact.ByID(slice),
 			sides: project.PrimarySides(p.Graph.Splits)})
 	}
 	return out, findings, nil
@@ -275,16 +276,16 @@ func (*expansionOpensAsTheSpine) Run(_ context.Context, s *Subject) (Result, err
 				findings = append(findings, finding(subject, "%s: the legs completing it carry %s and the spine draws %s",
 					k, amount.Cents(whole.cents), amount.Cents(l.ValueCents)))
 			}
-			if !slices.Equal(sortedCopy(slices.Compact(sortedCopy(whole.printed))), sortedCopy(l.FactIDs)) {
+			if !slices.Equal(slices.Sorted(slices.Values(slices.Compact(slices.Sorted(slices.Values(whole.printed))))), slices.Sorted(slices.Values(l.FactIDs))) {
 				findings = append(findings, finding(subject, "%s: the legs completing it cite %v of pp.66-67 and the cell prints %v",
-					k, slices.Compact(sortedCopy(whole.printed)), l.FactIDs))
+					k, slices.Compact(slices.Sorted(slices.Values(whole.printed))), l.FactIDs))
 			}
 		}
-		for _, k := range sortedStrings(completing) {
+		for _, k := range slices.Sorted(maps.Keys(completing)) {
 			findings = append(findings, finding(subject, "%d leg(s) name %s in completes, a cell the spine does not draw",
 				completing[k].legs, k))
 		}
-		for _, k := range sortedStrings(drawn) {
+		for _, k := range slices.Sorted(maps.Keys(drawn)) {
 			findings = append(findings, finding(subject, "the leaves fold to %s at %s, a cell the spine does not draw",
 				k, amount.Cents(drawn[k].cents)))
 		}
@@ -377,7 +378,7 @@ func (c *expansionSplitsTie) Run(_ context.Context, s *Subject) (Result, error) 
 				repeated[l.Repeats]++
 			}
 		}
-		for _, k := range sortedStrings(repeated) {
+		for _, k := range slices.Sorted(maps.Keys(repeated)) {
 			if repeated[k] > 1 {
 				findings = append(findings, finding(x.doc.String(), "%d leaves repeat %q, want 1", repeated[k], k))
 			}
@@ -485,7 +486,7 @@ func (c *expansionSplitsTie) split(s *Subject, x stitched, sp project.Split, sub
 		return append(findings, finding(subject, "no printed cell is declared for a %s split of a node at this place, "+
 			"so nothing holds its members", sp.Form))
 	}
-	for _, k := range sortedStrings(cells) {
+	for _, k := range slices.Sorted(maps.Keys(cells)) {
 		findings = append(findings, c.cell(s, x, subject, k, cells[k])...)
 	}
 	return findings
@@ -625,7 +626,7 @@ func (*expansionSplitsTie) restatingFindings(x stitched, sp project.Split, membe
 		}
 		groups[k].cents += l.ValueCents
 	}
-	for _, k := range sortedStrings(groups) {
+	for _, k := range slices.Sorted(maps.Keys(groups)) {
 		g := groups[k]
 		var cents int64
 		for _, key := range g.keys {
@@ -782,7 +783,7 @@ func (*expansionSplitsTie) hubFindings(x stitched, sp project.Split, members []s
 		}
 		l := found[0]
 		if l.ValueCents != g.ValueCents || l.Kind != g.Kind || l.Derived != g.Derived ||
-			!slices.Equal(sortedCopy(l.FactIDs), sortedCopy(g.FactIDs)) {
+			!slices.Equal(slices.Sorted(slices.Values(l.FactIDs)), slices.Sorted(slices.Values(g.FactIDs))) {
 			findings = append(findings, finding(subject, "%s carries %s %s over %v (derived %v) and its leaf %s -> %s carries %s %s over %v (derived %v)",
 				at, amount.Cents(g.ValueCents), g.Kind, g.FactIDs, g.Derived,
 				l.Source, l.Target, amount.Cents(l.ValueCents), l.Kind, l.FactIDs, l.Derived))
@@ -913,7 +914,7 @@ func (*expansionSplitsTie) fundCells(s *Subject, x stitched, sp project.Split, m
 			}
 		}
 		sort.Strings(ids)
-		if cents != l.ValueCents || !slices.Equal(ids, sortedCopy(own)) {
+		if cents != l.ValueCents || !slices.Equal(ids, slices.Sorted(slices.Values(own))) {
 			findings = append(findings, finding(subject, "%s -> %s carries %s over %d facts and %s draws %s onward over %d",
 				l.Source, l.Target, amount.Cents(l.ValueCents), len(l.FactIDs), l.Target, amount.Cents(cents), len(ids)))
 		}
@@ -965,14 +966,14 @@ func (*expansionSplitsTie) cell(s *Subject, x stitched, subject, k string, t *ti
 	}
 	for _, r := range t.remainders {
 		printed, rest := x.printedSide(r)
-		if !slices.Equal(sortedCopy(printed), sortedCopy(t.printedFacts)) {
+		if !slices.Equal(slices.Sorted(slices.Values(printed)), slices.Sorted(slices.Values(t.printedFacts))) {
 			findings = append(findings, finding(subject, "%s: the remainder %s -> %s cites %v of pp.66-67 and the cell prints %v",
 				k, r.Source, r.Target, printed, t.printedFacts))
 		}
 		if len(rest) == 0 {
 			continue
 		}
-		if !slices.Equal(sortedCopy(rest), sortedCopy(t.plain)) {
+		if !slices.Equal(slices.Sorted(slices.Values(rest)), slices.Sorted(slices.Values(t.plain))) {
 			findings = append(findings, finding(subject, "%s: the remainder %s -> %s subtracts %d facts and the other members cite %d",
 				k, r.Source, r.Target, len(rest), len(t.plain)))
 		}
@@ -1018,11 +1019,4 @@ func heldApart(exceptions []structure.Exception, col project.Column, k string, c
 		}
 	}
 	return ""
-}
-
-// sortedCopy is ids sorted, leaving ids as it was.
-func sortedCopy(ids []string) []string {
-	out := slices.Clone(ids)
-	sort.Strings(out)
-	return out
 }

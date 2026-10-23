@@ -3,6 +3,8 @@ package check
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/english"
@@ -117,7 +119,7 @@ func (*documentsAreChecked) Run(_ context.Context, s *Subject) (Result, error) {
 		}
 		built[p.Name][shape] = true
 	}
-	for _, name := range sortedStrings(s.UncheckedDocuments) {
+	for _, name := range slices.Sorted(maps.Keys(s.UncheckedDocuments)) {
 		if declared[name] > 0 {
 			continue
 		}
@@ -125,7 +127,7 @@ func (*documentsAreChecked) Run(_ context.Context, s *Subject) (Result, error) {
 		if shapes := built[name]; len(shapes) > 0 {
 			what = fmt.Sprintf("every projection of that name now carries a %s, so a "+
 				"structural check reads it and the declaration is exempting nothing",
-				strings.Join(sortedStrings(shapes), ", "))
+				strings.Join(slices.Sorted(maps.Keys(shapes)), ", "))
 		}
 		findings = append(findings, finding(name,
 			"uncheckedDocuments declares this projection unchecked, but %s; the "+
@@ -215,7 +217,7 @@ func documentShape(p projection) string {
 // describeShapes renders the document shapes built, sorted, with their counts.
 func describeShapes(byShape map[string]int) string {
 	out := make([]string, 0, len(byShape))
-	for _, shape := range sortedStrings(byShape) {
+	for _, shape := range slices.Sorted(maps.Keys(byShape)) {
 		out = append(out, fmt.Sprintf("%d %s", byShape[shape], shape))
 	}
 	return strings.Join(out, ", ")
@@ -225,7 +227,7 @@ func describeShapes(byShape map[string]int) string {
 // reasons: a count alone would let a growing exemption pass unread.
 func describeUnchecked(unchecked map[string]string, byName map[string]int) string {
 	out := make([]string, 0, len(byName))
-	for _, name := range sortedStrings(byName) {
+	for _, name := range slices.Sorted(maps.Keys(byName)) {
 		out = append(out, fmt.Sprintf("%d of %q (%s)", byName[name], name, unchecked[name]))
 	}
 	return strings.Join(out, ", ")

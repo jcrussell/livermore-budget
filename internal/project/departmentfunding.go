@@ -2,6 +2,8 @@ package project
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"sort"
 	"strconv"
 
@@ -268,7 +270,7 @@ func (d *departmentFunding) addNode(nodes map[string]Node, e endpoint) {
 //
 // No link touches it; it is there for the fold and the fund's colour.
 func (d *departmentFunding) addFundGroups(nodes map[string]Node) error {
-	for _, id := range sortedKeys(nodes) {
+	for _, id := range slices.Sorted(maps.Keys(nodes)) {
 		p := nodes[id].Parent
 		if p == "" {
 			continue

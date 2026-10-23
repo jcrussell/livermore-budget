@@ -3,6 +3,7 @@ package export
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"regexp"
 	"slices"
 	"strings"
@@ -301,7 +302,7 @@ func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, 
 	appliesOf := map[*caveatVariant]map[string][]string{}
 	// carried is each document's entries, in the order it states them.
 	carried := map[string][]*caveatEntry{}
-	for _, stem := range sortedKeys(o.Projections) {
+	for _, stem := range slices.Sorted(maps.Keys(o.Projections)) {
 		var dc documentCaveats
 		if err := json.Unmarshal(o.Projections[stem], &dc); err != nil {
 			return nil, fmt.Errorf("decode %s caveats: %w", stem, err)

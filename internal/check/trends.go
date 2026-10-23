@@ -3,6 +3,8 @@ package check
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/english"
@@ -54,10 +56,7 @@ func (*trendPointsTieToFacts) Description() string {
 }
 
 func (*trendPointsTieToFacts) Run(_ context.Context, s *Subject) (Result, error) {
-	byID := make(map[string]fact.Fact, len(s.Facts))
-	for _, f := range s.Facts {
-		byID[f.ID] = f
-	}
+	byID := fact.ByID(s.Facts)
 
 	var findings []Finding
 	points := 0
@@ -319,7 +318,7 @@ func missingColumns(s project.Series, cols []project.Column) []project.Column {
 // that outlives its reason.
 func staleSeriesDeclarations(incomplete map[string]string, seen map[string]bool, declared map[string]int) []Finding {
 	var out []Finding
-	for _, id := range sortedStrings(incomplete) {
+	for _, id := range slices.Sorted(maps.Keys(incomplete)) {
 		if declared[id] > 0 {
 			continue
 		}
@@ -340,7 +339,7 @@ func staleSeriesDeclarations(incomplete map[string]string, seen map[string]bool,
 // would let a growing exemption pass unread.
 func describeIncomplete(incomplete map[string]string, byID map[string]int) string {
 	out := make([]string, 0, len(byID))
-	for _, id := range sortedStrings(byID) {
+	for _, id := range slices.Sorted(maps.Keys(byID)) {
 		out = append(out, fmt.Sprintf("%s (%s)", id, incomplete[id]))
 	}
 	return strings.Join(out, ", ")

@@ -116,7 +116,7 @@ func PublishedFiscalYears() []int {
 // DOCUMENT among them".
 //
 // EACH ENTRY CARRIES ITS STEM, and that is not redundancy with the projection
-// name. A stem is not derivable from a declaration: the packager's stemFor asks
+// name. A stem is not derivable from a declaration: [Stem] asks
 // how many slices a projection declared AT RUNTIME -- one slice takes the name
 // verbatim, several are suffixed by year through [PublishedStem] -- so a
 // declaration that omitted the stem would force `fisc export` to re-derive that

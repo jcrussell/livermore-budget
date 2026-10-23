@@ -959,7 +959,7 @@ func Prepare(o Options) (*plan, error) {
 	}
 	// A document that folded into a column is published as that column and
 	// not also as itself. One stating no fiscal year or basis ships as itself.
-	for _, name := range sortedKeys(o.Projections) {
+	for _, name := range slices.Sorted(maps.Keys(o.Projections)) {
 		if _, folded := ix.Column(name); folded {
 			continue
 		}
@@ -967,7 +967,7 @@ func Prepare(o Options) (*plan, error) {
 			return nil, err
 		}
 	}
-	for _, name := range sortedKeys(columns) {
+	for _, name := range slices.Sorted(maps.Keys(columns)) {
 		encoded, eerr := encodeColumn(columns[name])
 		if eerr != nil {
 			return nil, eerr
@@ -976,7 +976,7 @@ func Prepare(o Options) (*plan, error) {
 			return nil, err
 		}
 	}
-	for _, rel := range sortedKeys(files) {
+	for _, rel := range slices.Sorted(maps.Keys(files)) {
 		if err := add(rel, files[rel]); err != nil {
 			return nil, err
 		}
@@ -1522,15 +1522,6 @@ func copyTree(fsys fs.FS, root string, write func(string, []byte) error) error {
 		}
 		return write(p, b)
 	})
-}
-
-func sortedKeys[V any](m map[string]V) []string {
-	out := make([]string, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	sort.Strings(out)
-	return out
 }
 
 // withPageText returns files plus the committed text of every cited page, read

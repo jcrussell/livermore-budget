@@ -178,7 +178,7 @@ func unionSources(srcs []sourceMeta) []sourceMeta {
 		}
 	}
 	out := make([]sourceMeta, 0, len(pages))
-	for _, id := range sortedKeys(pages) {
+	for _, id := range slices.Sorted(maps.Keys(pages)) {
 		ps := make([]int, 0, len(pages[id]))
 		for p := range pages[id] {
 			ps = append(ps, p)
@@ -195,7 +195,7 @@ func unionSources(srcs []sourceMeta) []sourceMeta {
 func projectionRefs(o *Options, ix ColumnIndex) []projectionRef {
 	seen := map[string]bool{}
 	var paths []string
-	for _, name := range sortedKeys(o.Projections) {
+	for _, name := range slices.Sorted(maps.Keys(o.Projections)) {
 		p := ix.PublishedPath(name)
 		if seen[p] {
 			continue
@@ -364,7 +364,7 @@ func inferredColumns(o *Options, ix ColumnIndex, refs map[Citation]pageRef) ([]i
 		cells  map[string]*cell
 	}
 	byPath := map[string]*column{}
-	for _, stem := range sortedKeys(o.Projections) {
+	for _, stem := range slices.Sorted(maps.Keys(o.Projections)) {
 		path, folded := ix.Column(stem)
 		if !folded {
 			continue
@@ -430,7 +430,7 @@ func inferredColumns(o *Options, ix ColumnIndex, refs map[Citation]pageRef) ([]i
 		}
 	}
 	out := make([]inferredColumn, 0, len(byPath))
-	for _, path := range sortedKeys(byPath) {
+	for _, path := range slices.Sorted(maps.Keys(byPath)) {
 		col := byPath[path]
 		rank := func(r ribbon) int {
 			if _, ok := col.nodeAt[r.target]; ok {

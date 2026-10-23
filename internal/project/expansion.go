@@ -2,6 +2,7 @@ package project
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"sort"
 	"strconv"
@@ -323,7 +324,7 @@ func (e *expansion) Document(facts []fact.Fact, o Options) (*Document, error) {
 	if selErr != nil {
 		return nil, fmt.Errorf("expansion: %w", selErr)
 	}
-	byID := factIndexOf(selected)
+	byID := fact.ByID(selected)
 
 	docs, cutErr := e.cuts(facts, o)
 	if cutErr != nil {
@@ -792,7 +793,7 @@ func (e *expansion) groupOf(id string) string {
 // drawn with in and out differing by its own change, and no caveat has words
 // for a group with no change to be the net of.
 func unprintedChanges(changes map[string][]Link, col Column) error {
-	for _, group := range sortedKeys(changes) {
+	for _, group := range slices.Sorted(maps.Keys(changes)) {
 		for _, l := range changes[group] {
 			if l.ValueCents == 0 {
 				continue
@@ -1186,15 +1187,6 @@ func categoryOf(l Link, byID map[string]fact.Fact) (string, error) {
 		return "", fmt.Errorf("expansion: %s -> %s cites no category", l.Source, l.Target)
 	}
 	return category, nil
-}
-
-// factIndexOf indexes facts by id.
-func factIndexOf(facts []fact.Fact) map[string]fact.Fact {
-	out := make(map[string]fact.Fact, len(facts))
-	for _, f := range facts {
-		out[f.ID] = f
-	}
-	return out
 }
 
 // drawnElsewhere is a fact the stitch selects and draws through another

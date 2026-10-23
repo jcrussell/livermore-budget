@@ -2,6 +2,7 @@ package structure
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -126,7 +127,7 @@ func ValidateSplits(cuts []Cut, splits []Split) error {
 				return fmt.Errorf("split %q: %q is at %q, which does not refine %q", s.Name, c.Name, c.Level, s.At)
 			}
 			for _, k := range s.Kinds {
-				if !containsKind(c.Kinds, k) {
+				if !slices.Contains(c.Kinds, k) {
 					return fmt.Errorf("split %q: %q does not print %s", s.Name, c.Name, k)
 				}
 			}
@@ -155,7 +156,7 @@ func SplitPair(a, b Cut, splits []Split) (Cut, Cut, bool) {
 func withoutKinds(have, drop []vocab.Kind) []vocab.Kind {
 	var out []vocab.Kind
 	for _, k := range have {
-		if !containsKind(drop, k) {
+		if !slices.Contains(drop, k) {
 			out = append(out, k)
 		}
 	}
@@ -245,7 +246,7 @@ func ValidateOutside(facts []fact.Fact, cuts []Cut) []string {
 				continue
 			}
 			for _, o := range cuts {
-				if o.Name != c.Name && o.admits(f) && !contains(shared[*f.Fund], o.Name) {
+				if o.Name != c.Name && o.admits(f) && !slices.Contains(shared[*f.Fund], o.Name) {
 					shared[*f.Fund] = append(shared[*f.Fund], o.Name)
 				}
 			}

@@ -3,6 +3,7 @@ package check
 import (
 	"context"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -288,7 +289,7 @@ func (*factDepartmentsResolve) Run(_ context.Context, s *Subject) (Result, error
 	// Keyed order, not map order: two mis-spelled departments would otherwise
 	// swap places between runs, and a report whose findings reorder cannot be
 	// diffed across releases.
-	for _, key := range sortedStrings(spellings) {
+	for _, key := range slices.Sorted(maps.Keys(spellings)) {
 		written := spellings[key]
 		if len(written) > 1 {
 			slices.Sort(written)

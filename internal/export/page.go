@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"html/template"
 	"io/fs"
+	"maps"
+	"slices"
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/hint"
@@ -319,7 +321,7 @@ func buildSite(o *Options, ix ColumnIndex, pageTextBase func(docID string) strin
 
 	// Every published document ships its pages, not only every viewed one.
 	// Collected after the view loop, so this only ever appends.
-	for _, stem := range sortedKeys(o.Projections) {
+	for _, stem := range slices.Sorted(maps.Keys(o.Projections)) {
 		if err := collect(stem); err != nil {
 			return nil, nil, err
 		}

@@ -1,6 +1,8 @@
 package project
 
 import (
+	"maps"
+	"slices"
 	"sort"
 	"testing"
 
@@ -115,7 +117,7 @@ func TestEveryLinkLocatorIsAPageItsFactsWereReadFrom(t *testing.T) {
 			pages[f.DocID][f.Page] = true
 		}
 		var want []Source
-		for _, doc := range sortedKeys(pages) {
+		for _, doc := range slices.Sorted(maps.Keys(pages)) {
 			var ps []int
 			for p := range pages[doc] {
 				ps = append(ps, p)

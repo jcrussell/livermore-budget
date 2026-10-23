@@ -37,17 +37,6 @@ var flowEndpoints = []flowEndpoint{
 	{NodeTransfersOutToCIP, vocab.KindTransferOut, NodeTransfersOutToCIP, tierObjectCategory, false},
 }
 
-// spineEndpoints is the flow endpoints the citywide spine draws.
-func spineEndpoints() []flowEndpoint {
-	var out []flowEndpoint
-	for _, e := range flowEndpoints {
-		if e.spine {
-			out = append(out, e)
-		}
-	}
-	return out
-}
-
 // EndpointCategories is each set of categories the facts behind a flow
 // endpoint may carry, every fact of one link within one set, and whether id is
 // one. A change in balance is read either off a printed change row or off the

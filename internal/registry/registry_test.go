@@ -538,7 +538,7 @@ func TestDepartmentsRegistryMatchesThePages(t *testing.T) {
 		"city-council", "city-manager", "city-attorney",
 		"general-services", "administrative-services",
 	} {
-		if _, ok := r.departmentEntry(slug); !ok {
+		if !r.Department(slug) {
 			t.Errorf("Department(%q) not found; it names both tiers", slug)
 		}
 		if _, ok := r.Division(slug); !ok {
@@ -559,7 +559,7 @@ func TestDepartmentsRegistryMatchesThePages(t *testing.T) {
 		if d.Label == "" {
 			t.Errorf("division %q has no label", d.Slug)
 		}
-		if _, ok := r.departmentEntry(d.Department); !ok {
+		if !r.Department(d.Department) {
 			t.Errorf("division %q names department %q, which does not resolve", d.Slug, d.Department)
 		}
 	}
@@ -592,10 +592,11 @@ func TestPublicWorksHeadingIsNotItsTotalRow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load(%s): %v", realData, err)
 	}
-	d, ok := r.departmentEntry("public-works")
-	if !ok {
+	i := slices.IndexFunc(r.Departments(), func(d Department) bool { return d.Slug == "public-works" })
+	if i < 0 {
 		t.Fatal(`Department("public-works") not found`)
 	}
+	d := r.Departments()[i]
 	if got, want := d.DocumentTerm, "PUBLIC WORKS"; got != want {
 		t.Errorf("DocumentTerm = %q, want %q", got, want)
 	}

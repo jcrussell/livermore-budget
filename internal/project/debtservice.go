@@ -9,6 +9,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/hint"
+	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 	"github.com/jcrussell/livermore-budget/schema"
@@ -177,7 +178,7 @@ func debtCaveats() []Caveat {
 			side = "interest"
 		}
 		drift[i] = fmt.Sprintf("%s %s %s, %s %s", debtFundTypeLabel(d.fundType), side,
-			YearLabelOf(d.year, 0), amount.Cents(c).Dollars(), dir)
+			mapping.YearLabel(d.year, 0), amount.Cents(c).Dollars(), dir)
 	}
 	return []Caveat{
 		{
@@ -253,15 +254,6 @@ func debtFundTypeLabel(key string) string {
 		}
 	}
 	return key
-}
-
-// YearLabelOf is how pp.80-81 print a requirements row's years: "2026" for the
-// year ending June 30, 2026, "2031-2035" for a band.
-func YearLabelOf(year, through int) string {
-	if through == 0 {
-		return fmt.Sprintf("%d", year)
-	}
-	return fmt.Sprintf("%d-%d", year, through)
 }
 
 // DebtServiceDocument is pp.80-81 as one document. Its shape is
@@ -592,7 +584,7 @@ func debtRequirementRows(facts []*fact.Fact) (DebtRequirements, error) {
 		}
 		named[i] = true
 		c := ColumnOf(f)
-		if f.RowLabel != YearLabelOf(c.FiscalYear, c.Through) {
+		if f.RowLabel != mapping.YearLabel(c.FiscalYear, c.Through) {
 			return out, fmt.Errorf("%s: fact %s prints %q and is %s", DebtServiceProjection,
 				f.ID, f.RowLabel, c)
 		}

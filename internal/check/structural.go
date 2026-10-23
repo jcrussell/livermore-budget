@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"maps"
 	"path"
+	"slices"
 	"sort"
 	"strings"
 
@@ -102,7 +104,7 @@ func (*artifactsMatchManifest) Run(_ context.Context, s *Subject) (Result, error
 	var findings []Finding
 	subjects := 0
 
-	for _, docID := range sortedStrings(s.Extractions) {
+	for _, docID := range slices.Sorted(maps.Keys(s.Extractions)) {
 		doc := s.Extractions[docID]
 		listed := doc.Artifacts()
 		present, err := extractionFiles(doc.Tree())
@@ -111,7 +113,7 @@ func (*artifactsMatchManifest) Run(_ context.Context, s *Subject) (Result, error
 				docID, extractedDir, err)
 		}
 
-		for _, rel := range sortedStrings(listed) {
+		for _, rel := range slices.Sorted(maps.Keys(listed)) {
 			subjects++
 			want := listed[rel]
 			gotBytes, gotSHA, err := hashArtifact(doc.Tree(), rel)
@@ -277,7 +279,7 @@ func (*extractionEmittedEveryPage) Run(_ context.Context, s *Subject) (Result, e
 	var findings []Finding
 	var summaries []string
 
-	for _, docID := range sortedStrings(s.Extractions) {
+	for _, docID := range slices.Sorted(maps.Keys(s.Extractions)) {
 		doc := s.Extractions[docID]
 		listed := doc.Artifacts()
 		pages := doc.PageCount()
@@ -295,7 +297,7 @@ func (*extractionEmittedEveryPage) Run(_ context.Context, s *Subject) (Result, e
 			}
 		}
 		var unexpected []string
-		for _, rel := range sortedStrings(listed) {
+		for _, rel := range slices.Sorted(maps.Keys(listed)) {
 			if !expected[rel] {
 				unexpected = append(unexpected, rel)
 			}
@@ -411,7 +413,7 @@ func (*extractorReportedNoErrors) Run(_ context.Context, s *Subject) (Result, er
 	var findings []Finding
 	warnings, blank := 0, 0
 
-	for _, docID := range sortedStrings(s.Extractions) {
+	for _, docID := range slices.Sorted(maps.Keys(s.Extractions)) {
 		doc := s.Extractions[docID]
 		for _, w := range doc.Warnings() {
 			warnings += w.Count
@@ -559,7 +561,7 @@ func union[A, B any](a map[string]A, b map[string]B) []string {
 	for k := range b {
 		seen[k] = true
 	}
-	return sortedStrings(seen)
+	return slices.Sorted(maps.Keys(seen))
 }
 
 // extractionToolchainPinned asserts every extraction was produced by the
@@ -599,7 +601,7 @@ func (*extractionToolchainPinned) Description() string {
 
 func (*extractionToolchainPinned) Run(_ context.Context, s *Subject) (Result, error) {
 	var findings []Finding
-	for _, docID := range sortedStrings(s.Extractions) {
+	for _, docID := range slices.Sorted(maps.Keys(s.Extractions)) {
 		doc := s.Extractions[docID]
 		var says []string
 		if doc.ExtractorVersion() != corpus.PinnedExtractorVersion {

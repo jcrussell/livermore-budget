@@ -52,7 +52,7 @@ func (id Identity) covers(a, b string, k vocab.Kind, category string) bool {
 // column, or an overlap no identity covers, and never a figure one peer may
 // simply not print. It is empty for every other cell.
 func (id Identity) misfiles(a, b string, k vocab.Kind, category string) []vocab.Kind {
-	if !id.joins(a, b) || !containsKind(id.Kinds, k) || id.coversCell(k, category) {
+	if !id.joins(a, b) || !slices.Contains(id.Kinds, k) || id.coversCell(k, category) {
 		return nil
 	}
 	var out []vocab.Kind
@@ -65,7 +65,7 @@ func (id Identity) misfiles(a, b string, k vocab.Kind, category string) []vocab.
 }
 
 func (id Identity) coversCell(k vocab.Kind, category string) bool {
-	if !containsKind(id.Kinds, k) {
+	if !slices.Contains(id.Kinds, k) {
 		return false
 	}
 	return len(id.Categories) == 0 || slices.Contains(id.Categories, KindCategory{k, category})
@@ -106,7 +106,7 @@ func ValidateIdentities(cuts []Cut, identities []Identity) error {
 			return fmt.Errorf("identity %q covers no kind", id.Name)
 		}
 		for _, k := range id.Kinds {
-			if !containsKind(a.Kinds, k) || !containsKind(b.Kinds, k) {
+			if !slices.Contains(a.Kinds, k) || !slices.Contains(b.Kinds, k) {
 				return fmt.Errorf("identity %q covers %q, which %q or %q does not print", id.Name, k, a.Name, b.Name)
 			}
 		}
@@ -122,7 +122,7 @@ func ValidateIdentities(cuts []Cut, identities []Identity) error {
 			if c.Category == "" || named[c] {
 				return fmt.Errorf("identity %q names category %q for %s empty or twice", id.Name, c.Category, c.Kind)
 			}
-			if !containsKind(id.Kinds, c.Kind) {
+			if !slices.Contains(id.Kinds, c.Kind) {
 				return fmt.Errorf("identity %q names category %q for %s, which it does not cover", id.Name, c.Category, c.Kind)
 			}
 			named[c] = true
@@ -568,7 +568,7 @@ func oneReadingPerCell(name string, identities []Identity, joined map[string]boo
 		}
 		var left []string
 		for _, cut := range printed {
-			if !contains(declined, cut) && !contains(left, cut) {
+			if !slices.Contains(declined, cut) && !slices.Contains(left, cut) {
 				left = append(left, cut)
 			}
 		}
@@ -620,7 +620,7 @@ func (v View) Admits(f *fact.Fact, identities []Identity) bool {
 func CutsOf(scopes []string) []Cut {
 	var out []Cut
 	for _, c := range AllCuts() {
-		if contains(scopes, c.Scope) {
+		if slices.Contains(scopes, c.Scope) {
 			out = append(out, c)
 		}
 	}
@@ -655,7 +655,7 @@ func footprintsMeet(a, b Cut) bool {
 		return true
 	}
 	for _, g := range a.FundGroups {
-		if contains(b.FundGroups, g) {
+		if slices.Contains(b.FundGroups, g) {
 			return true
 		}
 	}
@@ -665,7 +665,7 @@ func footprintsMeet(a, b Cut) bool {
 func sharedKinds(a, b Cut) []vocab.Kind {
 	var out []vocab.Kind
 	for _, k := range a.Kinds {
-		if containsKind(b.Kinds, k) {
+		if slices.Contains(b.Kinds, k) {
 			out = append(out, k)
 		}
 	}

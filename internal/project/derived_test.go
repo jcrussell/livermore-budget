@@ -33,13 +33,15 @@ func TestTheSpineEndpointsAreTheGoldensOwn(t *testing.T) {
 		drawn = append(drawn, n.ID)
 	}
 	var declared []string
-	for _, e := range spineEndpoints() {
-		declared = append(declared, e.id)
+	for _, e := range flowEndpoints {
+		if e.spine {
+			declared = append(declared, e.id)
+		}
 	}
 	slices.Sort(drawn)
 	slices.Sort(declared)
 	if diff := cmp.Diff(drawn, declared); diff != "" {
-		t.Errorf("the golden's endpoints and spineEndpoints differ (-golden +declared):\n%s", diff)
+		t.Errorf("the golden's endpoints and the spine's flowEndpoints differ (-golden +declared):\n%s", diff)
 	}
 }
 

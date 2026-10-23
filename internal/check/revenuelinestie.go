@@ -3,6 +3,8 @@ package check
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -140,7 +142,7 @@ func (c *revenueLinesTieToTheirCategories) Run(_ context.Context, s *Subject) (R
 			cmp.exempt, cmp.subjects, strings.Join(notes, ", "))
 	}
 	if len(unmatched) > 0 {
-		held += fmt.Sprintf("; %d pair(s) with no spine column: %s", len(unmatched), strings.Join(sortedStrings(unmatched), ", "))
+		held += fmt.Sprintf("; %d pair(s) with no spine column: %s", len(unmatched), strings.Join(slices.Sorted(maps.Keys(unmatched)), ", "))
 	}
 
 	return conclusion{

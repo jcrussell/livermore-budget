@@ -121,6 +121,16 @@ type Fact struct {
 	Derived bool `json:"derived"`
 }
 
+// ByID keys facts by id, which is unique by construction and proved so by the
+// fact-ids-unique check.
+func ByID(facts []Fact) map[string]Fact {
+	out := make(map[string]Fact, len(facts))
+	for _, f := range facts {
+		out[f.ID] = f
+	}
+	return out
+}
+
 // FundNumber is the fund coordinate naming fund n.
 func FundNumber(n int) *int { return &n }
 

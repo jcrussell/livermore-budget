@@ -90,7 +90,7 @@ func ValidateRestatements(cuts []Cut, residue []Residue, rs []Restatement) error
 			return fmt.Errorf("restatement %q declares no rules or no lines", r.Name)
 		}
 		for _, l := range r.Lines {
-			if !containsKind(against.Kinds, l.Against.Kind) {
+			if !slices.Contains(against.Kinds, l.Against.Kind) {
 				return fmt.Errorf("restatement %q: %q prints no %s", r.Name, r.Against, l.Against.Kind)
 			}
 			for _, side := range append(slices.Clone(l.Plus), l.Minus...) {

@@ -27,13 +27,6 @@ import (
 const factsPath = repo.FactsPath
 
 // buildAll is the default Builder: everything the site ships.
-//
-// It is a thin seam on purpose. buildProjections keeps its own signature and
-// its own tests -- it answers "what does the projection pipeline produce",
-// which is a question worth asking without an export around it -- and this
-// function answers the wider one the command actually needs. The split is also
-// what keeps the ~10 direct callers of buildProjections in the test suite
-// unchanged.
 func buildAll(repoRoot string) (result, error) {
 	// ONE READ OF THE STORE, used twice: the projections are built from the
 	// decoded facts and the shards are compared against the raw bytes. Reading
@@ -64,22 +57,6 @@ func buildFrom(repoRoot string, raw []byte, facts []fact.Fact) (result, error) {
 		Downloads:   assets.downloads(),
 		RecordsBase: assets.recordsBase(),
 	}, nil
-}
-
-// buildProjections is the projection half of buildAll: read the committed fact store and
-// run every registered projection over it.
-//
-// It reads facts/facts.jsonl rather than re-running the mapping engine, and
-// that is the point rather than a shortcut. facts.jsonl is the audit trail; a
-// site built from anything else could disagree with the file the provenance
-// claims it came from. `fisc build` regenerates it byte-deterministically, so
-// the two can be compared in CI (fisc-1wr.6).
-func buildProjections(repoRoot string) (map[string][]byte, error) {
-	_, facts, err := readFactStore(repoRoot)
-	if err != nil {
-		return nil, err
-	}
-	return buildProjectionsFrom(repoRoot, facts)
 }
 
 // readFactStore reads facts/facts.jsonl BOTH ways: the raw bytes as committed
@@ -135,7 +112,7 @@ func buildProjectionsFrom(repoRoot string, facts []fact.Fact) (map[string][]byte
 	for _, p := range project.Registry(reg) {
 		declared := slicesOf(p, facts, version)
 		for _, o := range declared {
-			stem, err := stemFor(p.Name(), o, declared)
+			stem, err := project.Stem(p.Name(), o, declared)
 			if err != nil {
 				return nil, err
 			}
@@ -260,22 +237,6 @@ func slicesOf(p project.Projection, facts []fact.Fact, version string) []project
 type builtDoc struct {
 	name string
 	opts project.Options
-}
-
-// stemFor is [project.Stem], and it is a one-line delegation on purpose.
-//
-// THE RULE USED TO LIVE HERE, and fisc-rmx is what moved it. A stem is a PATH,
-// and three commands need to agree about paths: this one writes the files,
-// `fisc verify` says one of them was not built, and project.PublishedDocuments
-// declares what the site serves. While the rule was spelled here and
-// approximated there, it was reachable for the two to disagree -- and they did,
-// on any spine carrying two bases for one fiscal year.
-//
-// The wrapper survives rather than the call sites being rewritten because the
-// error message wants this command's words, and because export_test.go's cases
-// are the ones that pin both directions of the naming rule.
-func stemFor(name string, o project.Options, declared []project.Options) (string, error) {
-	return project.Stem(name, o, declared)
 }
 
 // sourceRegistry is as much of data/sources.yaml as the site needs. The file

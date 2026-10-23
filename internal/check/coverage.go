@@ -213,14 +213,7 @@ func (*publishedProjectionBuilt) Run(_ context.Context, s *Subject) (Result, err
 	// file `fisc export` writes and the site never declares -- and the way it
 	// bites is not the stray file: it is that the site would serve a document it
 	// never declared, under a name nothing else expects.
-	//
-	// It asks project.Stem rather than pkg/cmd/export's stemFor, and the
-	// distinction is the decision fisc-b8o left open. Stem is the shared
-	// declaration -- one place, read by the packager that writes the files, by
-	// project.PublishedDocuments that declares them, and by this check -- so
-	// reading it is this package doing its job, where reaching into a command's
-	// naming helper would have been the coupling internal/check avoids
-	// everywhere else.
+	// It reads project.Stem, the one rule the packager also names files by.
 	at := map[string]string{}
 	for _, d := range s.Published {
 		at[d.Stem] = d.String()

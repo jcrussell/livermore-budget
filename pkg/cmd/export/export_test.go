@@ -1638,7 +1638,7 @@ func TestTheSitePublishesOneFilePerColumnAndNothingTwice(t *testing.T) {
 	}
 }
 
-// TestStemForAsksHowManyDocumentsNotHowManyColumns pins both directions of the
+// TestStemAsksHowManyDocumentsNotHowManyColumns pins both directions of the
 // naming rule; the second case is the one a column count gets wrong.
 //
 // The question is whether the projection publishes one document PER YEAR, which
@@ -1648,7 +1648,7 @@ func TestTheSitePublishesOneFilePerColumnAndNothingTwice(t *testing.T) {
 // carrying one revenue-by-fund column makes the trends document single-column
 // too, and the column test would then ship it as revenue-trends-2024.json while
 // data/revenue-trends.json, the path the contract promises, did not exist.
-func TestStemForAsksHowManyDocumentsNotHowManyColumns(t *testing.T) {
+func TestStemAsksHowManyDocumentsNotHowManyColumns(t *testing.T) {
 	year := func(y int) project.Options {
 		return project.Options{
 			Columns: []project.Column{{FiscalYear: y, Basis: project.PublishedBasis}},
@@ -1697,12 +1697,12 @@ func TestStemForAsksHowManyDocumentsNotHowManyColumns(t *testing.T) {
 			// A stand-in declaration of the right LENGTH. Stem reads only
 			// how many there are, and spelling out c.slices plausible
 			// Options per case would say nothing the count does not.
-			got, err := stemFor("sankey", c.o, make([]project.Options, c.slices))
+			got, err := project.Stem("sankey", c.o, make([]project.Options, c.slices))
 			if err != nil {
-				t.Fatalf("stemFor: %v", err)
+				t.Fatalf("Stem: %v", err)
 			}
 			if got != c.want {
-				t.Errorf("stemFor = %q, want %q", got, c.want)
+				t.Errorf("Stem = %q, want %q", got, c.want)
 			}
 		})
 	}
@@ -2604,7 +2604,7 @@ func TestPublishedDocumentsAreWhatTheCorpusBuilds(t *testing.T) {
 	}
 }
 
-// TestStemForRefusesADocumentWithNoColumns covers `o.Columns[0]`, refused
+// TestStemRefusesADocumentWithNoColumns covers `o.Columns[0]`, refused
 // rather than indexed blind.
 //
 // A zero-column Options is not reachable through project.Slices today, but a
@@ -2612,25 +2612,25 @@ func TestPublishedDocumentsAreWhatTheCorpusBuilds(t *testing.T) {
 // of `o.Columns[0]` is a PANIC inside the command whose job is writing files --
 // which is worse than any refusal, because it leaves a half-exported directory
 // and no message a reader could act on. It is refused with the reason instead.
-func TestStemForRefusesADocumentWithNoColumns(t *testing.T) {
+func TestStemRefusesADocumentWithNoColumns(t *testing.T) {
 	// More than one document, or the one-document branch returns before the
 	// index.
-	_, err := stemFor("sankey", project.Options{}, make([]project.Options, 2))
+	_, err := project.Stem("sankey", project.Options{}, make([]project.Options, 2))
 	if err == nil {
-		t.Fatal("stemFor accepted an Options with no columns, want a refusal")
+		t.Fatal("Stem accepted an Options with no columns, want a refusal")
 	}
 	for _, want := range []string{"sankey", "no columns"} {
 		if !strings.Contains(err.Error(), want) {
-			t.Errorf("stemFor error = %q, want it to name %q", err, want)
+			t.Errorf("Stem error = %q, want it to name %q", err, want)
 		}
 	}
 
 	// And one column still works, so the guard has not swallowed the real case.
-	got, err := stemFor("sankey", project.Options{
+	got, err := project.Stem("sankey", project.Options{
 		Columns: []project.Column{{FiscalYear: 2027, Basis: "adopted"}},
 	}, make([]project.Options, 2))
 	if err != nil || got != "sankey-2027" {
-		t.Errorf("stemFor = %q, %v; want \"sankey-2027\", nil", got, err)
+		t.Errorf("Stem = %q, %v; want \"sankey-2027\", nil", got, err)
 	}
 }
 

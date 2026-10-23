@@ -14,61 +14,27 @@ import (
 	"os"
 )
 
-// IOStreams holds the three process streams and what is known about them.
+// IOStreams holds the three process streams.
 type IOStreams struct {
 	In     io.Reader
 	Out    io.Writer
 	ErrOut io.Writer
-
-	stdinIsTTY  bool
-	stdoutIsTTY bool
-	stderrIsTTY bool
 }
-
-// IsStdinTTY reports whether standard input is a terminal.
-func (s *IOStreams) IsStdinTTY() bool { return s.stdinIsTTY }
-
-// IsStdoutTTY reports whether standard output is a terminal.
-func (s *IOStreams) IsStdoutTTY() bool { return s.stdoutIsTTY }
-
-// IsStderrTTY reports whether standard error is a terminal.
-func (s *IOStreams) IsStderrTTY() bool { return s.stderrIsTTY }
 
 // System returns the IOStreams wired to the real process streams. It is the
 // only function in the codebase that reads os.Stdin, os.Stdout, or os.Stderr,
 // and it is called once, from main.
 func System() *IOStreams {
 	return &IOStreams{
-		In:          os.Stdin,
-		Out:         os.Stdout,
-		ErrOut:      os.Stderr,
-		stdinIsTTY:  isTerminal(os.Stdin),
-		stdoutIsTTY: isTerminal(os.Stdout),
-		stderrIsTTY: isTerminal(os.Stderr),
+		In:     os.Stdin,
+		Out:    os.Stdout,
+		ErrOut: os.Stderr,
 	}
 }
 
 // Test returns an IOStreams backed by buffers, along with those buffers, for
-// use in tests. All three streams report false for their TTY flags, which is
-// the correct default: a test is not a terminal.
+// use in tests.
 func Test() (*IOStreams, *bytes.Buffer, *bytes.Buffer, *bytes.Buffer) {
 	in, out, errOut := &bytes.Buffer{}, &bytes.Buffer{}, &bytes.Buffer{}
 	return &IOStreams{In: in, Out: out, ErrOut: errOut}, in, out, errOut
-}
-
-// isTerminal reports whether f refers to a character device. This is a
-// stdlib-only substitute for a term/isatty dependency (byob-release.10).
-//
-// It is an approximation with one known false positive: /dev/null is a
-// character device, so `fisc build > /dev/null` reports a TTY. Pipes and
-// regular files are classified correctly. Since the only decisions this
-// drives are colorizing and prompting, and neither is observable when the
-// output is discarded, the inaccuracy has no practical effect — but do not
-// build a correctness-bearing behavior on it.
-func isTerminal(f *os.File) bool {
-	fi, err := f.Stat()
-	if err != nil {
-		return false
-	}
-	return fi.Mode()&os.ModeCharDevice != 0
 }

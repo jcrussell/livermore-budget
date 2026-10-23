@@ -96,9 +96,6 @@ func NewGrid(headers []Span, gutter float64) (*Grid, error) {
 // Len is how many columns the grid has.
 func (g *Grid) Len() int { return len(g.bands) }
 
-// band is column i's x-range.
-func (g *Grid) band(i int) Span { return g.bands[i] }
-
 // Index is the column an x-position falls in, or -1 for a position at or left of
 // the gutter, which is the row-label area and belongs to no column.
 //

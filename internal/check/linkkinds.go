@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
@@ -69,7 +70,7 @@ func (*linkKindsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, err
 		if err != nil {
 			return Result{}, err
 		}
-		byID := factIndex(slice)
+		byID := fact.ByID(slice)
 		for _, l := range p.Links {
 			links++
 			subject := fmt.Sprintf("%s %s -> %s", p, l.Source, l.Target)

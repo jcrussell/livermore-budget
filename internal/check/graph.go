@@ -3,6 +3,7 @@ package check
 import (
 	"context"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -193,7 +194,7 @@ func (*linkValuesTieToFacts) Run(_ context.Context, s *Subject) (Result, error) 
 	// that slice is a link drawn from another year's or another basis's figure —
 	// the failure project.Options exists to prevent — and looking it up in the
 	// whole store would accept it whenever the amount happened to agree.
-	all := factIndex(s.Facts)
+	all := fact.ByID(s.Facts)
 
 	var findings []Finding
 	links := 0
@@ -202,7 +203,7 @@ func (*linkValuesTieToFacts) Run(_ context.Context, s *Subject) (Result, error) 
 		if err != nil {
 			return Result{}, err
 		}
-		selected := factIndex(slice)
+		selected := fact.ByID(slice)
 		for _, l := range p.Links {
 			links++
 			subject := fmt.Sprintf("%s %s -> %s", p, l.Source, l.Target)
@@ -311,7 +312,7 @@ func (*linkLocatorsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, 
 		if err != nil {
 			return Result{}, err
 		}
-		selected := factIndex(slice)
+		selected := fact.ByID(slice)
 		for _, l := range p.Links {
 			links++
 			subject := fmt.Sprintf("%s %s -> %s", p, l.Source, l.Target)
@@ -785,7 +786,7 @@ func (*transferLegsPair) Run(_ context.Context, s *Subject) (Result, error) {
 		}
 	}
 
-	for _, id := range sortedStrings(lone) {
+	for _, id := range slices.Sorted(maps.Keys(lone)) {
 		if n := lone[id] + len(legs[id]); n != 1 {
 			findings = append(findings, finding(id, "a p222 leg the expansion draws alone names %d legs, want 1", n))
 		}
@@ -1165,14 +1166,4 @@ func (*constraintTierVocabulary) Run(_ context.Context, s *Subject) (Result, err
 		nothing:  "no node carries a constraint_tier, so none has been checked against data/funds.yaml",
 		findings: findings,
 	}.result(), nil
-}
-
-// factIndex keys facts by id, which is unique by construction and proved so by
-// the fact-ids-unique check.
-func factIndex(facts []fact.Fact) map[string]fact.Fact {
-	out := make(map[string]fact.Fact, len(facts))
-	for _, f := range facts {
-		out[f.ID] = f
-	}
-	return out
 }

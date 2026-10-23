@@ -2,6 +2,7 @@ package project
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"sort"
 	"strconv"
@@ -309,7 +310,7 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*Document, error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, division := range sortedKeys(perDivision) {
+	for _, division := range slices.Sorted(maps.Keys(perDivision)) {
 		d := perDivision[division]
 		if d.cents == 0 {
 			continue
@@ -433,7 +434,7 @@ func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 				"and no printed spending is drawn with money arriving and none leaving, and the " +
 				"other way round.",
 			// The groups drawn without divisions, and fund/100, the exception.
-			AppliesTo: append(sortedKeys(direct), PrefixFund+strconv.Itoa(generalFund)),
+			AppliesTo: append(slices.Sorted(maps.Keys(direct)), PrefixFund+strconv.Itoa(generalFund)),
 		})
 	}
 	out = append(out, categoryNamedCaveats(nodes)...)
@@ -876,7 +877,7 @@ func annotateFund(n *Node, l labels, number int) {
 func (f *fundFlows) addParents(nodes map[string]Node) error {
 	type edge struct{ child, parent string }
 	var want []edge
-	for _, id := range sortedKeys(nodes) {
+	for _, id := range slices.Sorted(maps.Keys(nodes)) {
 		if p := nodes[id].Parent; p != "" {
 			want = append(want, edge{child: id, parent: p})
 		}
@@ -1182,15 +1183,5 @@ func sortedExpKeys(m map[expKey]*cellSum) []expKey {
 		}
 		return out[i].category < out[j].category
 	})
-	return out
-}
-
-// sortedKeys orders a string-keyed map.
-func sortedKeys[V any](m map[string]V) []string {
-	out := make([]string, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	sort.Strings(out)
 	return out
 }

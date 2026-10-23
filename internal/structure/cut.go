@@ -2,6 +2,7 @@ package structure
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"sort"
 	"strings"
@@ -206,42 +207,17 @@ func (c Cut) admits(f *fact.Fact) bool {
 	if f.Scope != c.Scope {
 		return false
 	}
-	if len(c.Rules) > 0 && !contains(c.Rules, f.RuleID) {
+	if len(c.Rules) > 0 && !slices.Contains(c.Rules, f.RuleID) {
 		return false
 	}
-	if len(c.FundGroups) > 0 && !contains(c.FundGroups, f.FundGroup) {
+	if len(c.FundGroups) > 0 && !slices.Contains(c.FundGroups, f.FundGroup) {
 		return false
 	}
-	return containsKind(c.Kinds, f.Kind)
+	return slices.Contains(c.Kinds, f.Kind)
 }
 
 // prints says whether the cut declares a basis.
-func (c Cut) prints(b vocab.Basis) bool {
-	for _, have := range c.Bases {
-		if have == b {
-			return true
-		}
-	}
-	return false
-}
-
-func contains(haystack []string, needle string) bool {
-	for _, s := range haystack {
-		if s == needle {
-			return true
-		}
-	}
-	return false
-}
-
-func containsKind(haystack []vocab.Kind, needle vocab.Kind) bool {
-	for _, k := range haystack {
-		if k == needle {
-			return true
-		}
-	}
-	return false
-}
+func (c Cut) prints(b vocab.Basis) bool { return slices.Contains(c.Bases, b) }
 
 // ValidateCuts holds a set of cuts to the store and to each other: level,
 // department tier, bases, kinds and placeholders against the facts, unique
@@ -276,7 +252,7 @@ func ValidateCuts(facts []fact.Fact, byRule map[string]Level, cuts []Cut) (empty
 				c.Name, c.DepartmentTier)
 		}
 		for _, l := range append(slices.Clone(c.Lines), c.Unprinted...) {
-			if !containsKind(c.Kinds, l.Kind) {
+			if !slices.Contains(c.Kinds, l.Kind) {
 				return nil, fmt.Errorf("cut %q declares line %s, whose kind it does not print", c.Name, l)
 			}
 		}
@@ -443,20 +419,11 @@ func TierMisfits(facts []fact.Fact, cuts []Cut, inTier func(tier, slug string) b
 				misfits[orAbsent(f.Department)]++
 			}
 		}
-		for _, slug := range sortedKeys(misfits) {
+		for _, slug := range slices.Sorted(maps.Keys(misfits)) {
 			out = append(out, fmt.Sprintf("cut %q names departments at the %s tier and %d of its "+
 				"facts name %q, which data/departments.yaml does not list as a %s",
 				c.Name, c.DepartmentTier, misfits[slug], slug, c.DepartmentTier))
 		}
 	}
-	return out
-}
-
-func sortedKeys(m map[string]int) []string {
-	out := make([]string, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	sort.Strings(out)
 	return out
 }

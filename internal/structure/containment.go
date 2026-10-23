@@ -229,7 +229,7 @@ type restriction struct {
 }
 
 func (r restriction) admits(f *fact.Fact) bool {
-	if len(r.fundGroups) > 0 && !contains(r.fundGroups, f.FundGroup) {
+	if len(r.fundGroups) > 0 && !slices.Contains(r.fundGroups, f.FundGroup) {
 		return false
 	}
 	for _, ls := range r.lines {
@@ -237,7 +237,7 @@ func (r restriction) admits(f *fact.Fact) bool {
 			return false
 		}
 	}
-	return containsKind(r.kinds, f.Kind)
+	return slices.Contains(r.kinds, f.Kind)
 }
 
 func onLine(lines []Line, f *fact.Fact) bool {
@@ -275,7 +275,7 @@ func notComparablef(format string, args ...any) error {
 func restrict(a, b Cut, at Level) (restriction, error) {
 	var r restriction
 	for _, k := range a.Kinds {
-		if containsKind(b.Kinds, k) {
+		if slices.Contains(b.Kinds, k) {
 			r.kinds = append(r.kinds, k)
 		}
 	}
@@ -289,7 +289,7 @@ func restrict(a, b Cut, at Level) (restriction, error) {
 		if len(a.FundGroups) > 0 {
 			r.fundGroups = nil
 			for _, g := range a.FundGroups {
-				if contains(b.FundGroups, g) {
+				if slices.Contains(b.FundGroups, g) {
 					r.fundGroups = append(r.fundGroups, g)
 				}
 			}

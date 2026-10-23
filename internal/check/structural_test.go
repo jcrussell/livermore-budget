@@ -6,8 +6,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -181,7 +183,7 @@ func manifestArtifacts(t *testing.T, root, docID string) map[string]corpus.Artif
 func anArtifactOf(t *testing.T, root, docID string) (string, corpus.Artifact) {
 	t.Helper()
 	artifacts := manifestArtifacts(t, root, docID)
-	for _, rel := range sortedStrings(artifacts) {
+	for _, rel := range slices.Sorted(maps.Keys(artifacts)) {
 		if strings.HasPrefix(rel, "geometry/") {
 			return rel, artifacts[rel]
 		}
@@ -597,7 +599,7 @@ func TestTheCommittedExtractionsAreComplete(t *testing.T) {
 	if len(s.Extractions) != 3 {
 		t.Fatalf("%d extractions loaded, want the 3 committed documents", len(s.Extractions))
 	}
-	for _, docID := range sortedStrings(s.Extractions) {
+	for _, docID := range slices.Sorted(maps.Keys(s.Extractions)) {
 		doc := s.Extractions[docID]
 		text, geometry, other := 0, 0, 0
 		for rel := range doc.Artifacts() {

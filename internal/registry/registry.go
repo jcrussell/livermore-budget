@@ -227,7 +227,7 @@ func (f Fund) clone() Fund {
 	return f
 }
 
-// department is one of the eleven ALL-CAPS headings Budget Book pp.167-170
+// Department is one of the eleven ALL-CAPS headings Budget Book pp.167-170
 // print over their division rows.
 //
 // A FACT NEVER NAMES ONE. A mapping row's `department:` carries a DIVISION
@@ -242,7 +242,7 @@ func (f Fund) clone() Fund {
 // (p170:11), and INNOVATION & ECONOMIC DEVELOPMENT (p167:53) closes with the
 // city's own misspelling. An anchor derived from this field would be wrong
 // twice, which is why the rule file spells its anchors out.
-type department struct {
+type Department struct {
 	Slug         string `yaml:"slug"`
 	Label        string `yaml:"label"`
 	DocumentTerm string `yaml:"document_term"`
@@ -262,7 +262,7 @@ type department struct {
 // clone deep-copies the slice fields, for the reason Category.clone does: the
 // value is returned by copy, which copies a slice header only, so without this
 // a caller could write through Pages into the registry's own state.
-func (d department) clone() department {
+func (d Department) clone() Department {
 	d.Pages = slices.Clone(d.Pages)
 	return d
 }
@@ -319,7 +319,7 @@ type Registry struct {
 	// second claimant, so this is a function, not a set of candidates.
 	fundLabels map[string]int
 
-	departments     map[string]department
+	departments     map[string]Department
 	departmentSlugs []string // sorted, for enumeration in a stable order
 	divisions       map[string]Division
 	divisionSlugs   []string // sorted, for enumeration in a stable order
@@ -603,19 +603,6 @@ func (r *Registry) Department(slug string) bool {
 	return ok
 }
 
-// departmentEntry returns the departments.yaml entry for slug.
-//
-// It exists because Division.Department is a slug, and a parent nothing can
-// resolve is a field a consumer cannot use: whoever holds a Division and wants
-// the heading above it needs this.
-func (r *Registry) departmentEntry(slug string) (department, bool) {
-	d, ok := r.departments[slug]
-	if !ok {
-		return department{}, false
-	}
-	return d.clone(), true
-}
-
 // Divisions returns every division, ordered by slug. The slice and every slice
 // inside it are copies.
 func (r *Registry) Divisions() []Division {
@@ -628,8 +615,8 @@ func (r *Registry) Divisions() []Division {
 
 // Departments returns every department, ordered by slug. The slice and every
 // slice inside it are copies.
-func (r *Registry) Departments() []department {
-	out := make([]department, 0, len(r.departmentSlugs))
+func (r *Registry) Departments() []Department {
+	out := make([]Department, 0, len(r.departmentSlugs))
 	for _, s := range r.departmentSlugs {
 		out = append(out, r.departments[s].clone())
 	}

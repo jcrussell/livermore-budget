@@ -49,7 +49,7 @@ type taxonomyDoc struct {
 // invite the cross-tier uniqueness rule the file cannot satisfy.
 type departmentsDoc struct {
 	SchemaVersion int          `yaml:"schema_version"`
-	Departments   []department `yaml:"departments"`
+	Departments   []Department `yaml:"departments"`
 	Divisions     []Division   `yaml:"divisions"`
 }
 
@@ -332,7 +332,7 @@ func (r *Registry) loadDepartments(fsys fs.FS) error {
 		return errf("", "divisions", "is empty")
 	}
 
-	r.departments = make(map[string]department, len(doc.Departments))
+	r.departments = make(map[string]Department, len(doc.Departments))
 	r.departmentSlugs = make([]string, 0, len(doc.Departments))
 	for i, d := range doc.Departments {
 		if d.Slug == "" {

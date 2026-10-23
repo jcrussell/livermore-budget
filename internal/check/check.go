@@ -70,7 +70,6 @@ package check
 import (
 	"context"
 	"fmt"
-	"slices"
 
 	"github.com/jcrussell/livermore-budget/internal/english"
 )
@@ -320,17 +319,6 @@ func (c conclusion) result() Result {
 	default:
 		return Result{Status: StatusPass, Subjects: c.subjects, Summary: c.held, Findings: []Finding{}}
 	}
-}
-
-// sortedStrings returns a map's keys in order, so a report over a map does not
-// change between two runs over the same corpus.
-func sortedStrings[V any](m map[string]V) []string {
-	out := make([]string, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	slices.Sort(out)
-	return out
 }
 
 // finding is shorthand for one entry, formatted.

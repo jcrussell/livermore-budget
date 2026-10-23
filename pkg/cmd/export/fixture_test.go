@@ -908,3 +908,14 @@ func servedColumn(t *testing.T, dir, stem string) export.ColumnDoc {
 	}
 	return col
 }
+
+// buildProjections is the projection half of buildAll over the committed
+// fact store, for tests that ask what the projections produce without an
+// export around them.
+func buildProjections(repoRoot string) (map[string][]byte, error) {
+	_, facts, err := readFactStore(repoRoot)
+	if err != nil {
+		return nil, err
+	}
+	return buildProjectionsFrom(repoRoot, facts)
+}
