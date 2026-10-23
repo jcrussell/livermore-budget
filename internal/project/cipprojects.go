@@ -145,45 +145,38 @@ func cipProjectsCaveats() []Caveat {
 		fund611 += fmt.Sprintf(", so the rows here sum to %s", dollars(c.RowsPublished()))
 	}
 	return []Caveat{{
-		ID:    "cip-listing-carries-forward",
-		Theme: ThemeKindsOfYear,
-		Summary: "The adopted budget years include appropriations carried forward from earlier " +
-			"years, so they are larger than the new money p222 appropriates, and no page says " +
-			"how much of each project's figure is carried forward.",
-		Text: "The listing's FY 2025-26 and FY 2026-27 columns are the adopted budget's figures " +
-			"for each project, and they include unspent appropriations carried forward from " +
-			"earlier years. Its grand totals are " + carried + " new appropriations. Nothing " +
-			"on pp.224-235 separates carried-forward money from new money for any project, " +
-			"so no figure here is a project's new appropriation.",
+		ID:      "cip-listing-carries-forward",
+		Theme:   ThemeKindsOfYear,
+		Summary: "A project's budget here includes money carried forward from earlier years, so it is not all new.",
+		Text: "The FY 2025-26 and FY 2026-27 columns are each project's adopted budget, including " +
+			"unspent money carried forward from earlier years. The listing's grand totals are " +
+			carried + " new appropriations. No page says how much of a project's figure is " +
+			"carried forward.",
 		AppliesTo: []string{},
 	}, {
 		ID:      "cip-listing-plan-years-are-projected",
 		Theme:   ThemeKindsOfYear,
 		Summary: "FY 2027-28 to FY 2029-30 are the plan's projections, not adopted budgets.",
 		Text: "The city adopts a two-year budget. The listing's three later columns, FY 2027-28, " +
-			"FY 2028-29 and FY 2029-30, are projected: the Capital Improvement Program's plan, " +
-			"nothing has been appropriated for them, and a later budget may change any of them.",
+			"FY 2028-29 and FY 2029-30, are projected: nothing has been appropriated for them, " +
+			"and a later budget may change any of them.",
 		AppliesTo: []string{},
 	}, {
-		ID:    "cip-listing-fund-611-unpublished",
-		Theme: ThemeLeftOut,
-		Summary: "Fund 611's two storm grant blocks publish nothing, so the rows here sum to " +
-			"less than the listing's printed grand total.",
-		Text: "p230 lists fund 611's storm projects twice, under a federal grant block and " +
-			"a state grant block, on lines identical but for their figures, and neither " +
-			"block is published. Both still count in the listing's grand " +
-			"total. " + fund611 + ".",
+		ID:      "cip-listing-fund-611-unpublished",
+		Theme:   ThemeLeftOut,
+		Summary: "Fund 611's storm grant projects are left out, so the rows add up to less than the printed total.",
+		Text: "p230 lists fund 611's storm projects twice, under a federal and a state grant block, " +
+			"on lines identical but for their figures, and neither block is published. Both " +
+			"still count in the listing's grand total. " + fund611 + ".",
 		AppliesTo: []string{},
 	}, {
-		ID:    "cip-listing-columns-not-published",
-		Theme: ThemeLeftOut,
-		Summary: "FY 2024-25, FY 2030-45 and each row's TOTAL are read and checked against the " +
-			"printed totals, and not published.",
-		Text: "pp.224-235 also print an FY 2024-25 column, whose basis nothing on these pages " +
-			"states; an FY 2030-45 column, fifteen years in one figure; and each row's TOTAL. " +
-			"All three are held to the printed fund totals when the store is built, and none " +
-			"is published here. Neither is the program a project belongs to: pp.236-245 " +
-			"print it and are not read.",
+		ID:      "cip-listing-columns-not-published",
+		Theme:   ThemeLeftOut,
+		Summary: "Three of the listing's columns are checked against its totals but not shown.",
+		Text: "pp.224-235 also print an FY 2024-25 column, whose basis these pages don't state; an " +
+			"FY 2030-45 column, fifteen years in one figure; and each row's TOTAL. All three are " +
+			"checked against the printed fund totals, and none is shown. Nor is the program a " +
+			"project belongs to, which pp.236-245 print.",
 		AppliesTo: []string{},
 	}}
 }

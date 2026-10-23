@@ -611,7 +611,7 @@ func TestTheSiteDoesNotSayThePSeventySixScheduleIsUnmapped(t *testing.T) {
 		t.Fatal("caveats.html ships a config blob, so this test's substring search " +
 			"could pass on JSON no reader reads")
 	}
-	for _, want := range []string{"p222", "Capital Improvement Program", "transfers-by-fund"} {
+	for _, want := range []string{"p222", "Capital Improvement Program", "p76&#39;s fund-by-fund list"} {
 		if !strings.Contains(caveats, want) {
 			t.Errorf("the exported caveats.html does not say %q, so the residual is "+
 				"unexplained rather than cited", want)

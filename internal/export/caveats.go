@@ -95,8 +95,8 @@ type caveatEntry struct {
 	Summary      string
 	Theme        project.CaveatTheme
 	ThemeHeading string
-	// Variants are its texts, in the order the documents sort; one, with
-	// no Of, where every document carrying it says the same.
+	// Variants are its texts, in year order; one, with no Of, where every
+	// document carrying it says the same.
 	Variants []*caveatVariant
 	// Pages are the views that state it, in nav order.
 	Pages []navItem
@@ -409,6 +409,8 @@ func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, 
 			}
 			ofs[va.Of] = true
 		}
+		// Of opens with a fiscal year label, so it sorts by year.
+		slices.SortStableFunc(e.Variants, func(a, b *caveatVariant) int { return strings.Compare(a.Of, b.Of) })
 	}
 
 	cx.themes = groupByTheme(cx.entries, caveatThemePrefix)

@@ -241,7 +241,7 @@ func TestStocksAreExcluded(t *testing.T) {
 			t.Errorf("got a node %q for a stock, want none", n.ID)
 		}
 	}
-	if !hasCaveat(g, "stocks") {
+	if !hasCaveat(g, "amounts on hand") {
 		t.Error("no caveat mentions stocks; a reader reconciling against p66 finds three rows missing")
 	}
 }
@@ -309,7 +309,7 @@ func TestInternalServiceClassification(t *testing.T) {
 	if h.ExternalExpenditureCents != 8180101100 {
 		t.Errorf("got %d external expenditure cents, want %d", h.ExternalExpenditureCents, 8180101100)
 	}
-	if !hasCaveat(g, "internal_service") {
+	if !hasCaveat(g, "the city paying itself") {
 		t.Error("no caveat explains the internal service classification")
 	}
 }
@@ -330,7 +330,7 @@ func TestHeadlineNaiveAndResidual(t *testing.T) {
 		t.Errorf("got residual %d, want out %d minus in %d",
 			h.TransferResidualCents, h.InternalTransferOutCents, h.InternalTransferInCents)
 	}
-	if !hasCaveat(g, "transfer_id") {
+	if !hasCaveat(g, "without pairing each payment") {
 		t.Error("no caveat says the transfer legs are unpaired")
 	}
 	if !strings.Contains(caveatText(g), "$38,086,737") {
@@ -676,7 +676,7 @@ func TestTransferCaveatWhenLegsMatch(t *testing.T) {
 		t.Fatalf("got residual %d, want 0", g.Metadata.Headline.TransferResidualCents)
 	}
 	text := caveatText(g)
-	if !strings.Contains(text, "is not evidence the legs pair up") {
+	if !strings.Contains(text, "does not show each payment matches a receipt") {
 		t.Errorf("got caveats:\n%s\nwant one saying matching totals prove nothing", text)
 	}
 }
@@ -703,8 +703,8 @@ func TestTransferCaveatNamesThePrintedColumn(t *testing.T) {
 		"Capital Improvement Program",
 		"p222",
 		"$38,086,737", // p0073.txt:58, and this document's own residual
-		// The document that does pair them.
-		"transfers-by-fund",
+		// The list that does pair them.
+		"p76's fund-by-fund list",
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("no caveat says %q:\n%s", want, text)

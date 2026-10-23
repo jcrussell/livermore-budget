@@ -44,7 +44,8 @@ func caveatSite(a, b, c string) (*Options, []navItem) {
 // x.
 //
 // Mutation: key entries on (id, text) and "y" is two entries, b's link
-// landing on a's. Mutation: start a new section for every view and a.html and
+// landing on a's. Mutation: drop the variants' sort and y's texts are in
+// document order, a's year after b's. Mutation: start a new section for every view and a.html and
 // b.html each get one. Mutation: list as unviewed every entry an unreached
 // document carries and x is in it beside the a and b section.
 func TestTheCaveatIndexStatesEachCaveatOnce(t *testing.T) {
@@ -53,6 +54,10 @@ func TestTheCaveatIndexStatesEachCaveatOnce(t *testing.T) {
 		`[{"id":"x","summary":"X.","theme":"left-out","text":"Same.","applies_to":[]},{"id":"y","summary":"Y.","theme":"our-reading","text":"In b.","applies_to":[]}]`,
 		`[{"id":"x","summary":"X.","theme":"left-out","text":"Same.","applies_to":[]},{"id":"z","summary":"Z.","theme":"left-out","text":"Only c.","applies_to":[]}]`,
 	)
+	// a is read first and is the later year, so the variants' order is the
+	// years', not the documents'.
+	o.Projections["a"] = caveatDoc("FY 2025-26", `[{"id":"x","summary":"X.","theme":"left-out","text":"Same.","applies_to":[]},{"id":"y","summary":"Y.","theme":"our-reading","text":"In a.","applies_to":[]}]`)
+	o.Projections["b"] = caveatDoc("FY 2024-25", `[{"id":"x","summary":"X.","theme":"left-out","text":"Same.","applies_to":[]},{"id":"y","summary":"Y.","theme":"our-reading","text":"In b.","applies_to":[]}]`)
 	cx, err := buildCaveatIndex(o, ColumnIndex{}, nav)
 	if err != nil {
 		t.Fatalf("buildCaveatIndex: %v", err)
@@ -71,7 +76,7 @@ func TestTheCaveatIndexStatesEachCaveatOnce(t *testing.T) {
 	}
 	want := []stated{
 		{"caveat-x", "|Same.", "a.html b.html"},
-		{"caveat-y", "FY 2024-25 adopted|In a. / FY 2025-26 adopted|In b.", "a.html b.html"},
+		{"caveat-y", "FY 2024-25 adopted|In b. / FY 2025-26 adopted|In a.", "a.html b.html"},
 		{"caveat-z", "|Only c.", ""},
 	}
 	if diff := cmp.Diff(want, got); diff != "" {

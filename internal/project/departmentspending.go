@@ -256,45 +256,34 @@ func (d *departmentSpending) label(e endpoint) string { return nodeLabel(d.Label
 func departmentSpendingCaveats() []Caveat {
 	return []Caveat{
 		{
-			ID:    "no-fund-axis-on-these-pages",
-			Theme: ThemeLeftOut,
-			Summary: "These rows say what a division spends, not what pays for it: the " +
-				"schedule has no fund and no fund group.",
-			Text: "Budget Book pp.85-125's upper block prints what each division spends " +
-				"under each object heading whatever fund pays for it, so no row here carries " +
-				"a fund or a fund group. That is the page rather than a gap -- the fund " +
-				"breakdown is the LOWER block of the same eleven pages, Department Funding " +
-				"Sources, which this site draws as its own chart. The two are not the same " +
-				"grain and are not to be joined: that block prints one row per DEPARTMENT " +
-				"and this one per DIVISION. A division drawn here therefore belongs to no " +
-				"fund group, and a chart that colours by group leaves it unshaded.",
+			ID:      "no-fund-axis-on-these-pages",
+			Theme:   ThemeLeftOut,
+			Summary: "These rows say what a division spends, not which fund pays for it.",
+			Text: "The upper block of Budget Book pp.85-125 prints what each division spends by " +
+				"category, whatever fund pays for it, so no row here has a fund. The fund breakdown " +
+				"is the lower block of the same pages, drawn as its own chart, and it is by " +
+				"department, not division, so the two cannot be joined. A division here has no " +
+				"fund group, and a chart coloured by group leaves it grey.",
 			AppliesTo: []string{},
 		},
 		{
-			ID:    "the-ribbons-are-a-cross-tab",
-			Theme: ThemeOurReading,
-			Summary: "Each ribbon is a cell of one printed table read along a second axis, " +
-				"not money moving in the direction drawn.",
-			Text: "These pages print one matrix: divisions down, object categories across. " +
-				"A chart can read it either way round and neither reading is money moving, " +
-				"so every ribbon here carries the partition flag and the chart says so on " +
-				"each one. Summing a whole column is the printed total of that column and " +
-				"nothing more; there is no flow to follow from one end of this document to " +
-				"the other.",
+			ID:      "the-ribbons-are-a-cross-tab",
+			Theme:   ThemeOurReading,
+			Summary: "Each ribbon here is a cell of one printed table, not money moving from one box to another.",
+			Text: "These pages print one table: divisions down, spending categories across. A chart can " +
+				"read it either way round, and neither is money moving, so every ribbon here says " +
+				"so. Adding up a whole column gives that column's printed total and nothing more.",
 			AppliesTo: []string{},
 		},
 		{
-			ID:    "the-boundary-is-not-classified-here",
-			Theme: ThemeOurReading,
-			Summary: "Every expenditure ribbon is published as external because these rows " +
-				"name no fund group to classify it by.",
-			Text: "Elsewhere in this project a flow is external or an internal service " +
-				"charge according to the fund group at its far end, read off the section " +
-				"header the row sits under. These rows have no such header, so that question " +
-				"cannot be asked of them and every expenditure ribbon is published as " +
-				"external. Internal Service Fund spending is INSIDE these figures rather " +
-				"than beside them. Do not add a " +
-				"figure from this document to an external total taken from another.",
+			ID:      "the-boundary-is-not-classified-here",
+			Theme:   ThemeOurReading,
+			Summary: "Spending here is all counted as outside the city, including charges between departments.",
+			Text: "Elsewhere on this site, spending is outside money or a charge between departments " +
+				"according to the fund group it comes from. These rows name no fund group, so " +
+				"every ribbon is published as outside money, and Internal Service Fund charges " +
+				"are inside these figures. Don't add a figure from here to an outside-money total " +
+				"from another page.",
 			AppliesTo: []string{},
 		},
 	}

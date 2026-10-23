@@ -139,85 +139,70 @@ var (
 	caveatBalancesDoNotTieToP41 = Caveat{
 		ID:      "p167-does-not-tie-to-p41",
 		Theme:   ThemeBooksDisagree,
-		Summary: "MD&A's in-millions table (p41) does not tie to this schedule's 2025 General Fund balance; the audited statement (p54) does, to the dollar.",
-		Text: "This schedule's five General Fund components for 2025 sum to $87,043,576, " +
-			"and the ACFR's audited Statement of Revenues, Expenditures and Changes in " +
-			"Fund Balances (p54) prints exactly that ending balance for the General " +
-			"Fund. What does not tie is Management's Discussion and Analysis: p41 " +
-			"condenses the same statement in millions and prints the ending balance " +
-			"as $87.10, which is not where $87,043,576 rounds — MD&A drifts from the " +
-			"ACFR's own audited statement. All three figures are published as printed; " +
-			"none is corrected to another.",
+		Summary: "The annual report's summary table (p41) rounds the General Fund's 2025 balance wrong.",
+		Text: "This schedule's five General Fund parts for 2025 add up to $87,043,576, and the " +
+			"audited statement (p54) prints exactly that. The management discussion on p41 " +
+			"shows the same balance in millions as $87.10, which is not where $87,043,576 " +
+			"rounds. All three are published as printed.",
 		AppliesTo: []string{},
 	}
 	caveatNoAssignedRow = Caveat{
 		ID:      "all-other-funds-print-no-assigned-row",
 		Theme:   ThemeLeftOut,
-		Summary: "All Other Governmental Funds prints no Assigned row, so that block has four components, not five.",
-		Text: "p167's All Other Governmental Funds block prints Nonspendable, Restricted, " +
-			"Committed and Unassigned, and no Assigned line in any year. The row is absent " +
-			"from the schedule, not zero: a published zero is a printed dash, and there " +
-			"is no dash there.",
+		Summary: "All Other Governmental Funds prints no Assigned row, so that block has four parts, not five.",
+		Text: "p167's All Other Governmental Funds block prints Nonspendable, Restricted, Committed " +
+			"and Unassigned, and no Assigned line in any year. The row is missing, not zero: a " +
+			"zero would be a printed dash.",
 		AppliesTo: []string{},
 	}
 	caveatGovernmentalFundsOnly = Caveat{
 		ID:      "governmental-funds-only",
 		Theme:   ThemeLeftOut,
-		Summary: "Governmental funds only: water, sewer and the other enterprise activities are not in this schedule.",
-		Text: "This schedule covers the governmental funds — the General Fund plus " +
-			"special revenue, debt service and capital projects funds — on the " +
-			"modified accrual basis. Enterprise activities such as water and sewer sit " +
-			"outside it, and this site's budget pages draw adopted budgets for all funds, " +
-			"so figures here sit well below those pages' totals. The gap is scope, not " +
-			"error.",
+		Summary: "These schedules leave out water, sewer and the city's other business-like funds.",
+		Text: "These schedules cover the governmental funds: the General Fund plus special revenue, " +
+			"debt service and capital project funds. Water, sewer and the other enterprise " +
+			"funds are outside them, so the totals here are well below the budget pages', " +
+			"which draw every fund. The gap is scope, not error.",
 		AppliesTo: []string{},
 	}
 	caveatOtherFinancingNotPublished = Caveat{
 		ID:      "other-financing-not-published",
 		Theme:   ThemeLeftOut,
-		Summary: "The schedule's Other financing block and Net change lines are not published, so this table ends at the excess line.",
-		Text: "pp.168-169 continue past the excess line with an Other financing sources " +
-			"(uses) block and a Net change in fund balances line. Neither is published: " +
-			"the block's printed 2023 total repeats the 2022 figure — its components " +
-			"sum to $39,259,064 against a printed $(1,767,367) — and Net change 2023 " +
-			"carries the same copy, so neither line has an honest printed total to stand " +
-			"under.",
+		Summary: "The table stops before Other financing and Net change, whose 2023 totals are misprinted.",
+		Text: "pp.168-169 go on past the excess line to an Other financing sources (uses) block and " +
+			"a Net change in fund balances line. Neither is published: the block's printed 2023 " +
+			"total repeats the 2022 figure (its parts add up to $39,259,064 against a printed " +
+			"$(1,767,367)), and Net change 2023 carries the same copy.",
 		AppliesTo: []string{},
 	}
 	caveatStatisticalSectionIsUnaudited = Caveat{
 		ID:      UnauditedCaveatID,
 		Theme:   ThemeKindsOfYear,
-		Summary: "These ten-year schedules sit in the section the ACFR itself labels (Unaudited); the auditor's opinion does not cover them.",
-		Text: "p161, the section divider, reads \"Statistical Section (Unaudited)\", and " +
-			"the auditor's report (p29) says of this section: \"Our opinions on the " +
-			"basic financial statements do not cover the other information, and we do " +
-			"not express an opinion or any form of assurance thereon.\" The audited " +
-			"statements cover the year just ended, so at most a schedule's 2025 column " +
-			"can be checked against them; the other nine rest on this section alone.",
+		Summary: "These ten-year tables are unaudited; the auditor's opinion covers only the latest year's statements.",
+		Text: "p161 heads this section \"Statistical Section (Unaudited)\", and the auditor's " +
+			"report (p29) says its opinion does not cover it. The audited statements cover " +
+			"the year just ended, so at most a table's 2025 column can be checked against " +
+			"them; the other nine years rest on this section alone.",
 		AppliesTo: []string{},
 	}
 	caveatChangesTieToP54 = Caveat{
 		ID:      "pp168-169-tie-to-p54",
 		Theme:   ThemeChecked,
-		Summary: "The audited statement (p54) corroborates this schedule's 2025 column: five printed lines, Total revenues through Net change, tie to the dollar.",
-		Text: "The 2025 column can be checked against the audited Statement of Revenues, " +
-			"Expenditures and Changes in Fund Balances (p54): on five printed lines — " +
-			"Total revenues $221,212,743, Total Expenditures $186,516,649, the excess " +
-			"$34,696,094, Total other financing sources (uses) $(18,458,098) and Net " +
-			"change in fund balances $16,237,996 — the schedule and p54's Total " +
-			"Governmental Funds column agree to the dollar. That includes the Other " +
-			"financing and Net change lines this table withholds: what disqualifies " +
-			"them is their 2023 column, not their 2025 one.",
+		Summary: "This table's 2025 column matches the audited statement (p54) to the dollar on five lines.",
+		Text: "Total revenues $221,212,743, Total Expenditures $186,516,649, the excess " +
+			"$34,696,094, Total other financing sources (uses) $(18,458,098) and Net change in " +
+			"fund balances $16,237,996 are the same in this table and in p54's Total " +
+			"Governmental Funds column. That includes the two lines this table withholds: " +
+			"what rules them out is their 2023 column, not their 2025 one.",
 		AppliesTo: []string{},
 	}
 	caveatVLFReclassification = Caveat{
 		ID:      "property-tax-reclassified",
 		Theme:   ThemeKindsOfYear,
-		Summary: "Property taxes and Intergovernmental change definition at FY2024-25, by the page's own footnote.",
-		Text: "p168's footnote on the Property Taxes row reads: \"VLF Comp revenue " +
-			"reclassified to Property tax in FY 2024-25. Previously reported under " +
-			"Intergovernmental.\" The two series change definition at that column, so " +
-			"part of any movement there is the reclassification rather than the economy.",
+		Summary: "Property taxes and Intergovernmental change definition in FY2024-25, so that year's jump is partly a relabel.",
+		Text: "p168's footnote on the Property Taxes row reads: \"VLF Comp revenue reclassified to " +
+			"Property tax in FY 2024-25. Previously reported under Intergovernmental.\" Part " +
+			"of any movement in either line that year is the relabelling, not the economy.",
 		AppliesTo: []string{},
 	}
 )

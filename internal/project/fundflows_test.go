@@ -346,7 +346,7 @@ func TestTheStoppedCountIsPluralised(t *testing.T) {
 			continue
 		}
 		found = true
-		if !strings.Contains(c.Summary, "1 fund group's") || strings.Contains(c.Text, "1 fund groups") {
+		if !strings.Contains(c.Text, "1 fund group's") || strings.Contains(c.Text, "1 fund groups") {
 			t.Errorf("the caveat does not read \"1 fund group's\":\n  %s\n  %s", c.Summary, c.Text)
 		}
 	}

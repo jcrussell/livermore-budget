@@ -1194,28 +1194,28 @@ var (
 	caveatStocks = Caveat{
 		ID:      "working-capital-is-a-stock",
 		Theme:   ThemeLeftOut,
-		Summary: "Beginning and ending working capital are stocks, not flows, so the chart carries no link for them.",
-		Text: "The Sankey shows flows only. BEGINNING and ENDING WORKING CAPITAL are " +
-			"stocks and are recorded as facts but carry no link, so the chart will not " +
-			"reconcile row-for-row against pp.66-67.",
+		Summary: "The money funds hold at the start and end of the year is not drawn, only what moves.",
+		Text: "Budget Book pp.66-67 print each fund group's beginning and ending working " +
+			"capital. Those are amounts on hand, not money moving, so the chart draws no " +
+			"ribbon for them, and its columns will not add up row for row to that page.",
 		AppliesTo: []string{},
 	}
 	caveatPermanentFunds = Caveat{
 		ID:      "permanent-funds-have-no-column",
 		Theme:   ThemeLeftOut,
-		Summary: "Permanent Funds are a seventh fund type, and this schedule prints no column for them.",
-		Text: "Permanent Funds are a seventh fund type in data/funds.yaml " +
-			"(2 funds) with no column on this schedule.",
+		Summary: "The city's two Permanent Funds have no column on this page, so they are not drawn.",
+		Text: "The city has a seventh kind of fund, Permanent Funds (2 funds), and Budget " +
+			"Book pp.66-67 print no column for them.",
 		AppliesTo: []string{},
 	}
 	caveatInternalService = Caveat{
 		ID:      "internal-service-is-outside-the-external-headline",
 		Theme:   ThemeLeftOut,
-		Summary: "Internal Service charges are billed between city departments, so they are outside the external headline.",
-		Text: "Internal Service Fund charges are billed to other City " +
-			"departments, so they are classified internal_service and excluded from the " +
-			"external headline. The all_funds_gross figures include them and match the " +
-			"city's own citywide totals.",
+		Summary: "Charges one city department bills another are left out of the headline totals.",
+		Text: "Internal Service Funds charge other city departments for things like " +
+			"vehicles and computers. That is the city paying itself, so the headline " +
+			"leaves it out. The all-funds totals include it, and match the city's own " +
+			"citywide totals.",
 		AppliesTo: []string{PrefixFundGroup + registry.FundTypeInternalService},
 	}
 )
@@ -1269,9 +1269,9 @@ var contestedTotals = []contestedTotal{{
 	Exception:  "p0067-internal-service-is-250000-high-by-fund-group",
 	SpinePages: "pp.66-67",
 	Row:        "Services & Supplies",
-	PrintedBy:  "p0183, p0075, p0205 and p0209",
-	ImpliedBy: "p0061 prints $26,906,515, which is that figure plus the $612,000 " +
-		"transfer to the CIP it prints beside it, and the 78 rows of pp.85-125 sum to it",
+	PrintedBy:  "pp.75, 183, 205 and 209",
+	ImpliedBy: "p61 prints $26,906,515, which is that figure plus the $612,000 " +
+		"transfer to the CIP it prints beside it, and the 78 rows of pp.85-125 add up to it",
 	Kept: "the Services & Supplies figure that would bring pp.66-67 into line with the other schedules " +
 		"is printed on no page of the book",
 }}
@@ -1442,15 +1442,14 @@ func contestedCaveat(c contestedTotal, col Column, links []Link) (Caveat, bool) 
 		ID:    "contested-total-" + c.FundGroup,
 		Theme: ThemeBooksDisagree,
 		Summary: fmt.Sprintf(
-			"The city's budget book prints two different totals for %s spending; this chart draws the one on %s.",
+			"The budget book prints two different totals for %s spending; this chart draws the one on %s.",
 			label, c.SpinePages),
 		Text: fmt.Sprintf(
-			"THE CITY'S OWN BOOK DISAGREES WITH ITSELF ABOUT THIS ONE FIGURE. %s "+
-				"expenditure is drawn at %s, which is what %s print for %s. Other "+
-				"schedules in the same document make it %s: %s print that figure, and "+
-				"%s. The difference is %s, in a single %s row. This chart draws the "+
-				"spine's figure, and that is settled rather than open: %s, and every "+
-				"figure here is one the city printed on the page it is cited from.",
+			"%s spending is drawn at %s, which is what %s print for %s. Other "+
+				"schedules in the same book make it %s: %s print that figure, and "+
+				"%s. The difference is %s, in a single %s row. This chart keeps "+
+				"the summary page's figure because %s, and every figure here is one "+
+				"the city printed.",
 			label, amount.Cents(c.Published).Dollars(), c.SpinePages, col.String(), amount.Cents(c.Elsewhere).Dollars(),
 			c.PrintedBy, c.ImpliedBy, amount.Cents(c.Published-c.Elsewhere).Dollars(), c.Row, c.Kept),
 		AppliesTo: []string{PrefixFundGroup + c.FundGroup},
@@ -1490,14 +1489,10 @@ func transferCaveat(h Headline, links []Link, cip cipTransfers) Caveat {
 	// depends on its own arithmetic, and the caveats page lists the id once
 	// with each document's text beneath it.
 	const id = "transfer-legs-unpaired"
-	const transferSummary = "This chart draws transfers out and transfers in as two separate totals, " +
-		"and no ribbon pairs a payment with its receipt."
-	const unpaired = "Transfer legs are unpaired IN THIS DOCUMENT: no link here carries a " +
-		"transfer_id. Budget Book p76's transfers are published one document over, in " +
-		"transfers-by-fund, which draws each end of every figure p76 prints as its own link " +
-		"under one transfer_id, and this chart's Transfers In opens into it. They are not " +
-		"added here because revenue-by-fund publishes transfer_in over the same money, and " +
-		"a document carrying both would have to say which schedule it reads that money from. "
+	const transferSummary = "Transfers in and transfers out are two separate totals here, and they need not match."
+	const unpaired = "This chart draws the money the city's funds move to one another as two " +
+		"totals, Transfers In and Transfers Out, without pairing each payment with its " +
+		"receipt; Transfers In opens into Budget Book p76's fund-by-fund list. "
 	in, out := h.InternalTransferInCents, h.InternalTransferOutCents
 
 	// AppliesTo is read off the links' own transfer endpoints, not inferred
@@ -1511,8 +1506,8 @@ func transferCaveat(h Headline, links []Link, cip cipTransfers) Caveat {
 			Theme:   ThemeLeftOut,
 			Summary: transferSummary,
 			Text: unpaired + fmt.Sprintf(
-				"That transfers out and transfers in both total %s is not evidence the "+
-					"legs pair up; nothing has checked them against each other.", amount.Cents(out).Dollars()),
+				"That both total %s does not show each payment matches a receipt; "+
+					"nothing here checks them against each other.", amount.Cents(out).Dollars()),
 			AppliesTo: targets,
 		}
 	}
@@ -1525,8 +1520,6 @@ func transferCaveat(h Headline, links []Link, cip cipTransfers) Caveat {
 		verb = "fall short of"
 		residual = -residual
 	}
-	const stated = " It is stated as headline.transfer_residual_cents rather than netted " +
-		"away or padded with an invented link."
 
 	// The claim is made only when this document's arithmetic meets p222's
 	// published facts, so a schedule that stops tying cannot publish it.
@@ -1536,11 +1529,11 @@ func transferCaveat(h Headline, links []Link, cip cipTransfers) Caveat {
 			Theme:   ThemeLeftOut,
 			Summary: transferSummary,
 			Text: unpaired + fmt.Sprintf(
-				"Transfers out (%s) %s transfers in (%s), and the %s difference is not an "+
-					"unexplained gap: it is what the operating funds transfer to the Capital "+
-					"Improvement Program, which Budget Book p222 lists fund by fund and whose "+
-					"funds are not on this chart.%s",
-				amount.Cents(out).Dollars(), verb, amount.Cents(in).Dollars(), amount.Cents(residual).Dollars(), stated),
+				"Transfers out (%s) %s transfers in (%s) by %s. The difference is what the "+
+					"operating funds send to capital projects, the Capital Improvement Program, "+
+					"which Budget Book p222 lists fund by fund; those capital funds are not on "+
+					"this chart.",
+				amount.Cents(out).Dollars(), verb, amount.Cents(in).Dollars(), amount.Cents(residual).Dollars()),
 			AppliesTo: targets,
 		}
 	}
@@ -1552,11 +1545,10 @@ func transferCaveat(h Headline, links []Link, cip cipTransfers) Caveat {
 			Theme:   ThemeLeftOut,
 			Summary: transferSummary,
 			Text: unpaired + fmt.Sprintf(
-				"Transfers out (%s) %s transfers in (%s) by %s, and the transfers to the "+
-					"Capital Improvement Program that Budget Book p222 lists total %s in this "+
-					"column. The two do not reconcile here, so the difference is not "+
-					"explained.%s",
-				amount.Cents(out).Dollars(), verb, amount.Cents(in).Dollars(), amount.Cents(residual).Dollars(), amount.Cents(cip.Cents).Dollars(), stated),
+				"Transfers out (%s) %s transfers in (%s) by %s, and the transfers to "+
+					"capital projects Budget Book p222 lists total %s in this column. The two "+
+					"do not reconcile here, so the difference is not explained.",
+				amount.Cents(out).Dollars(), verb, amount.Cents(in).Dollars(), amount.Cents(residual).Dollars(), amount.Cents(cip.Cents).Dollars()),
 			AppliesTo: targets,
 		}
 	}
@@ -1565,10 +1557,10 @@ func transferCaveat(h Headline, links []Link, cip cipTransfers) Caveat {
 		Theme:   ThemeLeftOut,
 		Summary: transferSummary,
 		Text: unpaired + fmt.Sprintf(
-			"Transfers out (%s) %s transfers in (%s), and mapping p76 did not close the %s "+
-				"difference: that schedule's own grand total is the transfers-in side, so the "+
-				"gap is the city's rather than this project's.%s",
-			amount.Cents(out).Dollars(), verb, amount.Cents(in).Dollars(), amount.Cents(residual).Dollars(), stated),
+			"Transfers out (%s) %s transfers in (%s) by %s. p76's own grand total is the "+
+				"transfers-in side, so the gap is in the city's figures, not in how this "+
+				"site reads them.",
+			amount.Cents(out).Dollars(), verb, amount.Cents(in).Dollars(), amount.Cents(residual).Dollars()),
 		AppliesTo: targets,
 	}
 }

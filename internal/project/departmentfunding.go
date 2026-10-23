@@ -296,46 +296,34 @@ func departmentFundingCaveats() []Caveat {
 	return []Caveat{
 		ConstraintTierCaveat(),
 		{
-			ID:    "a-department-here-is-not-a-division",
-			Theme: ThemeSameMoneyTwice,
-			Summary: "These rows are printed once per DEPARTMENT; the divisions drawn " +
-				"elsewhere on this site are a finer tier, and five names belong to both.",
-			Text: "Budget Book pp.85-125 print two blocks per page and they are keyed on " +
-				"different things. The upper block is Expenditures by Category, printed by " +
-				"DIVISION; this one is Department Funding Sources, printed once per " +
-				"DEPARTMENT. data/departments.yaml keeps those as two tiers because the " +
-				"city's own pages do, and five names are in both -- City Council, City " +
-				"Manager, City Attorney, General Services and Administrative Services each " +
-				"name a department and a division beneath it. A mark here is the whole " +
-				"department across every fund; a mark named the same on the General Fund's " +
-				"drill-down is one division of it. Do not read one as the other, and do not " +
-				"add them.",
+			ID:      "a-department-here-is-not-a-division",
+			Theme:   ThemeSameMoneyTwice,
+			Summary: "A department here is not the division of the same name elsewhere; don't add them.",
+			Text: "Budget Book pp.85-125 print two blocks per page: spending by DIVISION above, and " +
+				"each DEPARTMENT's funding sources below. Five names are both a department and a " +
+				"division beneath it: City Council, City Manager, City Attorney, General Services " +
+				"and Administrative Services. A mark here is the whole department across every " +
+				"fund; a mark of the same name on the General Fund's breakdown is one division of it.",
 			AppliesTo: []string{},
 		},
 		{
-			ID:    "what-a-fund-pays-departments-is-not-what-it-takes-in",
-			Theme: ThemeSameMoneyTwice,
-			Summary: "What a fund pays departments here is not what that fund takes in, " +
-				"and the two are printed by different schedules.",
-			Text: "What a fund takes in is printed by Budget Book pp.127-140. What leaves " +
-				"the fund here is what pp.85-125 print the " +
-				"city's departments drawing on it. Those are two schedules and not one " +
-				"figure read twice, and either side may be the larger.",
+			ID:      "what-a-fund-pays-departments-is-not-what-it-takes-in",
+			Theme:   ThemeSameMoneyTwice,
+			Summary: "What a fund pays departments is not what it takes in; two different pages print them.",
+			Text: "What a fund takes in is printed on Budget Book pp.127-140; what departments draw " +
+				"from it is printed on pp.85-125. They are two pages, not one figure read twice, " +
+				"and either may be the larger.",
 			AppliesTo: []string{},
 		},
 		{
-			ID:    "two-of-the-four-columns-tie-to-no-citywide-total",
-			Theme: ThemeKindsOfYear,
-			Summary: "The FY2023-24 actual and FY2024-25 revised columns reconcile to each " +
-				"department's own printed total and to nothing citywide.",
-			Text: "Budget Book pp.66-67 print two adopted columns and no actual and no " +
-				"revised one, so the citywide check this project runs over these rows " +
-				"(cuts-tie-along-the-lattice) can compare only the two adopted years. " +
-				"The other two columns reconcile to each department's own printed Total " +
-				"Department Funding Sources at build time and to no citywide figure at all. " +
-				"Five of the eleven departments miss that printed total by exactly one " +
-				"dollar, every one of them in the FY2023-24 actual column and every one " +
-				"declared in the mapping as the city's own rounding.",
+			ID:      "two-of-the-four-columns-tie-to-no-citywide-total",
+			Theme:   ThemeKindsOfYear,
+			Summary: "The FY2023-24 actual and FY2024-25 revised columns are checked only department by department.",
+			Text: "Budget Book pp.66-67 print citywide totals for the two adopted years only, so the " +
+				"actual and revised columns here are checked against each department's own printed " +
+				"total and nothing citywide. Five of the eleven departments miss that total by " +
+				"exactly one dollar, all in the FY2023-24 actual column; the mapping declares each " +
+				"as the city's own rounding.",
 			AppliesTo: []string{},
 		},
 	}

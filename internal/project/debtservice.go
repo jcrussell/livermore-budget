@@ -183,72 +183,63 @@ func debtCaveats() []Caveat {
 		{
 			ID:      "requirements-are-projected",
 			Theme:   ThemeKindsOfYear,
-			Summary: "The requirements are payments the city's debt agreements schedule through 2055. None of them is an appropriation.",
-			Text: "pp.80-81 print the debt service requirements beside the budget. They are what the " +
-				"city's certificates, loans and lease oblige it to pay each year, as the city " +
-				"scheduled them when the budget was printed. A council adopts no year of them: the " +
-				"adopted figures are the by-issue budget for FY 2025-26 and FY 2026-27, and every " +
-				"requirement is published here as projected.",
+			Summary: "The debt payments through 2055 are what the city owes on its schedule, not money budgeted.",
+			Text: "pp.80-81 print beside the budget what the city's certificates, loans and lease " +
+				"oblige it to pay each year. No council adopts those: the adopted figures are the " +
+				"by-issue budget for FY 2025-26 and FY 2026-27, and every scheduled payment is " +
+				"published as projected.",
 			AppliesTo: []string{},
 		},
 		{
 			ID:      "a-band-is-five-years",
 			Theme:   ThemeKindsOfYear,
-			Summary: "From 2031 each row is five years in one figure. A band is not a year, and its figure is not a year's.",
-			Text: "The schedule prints one row a year through the year ending June 30, 2030, and then " +
-				"one row for each five years, 2031-2035 to 2051-2055. Each band's figure is the total " +
-				"of its five years, as printed. The page does not say how it falls year by year, and " +
-				"this site does not divide it. Comparing a band with a single year compares five " +
-				"years with one.",
+			Summary: "From 2031 each row is five years in one figure, not one year.",
+			Text: "The schedule prints one row a year through June 30, 2030, then one row for each five " +
+				"years, 2031-2035 to 2051-2055. Each figure is the five years' total, as printed; " +
+				"the page doesn't say how it falls year by year, and this site doesn't divide it.",
 			AppliesTo: []string{},
 		},
 		{
 			ID:      "the-last-band-ends-in-2052",
 			Theme:   ThemeBooksDisagree,
-			Summary: "The last band is printed as 2051-2055. The annual report prints the same figures as 2051-2052.",
-			Text: "The Budget Book labels its last row 2051-2055. The city's FY2025 annual financial " +
-				"report prints the same principal and interest, by activity, on p86 under " +
-				"2051-2052, and on p84 gives 2052 as the 2022 Certificates of Participation's " +
-				"maturity. This site publishes the band the Budget Book prints.",
+			Summary: "The budget book labels the last band 2051-2055; the annual report prints it as 2051-2052.",
+			Text: "The city's FY2025 annual financial report prints the same principal and interest on " +
+				"p86 under 2051-2052, and on p84 gives 2052 as the 2022 Certificates of " +
+				"Participation's last year. This site shows the band as the Budget Book prints it.",
 			AppliesTo: []string{},
 		},
 		{
-			ID:    "by-issue-short-of-the-funds-debt-services",
-			Theme: ThemeBooksDisagree,
-			Summary: fmt.Sprintf("The by-issue budget totals fall short of the funds' Debt Services by %s.",
-				strings.Join(short, " and ")),
-			Text: fmt.Sprintf("The issues' adopted totals are not the Debt Services the budget's "+
-				"expenditure schedules print for the funds: they fall short by %s. The difference sits "+
-				"chiefly in the HUD loans' fund, 224, which budgets more than the loans' printed debt "+
-				"service, and in the 2022 COP fund, 402, which budgets less. The FY 2024-25 revised "+
-				"column ties exactly. Neither figure is corrected to the other.",
-				strings.Join(short, " and ")),
+			ID:      "by-issue-short-of-the-funds-debt-services",
+			Theme:   ThemeBooksDisagree,
+			Summary: "The adopted budget by loan adds up to a little less than the funds' debt service budgets.",
+			Text: fmt.Sprintf("The issues' adopted totals fall short of the Debt Services the funds' "+
+				"spending pages print by %s. The difference is mostly in fund 224, which budgets "+
+				"more than its HUD loans' printed payments, and fund 402, which budgets less than "+
+				"its 2022 certificates'. The FY 2024-25 revised column ties exactly. Neither figure "+
+				"is corrected to the other.", strings.Join(short, " and ")),
 			AppliesTo: []string{},
 		},
 		{
-			ID:    "requirements-are-not-the-budget",
-			Theme: ThemeBooksDisagree,
-			Summary: fmt.Sprintf("The requirements' 2026 and 2027 rows are close to the budget above them "+
-				"but not equal: %s differ by %s to %s.", counted(len(debtRequirementDrift), "cell"),
-				amount.Cents(lo).Dollars(), amount.Cents(hi).Dollars()),
-			Text: fmt.Sprintf("Each fund type's requirement for 2026 and 2027 can be held against the "+
-				"issues it pays in the budget above it. Most agree to the dollar. These do not: %s. "+
-				"Both are published as printed.", strings.Join(drift, "; ")),
+			ID:      "requirements-are-not-the-budget",
+			Theme:   ThemeBooksDisagree,
+			Summary: "The scheduled 2026 and 2027 payments differ from the budget above them by a few dollars.",
+			Text: fmt.Sprintf("Each fund type's scheduled payment for 2026 and 2027 can be held "+
+				"against the issues it pays in the budget above it. Most agree to the dollar; "+
+				"%s differ by %s to %s: %s. Both are published as printed.",
+				counted(len(debtRequirementDrift), "cell"), amount.Cents(lo).Dollars(),
+				amount.Cents(hi).Dollars(), strings.Join(drift, "; ")),
 			AppliesTo: []string{},
 		},
 		{
 			ID:      "the-equipment-lease-is-one-lender",
 			Theme:   ThemeSameMoneyTwice,
-			Summary: "Both Lease/Purchase rows are one Banc of America equipment purchase agreement, paid by the Internal Service Fund and by the Airport.",
-			Text: "p80 prints the governmental lease across three lines: Internal Service Fund, then " +
-				"Banc of America Equipment with a dash in every column, then Lease/Purchase Loan " +
-				"with the figures. This site labels that row Banc of America Equipment " +
-				"Lease/Purchase Loan, which is how the business-type block prints the Airport's " +
-				"row. The city's FY2025 annual financial report, p86, describes one equipment " +
-				"purchase agreement with Bank of America, entered in 2012, whose payments are made " +
-				"by the Facilities Rehabilitation Internal Service Fund and the Airport Enterprise " +
-				"Fund. The Internal Service Funds' requirements for 2026 and 2027 are this row's " +
-				"principal and interest to the dollar.",
+			Summary: "The two Lease/Purchase rows are one equipment loan, paid by two funds; it is one debt.",
+			Text: "p80 prints the governmental lease across three lines, which this site joins as " +
+				"Banc of America Equipment Lease/Purchase Loan, the name the Airport's row carries. " +
+				"The city's FY2025 annual financial report (p86) describes one equipment purchase " +
+				"agreement with Bank of America from 2012, paid by the Facilities Rehabilitation " +
+				"Internal Service Fund and the Airport. The Internal Service Funds' 2026 and 2027 " +
+				"payments are this row's to the dollar.",
 			AppliesTo: []string{},
 		},
 	}

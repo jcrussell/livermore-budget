@@ -445,27 +445,24 @@ func fundSourcesUsesCaveats(links []Link, nodes []Node) []Caveat {
 				netContributions += v
 			}
 		}
-		summary := "Each fund's draw on or contribution to its balance is its own, and no " +
-			"fund group here both draws and contributes, so these are also each group's net change."
-		if netDraws != draws || netContributions != contributions {
-			summary = "Each fund's draw on or contribution to its balance is its own, so these " +
-				"sum to more than a fund group's net change."
+		net := " Within a fund group some funds draw and others contribute, so these add up " +
+			"to more than the group's net change."
+		if netDraws == draws && netContributions == contributions {
+			net = " No fund group here both draws and contributes, so these are also each " +
+				"group's net change."
 		}
 		out = append(out, Caveat{
 			ID:      "each-fund-change-is-gross",
 			Theme:   ThemeSameMoneyTwice,
-			Summary: summary,
+			Summary: "Each fund's own change in balance is drawn, so these can add to more than the citywide chart's.",
 			Text: fmt.Sprintf("Budget Book pp.186-209 print each fund's beginning and ending "+
-				"balance, and this chart draws the difference fund by fund: a fund whose balance "+
-				"falls draws on it, and one whose balance rises contributes to it. Summed here, "+
-				"%s draw %s and %s contribute %s. Netted within each fund group, the same "+
-				"changes come to draws of %s and contributions of %s. pp.66-67, in the years "+
-				"they print, show a group's CHANGE IN WORKING CAPITAL as one signed row, so the "+
-				"citywide chart's Fund Balance Draw and Contribution are net in this way and read "+
-				"from pp.66-67's own figures, not from these.",
+				"balance, and this chart draws the change fund by fund: %s draw %s and %s "+
+				"contribute %s. Netted within each fund group, the same changes come to draws of "+
+				"%s and contributions of %s, and that net is what the citywide chart draws, from "+
+				"pp.66-67's own figures.",
 				counted(drawn, "fund"), amount.Cents(draws).Dollars(),
 				counted(contributed, "fund"), amount.Cents(contributions).Dollars(),
-				amount.Cents(netDraws).Dollars(), amount.Cents(netContributions).Dollars()),
+				amount.Cents(netDraws).Dollars(), amount.Cents(netContributions).Dollars()) + net,
 			AppliesTo: changeEnds(links),
 		})
 	}
@@ -489,16 +486,16 @@ func fundSourcesUsesCaveats(links []Link, nodes []Node) []Caveat {
 			largest = max(largest, v, -v)
 		}
 		sort.Strings(ids)
-		text := fmt.Sprintf("Each fund's page prints its beginning balance plus its sources equal "+
-			"to its uses plus its ending balance, and for %s drawn here what flows in differs "+
-			"from what flows out.", counted(len(ids), "fund"))
+		text := fmt.Sprintf("Each fund's page prints its beginning balance plus money in as equal "+
+			"to money out plus its ending balance. For %s drawn here, money in and money out "+
+			"differ.", counted(len(ids), "fund"))
 		if blank > 0 {
 			text += fmt.Sprintf(" For %s the page leaves a balance blank, so no change in "+
 				"balance is drawn.", counted(blank, "fund"))
 		}
 		if rounding > 0 {
-			text += fmt.Sprintf(" For %s the printed figures themselves miss the identity, by "+
-				"at most %s, and are drawn as printed.", counted(rounding, "fund"),
+			text += fmt.Sprintf(" For %s the printed figures themselves miss by at most %s, "+
+				"and are drawn as printed.", counted(rounding, "fund"),
 				amount.Cents(largest).Dollars())
 		}
 		out = append(out, Caveat{
@@ -533,14 +530,12 @@ func changeEnds(links []Link) []string {
 
 // cipBlockCaveat says which block of the pages is not drawn.
 var cipBlockCaveat = Caveat{
-	ID:    "the-cip-funds-block-is-not-drawn",
-	Theme: ThemeLeftOut,
-	Summary: "The Capital Improvement Program funds pp.186-209 print are not drawn here; " +
-		"their money is Budget Book p222's.",
-	Text: "Budget Book pp.190, 196, 202 and 208 print a block of Capital Improvement Program " +
-		"funds below the operating funds, among them the capital-project sides of enterprise " +
-		"and internal service funds, which data/funds.yaml types with those groups. That money is what p222 lists the CIP receiving and spending, outside " +
-		"the operating budget pp.66-67 total, so this chart draws the operating funds alone. " +
-		"Adding the block would publish group totals no page prints.",
+	ID:      "the-cip-funds-block-is-not-drawn",
+	Theme:   ThemeLeftOut,
+	Summary: "Capital project funds are not drawn here; their money is on the capital projects pages.",
+	Text: "Budget Book pp.190, 196, 202 and 208 print a block of capital project funds below " +
+		"the operating funds. That money is outside the operating budget pp.66-67 total, and " +
+		"p222 lists it, so this chart draws the operating funds alone; adding the block would " +
+		"produce group totals no page prints.",
 	AppliesTo: []string{},
 }

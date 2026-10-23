@@ -453,15 +453,12 @@ const twoRibbonsSummary = "Every printed transfer is drawn from both ends, so ad
 // both because the caveats page lists the id once.
 func fundDrawnOncePerEndCaveat() Caveat {
 	return Caveat{
-		ID:    "a-fund-is-drawn-once-per-end",
-		Theme: ThemeSameMoneyTwice,
-		Summary: "A fund that both pays and receives appears in more than one column, " +
-			"under the same name.",
-		Text: "This is money moving between the city's own funds, and a flow diagram " +
-			"cannot draw a box pointing at itself. So a fund's paying end and its " +
-			"receiving end are separate marks, each with the words the city prints for " +
-			"it. Two marks with one name on this chart are one fund seen from two ends, " +
-			"not two funds.",
+		ID:      "a-fund-is-drawn-once-per-end",
+		Theme:   ThemeSameMoneyTwice,
+		Summary: "A fund that both pays and receives appears twice, under one name.",
+		Text: "This is money moving between the city's own funds, and a flow chart cannot " +
+			"draw a box pointing at itself. So a fund's paying end and its receiving end are " +
+			"separate boxes; two boxes with one name are one fund seen from both ends.",
 		AppliesTo: []string{},
 	}
 }
@@ -476,43 +473,32 @@ func transfersByFundCaveats() []Caveat {
 			ID:      "one-figure-is-two-ribbons",
 			Theme:   ThemeDataFiles,
 			Summary: twoRibbonsSummary,
-			Text: "Budget Book p76 names both ends of every movement it prints, and this " +
-				"document publishes both: a receiving leg from the payer's end into the " +
-				"fund that gets the money, and a paying leg out of the fund that sends it. " +
-				"The two carry the same transfer_id and the same value, because one " +
-				"printed figure is the evidence for both directions. So the number of " +
-				"MOVEMENTS is half metadata.counts.links, and a reader adding every " +
-				"value_cents in this file gets twice p76's grand total: $21,525,997 in " +
-				"FY 2025-26 and $21,624,633 in FY 2026-27.",
+			Text: "Budget Book p76 names both ends of every transfer it prints, and this file " +
+				"draws both: a leg into the fund that gets the money and a leg out of the fund " +
+				"that sends it, under one transfer_id and at one value. So the number of " +
+				"transfers is half metadata.counts.links, and adding every value_cents gives " +
+				"twice p76's grand total: $21,525,997 in FY 2025-26 and $21,624,633 in FY 2026-27.",
 			AppliesTo: []string{},
 		},
 		fundDrawnOncePerEndCaveat(),
 		{
-			ID:    "only-the-budget-columns-are-published",
-			Theme: ThemeLeftOut,
-			Summary: "p76 prints four columns and this draws the two adopted ones; its " +
-				"historical columns do not add up to its own printed total.",
-			Text: "The page's FY2023-24 and FY2024-25 columns miss p76's own printed grand " +
-				"total by $6,858,051 and by exactly $5,000,000 -- millions, and nothing " +
-				"like the rounding of a few dollars this corpus declares elsewhere. " +
-				"Whatever those two columns are, they are not the city's rounding, so the " +
-				"rules read and skip them and no figure from them is published anywhere " +
-				"in this project. Budget Book pp.66-67 print no actual and no revised " +
-				"column either, so there would be nothing to reconcile them against.",
+			ID:      "only-the-budget-columns-are-published",
+			Theme:   ThemeLeftOut,
+			Summary: "Only p76's two adopted years are drawn; its two earlier columns don't add up.",
+			Text: "p76's FY2023-24 and FY2024-25 columns miss its own printed grand total by " +
+				"$6,858,051 and by exactly $5,000,000, far more than rounding, so no figure from " +
+				"them is published. Budget Book pp.66-67 print no actual or revised column to " +
+				"check them against either.",
 			AppliesTo: []string{},
 		},
 		{
-			ID:    "the-paying-side-is-not-the-whole-of-transfers-out",
-			Theme: ThemeLeftOut,
-			Summary: "p76's grand total is the transfers-IN side; the city's transfers out " +
-				"are larger, and the difference is a column this page does not list.",
-			Text: "Each receiving section of p76 equals the matching TRANSFER IN cell on " +
-				"Budget Book pp.66-67 to the cent, so the paying legs drawn here sum to " +
-				"the transfers-in total and not to the city's transfers out. What pp.66-67 " +
-				"fold into TRANSFER OUT and p76 does not list is the transfers each fund " +
-				"makes to the Capital Improvement Program, which Budget Book p222 lists " +
-				"and the transfers-out document draws beside these. Do not read a fund's " +
-				"paying leg here as the whole of what it transfers out.",
+			ID:      "the-paying-side-is-not-the-whole-of-transfers-out",
+			Theme:   ThemeLeftOut,
+			Summary: "A fund's payments here are not all it transfers out: capital transfers are listed elsewhere.",
+			Text: "Each receiving section of p76 equals the matching Transfers In on Budget Book " +
+				"pp.66-67 to the cent, so the payments drawn here add up to transfers in, not to " +
+				"the city's transfers out. What p76 leaves out is what each fund sends to capital " +
+				"projects, which p222 lists.",
 			AppliesTo: []string{},
 		},
 	}
@@ -536,36 +522,32 @@ func transfersOutCaveats(rows map[transferKey]transferRow) []Caveat {
 			ID:      "one-figure-is-two-ribbons",
 			Theme:   ThemeDataFiles,
 			Summary: twoRibbonsSummary,
-			Text: fmt.Sprintf("Budget Book p76 and p222 name both ends of every movement they "+
-				"print, and this document publishes both: a receiving leg into the fund that "+
-				"gets the money and a paying leg out of the fund that sends it, under one "+
-				"transfer_id and at one value. A reader adding every value_cents in this "+
-				"file gets twice the %s the city transfers out.", amount.Cents(p76+cip).Dollars()),
+			Text: fmt.Sprintf("Budget Book p76 and p222 name both ends of every transfer they "+
+				"print, and this file draws both, under one transfer_id and at one value. "+
+				"Adding every value_cents gives twice the %s the city transfers out.",
+				amount.Cents(p76+cip).Dollars()),
 			AppliesTo: []string{},
 		},
 		{
-			ID:    "transfers-out-are-two-schedules",
-			Theme: ThemeSameMoneyTwice,
-			Summary: "The city's transfers out are two printed lists: p76's transfers between " +
-				"operating funds, and p222's transfers to the Capital Improvement Program.",
-			Text: fmt.Sprintf("Budget Book p76 lists the transfers the operating funds make to "+
-				"one another, %s here, and p222 lists what each operating fund transfers to a "+
-				"Capital Improvement Program fund, %s. pp.66-67 print TRANSFER OUT as the two "+
-				"together, and fisc verify holds that sum to the spine by fund group to the "+
-				"cent. A fund that appears on both lists pays both.", amount.Cents(p76).Dollars(), amount.Cents(cip).Dollars()),
+			ID:      "transfers-out-are-two-schedules",
+			Theme:   ThemeSameMoneyTwice,
+			Summary: "The city's transfers out come from two printed lists, so a fund can appear on both.",
+			Text: fmt.Sprintf("Budget Book p76 lists what the operating funds transfer to one "+
+				"another, %s here, and p222 what they transfer to capital project funds, %s. "+
+				"pp.66-67 print Transfers Out as the two together, and the build checks that sum "+
+				"by fund group to the cent. A fund on both lists pays both.",
+				amount.Cents(p76).Dollars(), amount.Cents(cip).Dollars()),
 			AppliesTo: []string{},
 		},
 		{
-			ID:    "the-cip-funds-are-outside-the-operating-budget",
-			Theme: ThemeLeftOut,
-			Summary: "The Capital Improvement Program funds that receive p222's transfers are " +
-				"not on the citywide chart; their receipts are not part of its Transfers In.",
-			Text: "Budget Book p204 prints the Capital Improvement Program funds on a line of " +
-				"their own, beside the operating budget, and pp.66-67 total the operating " +
-				"budget alone. So money an operating fund transfers to a CIP fund leaves the " +
-				"citywide chart as Transfers Out and the chart draws no CIP fund to receive it. " +
-				"This document draws each CIP fund under the name data/funds.yaml gives it; " +
-				"what the CIP funds spend it on is not drawn.",
+			ID:      "the-cip-funds-are-outside-the-operating-budget",
+			Theme:   ThemeLeftOut,
+			Summary: "Money sent to capital project funds leaves the citywide chart; no box there receives it.",
+			Text: "Budget Book p204 prints the capital project funds on a line of their own, " +
+				"beside the operating budget, and pp.66-67 total the operating budget alone. So " +
+				"money an operating fund sends to a capital project fund leaves the citywide " +
+				"chart as Transfers Out. This chart draws each capital project fund that receives " +
+				"it, but not what that fund spends it on.",
 			AppliesTo: []string{},
 		},
 		fundDrawnOncePerEndCaveat(),

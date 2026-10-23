@@ -45,10 +45,10 @@ const generalFund = 100
 // constraintTierCaveat is the disclosure docs/sankey-contract.md requires of any
 // document publishing a constraint tier, a constant so the check compares
 // against the same bytes.
-const constraintTierCaveat = "A fund's constraint tier is OUR reading of the " +
-	"Description of Funds narrative (Budget Book pp. 258-261), not something the city " +
-	"printed. Each fund node carries the note it was read from. \"unknown\" means the " +
-	"document does not establish a restriction; it is a classification, not a gap."
+const constraintTierCaveat = "How tightly a fund's money is restricted is this site's " +
+	"reading of the Description of Funds (Budget Book pp. 258-261), not a figure the city " +
+	"printed. Each fund shows the sentence it was read from. \"unknown\" means those pages " +
+	"do not say; it is a reading, not a gap."
 
 // ConstraintTierCaveat is the disclosure the check compares a document against:
 // found by ConstraintTierCaveatID, then Text and Summary each compared.
@@ -56,7 +56,7 @@ func ConstraintTierCaveat() Caveat {
 	return Caveat{
 		ID:      ConstraintTierCaveatID,
 		Theme:   ThemeOurReading,
-		Summary: "A fund's constraint tier is our reading of the Description of Funds narrative, not a figure the city printed.",
+		Summary: "How restricted each fund's money is comes from this site's reading of the city's fund descriptions.",
 		Text:    constraintTierCaveat,
 		// Document-wide: every fund carries a tier, so marking all marks none.
 		AppliesTo: []string{},
@@ -408,34 +408,30 @@ func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 		{
 			ID:      "mixed-grain-double-counts",
 			Theme:   ThemeDataFiles,
-			Summary: "This document holds the same money at two grains, so summing every link double-counts.",
-			Text: fmt.Sprintf("This document holds the same money at more than one grain, so summing "+
-				"every link double-counts: %d fact(s) are behind more than one link. A revenue "+
-				"row is behind its own flow into a fund, the rollup of its line into the "+
-				"category it is printed under, and the rollup of its fund under the group that "+
-				"fund belongs to; an expenditure row is behind both its "+
-				"department's object rows and the fund-to-department link that totals them. "+
-				"Fold within one tier pair, never across the whole graph. It publishes no "+
-				"headline for this reason.",
-				twice),
+			Summary: "Adding up every link in this file counts some money two or three times.",
+			Text: fmt.Sprintf("This file holds the same money at more than one level of detail: "+
+				"%s behind more than one link. A revenue row is behind its flow into a fund, "+
+				"its line's rollup into its category, and its fund's rollup into the fund's "+
+				"group; a spending row is behind its department's category rows and the "+
+				"fund-to-department link that totals them. Sum within one pair of adjacent "+
+				"tiers, never across the whole graph; the file publishes no headline for this "+
+				"reason.",
+				countedFigures(twice)),
 			AppliesTo: []string{},
 		},
 	}
 	divided, direct := spendingSides(nodes)
 	if len(divided) == 1 && divided[PrefixFundGroup+registry.FundTypeGeneral] && len(direct) > 0 {
 		out = append(out, Caveat{
-			ID:    "only-the-general-fund-has-divisions",
-			Theme: ThemeLeftOut,
-			Summary: "Only the General Fund opens into divisions; every other fund's spending " +
-				"goes straight to its object categories.",
-			Text: "Budget Book pp.167-170 break the General Fund down by division and then by " +
-				"object category. pp.173-183 print every other fund by object category alone, " +
-				"with no division, so their spending is drawn from the fund straight to its " +
-				"categories and the division column holds the General Fund's alone. The " +
-				"revenue and spending schedules are read side by side and do not balance " +
-				"fund by fund: a fund pp.127-140 print revenue for and pp.173-183 print no " +
-				"spending for is drawn with money arriving and none leaving, and one that " +
-				"spends with no printed revenue with money leaving and none arriving.",
+			ID:      "only-the-general-fund-has-divisions",
+			Theme:   ThemeLeftOut,
+			Summary: "Only the General Fund's spending is broken down by division; other funds go straight to categories.",
+			Text: "Budget Book pp.167-170 break the General Fund's spending down by division, " +
+				"then by category. pp.173-183 print every other fund by category alone, so those " +
+				"funds are drawn straight to their categories. Revenue and spending come from " +
+				"different pages and need not balance fund by fund: a fund with printed revenue " +
+				"and no printed spending is drawn with money arriving and none leaving, and the " +
+				"other way round.",
 			// The groups drawn without divisions, and fund/100, the exception.
 			AppliesTo: append(sortedKeys(direct), PrefixFund+strconv.Itoa(generalFund)),
 		})
@@ -446,10 +442,10 @@ func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 			ID:    "some-funds-show-no-spending",
 			Theme: ThemeLeftOut,
 			// The count is the document's: columns differ in which groups stop.
-			Summary: fmt.Sprintf("The %s money ends at their funds.", plural(len(stopped), "fund group")),
-			Text: fmt.Sprintf("The schedules this document reads for spending, Budget Book "+
-				"pp.167-170 and pp.173-183, give none in this column for the %s funds, so "+
-				"their money is drawn into the fund and no further.",
+			Summary: "Some fund groups' money is drawn into their funds and no further.",
+			Text: fmt.Sprintf("The spending pages this file reads, Budget Book pp.167-170 and "+
+				"pp.173-183, print none in this column for the %s funds, so their money is "+
+				"drawn into each fund and stops there.",
 				plural(len(stopped), "fund group")),
 			AppliesTo: stopped,
 		})
@@ -460,6 +456,11 @@ func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 // plural writes "1 group's" and "5 groups'": counted, possessive.
 func plural(n int, noun string) string {
 	return counted(n, noun) + english.Plural(n, "'s", "'")
+}
+
+// countedFigures writes "1 printed figure sits" and "5 printed figures sit".
+func countedFigures(n int) string {
+	return counted(n, "printed figure") + english.Plural(n, " sits", " sit")
 }
 
 // counted writes "1 fund" and "5 funds".
@@ -948,29 +949,26 @@ func categoryNamedCaveats(nodes []Node) []Caveat {
 	if len(oneRow) > 0 {
 		sort.Strings(oneRow)
 		out = append(out, Caveat{
-			ID:    OneRowCaveatID,
-			Theme: ThemeOurReading,
-			Summary: "A revenue line marked \"one row\" is one Budget Book pp.127-140 print as a single row " +
-				"for its whole category.",
-			Text: "Budget Book pp.127-140 print some funds' revenue under a category as one row named for " +
-				"the category itself, such as Charges for Services. Where no fund printing that row prints " +
-				"another row of the category on those pages, this site labels the line \"<category>, one " +
-				"row\": pp.127-140 print it as a single row for its category, so the figure is that printed " +
-				"row and not a gap in this site's reading of them.",
+			ID:      OneRowCaveatID,
+			Theme:   ThemeOurReading,
+			Summary: "A revenue line marked \"one row\" is how Budget Book pp.127-140 print that whole category.",
+			Text: "Some funds' revenue in a category is one row named for the category, such as " +
+				"Charges for Services. Where a fund prints no other row of that category, this site " +
+				"labels the line \"<category>, one row\": pp.127-140 print it as a single row for " +
+				"its category, so nothing is missing from it.",
 			AppliesTo: oneRow,
 		})
 	}
 	if len(soNamed) > 0 {
 		sort.Strings(soNamed)
 		out = append(out, Caveat{
-			ID:    SoNamedCaveatID,
-			Theme: ThemeOurReading,
-			Summary: "A revenue line marked \"the line so named\" is one printed row that shares its " +
-				"category's name, not the category's total.",
-			Text: "Budget Book pp.127-140 print some funds' revenue under a category as one row named for " +
-				"the category itself. Where a fund prints that row beside other rows of the category, this " +
-				"site labels the line \"<row>, the line so named\": its figure is that one row, and the " +
-				"category's other rows are drawn beside it rather than inside it.",
+			ID:      SoNamedCaveatID,
+			Theme:   ThemeOurReading,
+			Summary: "A revenue line marked \"the line so named\" is one row, not its category's total.",
+			Text: "Budget Book pp.127-140 print some funds' revenue under a category as one row " +
+				"named for the category itself, beside other rows of the same category. This site " +
+				"labels that line \"<row>, the line so named\": its figure is that one row, and the " +
+				"category's other rows are drawn beside it.",
 			AppliesTo: soNamed,
 		})
 	}

@@ -197,7 +197,7 @@ func TestABlankBalanceDrawsNoChange(t *testing.T) {
 		if diff := cmp.Diff(slices.Sorted(maps.Keys(imbalance)), c.AppliesTo); diff != "" {
 			t.Errorf("%q marks other funds than the unbalanced ones (-unbalanced +marked):\n%s", c.ID, diff)
 		}
-		if !strings.Contains(c.Text, "18 funds the printed figures themselves miss the identity, by at most $1,") {
+		if !strings.Contains(c.Text, "18 funds the printed figures themselves miss by at most $1,") {
 			t.Errorf("%q does not name FY2024's rounding: %s", c.ID, c.Text)
 		}
 		return
@@ -265,7 +265,8 @@ func TestChangeCentsSubtractsTheBeginning(t *testing.T) {
 
 // TestTheGrossChangeCaveatSaysMoreOnlyWhereAGroupNets: a group with one fund
 // drawing and one contributing sums to more than it nets; groups whose funds
-// all move one way are their net change, and the summary must not say more.
+// all move one way are their net change, and the text must not say more. The
+// summary is one for every document, so the text is where this is said.
 func TestTheGrossChangeCaveatSaysMoreOnlyWhereAGroupNets(t *testing.T) {
 	nodes := []Node{
 		{ID: "fund/200", Parent: PrefixFundGroup + "special-revenue"},
@@ -276,7 +277,7 @@ func TestTheGrossChangeCaveatSaysMoreOnlyWhereAGroupNets(t *testing.T) {
 		t.Helper()
 		for _, c := range fundSourcesUsesCaveats(links, nodes) {
 			if c.ID == "each-fund-change-is-gross" {
-				return c.Summary
+				return c.Text
 			}
 		}
 		t.Fatal("no each-fund-change-is-gross caveat")
@@ -286,11 +287,11 @@ func TestTheGrossChangeCaveatSaysMoreOnlyWhereAGroupNets(t *testing.T) {
 		{Source: NodeFundBalanceDraw, Target: "fund/200", ValueCents: 100},
 		{Source: "fund/600", Target: NodeFundBalanceContribution, ValueCents: 50},
 	}
-	if got := summary(oneWay); strings.Contains(got, "more than") {
-		t.Errorf("no group nets, and the summary says %q", got)
+	if got := summary(oneWay); strings.Contains(got, "more than the group's net change") {
+		t.Errorf("no group nets, and the text says %q", got)
 	}
 	netting := append(slices.Clone(oneWay), Link{Source: "fund/210", Target: NodeFundBalanceContribution, ValueCents: 30})
-	if got := summary(netting); !strings.Contains(got, "sum to more than a fund group's net change") {
-		t.Errorf("special revenue draws 100 and contributes 30, and the summary says %q", got)
+	if got := summary(netting); !strings.Contains(got, "add up to more than the group's net change") {
+		t.Errorf("special revenue draws 100 and contributes 30, and the text says %q", got)
 	}
 }

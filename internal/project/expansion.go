@@ -1283,21 +1283,16 @@ func expansionCaveats(twice int, nodes []Node, apart []string) []Caveat {
 		{
 			ID:    "the-expansion-is-the-spine-at-finer-grain",
 			Theme: ThemeChecked,
-			Summary: "Every cell of the citywide chart opens into the finer schedules that print it, " +
-				"and they sum back to it to the cent.",
-			Text: fmt.Sprintf("This document is the citywide chart's cells read from the finer "+
-				"schedules that decompose each one: a revenue category from the lines Budget Book "+
-				"pp.127-140 print, a fund group from its funds, the General Fund from its divisions "+
-				"on pp.167-170, an object category from the rows pp.167-183 print or, instead, from "+
-				"the divisions on pp.85-125, transfers from p76 and p222, and reserves and balances "+
-				"from pp.186-209. Summed to the citywide chart's cells they equal pp.66-67. A node "+
-				"marked derived carries money a page prints for a group or a category and no finer "+
-				"page attributes. An opened node draws a link to each of its members: the General "+
-				"Fund's to each division totals the rows drawn beyond it, and every other node's "+
-				"repeats each link arriving at the member, or leaving it where the node takes "+
-				"nothing in, with the same figure and facts. A remainder cites the members it is "+
-				"the difference of. So %d fact(s) are behind more than one link and summing every "+
-				"link double-counts.", twice),
+			Summary: "Click into any part of the citywide chart and the pages it opens into add " +
+				"back up to it, to the cent.",
+			Text: fmt.Sprintf("Each part of the citywide chart opens into the finer pages of the "+
+				"budget book that break it down: revenue lines (pp.127-140), funds, General Fund "+
+				"divisions (pp.167-170), spending categories (pp.167-183) or departments "+
+				"(pp.85-125), transfers (p76 and p222) and fund balances (pp.186-209). Added up, "+
+				"they equal the citywide figures on pp.66-67. A box marked derived holds money a "+
+				"page prints for a group and no finer page breaks down. In the downloaded file, %s "+
+				"behind more than one ribbon, so adding every ribbon counts them twice.",
+				countedFigures(twice)),
 			AppliesTo: []string{},
 		},
 	}
@@ -1309,26 +1304,22 @@ func expansionCaveats(twice int, nodes []Node, apart []string) []Caveat {
 		}
 	}
 	if len(netted) > 0 {
-		lead := fmt.Sprintf("%s money pp.66-67 print that no fund's own page carries is "+
-			"drawn on a node of the group's own.", plural(len(netted), "fund group"))
+		text := fmt.Sprintf("Budget Book pp.66-67 print each fund group's change in balance as "+
+			"one figure. Where some of a group's funds draw on their balances and others add to "+
+			"them, that figure is the net of the funds' changes, which no single fund carries, so "+
+			"for %s it is drawn on a box of the group's own.", counted(len(netted), "fund group"))
 		if len(apart) > 0 {
-			lead += " A fund of such a group is drawn with what it takes in and spends, so its " +
-				"in and out differ by its own change in balance."
+			text += " A fund of such a group is drawn with what it takes in and spends, so its " +
+				"in and out differ by its own change in balance; its details show its two printed " +
+				"balances from pp.186-209 and the change between them."
 		}
+		text += " Where pp.66-67 print more for a group than its funds' pages do, the difference " +
+			"sits on the same box, and the box's note says why."
 		out = append(out, Caveat{
-			ID:      "some-fund-group-money-is-not-by-fund",
-			Theme:   ThemeOurReading,
-			Summary: "Some fund groups carry money that no single fund's own page prints.",
-			Text: lead + " Budget Book pp.66-67 print each fund group's change in working capital as one " +
-				"figure. Where some of the group's funds draw on their balances and others add to " +
-				"them, pp.186-209 print each fund's own beginning and ending balance and the " +
-				"group's change is the net of the funds' changes, which no single fund carries; it " +
-				"is drawn on a node of the group's own. Each fund of such a group is drawn with " +
-				"what it takes in and spends and not its own change, so its in and out differ by " +
-				"that change: the fund states its two printed balances from pp.186-209 and our " +
-				"subtraction of them. Where pp.66-67 print more for a group than its funds' pages " +
-				"do, the difference is on the same node, with the exception declaring it named in " +
-				"the node's note.",
+			ID:        "some-fund-group-money-is-not-by-fund",
+			Theme:     ThemeOurReading,
+			Summary:   "Some fund groups carry money that no single fund's own page prints.",
+			Text:      text,
 			AppliesTo: append(netted, apart...),
 		})
 	}

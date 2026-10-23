@@ -243,33 +243,31 @@ var (
 	caveatGeneralFundTransfersIn = Caveat{
 		ID:      "no-general-fund-transfers-in-row",
 		Theme:   ThemeLeftOut,
-		Summary: "pp.127-130 print no General Fund Transfers In row, so that total sits below the city's own summary.",
-		Text: "Budget Book pp.127-130 print no General Fund " +
-			"Transfers In row, so this schedule's General Fund total is below the city's own " +
-			"summary in every column: by $480,400 in FY2025-26 and $486,735 in FY2026-27, which " +
-			"are the transfers pp.66-67 do print, itemised by payer on p76. No series here is " +
-			"short; the row is not in this schedule.",
+		Summary: "pp.127-130 print no General Fund Transfers In row, so that total is below the city's summary.",
+		Text: "Budget Book pp.127-130 print no General Fund Transfers In row, so the General Fund " +
+			"total here is below the city's summary: by $480,400 in FY2025-26 and $486,735 in " +
+			"FY2026-27, the transfers pp.66-67 print and p76 itemises. Nothing here is short; " +
+			"the row is simply not on these pages.",
 		AppliesTo: []string{},
 	}
 	caveatCapitalReserves = Caveat{
 		ID:      "capital-reserves-are-not-in-this-schedule",
 		Theme:   ThemeLeftOut,
-		Summary: "General Fund CIP Reserves has no section on pp.131-140, so FY2024-25's Capital column is short by $4,125,627.",
-		Text: "The Capital Funds column for FY2024-25 sums to $30,713,648 " +
-			"against the $34,839,275 the city prints on p63, because General Fund CIP Reserves " +
-			"has no section on pp.131-140. The $4,125,627 difference is a fund the schedule " +
-			"does not carry, not a figure it gets wrong.",
+		Summary: "FY2024-25's Capital Funds column is $4,125,627 short, because one fund has no section.",
+		Text: "The Capital Funds column for FY2024-25 adds up to $30,713,648 against the " +
+			"$34,839,275 the city prints on p63, because General Fund CIP Reserves has no " +
+			"section on pp.131-140. The $4,125,627 difference is a fund these pages don't " +
+			"carry, not a wrong figure.",
 		AppliesTo: []string{},
 	}
 	caveatComparability = Caveat{
 		ID:      "four-columns-are-four-measurements",
 		Theme:   ThemeKindsOfYear,
-		Summary: "The four columns are four different measurements, so growth across them is not published.",
-		Text: "The four columns are four different measurements: FY2023-24 is " +
-			"money that moved, FY2024-25 is a mid-year re-forecast, and the two later years are " +
-			"intentions adopted together. Each column carries the basis it was produced on and " +
-			"the group it may be compared within; growth across groups is not published, because " +
-			"it is not a quantity this document can compute.",
+		Summary: "Actual, revised and adopted are different kinds of number, so no growth rate is given across them.",
+		Text: "FY2023-24 is money that actually moved, FY2024-25 is a mid-year re-forecast, and " +
+			"the two later years are plans adopted together. Each column says which it is; " +
+			"growth from one kind to another is not published, because it would not mean " +
+			"anything.",
 		AppliesTo: []string{},
 	}
 )
