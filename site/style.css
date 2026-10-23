@@ -194,7 +194,7 @@ body {
    a width, so their edges line up whatever the window. */
 main,
 .page-head,
-.site-nav,
+.year-bar,
 footer {
   max-width: 1180px;
   margin: 0 auto;
@@ -1501,9 +1501,13 @@ noscript p {
      outlives the caveat, so it should still say so. But its negative margins
      are tuned to body's 20px side padding, which the rule above zeroes, and
      sticky means nothing on paper. */
-  .wip-banner {
+  .wip-banner,
+  .site-nav {
     position: static;
     margin: 0;
+  }
+  .site-nav {
+    padding-inline: 0;
   }
 
   /* AND THE DISCLOSURES OPEN, for the banner's own reason one paragraph up. A
@@ -1532,13 +1536,18 @@ noscript p {
    view's whole body, and it ships no JavaScript, so everything below has to
    work from the markup alone. */
 
-/* The rule is the nav's, not the list's, so it runs under the theme toggle
-   too and is still there on a one-view site, which lists no views. */
+/* THE NAV IS A FULL-BLEED BAR, its rule running the window's width as the
+   banner's does, while its items stay in the frame main and the head share:
+   the negative margin cancels body's 20px side padding, and the padding puts
+   back whatever the frame leaves either side. The rule is the nav's, not the
+   list's, so it runs under the theme toggle too and is still there on a
+   one-view site, which lists no views. The toggle ends the one row. */
 .site-nav {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 0 auto 14px;
+  margin: 0 -20px 14px;
+  padding-inline: max(20px, calc((100% - 1180px) / 2 + 20px));
   flex-wrap: wrap;
   border-bottom: 1px solid var(--border);
 }
@@ -1555,23 +1564,29 @@ noscript p {
   margin: 4px 0 4px auto;
   flex: none;
 }
-/* The year select sits at the right with the theme toggle, which it pushes
-   along rather than sharing the auto margin. */
-.site-nav .year-select {
-  display: flex;
+/* THE YEAR IS A ROW OF ITS OWN UNDER THE NAV, at the frame's left edge, in
+   the same place on every page that offers more than one year. */
+.year-bar {
+  margin-bottom: 14px;
+}
+.year-select {
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  margin: 4px 0 4px auto;
-  flex: none;
-  font-size: 13px;
+  gap: 8px;
+  font-size: 14px;
   color: var(--ink-2);
 }
-.site-nav .year-select + #theme-toggle {
-  margin-left: 0;
-}
-.site-nav .year-select select {
+.year-select select {
   font: inherit;
+  font-weight: 600;
   color: var(--ink-1);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px 8px;
+}
+.year-select select:disabled {
+  color: var(--ink-2);
 }
 .site-nav li {
   margin: 0;
@@ -1846,7 +1861,12 @@ noscript p {
 .department-controls select {
   max-width: 100%;
   font: inherit;
+  font-weight: 600;
   color: var(--ink-1);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px 8px;
 }
 
 .department-tie {

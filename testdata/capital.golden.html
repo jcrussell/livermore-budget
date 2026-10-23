@@ -22,7 +22,7 @@
 
 <nav class="site-nav" aria-label="Views">
   <ul>
-    <li><a href="index.html">At a glance</a></li>
+    <li><a href="index.html" data-years="fy2026-adopted fy2027-adopted">At a glance</a></li>
     <li><a href="flows.html" data-years="fy2026-adopted fy2027-adopted">Flows</a></li>
     <li><a href="ledger.html" data-years="fy2026-adopted fy2027-adopted">Bars</a></li>
     <li><a href="change.html">Over time</a></li>
@@ -33,6 +33,9 @@
     <li><a href="caveats.html">Caveats</a></li>
     <li><a href="provenance.html">Sources and data</a></li>
   </ul>
+  <button type="button" id="theme-toggle" hidden>Dark mode</button>
+</nav>
+<div class="year-bar">
   <label class="year-select">Budget year
     <select id="year-select" disabled>
       <option value="" selected>Every year</option>
@@ -43,8 +46,7 @@
       <option value="fy2030-projected">FY 2029-30 projected</option>
     </select>
   </label>
-  <button type="button" id="theme-toggle" hidden>Dark mode</button>
-</nav>
+</div>
 <script type="module">import { boot } from "./theme.js"; boot(window);</script>
 
 <header class="page-head">

@@ -9,12 +9,14 @@
        data, of which it reads .Nav and .YearSelect. The view list is drawn
        only when there is more than one view; a link to a view that draws one
        year at a time lists that view's years in data-years. The theme toggle
-       is on every page. The toggle SHIPS HIDDEN, because with JavaScript off
-       it would switch nothing: site/theme.js shows it as it wires it, booted
-       by the module script beside it.
+       is on every page, at the end of the nav's one row. The toggle SHIPS
+       HIDDEN, because with JavaScript off it would switch nothing:
+       site/theme.js shows it as it wires it, booted by the module script
+       beside it.
 
-       "year-select" is the page's one year control, drawn where it offers
-       more than one option. It SHIPS DISABLED for the same reason; the page's
+       "year-select" is the page's one year control, drawn in a row of its
+       own under the nav, in the same place on every page that offers more
+       than one year. It SHIPS DISABLED for the same reason; the page's
        script enables it (format.js wireYearSelect). */ -}}
 {{define "theme-stamp"}}<script>
   try {
@@ -30,12 +32,13 @@
     {{- end}}
   </ul>
   {{- end}}
-  {{- template "year-select" .YearSelect}}
   <button type="button" id="theme-toggle" hidden>Dark mode</button>
 </nav>
+{{- template "year-select" .YearSelect}}
 <script type="module">import { boot } from "./theme.js"; boot(window);</script>{{end}}
 {{define "year-select"}}
 {{- if gt (len .Options) 1}}
+<div class="year-bar">
   <label class="year-select">Budget year
     <select id="year-select" disabled>
       {{- range .Options}}
@@ -43,6 +46,7 @@
       {{- end}}
     </select>
   </label>
+</div>
 {{- end}}
 {{- end}}
 {{- /* "caveats-line" is a page's caveats in one line, executed against the

@@ -8,7 +8,10 @@
  * written by Go. Importing it runs nothing; the template calls boot().
  */
 
-import { dollars, linkedPage, pageLinks, pinnable, refuseFigure, share, tipHint, tipper } from "./format.js";
+import {
+  dollars, hashFields, hashValue, linkedPage, pageLinks, pinnable, refuseFigure, selectYear, share, tipHint, tipper,
+  wireYearSelect,
+} from "./format.js";
 
 /** How many groups a bar names before the rest fold into one tail. */
 export const NAMED = 5;
@@ -189,7 +192,29 @@ export function draw(section, tips = tipper(section.ownerDocument)) {
 }
 
 /**
- * Draws every bar on the page.
+ * Shows the one year section `key` names and hides the others, moves the
+ * year select to it and carries it onto the top bar's links. A key no
+ * section carries shows the year the select opens on. With no select, every
+ * year stays shown.
+ * @param {Document} doc
+ * @param {string} key
+ * @returns {string} the key shown, or "" with no select
+ */
+export function showYear(doc, key) {
+  const sections = Array.from(doc.querySelectorAll("section.glance-year[data-year]"));
+  const select = /** @type {HTMLSelectElement | null} */ (doc.getElementById("year-select"));
+  if (!select || sections.length < 2) return "";
+  const shown = sections.some((s) => /** @type {HTMLElement} */ (s).dataset.year === key)
+    ? key
+    : (select.querySelector("option[selected]") || select.options[0]).getAttribute("value") || "";
+  for (const s of sections) /** @type {HTMLElement} */ (s).hidden = /** @type {HTMLElement} */ (s).dataset.year !== shown;
+  selectYear(doc, shown);
+  return shown;
+}
+
+/**
+ * Draws every bar on the page, then shows the year the hash names, `#y=`,
+ * or the one the year select opens on, and wires the select to switch.
  * @param {Document} doc
  */
 export function boot(doc) {
@@ -203,4 +228,12 @@ export function boot(doc) {
       refuseFigure(/** @type {HTMLElement} */ (section), err);
     }
   }
+  const win = doc.defaultView;
+  const asked = hashFields(win ? win.location.hash : "", ["y"]).get("y") || "";
+  showYear(doc, asked);
+  wireYearSelect(doc, (key) => {
+    const shown = showYear(doc, key);
+    if (win && shown) win.history.replaceState(null, "", "#y=" + hashValue(shown));
+  });
+  if (win) win.addEventListener("hashchange", () => showYear(doc, hashFields(win.location.hash, ["y"]).get("y") || ""));
 }

@@ -23,9 +23,10 @@ views:
     reads: [department-funding]
     title: Livermore's budget at a glance
     lede: >-
-      Of every $100 the city budgets, where it comes from, what it buys and
-      which department spends it. Each bar is a sum of cells the city printed,
-      and the sum of every such cell in the budget is printed beside it.
+      Where the money the city budgets comes from, what it buys and which
+      department spends it, each as a share of the whole. Each bar is a sum of
+      cells the city printed, and the sum of every such cell in the budget is
+      printed beside it.
 
   # The same money as a Sankey. No title: sankeyTitle names the year in each
   # year's <title>, which a declared one would drop.

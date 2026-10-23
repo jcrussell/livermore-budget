@@ -67,6 +67,8 @@ type glanceBar struct {
 
 // glanceYear is one published year's bars.
 type glanceYear struct {
+	// Key is the year's [YearKey], which the year select names it by.
+	Key     string
 	Label   string
 	Revenue figure
 	Spent   figure
@@ -214,6 +216,7 @@ func buildGlancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	var (
 		years []glanceYear
 		cited []sourceMeta
+		sel   yearSelect
 	)
 	for _, stem := range v.yearStems() {
 		spine, err := decodeGlanceDocument(stem, opens.Projection, o.Projections[stem])
@@ -307,7 +310,9 @@ func buildGlancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			whole:     h.AllFundsGrossExpenditureCents,
 			residuals: apart,
 		}}
+		sel.newest(m.FiscalYear, m.FiscalYearLabel, m.Basis)
 		year := glanceYear{
+			Key:     YearKey(m.FiscalYear, m.Basis),
 			Label:   ledeOf(m.FiscalYearLabel, m.Basis),
 			Revenue: revenue,
 			Spent:   spent,
@@ -357,6 +362,7 @@ func buildGlancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Projections: projectionRefs(o, ix),
 			Scope:       meta.Scope(),
 			CaveatsHere: cx.here(v.Path),
+			YearSelect:  sel,
 		},
 		Years: years,
 	}, nil

@@ -29,7 +29,7 @@
 
 <main>
 {{- range .Years}}
-<section class="glance-year">
+<section class="glance-year" data-year="{{.Key}}">
   <h2>{{.Label}}</h2>
   <p class="glance-totals">
     The city budgets to take in <strong>{{.Revenue.Value}}</strong> and to spend

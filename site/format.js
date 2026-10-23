@@ -2,7 +2,7 @@
 /**
  * fisc — the text the page modules read and write alike: a figure in
  * dollars, a part's share of a whole, a page's JSON config, the fields of
- * its hash, the top bar's year select, cited pages and the tip. Importing it
+ * its hash, the year select under the top bar, cited pages and the tip. Importing it
  * runs nothing, and no export reads a global. Most exports are functions of
  * their arguments; tipper keeps the pinned mark in the object it returns and
  * adds listeners to the document it is handed, and pinnable and
@@ -107,7 +107,7 @@ export function carryYear(doc, key) {
 }
 
 /**
- * Moves the top bar's year select to the year on screen and carries that year
+ * Moves the year select under the top bar to the year on screen and carries that year
  * onto the top bar's links (carryYear). A page with one year has no select
  * and still carries.
  * @param {Document} doc
@@ -120,7 +120,7 @@ export function selectYear(doc, key) {
 }
 
 /**
- * Wires the top bar's year select, which the template ships disabled:
+ * Wires the year select under the top bar, which the template ships disabled:
  * enables it and hands each key chosen to `onChange`, which shows the year
  * and calls selectYear once it is on screen. Returns the key the select
  * shows, which a browser may have restored, or undefined with no select.

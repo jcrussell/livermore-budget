@@ -57,7 +57,7 @@ test("glance.js imports with no page config, no d3 and no DOM, and runs nothing"
   assert.equal(typeof globalThis.document, "undefined", "nothing installed a DOM before the import");
   const mod = await import(MODULE);
   assert.deepEqual(Object.keys(mod).sort(),
-    ["NAMED", "TAIL_LABEL", "boot", "draw", "groupRows", "rank", "readRows"]);
+    ["NAMED", "TAIL_LABEL", "boot", "draw", "groupRows", "rank", "readRows", "showYear"]);
 });
 
 test("the page carries two years of three bars, and boot fills every figure", async () => {
@@ -276,4 +276,32 @@ test("a bar whose table is malformed is refused in its section and the others dr
     assert.ok(!b.section.querySelector("figure.glance-figure").hidden, `${b.label} ${b.id} did not draw`);
     assert.ok(b.section.querySelector("p.refusal") === null, `${b.label} ${b.id} was refused`);
   }
+});
+
+// One year shows at a time, the one the select opens on, and choosing
+// another shows it, writes it to the hash and carries it onto the top bar's
+// links; a hash naming a year opens on it. With no script every year shows
+// (the template hides none). Mutation: drop showYear's hiding and both years
+// stay shown; drop its selectYear and the Flows link carries no year.
+test("the year select shows one year at a time and carries it to the other pages", async () => {
+  const shown = (doc) => [...doc.querySelectorAll("section.glance-year")].filter((s) => !s.hidden).map((s) => s.dataset.year);
+  const bare = new JSDOM(PAGE).window.document;
+  assert.equal([...bare.querySelectorAll("section.glance-year[hidden]")].length, 0, "the template hides a year");
+  const dom = new JSDOM(PAGE, { url: "http://x/index.html" });
+  const { window } = dom;
+  const doc = window.document;
+  (await import(MODULE)).boot(doc);
+  const select = doc.getElementById("year-select");
+  assert.ok(select && !select.disabled, "the year select is missing or left disabled");
+  assert.deepEqual(shown(doc), [select.value]);
+  const other = [...select.options].map((o) => o.value).find((v) => v !== select.value);
+  select.value = other;
+  select.dispatchEvent(new window.Event("change"));
+  assert.deepEqual(shown(doc), [other]);
+  assert.equal(window.location.hash, "#y=" + other);
+  assert.match(doc.querySelector('nav.site-nav a[href^="flows"]').getAttribute("href"), new RegExp("#y=" + other + "$"));
+
+  const asked = new JSDOM(PAGE, { url: "http://x/index.html#y=" + other });
+  (await import(MODULE)).boot(asked.window.document);
+  assert.deepEqual(shown(asked.window.document), [other]);
 });

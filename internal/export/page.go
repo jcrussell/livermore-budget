@@ -146,7 +146,7 @@ func (n navItem) YearKeys() string {
 	return strings.Join(*n.years, " ")
 }
 
-// yearSelect is the top bar's year control, on a page that draws one year at
+// yearSelect is the year control under the top bar, on a page that draws one year at
 // a time. Each option's Key is a [YearKey]; "" is every year at once.
 type yearSelect struct {
 	Options []yearOption
@@ -357,7 +357,7 @@ type chrome struct {
 	// SourcesPage is set on the provenance index itself, whose footer does
 	// not link the page it is on.
 	SourcesPage bool
-	// YearSelect is the top bar's year control, drawn where it offers more
+	// YearSelect is the year control under the top bar, drawn where it offers more
 	// than one option; empty on a page that draws every year at once.
 	YearSelect yearSelect
 }

@@ -35,17 +35,25 @@
   </ul>
   <button type="button" id="theme-toggle" hidden>Dark mode</button>
 </nav>
+<div class="year-bar">
+  <label class="year-select">Budget year
+    <select id="year-select" disabled>
+      <option value="fy2026-adopted">FY 2025-26 adopted</option>
+      <option value="fy2027-adopted" selected>FY 2026-27 adopted</option>
+    </select>
+  </label>
+</div>
 <script type="module">import { boot } from "./theme.js"; boot(window);</script>
 
 <header class="page-head">
   <div>
     <h1>Livermore&#39;s budget at a glance</h1>
-    <p class="lede">Of every $100 the city budgets, where it comes from, what it buys and which department spends it. Each bar is a sum of cells the city printed, and the sum of every such cell in the budget is printed beside it.</p>
+    <p class="lede">Where the money the city budgets comes from, what it buys and which department spends it, each as a share of the whole. Each bar is a sum of cells the city printed, and the sum of every such cell in the budget is printed beside it.</p>
   </div>
 </header>
 
 <main>
-<section class="glance-year">
+<section class="glance-year" data-year="fy2027-adopted">
   <h2>FY 2026-27 adopted</h2>
   <p class="glance-totals">
     The city budgets to take in <strong>$302,443,043</strong> and to spend
@@ -1013,7 +1021,7 @@
     </div>
   </section>
 </section>
-<section class="glance-year">
+<section class="glance-year" data-year="fy2026-adopted">
   <h2>FY 2025-26 adopted</h2>
   <p class="glance-totals">
     The city budgets to take in <strong>$299,969,007</strong> and to spend

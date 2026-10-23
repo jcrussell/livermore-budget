@@ -1953,7 +1953,7 @@ func TestTheStylesheetHasOneTextMeasure(t *testing.T) {
 	// two and clamped `main` to the reading measure while leaving .page-head at
 	// 1180px -- which squeezes the page's tiles and tables.
 	// Mutation-measured: that split was green.
-	const container = "main,\n.page-head,\n.site-nav,\nfooter {\n  max-width: 1180px;\n  margin: 0 auto;"
+	const container = "main,\n.page-head,\n.year-bar,\nfooter {\n  max-width: 1180px;\n  margin: 0 auto;"
 	// THE PRINT BLOCK OPENS WHAT THE PAGE FOLDS. Declared only -- this cannot
 	// say a folded panel prints, which is fisc-yj4w.18 -- but a fold added
 	// without it silently drops the caveats from a printed copy, and the print
@@ -1965,13 +1965,15 @@ func TestTheStylesheetHasOneTextMeasure(t *testing.T) {
 		}
 	}
 	if !strings.Contains(css, container) {
-		t.Error("style.css no longer sets main, .page-head, the top bar and the footer " +
+		t.Error("style.css no longer sets main, .page-head, the year bar and the footer " +
 			"together to one centred 1180px frame, so the measure has been applied to the " +
-			"page's own column rather than to the prose in it, or the bar and footer run " +
-			"past the page's edges")
+			"page's own column rather than to the prose in it, or the year bar and footer " +
+			"run past the page's edges")
 	}
-	// A later rule's margin would undo the frame's auto margins.
-	for _, rule := range []string{".site-nav {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  margin: 0 auto 14px;",
+	// The nav is full-bleed and keeps its items in that frame by its padding;
+	// a later rule's margin would undo the footer's auto margins. Mutation:
+	// drop the nav's padding-inline and its items run to the window's edges.
+	for _, rule := range []string{".site-nav {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  margin: 0 -20px 14px;\n  padding-inline: max(20px, calc((100% - 1180px) / 2 + 20px));",
 		"footer {\n  margin: 48px auto 0;"} {
 		if !strings.Contains(css, rule) {
 			t.Errorf("style.css's own rule for the bar or the footer no longer centres it: want %q", rule)

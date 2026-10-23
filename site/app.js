@@ -4654,7 +4654,7 @@ export function checkedYear(years) {
 }
 
 /**
- * Moves the top bar's year select to the year on screen, and carries it onto
+ * Moves the year select under the top bar to the year on screen, and carries it onto
  * the top bar's links.
  */
 export function syncYearControl() {
@@ -4662,7 +4662,7 @@ export function syncYearControl() {
 }
 
 /**
- * Wires the top bar's year select. A year that fails to load moves the
+ * Wires the year select under the top bar. A year that fails to load moves the
  * select back to the year still on screen.
  * @param {FiscYear[]} years
  */
