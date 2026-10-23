@@ -1570,7 +1570,7 @@
    "tier": 3,
    "role": "group_remainder",
    "derived": true,
-   "rationale": "Our node for money Budget Book pp.66-67 print in this fund group's column and its funds' own pages do not: Budget Book p67's Internal Service Funds column prints FY2026-27 expenditure 250,000 above what the funds' own rows sum to, and carries it into the column's ending working capital. The store publishes p0067 as printed (p0067-internal-service-ending-is-250000-low). Our node for money Budget Book pp.66-67 print in this fund group's column and its funds' own pages do not: Budget Book p67's Internal Service Funds column prints Services \u0026 Supplies of 16,796,010 for FY2026-27, and the five internal service funds' own rows on p183 sum to 250,000 less. The store publishes p0067 as printed (p0067-internal-service-is-250000-high-by-fund).",
+   "rationale": "Our node for money Budget Book pp.66-67 print in this fund group's column and its funds' own pages do not: Budget Book p67's Internal Service Funds column prints FY2026-27 expenditure 250,000 above what the funds' own rows sum to, and carries it into the column's ending working capital. The store publishes p67's figure as printed (p0067-internal-service-ending-is-250000-low). Our node for money Budget Book pp.66-67 print in this fund group's column and its funds' own pages do not: Budget Book p67's Internal Service Funds column prints Services \u0026 Supplies of 16,796,010 for FY2026-27, and the five internal service funds' own rows on p183 sum to 250,000 less. The store publishes p67's figure as printed (p0067-internal-service-is-250000-high-by-fund).",
    "source_note": "both sides: p0067.txt:42 prints ENDING WORKING CAPITAL $8,529,087 for the Internal Service Funds, and 8,779,087 is printed on p0209.txt:20, p0205.txt:17 and p0075.txt:53 p0067.txt:31 prints 16,796,010; the five Services \u0026 Supplies rows of p0183.txt:16-60 sum to 16,546,010, which is arithmetic, and the entry is grounded by differing by exactly what the fund-group cut holds apart"
   },
   {
@@ -2197,7 +2197,7 @@
    "tier": 5,
    "role": "object_category",
    "derived": true,
-   "rationale": "Our row for the part of this fund group's object category that pp.66-67 print and its funds' rows on pp.172-183 do not: Budget Book p67's Internal Service Funds column prints Services \u0026 Supplies of 16,796,010 for FY2026-27, and the five internal service funds' own rows on p183 sum to 250,000 less. The store publishes p0067 as printed (p0067-internal-service-is-250000-high-by-fund).",
+   "rationale": "Our row for the part of this fund group's object category that pp.66-67 print and its funds' rows on pp.172-183 do not: Budget Book p67's Internal Service Funds column prints Services \u0026 Supplies of 16,796,010 for FY2026-27, and the five internal service funds' own rows on p183 sum to 250,000 less. The store publishes p67's figure as printed (p0067-internal-service-is-250000-high-by-fund).",
    "source_note": "p0067.txt:31 prints 16,796,010; the five Services \u0026 Supplies rows of p0183.txt:16-60 sum to 16,546,010, which is arithmetic, and the entry is grounded by differing by exactly what the fund-group cut holds apart"
   },
   {

@@ -369,7 +369,7 @@ func BudgetBookExceptions() []Exception {
 				"and 26,294,515 is printed on p0183.txt:64, p0075.txt:53, p0205 and p0209",
 			Reason: "Budget Book p67's Internal Service Funds column prints Services & Supplies of 16,796,010 for " +
 				"FY2026-27, and the five internal service funds' own rows on pp.172-183 sum to 250,000 less. " +
-				"The store publishes p0067 as printed",
+				"The store publishes p67's figure as printed",
 			Bead: "fisc-av0w",
 		},
 		{
@@ -398,7 +398,7 @@ func BudgetBookExceptions() []Exception {
 				"what the fund-group cut holds apart",
 			Reason: "Budget Book p67's Internal Service Funds column prints Services & Supplies of 16,796,010 for " +
 				"FY2026-27, and the five internal service funds' own rows on p183 sum to 250,000 less. " +
-				"The store publishes p0067 as printed",
+				"The store publishes p67's figure as printed",
 			Bead: "fisc-av0w",
 		},
 		{
@@ -479,7 +479,7 @@ func fundBalanceExceptions() []Exception {
 				"and 8,779,087 is printed on p0209.txt:20, p0205.txt:17 and p0075.txt:53",
 			Reason: "Budget Book p67's Internal Service Funds column prints FY2026-27 expenditure 250,000 above what the " +
 				"funds' own rows sum to, and carries it into the column's ending working capital. The store " +
-				"publishes p0067 as printed",
+				"publishes p67's figure as printed",
 			Bead: "fisc-av0w",
 		},
 		{
@@ -493,7 +493,7 @@ func fundBalanceExceptions() []Exception {
 				"and p0209.txt:20 prints Total Internal Service Funds Expenses 26,294,515",
 			Reason: "Budget Book p67's Internal Service Funds column prints Services & Supplies of 16,796,010 for " +
 				"FY2026-27, and the five internal service funds' Expenses on p209 sum to 250,000 less. " +
-				"The store publishes p0067 as printed",
+				"The store publishes p67's figure as printed",
 			Bead: "fisc-av0w",
 		},
 
