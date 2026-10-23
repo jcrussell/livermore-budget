@@ -493,6 +493,12 @@ let drawnWindow = { width: 0, height: 0, full: false, top: 0 };
  * on its side, which moves the width too.
  */
 export const CHROME_SLACK = 120;
+/**
+ * The CSS px the chart's top may move by and stay the top it was drawn at
+ * (sameWindow): chartTop is a float, and on a high-DPR or zoomed phone it
+ * moves by a fraction of a pixel as the reader scrolls.
+ */
+export const TOP_SLACK = 1;
 /** How long a redraw's marks move for, in ms, where the reader allows motion. */
 export const MOTION_MS = 350;
 /** What the drawer holds until the reader lets it go. @type {LaidNode | LaidLink | null} */
@@ -2500,6 +2506,10 @@ export function paintFilterLine() {
   said.textContent = parts.join(" ");
   if (parts.length) line.removeAttribute("hidden");
   else line.setAttribute("hidden", "");
+  // The line sits above the chart, so showing or hiding it moves the chart's
+  // top in a window that has not moved: the top the chart was drawn at is
+  // the one it has now.
+  if (chartDrawn()) drawnWindow = Object.assign({}, drawnWindow, { top: windowNow().top });
   paintReset();
 }
 
@@ -3682,14 +3692,14 @@ export function fitRoom() {
 
 /**
  * Whether `now` (windowNow) is the window the chart on screen was drawn in:
- * its width, full screen and the chart's top unmoved, and its height moved by
- * less than CHROME_SLACK (fitRoom).
+ * its width and full screen unmoved, the chart's top moved by less than
+ * TOP_SLACK, and its height moved by less than CHROME_SLACK (fitRoom).
  * @param {{width: number, height: number, full: boolean, top: number}} now
  * @returns {boolean}
  */
 function sameWindow(now) {
-  return now.width === drawnWindow.width && now.full === drawnWindow.full && now.top === drawnWindow.top &&
-    Math.abs(now.height - drawnWindow.height) < CHROME_SLACK;
+  return now.width === drawnWindow.width && now.full === drawnWindow.full &&
+    Math.abs(now.top - drawnWindow.top) < TOP_SLACK && Math.abs(now.height - drawnWindow.height) < CHROME_SLACK;
 }
 
 /**

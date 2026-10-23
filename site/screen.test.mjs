@@ -377,6 +377,32 @@ describe("the chart laid out to the window's height", () => {
         pushed: { drawn: true, menu: false } });
   });
 
+  // Mutation: compare the chart's top exactly in sameWindow and the
+  // sub-pixel move draws the chart again; drop paintFilterLine's re-record of
+  // the top and the filter line's own move does.
+  test("the chart's top moving by a fraction of a pixel, or by the filter line above it, leaves the chart as drawn", async (t) => {
+    const at = { height: 800, top: 100, full: 0, width: 360 };
+    const loaded = await loadApp();
+    const { app, window, document } = loaded;
+    Object.defineProperty(window, "innerWidth", { value: 360, configurable: true, writable: true });
+    stubRoom(window, document, at);
+    await app.boot();
+    await frame(window);
+    const menu = () => document.getElementById("node-menu") !== null;
+    const openMenu = () => app.openNodeMenu(app.laidNodes.find((n) => n.sourceLinks.length > 0), { left: 0, top: 0 });
+    openMenu();
+    at.top += app.TOP_SLACK * 0.4;
+    const jitter = { drawn: app.fitRoom(), menu: menu() };
+    at.top += 40;
+    app.paintFilterLine();
+    const line = { drawn: app.fitRoom(), menu: menu() };
+    at.top += 40;
+    const pushed = { drawn: app.fitRoom(), menu: menu() };
+    t.diagnostic(`top jittered ${JSON.stringify(jitter)}; moved by the filter line ${JSON.stringify(line)}; moved by anything else ${JSON.stringify(pushed)}`);
+    assert.deepEqual({ jitter, line, pushed },
+      { jitter: { drawn: false, menu: true }, line: { drawn: false, menu: true }, pushed: { drawn: true, menu: false } });
+  });
+
   // Mutation: move heldRoom to the room now in fitRoom's CHROME_SLACK arm
   // and lay redraw out at roomHeight in place of layRoom, and the split with
   // the bar hidden is laid out at the taller room: the bar shown again, the
