@@ -57,7 +57,7 @@ test("glance.js imports with no page config, no d3 and no DOM, and runs nothing"
   assert.equal(typeof globalThis.document, "undefined", "nothing installed a DOM before the import");
   const mod = await import(MODULE);
   assert.deepEqual(Object.keys(mod).sort(),
-    ["NAMED", "TAIL_LABEL", "boot", "draw", "groupRows", "perHundred", "rank", "readRows"]);
+    ["NAMED", "TAIL_LABEL", "boot", "draw", "groupRows", "rank", "readRows"]);
 });
 
 test("the page carries two years of three bars, and boot fills every figure", async () => {
@@ -154,18 +154,24 @@ describe("the client's whole is the city's figure, or the declared residual shor
   });
 });
 
-// Dollars of every $100 are the client's shares, to the cent, so they may
-// miss $100.00 by rounding and by no more. Mutation: round perHundred to
-// whole dollars and the ten revenue categories drift past the bound.
-test("the legend's dollars of every $100 sum to 100 within the rounding of the segment count", async () => {
-  const { mod, doc } = await booted();
+// The legend's shares are the client's, each a percentage marked ours and
+// rounded to a tenth, so they may miss 100% by rounding and by no more; the
+// segment's aria-label and the legend's detail carry no unmarked share.
+// Mutation: drop the ◇ from the legend's share, or put the share back in the
+// detail unmarked, and this goes red.
+test("the legend's shares are marked ours and sum to 100% within their rounding", async () => {
+  const { doc } = await booted();
   for (const b of bars(doc)) {
-    const pers = [...b.section.querySelectorAll(".glance-per")].map((el) => Number(el.textContent.replace("$", "")));
-    const sum = pers.reduce((a, x) => a + x, 0);
-    assert.ok(Math.abs(sum - 100) <= 0.005 * pers.length + 1e-9, `${b.label} ${b.id}: ${pers.join(" + ")} = ${sum}`);
-    for (const p of pers) assert.match(String(p.toFixed(2)), /^\d+\.\d\d$/);
+    const pers = [...b.section.querySelectorAll(".glance-per")].map((el) => el.textContent);
+    for (const p of pers) assert.match(p, /^◇ (<0\.1|\d+\.\d)%$/, `${b.label} ${b.id}`);
+    const sum = pers.reduce((a, p) => a + (p.includes("<") ? 0.05 : Number(p.slice(2, -1))), 0);
+    assert.ok(Math.abs(sum - 100) <= 0.05 * pers.length + 1e-9, `${b.label} ${b.id}: ${pers.join(" + ")} = ${sum}`);
+    for (const el of b.section.querySelectorAll(".glance-detail")) assert.ok(!el.textContent.includes("%"), el.textContent);
+    for (const el of b.section.querySelectorAll(".glance-track > *")) {
+      const label = el.getAttribute("aria-label") || "";
+      assert.ok(!label.includes("%") || label.includes("◇"), label);
+    }
   }
-  assert.equal(mod.perHundred(1, 3), "$33.33");
 });
 
 // A cell the page cannot name is refused, not drawn as part of a bar.
@@ -249,4 +255,25 @@ test("a click pins a segment's tip, linking the page text and the PDF page of ev
   const [a, b] = bars(document)[0].section.querySelectorAll(".glance-seg");
   pinGestures(window, a, b);
   t.diagnostic(`${pinned} segments pinned, each linking its rows' facts' pages`);
+});
+
+// A bar that cannot draw says so in its own section, its table left shown,
+// and the bars after it still draw. Mutation: drop boot's catch and the
+// first bar's throw stops every later one, with no sentence on the page.
+test("a bar whose table is malformed is refused in its section and the others draw", async () => {
+  const dom = new JSDOM(PAGE);
+  const mod = await import(MODULE);
+  const doc = dom.window.document;
+  const [first, ...rest] = bars(doc);
+  first.section.querySelector("tbody td[data-cents]").removeAttribute("data-cents");
+  mod.boot(doc);
+  const said = first.section.querySelector("p.refusal");
+  assert.ok(said !== null && /could not be drawn: .*carries null cents/.test(said.textContent), said && said.textContent);
+  assert.ok(first.section.querySelector("figure.glance-figure").hidden, "the refused bar's figure is shown");
+  const cells = first.section.querySelector(".glance-cells");
+  assert.ok(!cells || !cells.hidden, "the refused bar's table is hidden");
+  for (const b of rest) {
+    assert.ok(!b.section.querySelector("figure.glance-figure").hidden, `${b.label} ${b.id} did not draw`);
+    assert.ok(b.section.querySelector("p.refusal") === null, `${b.label} ${b.id} was refused`);
+  }
 });

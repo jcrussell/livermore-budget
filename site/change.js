@@ -8,7 +8,7 @@
  * runs nothing; the template calls boot().
  */
 
-import { dollars, linkedPage, pageLinks, pinnable, tipHint, tipper } from "./format.js";
+import { dollars, linkedPage, pageLinks, pinnable, refuseFigure, tipHint, tipper } from "./format.js";
 
 /** How many categories a figure names before the rest fold into one tail. */
 export const NAMED = 5;
@@ -325,6 +325,12 @@ export function draw(section, tips = tipper(section.ownerDocument)) {
 export function boot(doc) {
   const tips = tipper(doc);
   for (const section of Array.from(doc.querySelectorAll('section.change-figure[data-chart="true"]'))) {
-    draw(/** @type {HTMLElement} */ (section), tips);
+    // One figure that cannot draw says so in its own section, and the
+    // others still draw.
+    try {
+      draw(/** @type {HTMLElement} */ (section), tips);
+    } catch (err) {
+      refuseFigure(/** @type {HTMLElement} */ (section), err);
+    }
   }
 }

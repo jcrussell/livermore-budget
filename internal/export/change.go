@@ -151,7 +151,8 @@ func buildChangePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	specs := []spec{
 		{"audited-revenue", "What the city took in, ten years as reported",
 			"Governmental funds' revenue by kind, each year as the city's annual financial report prints it. " +
-				"Each column's height is our sum of the rows printed under it.",
+				"Each column's total is our sum of the rows printed under it; a kind whose rows sum below zero " +
+				"hangs below the baseline and counts against that total.",
 			"revenue", true, audited},
 		{"audited-spending", "What the city spent, ten years as reported",
 			"Governmental funds' expenditure by function, each year as the city's annual financial report prints it.",

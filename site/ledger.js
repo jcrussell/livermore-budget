@@ -46,7 +46,7 @@ export const LEDGER = Object.freeze({
     const figure = section.querySelector("figure.sides-figure");
     if (!figure) throw new Error("the side has no figure to draw into");
     const list = /** @type {HTMLElement} */ (ctx.clone("ledger-list"));
-    list.setAttribute("aria-label", `${side.heading}: ${side.tree.roots.length} bars, ${dollars(side.tree.cents)} in all`);
+    list.setAttribute("aria-label", `${side.heading}: ◇ ${side.tree.roots.length} bars by our count, ${dollars(side.tree.cents)} in all by our sum`);
     const rankOf = new Map(side.tree.roots.map((r, i) => [r.id, i < RANKED ? i + 1 : 0]));
     /** @param {core.SideTile} tile @param {number} depth @param {string} root */
     const row = (tile, depth, root) => {

@@ -46,7 +46,7 @@ type glanceApart struct {
 	Reason    string
 }
 
-// glanceBar is one "of every $100" bar: which cells it is drawn from and the
+// glanceBar is one bar of shares: which cells it is drawn from and the
 // projection's total printed beside the client's sum of them.
 type glanceBar struct {
 	ID        string
@@ -278,7 +278,7 @@ func buildGlancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			residuals []ApartFromSpine
 		}{{
 			bar: glanceBar{ID: "revenue", Heading: "Where the money comes from",
-				Lede: "Of every $100 the city budgets to take in, by the kind of revenue. Money moved " +
+				Lede: "What the city budgets to take in, by the kind of revenue, each kind's share of the whole. Money moved " +
 					"between the city's own funds, and money drawn from what its funds already hold, is not counted.",
 				GroupHead: "Revenue category", OtherHead: "Fund group", Whole: revenue},
 			doc: spine,
@@ -288,7 +288,7 @@ func buildGlancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			whole: h.AllFundsGrossRevenueCents,
 		}, {
 			bar: glanceBar{ID: "spending", Heading: "What the money buys",
-				Lede: "Of every $100 the city budgets to spend, by what it pays for. Transfers between the " +
+				Lede: "What the city budgets to spend, by what it pays for, each kind's share of the whole. Transfers between the " +
 					"city's own funds and additions to its reserves are not spending and are left out.",
 				GroupHead: "Spending category", OtherHead: "Fund group", Whole: spent},
 			doc: spine,
@@ -298,7 +298,7 @@ func buildGlancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			whole: h.AllFundsGrossExpenditureCents,
 		}, {
 			bar: glanceBar{ID: "departments", Heading: "Who spends it",
-				Lede:      "Of every $100 the city budgets to spend, by the department that spends it, every fund together.",
+				Lede:      "What the city budgets to spend, by the department that spends it, each department's share of the whole, every fund together.",
 				GroupHead: "Department", OtherHead: "Paid from", Whole: spent},
 			doc: funding,
 			pick: func(src, dst string) (string, string, bool) {

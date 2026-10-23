@@ -387,6 +387,28 @@ export function tipHint(doc, pinned) {
 }
 
 /**
+ * Says in a figure's own section that it could not be drawn, and why, under
+ * its heading. The table it was to be drawn from is hidden only once a
+ * figure draws, so it stays shown beneath.
+ * @param {HTMLElement} section
+ * @param {unknown} err
+ */
+export function refuseFigure(section, err) {
+  const doc = section.ownerDocument;
+  let el = section.querySelector(":scope > p.refusal");
+  if (!el) {
+    el = doc.createElement("p");
+    el.className = "refusal";
+    el.setAttribute("role", "alert");
+    const heading = section.querySelector("h2, h3");
+    if (heading && heading.parentElement === section) heading.after(el);
+    else section.prepend(el);
+  }
+  el.textContent = `This figure could not be drawn: ${err instanceof Error ? err.message : String(err)}. ` +
+    "The table below is what the page carries.";
+}
+
+/**
  * Wires a mark to a page's tip: hover and focus show it, leaving and blur
  * hide it, and a click, Enter or Space pins it. `fill` is the mark's
  * tipper fill.

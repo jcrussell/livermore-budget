@@ -200,6 +200,12 @@ test("FY2021-22's use of money and property hangs below the baseline, and nothin
   assert.match(below[0].getAttribute("aria-label"), /^Use of Money And Property, FY 2021-22/);
   assert.ok(Number(below[0].dataset.cents) < 0);
   assert.equal(figs.get("audited-spending").querySelectorAll(".change-below .change-seg").length, 0);
+  // The lede says what that stack is: a total that is the net, with a
+  // negative kind below the baseline, not a height that is the sum.
+  // Mutation: put back "Each column's height is our sum" in change.go.
+  const lede = figs.get("audited-revenue").querySelector(".change-lede").textContent;
+  assert.match(lede, /total is our sum of the rows .* hangs below the baseline and counts against that total/);
+  assert.ok(!/height is our sum/.test(lede), lede);
 });
 
 // A cell the page cannot place is refused, not stacked. Mutation: default a
@@ -333,4 +339,26 @@ test("a click pins a band's tip, linking the page text and the PDF page that pri
   const [a, b] = figures(document).get("audited-revenue").querySelectorAll(".change-seg");
   pinGestures(window, a, b);
   t.diagnostic(`${pinned} bands pinned, each linking pages that print its cells`);
+});
+
+// A chart that cannot draw says so in its own section, its table left
+// shown, and the charts after it still draw. Mutation: drop boot's catch
+// and the first chart's throw stops every later one, with no sentence on
+// the page.
+test("a chart whose table is malformed is refused in its section and the others draw", async () => {
+  const dom = new JSDOM(PAGE);
+  const mod = await import(MODULE);
+  const doc = dom.window.document;
+  const [first, ...rest] = [...doc.querySelectorAll('section.change-figure[data-chart="true"]')];
+  assert.ok(rest.length > 0, "the page draws one chart, so nothing shows the others survive");
+  first.querySelector("tbody td[data-cents]").setAttribute("data-cents", "12.5");
+  mod.boot(doc);
+  const said = first.querySelector("p.refusal");
+  assert.ok(said !== null && /could not be drawn: .*carries "12\.5" cents/.test(said.textContent), said && said.textContent);
+  assert.ok(first.querySelector("figure.change-chart").hidden, "the refused chart is shown");
+  const cells = first.querySelector(".change-cells");
+  assert.ok(!cells || !cells.hidden, "the refused chart's table is hidden");
+  for (const s of rest) {
+    assert.ok(!s.querySelector("figure.change-chart").hidden, `${s.dataset.figure} did not draw`);
+  }
 });

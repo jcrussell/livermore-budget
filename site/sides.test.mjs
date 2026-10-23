@@ -180,6 +180,12 @@ describe("each form draws every tile once and its tip names its pages", () => {
         const tree = core.sideTree(doc, roots, side.tier);
         const section = document.querySelector(`section.sides-side[data-tier="${side.tier}"]`);
         const marks = [...section.querySelectorAll(MARK[form])];
+        // The list's count and sum are the client's and say so. Mutation:
+        // drop the ◇ from ledger.js's aria-label.
+        if (form === "ledger") {
+          const label = section.querySelector("[aria-label]").getAttribute("aria-label");
+          assert.match(label, /: ◇ \d+ bars by our count, .* in all by our sum$/, label);
+        }
         const ids = marks.map((m) => m.dataset.id).sort();
         assert.deepEqual(ids, core.sideTiles(tree.roots).map((x) => x.tile.id).sort());
         for (const m of marks) {

@@ -37,7 +37,7 @@ const (
 	DepartmentTemplate = "department.html.tmpl"
 	CapitalTemplate    = "capital.html.tmpl"
 	DebtTemplate       = "debt.html.tmpl"
-	// GlanceTemplate renders three "of every $100" bars per published year
+	// GlanceTemplate renders three bars of shares per published year
 	// out of the spine and department-funding, server-side as tables of
 	// printed cells; site/glance.js groups and sums them.
 	GlanceTemplate = "glance.html.tmpl"

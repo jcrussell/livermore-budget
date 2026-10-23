@@ -8,7 +8,7 @@
  * written by Go. Importing it runs nothing; the template calls boot().
  */
 
-import { dollars, linkedPage, pageLinks, pinnable, share, tipHint, tipper } from "./format.js";
+import { dollars, linkedPage, pageLinks, pinnable, refuseFigure, share, tipHint, tipper } from "./format.js";
 
 /** How many groups a bar names before the rest fold into one tail. */
 export const NAMED = 5;
@@ -92,15 +92,6 @@ export function rank(groups) {
 }
 
 /**
- * A part's share of the whole as dollars of every $100, to the cent.
- * @param {number} part
- * @param {number} whole
- */
-export function perHundred(part, whole) {
-  return "$" + (100 * part / whole).toFixed(2);
-}
-
-/**
  * Clones the page's template for one piece of the figure.
  * @param {Document} doc
  * @param {string} id
@@ -118,7 +109,7 @@ function clone(doc, id) {
 
 /**
  * Fills one bar's figure from its table: the track of segments, the legend
- * naming each with its dollars of every $100, and the sentence stating the
+ * naming each with its share of the whole, and the sentence stating the
  * sum as ours. The figure's markup is the template's; this fills it in.
  * Each segment's tip pins on a click and links the pages its rows cite,
  * each to the page text the table's own link names (`a[data-page]`) and
@@ -149,7 +140,7 @@ export function draw(section, tips = tipper(section.ownerDocument)) {
   const heading = section.querySelector("h3");
   const title = heading ? (heading.textContent || "").trim() : "";
 
-  track.setAttribute("aria-label", `${title}: ${segments.map((s) => `${s.label} ${perHundred(s.cents, whole)}`).join(", ")} of every $100`);
+  track.setAttribute("aria-label", `${title}, our shares: ${segments.map((s) => `${s.label} ◇ ${share(s.cents, whole)}`).join(", ")}`);
   track.replaceChildren();
   legend.replaceChildren();
   segments.forEach((s, i) => {
@@ -157,7 +148,7 @@ export function draw(section, tips = tipper(section.ownerDocument)) {
     const seg = clone(doc, "glance-segment");
     seg.dataset.rank = rank;
     seg.style.flexGrow = String(s.cents);
-    seg.setAttribute("aria-label", `${s.label}: ${dollars(s.cents)}, ${share(s.cents, whole)}`);
+    seg.setAttribute("aria-label", `${s.label}: ${dollars(s.cents)}, ◇ ${share(s.cents, whole)}, our share`);
     pinnable(seg, tips, (tip, pinned) => {
       const label = doc.createElement("div");
       label.className = "tip-label";
@@ -167,7 +158,7 @@ export function draw(section, tips = tipper(section.ownerDocument)) {
       value.textContent = dollars(s.cents);
       const meta = doc.createElement("div");
       meta.className = "tip-meta";
-      meta.textContent = `◇ ${perHundred(s.cents, whole)} of every $100 of ${title}, our share` +
+      meta.textContent = `◇ ${share(s.cents, whole)} of ${title}, our share` +
         (s.id ? "" : `: ${s.members.join(", ")}`);
       tip.append(label, value, meta, pageLinks(doc, pagesOf(s)), tipHint(doc, pinned));
     });
@@ -182,16 +173,14 @@ export function draw(section, tips = tipper(section.ownerDocument)) {
       if (!el) throw new Error(`the legend entry template has no ${sel}`);
       return /** @type {HTMLElement} */ (el);
     };
-    part(".glance-per").textContent = perHundred(s.cents, whole);
+    part(".glance-per").textContent = "◇ " + share(s.cents, whole);
     part(".glance-name").textContent = s.label;
-    part(".glance-detail").textContent = s.id
-      ? `${dollars(s.cents)}, ${share(s.cents, whole)}`
-      : `${dollars(s.cents)}, ${share(s.cents, whole)}: ${s.members.join(", ")}`;
+    part(".glance-detail").textContent = s.id ? dollars(s.cents) : `${dollars(s.cents)}: ${s.members.join(", ")}`;
     legend.appendChild(li);
   });
 
   caption.textContent = `◇ Our sum of the ${rows.length} printed cells: ${dollars(whole)}. ` +
-    "The shares are ours too, rounded to the cent, so they may not add to $100.00 exactly.";
+    "The shares are ours too, each rounded to a tenth of a percent, so they may not add to 100% exactly.";
   figure.hidden = false;
   // The table was the bar's data; the figure now says what it held.
   const cells = section.querySelector(".glance-cells");
@@ -206,6 +195,12 @@ export function draw(section, tips = tipper(section.ownerDocument)) {
 export function boot(doc) {
   const tips = tipper(doc);
   for (const section of Array.from(doc.querySelectorAll("section.glance-bar"))) {
-    draw(/** @type {HTMLElement} */ (section), tips);
+    // One figure that cannot draw says so in its own section, and the
+    // others still draw.
+    try {
+      draw(/** @type {HTMLElement} */ (section), tips);
+    } catch (err) {
+      refuseFigure(/** @type {HTMLElement} */ (section), err);
+    }
   }
 }
