@@ -33,25 +33,29 @@ export function drawnBody(document, window) {
     const m = new RegExp(`(?:^|[\\n}])\\s*${selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} \\{([^}]*)\\}`).exec(css);
     return m ? m[1] : "";
   };
+  // The variables are the card's and the chart body inherits them; the
+  // body's own rules give its width and its grid.
+  const card = rule("#chart-card");
   const body = rule(".chart-body");
+  const besideVars = rule("#chart-card:has(> .chart-body[data-beside])");
   const beside = rule(".chart-body[data-beside]");
-  const closed = rule('.chart-body[data-beside][data-rail="closed"]');
-  const screen = rule(".card:fullscreen .chart-body");
+  const closed = rule('#chart-card:has(> .chart-body[data-beside][data-rail="closed"])');
+  const screen = rule("#chart-card:fullscreen");
   const shapes = {
-    room: /--chart-room:\s*min\(var\(--chart-max, 100%\), calc\(100vw - var\(--chart-cushion\) - var\(--chart-panels\)\)\)/.test(body),
+    room: /--chart-room:\s*min\(var\(--chart-max, 100%\), calc\(100vw - var\(--chart-cushion\) - var\(--chart-panels\)\)\)/.test(card),
     width: /(^|[\s;])width:\s*calc\(var\(--chart-room\) \+ var\(--chart-panels\)\)/.test(body),
-    stacked: /--chart-panels:\s*0px/.test(body),
-    drawnStacked: /--chart-drawn:\s*min\(var\(--chart-max, 100%\), var\(--chart-room\)\)/.test(body),
-    drawnBeside: /--chart-drawn:\s*var\(--chart-max, 100%\)/.test(beside),
-    panels: /--chart-panels:\s*var\(--rail-now\)\s*;/.test(beside),
+    stacked: /--chart-panels:\s*0px/.test(card),
+    drawnStacked: /--chart-drawn:\s*min\(var\(--chart-max, 100%\), var\(--chart-room\)\)/.test(card),
+    drawnBeside: /--chart-drawn:\s*var\(--chart-max, 100%\)/.test(besideVars),
+    panels: /--chart-panels:\s*var\(--rail-now\)\s*;/.test(besideVars),
     grid: /grid-template-columns:\s*var\(--rail-now\) var\(--chart-room\)\s*;/.test(beside),
-    open: /--rail-now:\s*var\(--rail-width\)/.test(beside),
+    open: /--rail-now:\s*var\(--rail-width\)/.test(besideVars),
     tab: /--rail-now:\s*var\(--rail-tab\)/.test(closed),
     screen: /--chart-room:\s*calc\(100vw - var\(--screen-cushion\) - var\(--chart-panels\)\)/.test(screen),
     svg: /(^|[\s;])width:\s*calc\(var\(--chart-drawn\) \* var\(--chart-stretch, 1\)\)/.test(rule(".chart-scroll > svg.sankey")),
   };
   const px = (name) => {
-    const m = new RegExp(`--${name}:\\s*(\\d+)px`).exec(body);
+    const m = new RegExp(`--${name}:\\s*(\\d+)px`).exec(card);
     return m ? Number(m[1]) : null;
   };
   const sizes = { cushion: px("chart-cushion"), screenCushion: px("screen-cushion"), rail: px("rail-width"), tab: px("rail-tab") };

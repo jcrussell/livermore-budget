@@ -557,30 +557,50 @@ button[aria-pressed="true"] {
   outline: 1px solid var(--rule);
 }
 
-/* THE CHART BREAKS OUT OF main's 1180px AND NOTHING ELSE DOES, with the rail
-   when it sits beside it: a viewBox inside a narrower box shrinks every label
-   on the wide viewport that was the reason to draw another column. The
-   negative margin centres the wider box on main; where the viewport is
-   narrow, min() collapses both to the room there is.
+/* THE CHART'S CARD BREAKS OUT OF main's 1180px AND NOTHING ELSE DOES, with
+   the rail when it sits beside the chart: a viewBox inside a narrower box
+   shrinks every label on the wide viewport that was the reason to draw
+   another column. The card is the chart body's width plus its own padding
+   and border (--card-chrome), centred on main by the negative margin, so the
+   rail, the chart and the drawer all sit inside it; where the viewport is
+   narrow, min() collapses the body to the room there is and the card to
+   main's width.
 
-   The cap is app.js's --chart-max, the opening chart's width every chart is
-   scaled to; 100% is the no-script state. --chart-cushion must equal app.js's
-   CHART_CUSHION (40px body padding plus 16px for a classic scrollbar),
-   --screen-cushion its SCREEN_CUSHION, and --rail-width its RAIL_WIDTH. Where
-   app.js sets data-beside (its BESIDE_QUERY) the room is what the rail
-   leaves, and --chart-drawn, the width the opening chart is drawn at, is the
-   cap: the chart is at full size and pans in its room. Below it
-   --chart-panels is 0, the rail stacks above the chart, and the chart is
-   drawn at its room up to the cap. The provenance drawer is always below the
-   chart and takes no width from it. */
-.chart-body {
+   The variables are the card's, so its width can read them; the chart body
+   inherits them. The cap is app.js's --chart-max, the opening chart's width
+   every chart is scaled to; 100% is the no-script state. --chart-cushion
+   must equal app.js's CHART_CUSHION (40px body padding plus 16px for a
+   classic scrollbar), --screen-cushion its SCREEN_CUSHION, and --rail-width
+   its RAIL_WIDTH. Where app.js sets data-beside (its BESIDE_QUERY) on the
+   body the room is what the rail leaves, and --chart-drawn, the width the
+   opening chart is drawn at, is the cap: the chart is at full size and pans
+   in its room. Below it --chart-panels is 0, the rail stacks above the
+   chart, and the chart is drawn at its room up to the cap. The provenance
+   drawer is always below the chart and takes no width from it. */
+#chart-card {
   --chart-cushion: 56px;
   --screen-cushion: 48px;
   --rail-width: 208px;
   --rail-tab: 40px;
+  --card-chrome: 34px;
   --chart-panels: 0px;
   --chart-room: min(var(--chart-max, 100%), calc(100vw - var(--chart-cushion) - var(--chart-panels)));
   --chart-drawn: min(var(--chart-max, 100%), var(--chart-room));
+  width: max(100%, calc(var(--chart-room) + var(--chart-panels) + var(--card-chrome)));
+  margin-inline: min(0px, calc(50% - (var(--chart-room) + var(--chart-panels) + var(--card-chrome)) / 2));
+}
+
+#chart-card:has(> .chart-body[data-beside]) {
+  --rail-now: var(--rail-width);
+  --chart-panels: var(--rail-now);
+  --chart-drawn: var(--chart-max, 100%);
+}
+
+#chart-card:has(> .chart-body[data-beside][data-rail="closed"]) {
+  --rail-now: var(--rail-tab);
+}
+
+.chart-body {
   width: calc(var(--chart-room) + var(--chart-panels));
   margin-inline: calc(50% - (var(--chart-room) + var(--chart-panels)) / 2);
 }
@@ -590,26 +610,21 @@ button[aria-pressed="true"] {
    scale. The second row is 1fr so a rail taller than the chart opens its
    extra height under the drawer, not between the chart and the drawer. */
 .chart-body[data-beside] {
-  --rail-now: var(--rail-width);
-  --chart-panels: var(--rail-now);
-  --chart-drawn: var(--chart-max, 100%);
   display: grid;
   grid-template-columns: var(--rail-now) var(--chart-room);
   grid-template-rows: auto 1fr;
   align-items: start;
 }
 
-.chart-body[data-beside][data-rail="closed"] {
-  --rail-now: var(--rail-tab);
-}
-
 /* FULL SCREEN USES THE SCREEN'S WIDTH: the room is uncapped, so a chart a
    split widened draws further before it pans, and --chart-drawn keeps every
    chart at the one scale. The cushion is the card's own 16px padding each
    side plus 16px for its classic scrollbar; there is no body padding here.
-   Its specificity outranks .chart-body's wherever either sits. */
-.card:fullscreen .chart-body {
+   The card fills the screen rather than its breakout width. */
+#chart-card:fullscreen {
   --chart-room: calc(100vw - var(--screen-cushion) - var(--chart-panels));
+  width: auto;
+  margin-inline: 0;
 }
 
 .chart-body[data-beside] > .chart-wrap {

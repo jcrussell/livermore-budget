@@ -306,11 +306,11 @@ function tightestStack(fits) {
 /**
  * The widest the stylesheet lets the chart figure draw, in px.
  *
- * Nothing here parses CSS: this reads which PROPERTY .chart-body's cap comes
+ * Nothing here parses CSS: this reads which PROPERTY the chart card's cap comes
  * through, and the px is the value app.js hands that property. It pins the
  * declaration's shape, so an equivalent clamp() goes red -- the safe direction.
  *
- * ONLY A RULE WHOSE WHOLE SELECTOR IS .chart-body (or .chart-wrap) COUNTS,
+ * ONLY A RULE WHOSE WHOLE SELECTOR IS #chart-card (or .chart-wrap) COUNTS,
  * and two of them declaring the room is a refusal: a second rule under
  * @media is a cap this cannot place.
  *
@@ -319,20 +319,20 @@ function tightestStack(fits) {
  */
 function chartAllowance(css, handed) {
   // A rule boundary before the selector: start of text, a brace, or a comment end.
-  const rulesOf = (sel) => [...css.matchAll(new RegExp(String.raw`(?:^|[{}]|\*\/)\s*\.${sel}\s*\{([^}]*)\}`, "g"))];
-  const rules = rulesOf("chart-body");
-  if (rules.length === 0) return { px: null, why: "style.css declares no .chart-body rule" };
+  const rulesOf = (sel) => [...css.matchAll(new RegExp(String.raw`(?:^|[{}]|\*\/)\s*${sel}\s*\{([^}]*)\}`, "g"))];
+  const rules = rulesOf("#chart-card");
+  if (rules.length === 0) return { px: null, why: "style.css declares no #chart-card rule" };
   const capped = rules.filter((r) => /--chart-room:/.test(r[1]));
   if (capped.length > 1) {
-    return { px: null, why: `${capped.length} .chart-body rules declare --chart-room, and this file ` +
+    return { px: null, why: `${capped.length} #chart-card rules declare --chart-room, and this file ` +
       `cannot say which applies at which width` };
   }
   const rule = capped[0] || rules[0];
   if (!/--chart-room:\s*min\(\s*var\(--chart-max[,)]/.test(rule[1])) {
-    return { px: null, why: `.chart-body does not cap --chart-room with --chart-max: ${rule[1].trim()}` };
+    return { px: null, why: `#chart-card does not cap --chart-room with --chart-max: ${rule[1].trim()}` };
   }
-  if (!rulesOf("chart-wrap").some((r) => /(^|[\s;])width:\s*var\(--chart-room\)/.test(r[1]))) {
-    return { px: null, why: ".chart-body caps --chart-room but .chart-wrap does not take its width from it" };
+  if (!rulesOf(String.raw`\.chart-wrap`).some((r) => /(^|[\s;])width:\s*var\(--chart-room\)/.test(r[1]))) {
+    return { px: null, why: "#chart-card caps --chart-room but .chart-wrap does not take its width from it" };
   }
   if (handed === null) {
     return { px: null, why: "app.js set no --chart-max, so the stylesheet's cap falls back to 100%" };
@@ -340,7 +340,7 @@ function chartAllowance(css, handed) {
   // The cushion is read off its own declaration: the min()'s second operand is a var() too.
   const cushion = /--chart-cushion:\s*(\d+)px/.exec(rule[1]);
   if (!/calc\(100vw\s*-\s*var\(--chart-cushion\)\s*-\s*var\(--chart-panels\)\)/.test(rule[1])) {
-    return { px: null, why: ".chart-body does not take its sub-cap width from 100vw less --chart-cushion and --chart-panels" };
+    return { px: null, why: "#chart-card does not take its sub-cap width from 100vw less --chart-cushion and --chart-panels" };
   }
   return {
     px: handed,

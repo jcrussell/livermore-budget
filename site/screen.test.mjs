@@ -73,7 +73,7 @@ describe("full screen on the chart's card", () => {
     assert.equal(button.textContent, config.wording.full_screen);
   });
 
-  // Mutations: delete the .card:fullscreen .chart-body rule, or cap its
+  // Mutations: delete the #chart-card:fullscreen rule, or cap its
   // --chart-room with --chart-max again, and this goes red: the room read
   // is refused.
   test("full screen on a wide screen gives the chart the screen's width less the rail, so a split that panned fits, at the one scale, its viewBox unchanged", async (t) => {
