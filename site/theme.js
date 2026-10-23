@@ -1,7 +1,8 @@
 // @ts-check
 /**
- * fisc — the theme toggle in every page's top bar. Importing this module does
- * nothing; boot() wires the page it is handed.
+ * fisc — the controls in every page's top bar: the theme toggle, and the menu
+ * button the view list folds behind on a narrow screen. Importing this
+ * module does nothing; boot() wires the page it is handed.
  *
  * A switch dispatches THEME_EVENT on the document, so a page that writes
  * resolved colours onto its marks (app.js) repaints without wiring a second
@@ -43,12 +44,43 @@ export function syncTheme(win) {
 }
 
 /**
- * Shows and wires the page's theme toggle, and follows the OS setting so the
- * button never announces the opposite of what it does. A page with no toggle
- * is left alone.
+ * Shows and wires the menu button the view list folds behind on a narrow
+ * screen. It marks the nav data-menu, which lets style.css fold the list
+ * there, and data-open while the reader has it open; Escape closes it and
+ * puts focus back on the button. A page with no button is left alone, and
+ * with no script the list is never folded.
+ * @param {Window} win
+ */
+export function wireMenu(win) {
+  const doc = win.document;
+  const button = doc.getElementById("nav-toggle");
+  const nav = button && button.closest("nav");
+  if (!button || !nav) return;
+  /** @param {boolean} open */
+  const set = (open) => {
+    nav.toggleAttribute("data-open", open);
+    button.setAttribute("aria-expanded", String(open));
+  };
+  button.addEventListener("click", () => set(!nav.hasAttribute("data-open")));
+  nav.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && nav.hasAttribute("data-open")) {
+      set(false);
+      button.focus();
+    }
+  });
+  nav.setAttribute("data-menu", "");
+  set(false);
+  button.removeAttribute("hidden");
+}
+
+/**
+ * Wires the top bar: the menu (wireMenu), and the page's theme toggle,
+ * shown and following the OS setting so the button never announces the
+ * opposite of what it does. A page with no toggle keeps no theme control.
  * @param {Window} [win]
  */
 export function boot(win = globalThis.window) {
+  wireMenu(win);
   const doc = win.document;
   const button = doc.getElementById("theme-toggle");
   if (!button) return;

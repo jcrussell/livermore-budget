@@ -1468,6 +1468,12 @@ footer ul {
   padding-left: 18px;
 }
 
+/* A link in the footer's line breaks before or after itself, never inside:
+   "Code" ending one line and "on GitHub" starting the next read as two. */
+footer > p a {
+  white-space: nowrap;
+}
+
 noscript p {
   border: 1px solid var(--rule);
   border-radius: var(--radius);
@@ -1566,8 +1572,12 @@ noscript p {
   flex-wrap: wrap;
   border-bottom: 1px solid var(--border);
 }
+/* The list takes the row's room and wraps inside it, so the toggle ends the
+   first row whatever the width rather than wrapping onto a row of its own. */
 .site-nav ul {
   display: flex;
+  flex: 1 1 0;
+  min-width: 0;
   flex-wrap: wrap;
   align-self: flex-end;
   gap: 4px;
@@ -1578,6 +1588,60 @@ noscript p {
 .site-nav #theme-toggle {
   margin: 4px 0 4px auto;
   flex: none;
+}
+/* THE MENU BUTTON SHOWS ONLY WHERE THE LIST FOLDS: below the frame's width, once
+   theme.js has marked the nav data-menu. Folded, the list is gone until the
+   reader opens it, and then it is a column of full-width rows under the
+   button and the theme toggle. */
+.site-nav #nav-toggle {
+  display: none;
+}
+/* 1199px: below the frame's full 1180px the ten views and the toggle no
+   longer fit one row, and a nav of two rows is the wrap the menu exists to
+   end. */
+@media (max-width: 1199px) {
+  .site-nav[data-menu] #nav-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0;
+    font-size: 14px;
+    color: var(--ink-1);
+  }
+  .site-nav[data-menu] #nav-toggle::before {
+    content: "\2630";
+    font-size: 16px;
+  }
+  .site-nav[data-menu] .nav-here {
+    font-weight: 600;
+  }
+  .site-nav[data-menu] .nav-here::before {
+    content: "\00b7";
+    margin-right: 8px;
+    font-weight: 400;
+    color: var(--ink-2);
+  }
+  .site-nav[data-menu]:not([data-open]) #nav-views {
+    display: none;
+  }
+  .site-nav[data-menu][data-open] #nav-views {
+    order: 3;
+    flex-direction: column;
+    align-self: stretch;
+    width: 100%;
+    gap: 0;
+    padding-bottom: 6px;
+  }
+  .site-nav[data-menu][data-open] #nav-views a,
+  .site-nav[data-menu][data-open] #nav-views [aria-current="page"] {
+    padding: 10px 4px;
+    border-bottom: 0;
+    border-left: 3px solid transparent;
+  }
+  .site-nav[data-menu][data-open] #nav-views [aria-current="page"] {
+    border-left-color: var(--ink-1);
+    padding-left: 8px;
+  }
 }
 /* THE YEAR IS A ROW OF ITS OWN UNDER THE NAV, at the frame's left edge, in
    the same place on every page that offers more than one year. */
@@ -1609,7 +1673,7 @@ noscript p {
 .site-nav a,
 .site-nav [aria-current="page"] {
   display: block;
-  padding: 8px 14px;
+  padding: 8px 10px;
   font-size: 14px;
   text-decoration: none;
   color: var(--ink-2);

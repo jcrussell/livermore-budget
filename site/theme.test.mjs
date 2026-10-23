@@ -15,7 +15,7 @@ const PAGES = readdirSync(TESTDATA).filter((f) => f.endsWith(".golden.html")).so
 test("theme.js imports with no DOM and runs nothing", async () => {
   assert.equal(typeof globalThis.document, "undefined", "nothing installed a DOM before the import");
   const mod = await import(MODULE);
-  assert.deepEqual(Object.keys(mod).sort(), ["THEME_EVENT", "THEME_KEY", "boot", "prefersDark", "syncTheme"]);
+  assert.deepEqual(Object.keys(mod).sort(), ["THEME_EVENT", "THEME_KEY", "boot", "prefersDark", "syncTheme", "wireMenu"]);
 });
 
 /** One pinned page in a browser, theme.js booted against it as its top bar does. */
@@ -126,4 +126,32 @@ describe("the theme toggle in every pinned page's top bar", () => {
         `${page} ships a theme toggle that is not hidden`);
     }
   });
+});
+
+// On every pinned page the view list folds behind a menu button naming the
+// page on: shipped hidden with the list whole (no script, no fold), shown and
+// closed once booted, opened by a click, and closed again by Escape with the
+// focus back on the button. Mutation: drop wireMenu's data-menu and the
+// stylesheet folds nothing; drop its Escape arm and the last arm goes red.
+describe("the narrow-screen menu in every pinned page's top bar", () => {
+  for (const page of PAGES) {
+    test(page, async () => {
+      const shipped = readFileSync(path.join(TESTDATA, page), "utf8");
+      assert.match(shipped, /<button type="button" id="nav-toggle" aria-expanded="false" aria-controls="nav-views" hidden>/);
+      const { document, window } = await booted(page);
+      const nav = document.querySelector("nav.site-nav");
+      const button = document.getElementById("nav-toggle");
+      const current = document.querySelector('#nav-views [aria-current="page"]');
+      assert.ok(current !== null, "no view is marked current");
+      assert.equal(button.querySelector(".nav-here").textContent, current.textContent);
+      const state = () => `${nav.hasAttribute("data-menu")}/${nav.hasAttribute("data-open")}/${button.getAttribute("aria-expanded")}/${button.hidden}`;
+      assert.equal(state(), "true/false/false/false");
+      button.click();
+      assert.equal(state(), "true/true/true/false");
+      document.querySelector("#nav-views a").focus();
+      nav.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+      assert.equal(state(), "true/false/false/false");
+      assert.equal(document.activeElement, button);
+    });
+  }
 });

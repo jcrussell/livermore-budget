@@ -14,6 +14,12 @@
        site/theme.js shows it as it wires it, booted by the module script
        beside it.
 
+       On a narrow screen the view list folds behind a menu button naming
+       the page you are on. The button SHIPS HIDDEN too, so with JavaScript
+       off the list is shown whole and wraps; theme.js wireMenu shows the
+       button and folds the list (the fold itself is style.css's, under its
+       narrow-screen media query).
+
        "year-select" is the page's one year control, drawn in a row of its
        own under the nav, in the same place on every page that offers more
        than one year. It SHIPS DISABLED for the same reason; the page's
@@ -26,7 +32,8 @@
 </script>{{end}}
 {{define "topbar"}}<nav class="site-nav" aria-label="Views">
   {{- if gt (len .Nav) 1}}
-  <ul>
+  <button type="button" id="nav-toggle" aria-expanded="false" aria-controls="nav-views" hidden>Menu {{range .Nav}}{{if .Current}}<span class="nav-here">{{.Label}}</span>{{end}}{{end}}</button>
+  <ul id="nav-views">
     {{- range .Nav}}
     <li>{{if .Current}}<span aria-current="page">{{.Label}}</span>{{else}}<a href="{{.Path}}"{{with .YearKeys}} data-years="{{.}}"{{end}}>{{.Label}}</a>{{end}}</li>
     {{- end}}
