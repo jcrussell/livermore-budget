@@ -157,58 +157,6 @@ func TestWriteProducesTheSiteLayout(t *testing.T) {
 	}
 }
 
-func TestEveryAssetThePageAsksForWasWritten(t *testing.T) {
-	// A renamed asset is a 404 in the browser and nowhere else: the export
-	// still succeeds, the page still loads, and the chart silently never
-	// arrives. Walk the page's own references instead of trusting a list.
-	dir, _ := writeGolden(t)
-	page := readPage(t, dir)
-
-	var refs []string
-	for _, attr := range []string{`src="`, `href="`} {
-		rest := page
-		for {
-			i := strings.Index(rest, attr)
-			if i < 0 {
-				break
-			}
-			rest = rest[i+len(attr):]
-			j := strings.Index(rest, `"`)
-			if j < 0 {
-				break
-			}
-			ref := rest[:j]
-			rest = rest[j:]
-			// THE FRAGMENT IS STRIPPED, NOT SKIPPED, and the difference is the
-			// whole reason this walk can see the caveat links at all. A bare
-			// "#anchor" is same-page and rightly ignored; "caveats.html#x"
-			// names a FILE and this loop used to stat it verbatim, fragment
-			// and all, so the first cross-page anchor the site shipped would
-			// have been reported as a missing asset. Cutting first means the
-			// file half is checked and the fragment half is left to
-			// TestEveryCaveatSummaryLinksToAnAnchorThatExists, which is the
-			// only check that can resolve it.
-			if before, _, ok := strings.Cut(ref, "#"); ok {
-				ref = before
-			}
-			// Only the relative ones are this export's problem; the absolute
-			// ones are citations and are checked elsewhere.
-			if ref == "" || strings.Contains(ref, "://") {
-				continue
-			}
-			refs = append(refs, ref)
-		}
-	}
-	if len(refs) < 4 {
-		t.Fatalf("got %d relative references in the page, want at least the script, style and data files: %v", len(refs), refs)
-	}
-	for _, ref := range refs {
-		if _, err := os.Stat(filepath.Join(dir, filepath.FromSlash(ref))); err != nil {
-			t.Errorf("the page references %q, which was not written: %v", ref, err)
-		}
-	}
-}
-
 // TestWriteCopiesAColumnlessProjectionVerbatim: revenue-trends and the two
 // balance documents have no column and no schema, so they must ship byte for
 // byte. A document with a column is re-encoded and held by encodeColumn's
@@ -1205,7 +1153,11 @@ func TestTheIndexLinksItsCaveatsAndPrintsNone(t *testing.T) {
 // sources page. Mutation: drop the template's fallback list -- red.
 func TestAnIndexWithNoCaveatsPageListsTheCaveats(t *testing.T) {
 	dir, _ := writeGolden(t)
-	visible := readerVisible(t, readPage(t, dir))
+	page := readPage(t, dir)
+	visible := readerVisible(t, page)
+	if _, err := os.Stat(filepath.Join(dir, "caveats.html")); err == nil {
+		t.Fatal("writeGolden wrote caveats.html; this test is about a site with none")
+	}
 
 	var doc struct {
 		Metadata struct {
@@ -1226,7 +1178,7 @@ func TestAnIndexWithNoCaveatsPageListsTheCaveats(t *testing.T) {
 			t.Errorf("index.html with no caveats page does not list caveat %q", c.ID)
 		}
 	}
-	if strings.Contains(visible, `href="caveats.html"`) {
+	if strings.Contains(page, `href="caveats.html`) {
 		t.Error("index.html links a caveats page the site does not write")
 	}
 }

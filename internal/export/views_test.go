@@ -191,21 +191,11 @@ func TestEachViewsFooterCitesItsOwnSources(t *testing.T) {
 	}
 }
 
-// TestEveryCitationTheClientComposesResolves is the check fisc-fjy asks for, and
-// it is NOT the check that already existed.
-//
-// TestEveryAssetThePageAsksForWasWritten walks src= and href= out of the rendered
-// markup, and it is green -- but the citation links fisc-fjy is about are not IN
-// the markup. site/app.js reads them at runtime, per cited fact, from
-// CONFIG.docs[d].pages[n].text, and only the footer's
-// handful ever reach the HTML. So a walk of the page cannot see the class of
-// link that broke.
-//
-// This crosses the client's own config against every document it can fetch, which
-// is the set of paths the browser will actually construct.
-//
-// It walks the years' columns, so it reaches a source cited only by a schedule
-// behind a click.
+// TestEveryCitationTheClientComposesResolves crosses the client's config
+// against every document it can fetch. site/app.js composes citation links at
+// runtime from CONFIG.docs[d].pages[n].text, so a walk of the markup cannot
+// see them. It walks the years' columns, so it reaches a source cited only by
+// a schedule behind a click.
 func TestEveryCitationTheClientComposesResolves(t *testing.T) {
 	dir := twoViews(t, 127, 128)
 	cfg := clientConfigOf(t, readFile(t, dir, "index.html"))
@@ -501,23 +491,9 @@ func TestTheCaveatsPagePromisesAChartFlagOnlyWhereThereIsAChart(t *testing.T) {
 	}
 }
 
-// TestASingleViewSiteLinksNoCaveatsPage: with no caveats page the index
-// links none, rather than a page that 404s.
-func TestASingleViewSiteLinksNoCaveatsPage(t *testing.T) {
-	dir, _ := writeGolden(t)
-	page := readFile(t, dir, "index.html")
-
-	if _, err := os.Stat(filepath.Join(dir, "caveats.html")); err == nil {
-		t.Fatal("a single-view export wrote caveats.html; this test is about the site " +
-			"that has none, and no longer describes one")
-	}
-	if strings.Contains(page, `href="caveats.html`) {
-		t.Error("index.html links to caveats.html, which this site does not carry")
-	}
-}
-
-// TestEveryViewsMarkupResolves extends the existing asset walk to every page
-// rather than only the one the site opens on.
+// TestEveryViewsMarkupResolves walks every page's own relative references and
+// stats each: a renamed asset is a 404 in the browser and nowhere else. The
+// fragment is cut rather than skipped, so "caveats.html#x" stats the file.
 func TestEveryViewsMarkupResolves(t *testing.T) {
 	dir := twoViews(t, 127, 128)
 	ref := regexp.MustCompile(`(?:src|href)="([^"]+)"`)
@@ -526,9 +502,6 @@ func TestEveryViewsMarkupResolves(t *testing.T) {
 		found := 0
 		for _, m := range ref.FindAllStringSubmatch(readFile(t, dir, page), -1) {
 			target := m[1]
-			// Fragment stripped rather than skipped, for the reason spelled
-			// out in export_test.go's walk: "caveats.html#x" names a file this
-			// check exists to stat, and only a bare "#x" is same-page.
 			if before, _, ok := strings.Cut(target, "#"); ok {
 				target = before
 			}

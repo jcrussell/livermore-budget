@@ -1,6 +1,7 @@
 package root
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -117,15 +118,24 @@ func TestNoArgsPrintsHelp(t *testing.T) {
 	}
 }
 
-// TestUnknownFlagExitsTwo confirms SetFlagErrorFunc routes pflag's parse
-// errors into the typed vocabulary rather than leaving them as exit 1.
+// TestUnknownFlagExitsTwo confirms an unknown flag exits 2 naming the flag,
+// and that root's flag error function types every parse error as a
+// FlagError: the runner's message match covers "unknown flag" without it, so
+// the exit code alone cannot witness SetFlagErrorFunc.
+//
+// MUTATION: delete root's SetFlagErrorFunc and the errors.As arm fails.
 func TestUnknownFlagExitsTwo(t *testing.T) {
 	ios, _, _, errOut := iostreams.Test()
-	if got := fisccmd.Run(NewCmdRoot(newTestFactory(t, ios)), []string{"--nope"}, ios); got != 2 {
+	root := NewCmdRoot(newTestFactory(t, ios))
+	if got := fisccmd.Run(root, []string{"--nope"}, ios); got != 2 {
 		t.Errorf("got exit code %d, want 2", got)
 	}
 	if !strings.Contains(errOut.String(), "nope") {
 		t.Errorf("got stderr %q, want it to name the offending flag", errOut)
+	}
+	var fe *cmdutil.FlagError
+	if err := root.FlagErrorFunc()(root, errors.New("invalid argument")); !errors.As(err, &fe) {
+		t.Errorf("FlagErrorFunc returned %T, want *cmdutil.FlagError", err)
 	}
 }
 

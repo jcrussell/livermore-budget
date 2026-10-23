@@ -47,14 +47,8 @@ type declaration struct {
 	Status Status `json:"status"`
 }
 
-// Ran says whether this run contained the check at all.
-//
-// A run may legitimately be a subset: [Run] takes the checks it is given, and
-// callers pass a few. So "absent" cannot mean stale, and the first version of
-// this file made it mean exactly that -- every test running two checks reported
-// three stale declarations and a clean run exited 3. Whether an id names a real
-// check is a claim about [All] rather than about a run, and it is asserted
-// statically by TestEveryDeclarationNamesACheckThatExists.
+// Ran says whether this run contained the check at all. A run may be a subset
+// of [All], so a declaration whose check did not run is not stale.
 func (d declaration) Ran() bool { return d.Status != "" }
 
 // Stale says whether this declaration has stopped describing the run: the check

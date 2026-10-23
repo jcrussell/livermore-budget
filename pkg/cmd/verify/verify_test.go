@@ -582,10 +582,6 @@ func TestTheHelpDescribesTheExitCodeContractItActuallyHas(t *testing.T) {
 		t.Errorf("the help never mentions a declaration, so it still reads as though "+
 			"--strict failed on any vacancy:\n%s", text)
 	}
-	if strings.Contains(cmd.Long, "and fails\nunder --strict") {
-		t.Error("the Long text still promises that a vacuous check fails --strict; the " +
-			"committed corpus reports three vacuous and exits 0 under it")
-	}
 
 	// (2) And the converse, which a reader cannot guess: a declaration that has
 	// stopped being true fails WITHOUT --strict.

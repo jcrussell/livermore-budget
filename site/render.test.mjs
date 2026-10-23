@@ -989,8 +989,6 @@ describe("the classes the client sets and the rules the stylesheet carries", () 
     "tip-drawn": "the tooltip's drawn-part line, worn as a tip-meta",
     label: "the hero's words, which paintYearWords repaints beside the .value #hero styles",
   };
-  /** Styled, set by nothing anywhere: dead ink, declared with its bead until it goes. */
-  const DEAD = {};
 
   const classesIn = (attr) => (attr || "").split(/\s+/).filter(Boolean);
   const templateClasses = () => {
@@ -1017,7 +1015,7 @@ describe("the classes the client sets and the rules the stylesheet carries", () 
     return out;
   };
 
-  test("every class the client sets is styled or a declared hook, and every rule is worn on some page or declared dead", async (t) => {
+  test("every class the client sets is styled or a declared hook, and every rule is worn on some page", async (t) => {
     const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem });
     const chart = document.getElementById("chart");
     const worn = new Set();
@@ -1076,16 +1074,14 @@ describe("the classes the client sets and the rules the stylesheet carries", () 
     const rules = ruleClasses(document);
     const templates = templateClasses();
     const unstyled = [...worn].filter((c) => !rules.has(c) && !(c in HOOKS)).sort();
-    const unworn = [...rules].filter((c) => !worn.has(c) && !templates.has(c) && !(c in DEAD)).sort();
+    const unworn = [...rules].filter((c) => !worn.has(c) && !templates.has(c)).sort();
     t.diagnostic(`${worn.size} classes worn across ${walked.visited} charts and the states above (drawn out at ${expandedAt}); ${rules.size} classes styled; ` +
       `${[...rules].filter((c) => !worn.has(c) && templates.has(c)).length} styled classes are other pages' templates'; ` +
-      `hooks ${Object.keys(HOOKS).join(", ")}; dead ${Object.keys(DEAD).join(", ")}`);
+      `hooks ${Object.keys(HOOKS).join(", ")}`);
     assert.deepEqual(unstyled, [], "set by the client and styled by no rule");
     assert.deepEqual(unworn, [], "styled and worn by nothing on any page");
-    // The declarations cannot go stale in silence: a hook is worn and
-    // unstyled, and a dead rule is styled and set nowhere.
+    // A hook cannot go stale in silence: it is worn and unstyled.
     for (const c of Object.keys(HOOKS)) assert.ok(worn.has(c) && !rules.has(c), `${c} is no longer a hook`);
-    for (const c of Object.keys(DEAD)) assert.ok(rules.has(c) && !worn.has(c) && !templates.has(c), `${c} is no longer dead`);
   });
 });
 

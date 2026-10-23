@@ -317,7 +317,7 @@ func TestARefusedPairIsNamedRatherThanCompared(t *testing.T) {
 			if err == nil {
 				t.Fatalf("comparing %q against %q was allowed", c.fine, c.coarse)
 			}
-			if !contains(err.Error(), c.want) {
+			if !strings.Contains(err.Error(), c.want) {
 				t.Errorf("refusal does not say why:\n  got  %v\n  want it to mention %q", err, c.want)
 			}
 		})
@@ -333,17 +333,6 @@ func cutNamed(t *testing.T, name string) structure.Cut {
 	}
 	t.Fatalf("no declared cut named %q", name)
 	return structure.Cut{}
-}
-
-func contains(haystack, needle string) bool {
-	return len(haystack) >= len(needle) && (func() bool {
-		for i := 0; i+len(needle) <= len(haystack); i++ {
-			if haystack[i:i+len(needle)] == needle {
-				return true
-			}
-		}
-		return false
-	})()
 }
 
 // TestTheCutsAgreeOnWhatTheDocumentsPrint: the same FY2026 adopted money,
@@ -469,8 +458,8 @@ func TestTheComparisonGoesRed(t *testing.T) {
 			t.Fatalf("moving one cell by a dollar produced %d findings, want 1:\n  %v",
 				len(got.Findings), got.Findings)
 		}
-		if !contains(got.Findings[0], "wages-and-benefits") ||
-			!contains(got.Findings[0], "$1.00") {
+		if !strings.Contains(got.Findings[0], "wages-and-benefits") ||
+			!strings.Contains(got.Findings[0], "$1.00") {
 			t.Errorf("the finding names neither the cell nor the difference:\n  %s", got.Findings[0])
 		}
 	})

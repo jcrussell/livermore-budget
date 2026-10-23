@@ -14,59 +14,14 @@ func vacant(id string) *fake {
 	return &fake{id: id, res: Result{Status: StatusVacuous, Summary: "nothing to look at"}}
 }
 
-// TestEveryDeclarationNamesACheckThatExists is the static half of the
-// self-retiring property, and it is static for a reason.
-//
-// A run may legitimately hold a subset of the checks -- Run takes the slice it
-// is given -- so "this run had no such check" cannot mean the declaration is
-// stale, and an earlier version of Declaration.Stale said it did: every test
-// running two checks reported three stale declarations and a clean run exited 3.
-// Whether an id names a real check is a claim about All(), so it is asserted
-// here, once, against the canonical registry.
-func TestEveryDeclarationNamesACheckThatExists(t *testing.T) {
+// TestDeclaredVacuousIsEmpty guards the state the map should stay in, in the
+// shape uncheckedDocuments and incompleteSeries already have. An entry needs a
+// reason of a full sentence about the corpus, a fisc- bead that retires it, and
+// an id that names a check in All(); none is needed today.
+func TestDeclaredVacuousIsEmpty(t *testing.T) {
 	t.Parallel()
-	real := map[string]bool{}
-	for _, c := range All() {
-		real[c.ID()] = true
-	}
-	for id := range declaredVacuous {
-		if !real[id] {
-			t.Errorf("declaredVacuous names %q, which is in no check All() returns; a "+
-				"declaration for a check that does not exist excuses nothing and "+
-				"hides that the real one is undeclared", id)
-		}
-	}
-}
-
-// TestEveryDeclarationCarriesItsReasonAndItsBead: a declaration whose reason is
-// thin is a declaration nobody re-reads, and re-reading is the whole mechanism.
-//
-// The count is deliberately NOT pinned. Pinning it would make every wave that
-// retires a check edit a number in a test, which is bookkeeping rather than
-// evidence, and would equally make every wave that ADDS a vacant check able to
-// pass by editing the same number.
-func TestEveryDeclarationCarriesItsReasonAndItsBead(t *testing.T) {
-	t.Parallel()
-	seen := map[string]string{}
-	for id, v := range declaredVacuous {
-		switch {
-		case v.bead == "":
-			t.Errorf("%s: no bead; an entry with no work behind it is a permanent "+
-				"exemption, which is not what this mechanism is for", id)
-		case !strings.HasPrefix(v.bead, "fisc-"):
-			t.Errorf("%s: bead %q is not a fisc id", id, v.bead)
-		}
-		if len(v.reason) < 80 {
-			t.Errorf("%s: reason is %d characters; it is printed verbatim on every "+
-				"run and has to say what would need to exist for the check to have "+
-				"a subject", id, len(v.reason))
-		}
-		if prev, dup := seen[v.reason]; dup {
-			t.Errorf("%s and %s share a reason verbatim; two checks are vacuous for "+
-				"the same cause or one of the reasons was copied without being "+
-				"re-read", id, prev)
-		}
-		seen[v.reason] = id
+	if len(declaredVacuous) != 0 {
+		t.Errorf("declaredVacuous carries %d entries: %v", len(declaredVacuous), declaredVacuous)
 	}
 }
 
@@ -180,15 +135,6 @@ func TestTheCommittedCorpusIsStrictClean(t *testing.T) {
 		t.Errorf("the committed corpus does not pass --strict: %d failed, %d errored, "+
 			"%d vacuous of which %d undeclared", rep.Counts.Fail, rep.Counts.Error,
 			rep.Counts.Vacuous, len(rep.Undeclared))
-	}
-
-	// Every declared entry ran, over the real registry. An entry that never
-	// runs here is one TestEveryDeclarationNamesACheckThatExists would have
-	// caught, and this is the second, cheaper witness to it.
-	for _, d := range rep.Declared {
-		if !d.Ran() {
-			t.Errorf("%s is declared vacuous but did not run over the real corpus", d.CheckID)
-		}
 	}
 }
 
