@@ -838,7 +838,10 @@ func TestTheExpansionSaysItsLinksDoubleCount(t *testing.T) {
 		found := false
 		for _, c := range exp.Metadata.Caveats {
 			if c.ID == "an-opened-box-repeats-its-members" {
-				found = c.Theme == ThemeDataFiles && strings.Contains(c.Text, want)
+				// The leaving arm is conditional, and a reader discounting
+				// every leaving link would get the double count wrong.
+				found = c.Theme == ThemeDataFiles && strings.Contains(c.Text, want) &&
+					strings.Contains(c.Text, "or leaving it where the node takes nothing in")
 			}
 		}
 		if !found {

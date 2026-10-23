@@ -1297,11 +1297,12 @@ func expansionCaveats(twice int, nodes []Node, apart []string) []Caveat {
 			ID:      "an-opened-box-repeats-its-members",
 			Theme:   ThemeDataFiles,
 			Summary: "In this file an opened box repeats its members' links, so adding every link counts money twice.",
-			Text: fmt.Sprintf("An opened node draws a link to each of its members, and every "+
-				"node but the General Fund's repeats each link arriving at a member, or leaving "+
-				"it, with the same figure and facts; a remainder cites the members it is the "+
-				"difference of. So %s behind more than one link, and summing every value_cents "+
-				"in this file counts them more than once.", countedFigures(twice)),
+			Text: fmt.Sprintf("An opened node draws a link to each of its members. The General "+
+				"Fund's link to each division totals the rows drawn beyond it; every other node's "+
+				"repeats each link arriving at the member, or leaving it where the node takes "+
+				"nothing in, with the same figure and facts. A remainder cites the members it is "+
+				"the difference of. So %s behind more than one link, and summing every "+
+				"value_cents in this file counts them more than once.", countedFigures(twice)),
 			AppliesTo: []string{},
 		},
 	}

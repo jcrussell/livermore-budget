@@ -432,6 +432,7 @@ func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, 
 				}
 				ofs[label] = true
 			}
+			slices.Sort(of)
 			va.Of = strings.Join(of, ", ")
 		}
 		// A year's label opens "FY ", so years sort in order, and before any

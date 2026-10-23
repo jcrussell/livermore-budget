@@ -6477,7 +6477,7 @@
     {
      "id": "an-opened-box-repeats-its-members",
      "summary": "In this file an opened box repeats its members' links, so adding every link counts money twice.",
-     "text": "An opened node draws a link to each of its members, and every node but the General Fund's repeats each link arriving at a member, or leaving it, with the same figure and facts; a remainder cites the members it is the difference of. So 369 printed figures sit behind more than one link, and summing every value_cents in this file counts them more than once.",
+     "text": "An opened node draws a link to each of its members. The General Fund's link to each division totals the rows drawn beyond it; every other node's repeats each link arriving at the member, or leaving it where the node takes nothing in, with the same figure and facts. A remainder cites the members it is the difference of. So 369 printed figures sit behind more than one link, and summing every value_cents in this file counts them more than once.",
      "theme": "data-files",
      "applies_to": []
     },

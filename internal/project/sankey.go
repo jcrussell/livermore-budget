@@ -1442,8 +1442,8 @@ func contestedCaveat(c contestedTotal, col Column, links []Link) (Caveat, bool) 
 		ID:    "contested-total-" + c.FundGroup,
 		Theme: ThemeBooksDisagree,
 		Summary: fmt.Sprintf(
-			"The budget book prints two different totals for %s spending; this chart draws the one on %s.",
-			label, c.SpinePages),
+			"The budget book prints two different totals for %s spending; this chart draws the summary page's.",
+			label),
 		Text: fmt.Sprintf(
 			"%s spending is drawn at %s, which is what %s print for %s. Other "+
 				"schedules in the same book make it %s: %s print that figure, and "+

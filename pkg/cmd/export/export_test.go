@@ -431,16 +431,20 @@ func TestEveryCaveatSummaryLinksToAnAnchorThatExists(t *testing.T) {
 	}
 	t.Logf("caveats.html states %d caveats in full", len(stated))
 
-	// A page's section on caveats.html, as the number of caveats it lists.
-	sectionCount := func(anchor string) int {
-		_, rest, ok := strings.Cut(caveatsPage, `id="`+anchor+`"`)
+	// One theme's list in a page's section on caveats.html, as the number of
+	// caveats it lists, and the heading of the section it is in.
+	groupOf := func(anchor string) (int, string) {
+		before, rest, ok := strings.Cut(caveatsPage, `<h3 id="`+anchor+`"`)
 		if !ok {
-			return -1
+			return -1, ""
 		}
-		body, _, _ := strings.Cut(rest, "</section>")
-		return strings.Count(body, "<li>")
+		body, _, _ := strings.Cut(rest, "</ul>")
+		heading := before[strings.LastIndex(before, "<h2>"):]
+		return strings.Count(body, "<li>"), heading
 	}
-	line := regexp.MustCompile(`<p class="caveats-line"><a href="caveats\.html#([^"]+)">(\d+) caveats? appl`)
+	line := regexp.MustCompile(`<p class="caveats-line">Limits on these figures:(.*?)</p>`)
+	themeLink := regexp.MustCompile(`<a href="caveats\.html#([^"]+)">[^<]*\((\d+)\)</a>`)
+	lined := 0
 
 	// TWO SPELLINGS. A page's caveats line links its own section as markup,
 	// href="caveats.html#caveats-on-...", and the FISC_CONFIG blob carries
@@ -463,18 +467,29 @@ func TestEveryCaveatSummaryLinksToAnAnchorThatExists(t *testing.T) {
 			continue
 		}
 		page := read(e.Name())
-		// ONE LINE PER PAGE, whose count is its own section's.
+		// ONE LINE PER PAGE, each theme's count its own section's list, in a
+		// section whose heading names the page.
+		//
+		// Mutation: have caveatIndex.here return the first view's section for
+		// every path and each page past the first links a section not its own.
 		if e.Name() != "caveats.html" {
 			lines := line.FindAllStringSubmatch(page, -1)
 			if len(lines) > 1 {
 				t.Errorf("%s carries %d caveats lines, want one", e.Name(), len(lines))
 			}
 			for _, m := range lines {
-				if got := sectionCount(m[1]); strconv.Itoa(got) != m[2] {
-					t.Errorf("%s says %s caveats apply and its section #%s on caveats.html lists %d",
-						e.Name(), m[2], m[1], got)
+				lined++
+				for _, l := range themeLink.FindAllStringSubmatch(m[1], -1) {
+					got, heading := groupOf(l[1])
+					if strconv.Itoa(got) != l[2] {
+						t.Errorf("%s says %s caveats of #%s apply and caveats.html lists %d there",
+							e.Name(), l[2], l[1], got)
+					}
+					if !strings.Contains(heading, `href="`+e.Name()+`"`) {
+						t.Errorf("%s links caveats.html#%s, in a section whose heading does not name it", e.Name(), l[1])
+					}
 				}
-				t.Logf("%s: %s caveats, #%s", e.Name(), m[2], m[1])
+				t.Logf("%s: %s", e.Name(), m[1])
 			}
 			if len(lines) == 0 && strings.Contains(page, `class="caveats"`) {
 				t.Errorf("%s lists caveats in place of its one line", e.Name())
@@ -494,6 +509,9 @@ func TestEveryCaveatSummaryLinksToAnAnchorThatExists(t *testing.T) {
 				}
 			}
 		}
+	}
+	if lined == 0 {
+		t.Error("no page carries a caveats line this test can read, so its count arm checks nothing")
 	}
 	if linked == 0 {
 		t.Error("no page links to caveats.html in its markup, so this test's first " +
@@ -626,10 +644,24 @@ func TestTheSiteDoesNotSayThePSeventySixScheduleIsUnmapped(t *testing.T) {
 	}
 
 	// And flows.html, which prints only its themes, points at the page that
-	// carries the text: at its section, which it shares with any page stating
-	// the same caveats.
-	if !strings.Contains(pages["flows.html"], `<p class="caveats-line">Limits on these figures: <a href="caveats.html#caveats-on-`) {
-		t.Error("flows.html does not link its section of the caveats page")
+	// carries the text: at a theme of its section, which it shares with any
+	// page stating the same caveats, and so a section that names Flows.
+	//
+	// Mutation: append "-typo" to the group anchor the caveats line links and
+	// flows.html links caveats.html#...-typo, in no section.
+	line := regexp.MustCompile(`<p class="caveats-line">Limits on these figures: <a href="caveats.html#([^"]+)">`).FindStringSubmatch(pages["flows.html"])
+	if line == nil {
+		t.Fatal("flows.html does not link its section of the caveats page")
+	}
+	section := regexp.MustCompile(`(?s)<section class="caveat-page" id="([^"]+)">\s*<h2>(.*?)</h2>.*?</section>`)
+	found := false
+	for _, m := range section.FindAllStringSubmatch(caveats, -1) {
+		if strings.Contains(m[0], `id="`+line[1]+`"`) {
+			found = strings.Contains(m[2], `href="flows.html"`)
+		}
+	}
+	if !found {
+		t.Errorf("flows.html links caveats.html#%s, which is in no section naming Flows", line[1])
 	}
 }
 

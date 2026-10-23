@@ -895,7 +895,7 @@ func TestContestedCaveatIsEmittedOnlyForTheColumnThatDrawsIt(t *testing.T) {
 	if !strings.Contains(got.Summary, label) {
 		t.Errorf("summary does not name %q:\n%s", label, got.Summary)
 	}
-	if strings.Contains(got.Summary, "$") {
+	if strings.Contains(got.Summary, "$") || strings.Contains(got.Summary, c.SpinePages) {
 		t.Errorf("summary carries a figure, which varies by column:\n%s", got.Summary)
 	}
 	// And it marks the group it is about, so a chart can flag that node.

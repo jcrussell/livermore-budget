@@ -404,3 +404,30 @@ func TestTheFallbackLineListsTheLimitsTheLinkedLineCounts(t *testing.T) {
 		t.Errorf("a.html's fallback line is %q, want X. listed and K. not", got)
 	}
 }
+
+// TestAVariantsYearsAreHeadedInOrder: a text carried by two years is headed by
+// them in year order whatever order its documents sort in, so variants sort
+// by their first year.
+//
+// Mutation: drop the sort of a variant's labels and "Both." is headed
+// "FY 2025-26 adopted, FY 2024-25 adopted", after "FY 2024-25 actual".
+func TestAVariantsYearsAreHeadedInOrder(t *testing.T) {
+	o, nav := caveatSite(
+		`[{"id":"x","summary":"X.","theme":"left-out","text":"Both.","applies_to":[]}]`,
+		`[{"id":"x","summary":"X.","theme":"left-out","text":"Both.","applies_to":[]}]`, `[]`)
+	o.Projections["a"] = caveatDoc("FY 2025-26", `[{"id":"x","summary":"X.","theme":"left-out","text":"Both.","applies_to":[]}]`)
+	o.Projections["b"] = caveatDoc("FY 2024-25", `[{"id":"x","summary":"X.","theme":"left-out","text":"Both.","applies_to":[]}]`)
+	o.Projections["c"] = []byte(`{"schema_version":1,"projection":"p","metadata":{"fiscal_year_label":"FY 2023-24",` +
+		`"basis":"actual","caveats":[{"id":"x","summary":"X.","theme":"left-out","text":"Other.","applies_to":[]}]}}`)
+	cx, err := buildCaveatIndex(o, ColumnIndex{}, nav)
+	if err != nil {
+		t.Fatalf("buildCaveatIndex: %v", err)
+	}
+	var ofs []string
+	for _, va := range cx.entries[0].Variants {
+		ofs = append(ofs, va.Of)
+	}
+	if diff := cmp.Diff([]string{"FY 2023-24 actual", "FY 2024-25 adopted, FY 2025-26 adopted"}, ofs); diff != "" {
+		t.Errorf("variants' Of (-want +got):\n%s", diff)
+	}
+}
