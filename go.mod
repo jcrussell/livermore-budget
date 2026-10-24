@@ -2,14 +2,10 @@ module github.com/jcrussell/livermore-budget
 
 go 1.25.0
 
-// The language floor above is 1.25.0; this pins the toolchain that actually
-// builds it. They are separate on purpose: govulncheck reports standard-library
-// CVEs against whichever toolchain is installed, so a job held at exactly the
-// floor stays red on every stdlib fix released since. Pinning here means the
-// binary CI scans is the binary CI builds -- 1.25.8 is not enough (4 called
-// stdlib vulnerabilities remain); 1.26.6 is clean. Bump this when govulncheck
-// reports a finding, per byob-security.2.
-toolchain go1.26.6
+// The language floor above is 1.25.0; this pins the toolchain that builds it,
+// so the binary CI scans with govulncheck is the binary CI builds. Bump it when
+// govulncheck reports a standard-library finding, per byob-security.2.
+toolchain go1.26.9
 
 require (
 	github.com/google/go-cmp v0.7.0
