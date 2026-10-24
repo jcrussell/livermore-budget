@@ -71,8 +71,20 @@ function refusal(document) {
 test("the modules import with no page config, no d3 and no DOM, and run nothing", () => {
   assert.ok(domless, "nothing installed a DOM before the import");
   assert.deepEqual(Object.keys(sides).sort(), ["KEY_MARK", "boot", "closing",
-    "fillTip", "frontierOf", "hashOf", "opensAs", "outside", "parseHash", "readConfig", "render", "shareTotal", "sidesAt", "sidesOf", "tileShare"]);
+    "fillTip", "frontierOf", "hashOf", "opensAs", "outside", "parseHash", "readConfig", "render", "shareTotal", "sidesAt", "tileShare"]);
   assert.deepEqual(Object.keys(forms.ledger).sort(), ["LEDGER", "RANKED", "boot", "widthOf"]);
+});
+
+// The ledger reads its own hints and refuses a chart that declares no sides.
+// Mutation: drop the length check and an empty sides list is accepted.
+test("the ledger reads its sides off its own hints and refuses a chart without them", () => {
+  const { config } = sidesPage("ledger");
+  const { LEDGER } = forms.ledger;
+  assert.deepEqual(LEDGER.sidesOf(config.overview), config.overview.ledger.sides);
+  for (const chart of [{ form: "ledger" }, { form: "ledger", ledger: { sides: [] } },
+    { form: "ledger", sankey: { sides: config.overview.ledger.sides } }]) {
+    assert.throws(() => LEDGER.sidesOf(chart), /declares no sides for its ledger chart/, JSON.stringify(Object.keys(chart)));
+  }
 });
 
 // The fold keeps every sum: at any frontier, a side's roots sum to the same
@@ -86,7 +98,7 @@ describe("core.sideTree keeps every sum through every split", () => {
     test(stem, (t) => {
       const doc = expansionOf(stem, config);
       const roots = core.rootFrontier(doc);
-      const tiers = sides.sidesOf(config).map((s) => s.tier);
+      const tiers = forms.ledger.LEDGER.sidesOf(config.overview).map((s) => s.tier);
       const totals = tiers.map((tier) => core.sideTree(doc, roots, tier).cents);
       assert.ok(totals.every((c) => c === totals[0]), `the sides sum differently at the root: ${totals.join(", ")}`);
       let splits = 0;
@@ -176,7 +188,7 @@ describe("each form draws every tile once and its tip names its pages", () => {
       const doc = expansionOf("fy2027-adopted", config);
       const roots = core.rootFrontier(doc);
       let expected = 0;
-      for (const side of sides.sidesOf(config)) {
+      for (const side of forms.ledger.LEDGER.sidesOf(config.overview)) {
         const tree = core.sideTree(doc, roots, side.tier);
         const section = document.querySelector(`section.sides-side[data-tier="${side.tier}"]`);
         const marks = [...section.querySelectorAll(MARK[form])];
@@ -206,7 +218,7 @@ describe("each form draws every tile once and its tip names its pages", () => {
         assert.ok(section.querySelector(".sides-total").textContent.includes(format.dollars(tree.cents)));
         expected += marks.length;
       }
-      t.diagnostic(`${form}: ${expected} marks across ${sides.sidesOf(config).length} sides at the root`);
+      t.diagnostic(`${form}: ${expected} marks across ${forms.ledger.LEDGER.sidesOf(config.overview).length} sides at the root`);
     });
   }
 });
@@ -479,7 +491,7 @@ test("a click pins a tile's tip, linking the page text and the PDF page of every
   const { window, document, config } = browser;
   const doc = expansionOf("fy2027-adopted", config);
   const tiles = new Map();
-  for (const side of sides.sidesOf(config)) {
+  for (const side of forms.ledger.LEDGER.sidesOf(config.overview)) {
     for (const x of sideTiles(core.sideTree(doc, core.rootFrontier(doc), side.tier).roots)) tiles.set(x.tile.id, x.tile);
   }
   const opener = [...document.querySelectorAll(MARK.ledger)].find((m) => m.classList.contains("can-open"));
@@ -489,7 +501,7 @@ test("a click pins a tile's tip, linking the page text and the PDF page of every
   assert.ok(document.querySelector(`${MARK.ledger}[data-id="${id}"]`).classList.contains("opened"), `${id} did not open`);
   // Every leaf now drawn, the opened tile's members among them.
   const frontier = core.expand(doc, core.rootFrontier(doc), id, core.splitsOf(doc, id).find((sp) => !sp.alternative).key);
-  for (const side of sides.sidesOf(config)) {
+  for (const side of forms.ledger.LEDGER.sidesOf(config.overview)) {
     for (const x of sideTiles(core.sideTree(doc, frontier, side.tier).roots)) tiles.set(x.tile.id, x.tile);
   }
   const leaves = [...document.querySelectorAll(MARK.ledger)].filter((m) => !m.classList.contains("can-open"));
@@ -551,7 +563,7 @@ test("every drawn row on Bars pins a tip linking its pages, by P or by a click o
   await click(browser, opener);
   const frontier = core.expand(doc, core.rootFrontier(doc), id, core.splitsOf(doc, id).find((sp) => !sp.alternative).key);
   const tiles = new Map();
-  for (const side of sides.sidesOf(config)) {
+  for (const side of forms.ledger.LEDGER.sidesOf(config.overview)) {
     for (const x of sideTiles(core.sideTree(doc, frontier, side.tier).roots)) tiles.set(x.tile.id, x.tile);
   }
   const rows = [...document.querySelectorAll(MARK.ledger)];

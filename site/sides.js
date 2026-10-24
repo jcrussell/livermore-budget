@@ -1,8 +1,8 @@
 // @ts-check
 /**
  * fisc — the page plumbing ledger.html runs on. Importing it
- * runs nothing; a form module's boot() hands this its renderer. It reads the
- * page's sides config, fetches the column the year control names, folds the
+ * runs nothing; a form module's boot() hands this its renderer, which reads
+ * the chart's sides off its own hints. This reads the page's config, fetches the column the year control names, folds the
  * expansion schedule to the frontier the hash opens (core.sideTree), and
  * hands each declared side's tree to the renderer, which draws it. The
  * tooltip, the hash and the gestures that open and shut a
@@ -40,7 +40,7 @@ export const KEY_MARK = "~";
  *   root drawn.
  *   tip shows a tile's tip unless one is pinned; pin pins it under its mark
  *   (format.js's tipper).
- * @typedef {{form: string, draw: (section: HTMLElement, side: Side, ctx: DrawContext) => void}} SidesRenderer
+ * @typedef {{form: string, sidesOf: (chart: any) => SideHint[], draw: (section: HTMLElement, side: Side, ctx: DrawContext) => void}} SidesRenderer
  */
 
 /**
@@ -49,20 +49,8 @@ export const KEY_MARK = "~";
  */
 export function readConfig(doc) {
   const config = configOf(doc, "sides-config", "sides");
-  const hints = config.overview && config.overview[config.overview.form];
-  if (!hints || !Array.isArray(hints.sides) || !hints.sides.length) {
-    throw new Error("the config declares no sides for its " + (config.overview ? config.overview.form : "") + " chart");
-  }
+  if (!config.overview || !config.overview.form) throw new Error("the config declares no chart");
   return config;
-}
-
-/**
- * The declared sides of the config's chart, its own form's hints and no other's.
- * @param {any} config
- * @returns {SideHint[]}
- */
-export function sidesOf(config) {
-  return config.overview[config.overview.form].sides;
 }
 
 /**
@@ -203,17 +191,19 @@ export function opensAs(tile) {
 }
 
 /**
- * The sides of one column at one frontier, each its declared tier's tree.
+ * The sides of one column at one frontier, each its declared tier's tree, as
+ * the chart's renderer reads its sides off the chart.
  * @param {any} config
  * @param {any} column
  * @param {Set<string>} frontier
+ * @param {SidesRenderer} renderer
  * @returns {{doc: FiscProjection, sides: Side[]}}
  */
-export function sidesAt(config, column, frontier) {
+export function sidesAt(config, column, frontier, renderer) {
   const doc = core.scheduleOf(column, config.primary);
   if (!doc) throw new Error(`the column carries no ${config.primary} schedule`);
   if (!core.isExpansionSchedule(doc)) throw new Error(`${config.primary} declares no splits, so nothing here opens`);
-  const sides = sidesOf(config).map((s) => ({ tier: s.tier, heading: s.heading, tree: core.sideTree(doc, frontier, s.tier) }));
+  const sides = renderer.sidesOf(config.overview).map((s) => ({ tier: s.tier, heading: s.heading, tree: core.sideTree(doc, frontier, s.tier) }));
   return { doc, sides };
 }
 
@@ -268,7 +258,7 @@ export function fillTip(doc, tip, tile, side, docs, pinned) {
 export function render(win, config, column, st, renderer, toggle, tips) {
   const doc = win.document;
   const { frontier, refused } = frontierOf(core.scheduleOf(column, config.primary) || { nodes: [], links: [], projection: config.primary }, st.opened);
-  const { sides } = sidesAt(config, column, frontier);
+  const { sides } = sidesAt(config, column, frontier, renderer);
   const largest = Math.max(1, ...sides.flatMap((s) => s.tree.roots.map((r) => r.size)));
   /** @type {DrawContext} */
   const ctx = {
@@ -331,6 +321,7 @@ export async function boot(win, renderer) {
     if (config.overview.form !== renderer.form) {
       throw new Error(`the page declares a ${config.overview.form} chart and this script draws a ${renderer.form}`);
     }
+    renderer.sidesOf(config.overview);
   } catch (e) {
     sayRefusal(doc, "sides", "This page could not read its config: " + String(e));
     return;

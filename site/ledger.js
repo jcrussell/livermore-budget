@@ -4,7 +4,7 @@
  * bars, one scale for every side on the page, an opened bar followed by its
  * members' bars indented under it (core.sideTree). Importing it runs
  * nothing; the template calls boot(), which hands sides.js this renderer.
- * Reads of the config only its own hints, through sides.js. No d3: a bar is
+ * Reads of the config only its own hints, in sidesOf. No d3: a bar is
  * a span whose width is its figure's share of the largest root drawn.
  */
 
@@ -32,6 +32,20 @@ export function widthOf(size, scale) {
  */
 export const LEDGER = Object.freeze({
   form: "ledger",
+
+  /**
+   * The sides a ledger chart declares, its own hints and no other form's,
+   * refused where it declares none.
+   * @param {any} chart
+   * @returns {import("./sides.js").SideHint[]}
+   */
+  sidesOf(chart) {
+    const hints = chart && chart.ledger;
+    if (!hints || !Array.isArray(hints.sides) || !hints.sides.length) {
+      throw new Error("the config declares no sides for its ledger chart");
+    }
+    return hints.sides;
+  },
 
   /**
    * Draws a side's tree into its section's figure: an ordered list, one
