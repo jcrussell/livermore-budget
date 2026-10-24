@@ -12,7 +12,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 import {
-  bootedApp, loadApp, split, expandAll, everySplit, settle, refusals, columnFixture, pageFixture, fire, repoRoot,
+  bootedApp, loadApp, split, expandAll, revealed, settle, refusals, columnFixture, pageFixture, fire, repoRoot,
   dollars, shortDollars, clickYear,
 } from "./testlib.mjs";
 
@@ -316,27 +316,24 @@ async function drive(year) {
       }
     }
 
-    // (f) what a folded tail stands for: Enter on the tail the way a reader
-    // asks, and then the DOM again. The label is part of the claim, and so
-    // is the tail's own `folds`: what it says it stands for is what drawing
-    // it out reveals, no more and no fewer.
+    // (f) what a folded tail stands for: Enter on the first tail the way a
+    // reader asks, and then the DOM again. The label is part of the claim,
+    // and so is the tail's own `folds`: what it says it stands for is what
+    // drawing it out reveals, no more and no fewer. One tail a state shows
+    // the gesture and the words; that every cap's kept and folded members
+    // are its members is fold.test.mjs's, over every chart with no DOM.
     if (entries.length) {
       await goTo(app, entries);
-      let refused = [];
-      const LIMIT = 64;
-      let done = 0;
-      for (; done < LIMIT; done++) {
-        const before = marksIn(chart);
-        const shown = before.filter((m) => app.isAggregate(m.__data__.id));
-        const tail = shown.find((m) => app.expandable(m.__data__));
-        if (!tail) { refused = shown; break; }
+      const before = marksIn(chart);
+      const tail = before.filter((m) => app.isAggregate(m.__data__.id)).find((m) => app.expandable(m.__data__));
+      if (tail) {
         const tier = tail.__data__.tier;
         const drawnBefore = before.map((m) => m.__data__.id);
         const hidden = (tail.__data__.folds || []).filter((id) => !drawnBefore.includes(id));
         const promised = tailPromise(tail);
         seen.expansions++;
         const note = (what) => wrong.tails.push(`${where}: the tail ${tail.__data__.id} ${what}`);
-        fire(tail, "keydown", { key: "Enter", timeStamp: t0 + 20000 + done });
+        fire(tail, "keydown", { key: "Enter", timeStamp: t0 + 20000 });
         await settle();
         const out = marksIn(chart)
           .filter((m) => m.__data__.tier === tier && !app.isAggregate(m.__data__.id))
@@ -354,10 +351,7 @@ async function drive(year) {
           note(`says "${promised}" in its own words and drew ${revealed.length} mark(s) the chart did not already carry`);
         }
       }
-      if (done === LIMIT) {
-        wrong.tails.push(`${where}: the chart still offered a tail to draw out after ${LIMIT} of them, ` +
-          "so what it was left holding was never read");
-      }
+      const refused = marksIn(chart).filter((m) => app.isAggregate(m.__data__.id) && !app.expandable(m.__data__));
       // SHOWN AND COULD NOT IS NOT THE SAME AS NOT SHOWN: a tail the reader
       // can see whose members no gesture on this chart draws out.
       const drawnNow = marksIn(chart).map((m) => m.__data__.id);
@@ -440,9 +434,17 @@ for (const year of YEARS) {
 }
 
 describe("the expansion's drawing", () => {
-  /** Every drawn mark of the root and every split the page offers, both columns. */
+  /**
+   * Every drawn mark of the root and of Expand all, both columns: the two
+   * charts between them draw a mark of every kind these tests ask about
+   * (one that splits, a hub, a tail, a node only derived), which the last
+   * assertion of the first test holds. Which node is which is the
+   * predicates' (splittable, foldable, expandable); what is tested here is
+   * that the drawing agrees with them, which needs a mark of each kind, not
+   * every chart.
+   */
   const records = [];
-  const walks = {};
+  let charts = 0;
   const hundreds = [];
   const tally = { nodes: 0, opens: 0, folds: 0, derivedOnly: 0, expands: 0 };
 
@@ -476,7 +478,10 @@ describe("the expansion's drawing", () => {
         }
       };
       look("the root");
-      walks[year.stem] = await everySplit(app, (where) => look(where));
+      assert.ok(app.expandAll(), "Expand all split nothing");
+      await settle();
+      look("Expand all");
+      charts += 2;
     }
   });
 
@@ -493,11 +498,9 @@ describe("the expansion's drawing", () => {
       (r.flag || "").includes("◇") !== r.derived)
       .map((r) => `${r.where} > ${r.id} is drawn "${r.classes.join(" ")}" / "${r.flag}" but ` +
         `${r.opens ? "splits" : "does not split"}`);
-    const visited = Object.values(walks).map((w) => w.visited).reduce((a, b) => a + b, 0);
-    t.diagnostic(`over the root and ${visited} split chart(s) of both columns, ${tally.nodes} mark(s): ` +
+    t.diagnostic(`over ${charts} chart(s) of both columns, ${tally.nodes} mark(s): ` +
       `${tally.opens} carry "opens" and ⊕, ${tally.folds} ⊖, ${tally.derivedOnly} the diamond alone, ` +
       `${tally.expands} carry "expands" and the plus`);
-    for (const w of Object.values(walks)) assert.equal(w.refused, "");
     assert.deepEqual(wrong.slice(0, 5), [], `${wrong.length} of ${tally.nodes} mark(s) are drawn as something they are not`);
     assert.ok(tally.opens > 0 && tally.folds > 0 && tally.expands > 0 && tally.derivedOnly > 0, "the corpus puts marks on both sides of each question");
   });
@@ -524,8 +527,7 @@ describe("the expansion's drawing", () => {
     const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem, plan: { [YEARS[0].path]: { doc } } });
     const big = marksIn(document.getElementById("chart")).find((m) => m.__data__.id === category);
     const rounded = big ? app.shareOf(big.__data__) : "(the mark is not drawn)";
-    t.diagnostic(`every share across the root and ${Object.values(walks).map((w) => w.visited).join(" + ")} ` +
-      `split charts is under 100%; ${category} scaled to all but the whole of its column reads "${rounded}"`);
+    t.diagnostic(`every share across ${charts} chart(s) is under 100%; ${category} scaled to all but the whole of its column reads "${rounded}"`);
     assert.deepEqual(hundreds.slice(0, 3), [], `${hundreds.length} share(s) read 100%`);
     assert.ok(big, "the scaled mark is drawn");
     assert.ok(rounded.includes("of this column") && !rounded.includes("100"), rounded);
@@ -603,42 +605,51 @@ describe("the expansion's drawing", () => {
     assert.equal(lit(marks).length, marks.length);
   });
 
+  // THE RULE, each arm of linkGroup on marks of the pinned chart: a group
+  // node's own id wins at either end; two ends of one group are that
+  // group's; one group-less end takes the other's; two groups, neither a
+  // group node, are muted, since picking one would be a guess. Then one
+  // chart where ribbons with a group-less end are drawn: every ribbon's
+  // stroke is linkColor's. Mutation: return "" for one group-less end and
+  // the arm and the drawn chart both go red.
   test("a ribbon with one group-less end wears the other end's hue, and one between two groups stays muted", async (t) => {
     const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem });
     const chart = document.getElementById("chart");
     const muted = app.cssVar("--muted");
-    let recoloured = 0;
-    const charts = new Set();
-    const wrong = [];
-    const walked = await everySplit(app, async (where) => {
-      for (const r of ribbonsIn(chart)) {
-        const d = r.__data__;
-        const a = app.fundGroupOf(d.source);
-        const b = app.fundGroupOf(d.target);
-        if (Boolean(a) === Boolean(b) || app.isFundGroup(d.source) || app.isFundGroup(d.target)) continue;
-        const g = a || b;
-        const want = app.cssVar(app.fundColorVar(g));
-        if (r.getAttribute("stroke") !== want) wrong.push(`${where}: ${d.source.id} -> ${d.target.id} is ${r.getAttribute("stroke")}, not ${g}'s ${want}`);
-        if (want !== muted) {
-          recoloured++;
-          charts.add(where);
-        }
-      }
-    });
-    assert.equal(walked.refused, "", walked.refused);
-    t.diagnostic(`${YEARS[0].label}: ${recoloured} ribbon(s) with one group-less end on ${charts.size} of ` +
-      `${walked.visited} chart(s) wear their other end's hue rather than --muted`);
-    assert.deepEqual(wrong, [], firstOf(wrong));
-    assert.ok(recoloured > 0, "no ribbon has one group-less end, so the arm is never drawn");
-
-    // Two groups, neither of them a group node: picking one would be a guess.
     app.expandAll();
     await settle();
-    const funds = marksIn(chart).map((m) => m.__data__).filter((n) => app.fundGroupOf(n) && !app.isFundGroup(n));
-    const other = funds.find((n) => app.fundGroupOf(n) !== app.fundGroupOf(funds[0]));
-    assert.ok(other, "everything split draws funds of one group only");
-    assert.equal(app.linkGroup({ source: funds[0], target: other }), "");
-    assert.equal(app.linkColor({ source: funds[0], target: other }), muted);
+    const nodes = marksIn(chart).map((m) => m.__data__);
+    const group = nodes.find((n) => app.isFundGroup(n));
+    const funds = nodes.filter((n) => app.fundGroupOf(n) && !app.isFundGroup(n));
+    const fund = funds[0];
+    const sibling = funds.find((n) => n !== fund && app.fundGroupOf(n) === app.fundGroupOf(fund));
+    const other = funds.find((n) => app.fundGroupOf(n) !== app.fundGroupOf(fund));
+    const bare = nodes.find((n) => !app.fundGroupOf(n));
+    assert.ok(group && fund && sibling && other && bare, "the chart lacks a node for one of the rule's arms");
+    const g = app.fundGroupOf(fund);
+    const arms = [
+      ["a group node as source", { source: group, target: bare }, group.id],
+      ["a group node as target", { source: bare, target: group }, group.id],
+      ["two ends of one group", { source: fund, target: sibling }, g],
+      ["a group-less target", { source: fund, target: bare }, g],
+      ["a group-less source", { source: bare, target: fund }, g],
+      ["two groups", { source: fund, target: other }, ""],
+    ];
+    assert.deepEqual(arms.map(([name, link]) => [name, app.linkGroup(link)]), arms.map(([name, , want]) => [name, want]));
+    assert.equal(app.linkColor({ source: fund, target: other }), muted);
+
+    const wrong = [];
+    let recoloured = 0;
+    for (const r of ribbonsIn(chart)) {
+      const d = r.__data__;
+      if (r.getAttribute("stroke") !== app.linkColor(d)) wrong.push(`${d.source.id} -> ${d.target.id} is ${r.getAttribute("stroke")}`);
+      const a = app.fundGroupOf(d.source);
+      const b = app.fundGroupOf(d.target);
+      if (Boolean(a) !== Boolean(b) && !app.isFundGroup(d.source) && !app.isFundGroup(d.target) && app.linkColor(d) !== muted) recoloured++;
+    }
+    t.diagnostic(`${YEARS[0].label}, Expand all: ${recoloured} ribbon(s) with one group-less end wear their other end's hue`);
+    assert.deepEqual(wrong, [], firstOf(wrong));
+    assert.ok(recoloured > 0, "no drawn ribbon has one group-less end, so the drawn arm is never reached");
   });
 
   /** The href Go emitted for a caveat id in one year's refs, or "". */
@@ -1024,7 +1035,10 @@ describe("the classes the client sets and the rules the stylesheet carries", () 
     };
     // The root, the tooltip on a mark and on a ribbon, the panel on a
     // ribbon, a pin, an isolation, a node menu refusing a filter, a zoom,
-    // every split the page offers, a tail drawn out, and a refusal.
+    // one split of each kind the page offers (a key, as primary or as an
+    // alternative), Expand all, every tail drawn out, and a refusal. A class
+    // only some other chart wears fails the "styled and worn" arm below
+    // rather than passing unseen.
     snap();
     const mark = marksIn(chart)[0];
     const ribbon = ribbonsIn(chart)[0];
@@ -1056,26 +1070,33 @@ describe("the classes the client sets and the rules the stylesheet carries", () 
     app.collapseAll(); await settle();
     // A zoomed chart, for the class that clips it.
     app.zoomBy(2); snap(); app.resetZoom();
-    let expandedAt = "";
-    const walked = await everySplit(app, async (where) => {
+    const kinds = new Map();
+    for (const sp of app.fetched.splits) {
+      const kind = `${sp.key}${sp.alternative ? " (alternative)" : ""}`;
+      if (!kinds.has(kind)) kinds.set(kind, sp);
+    }
+    const look = () => {
       snap();
       const laidRibbon = ribbonsIn(chart)[0];
       if (laidRibbon) { app.showTip({ target: chart, clientX: 0, clientY: 0 }, laidRibbon.__data__); app.pin(laidRibbon.__data__); snap(); }
-      // The first chart that folds a split is drawn out once, for its marks.
-      if (!expandedAt && app.projection.nodes.some((n) => app.expandable(n))) {
-        expandAll(app); await settle(); snap();
-        expandedAt = where;
-      }
-    });
-    assert.equal(walked.refused, "");
-    assert.ok(expandedAt, "no chart offered a tail to draw out");
+    };
+    for (const sp of kinds.values()) {
+      app.collapseAll(); await settle();
+      await revealed(app, sp.node);
+      await split(app, app.entryOf(sp.node, sp.key));
+      look();
+    }
+    app.collapseAll(); await settle();
+    assert.ok(app.expandAll(), "Expand all split nothing"); await settle(); look();
+    assert.ok(expandAll(app) > 0, "Expand all folded no tail to draw out"); await settle(); look();
+    app.collapseAll(); await settle();
     app.fail("probe: a refusal, for its class"); snap();
 
     const rules = ruleClasses(document);
     const templates = templateClasses();
     const unstyled = [...worn].filter((c) => !rules.has(c) && !(c in HOOKS)).sort();
     const unworn = [...rules].filter((c) => !worn.has(c) && !templates.has(c)).sort();
-    t.diagnostic(`${worn.size} classes worn across ${walked.visited} charts and the states above (drawn out at ${expandedAt}); ${rules.size} classes styled; ` +
+    t.diagnostic(`${worn.size} classes worn across ${kinds.size + 2} charts (${[...kinds.keys()].join(", ")}, Expand all, drawn out) and the states above; ${rules.size} classes styled; ` +
       `${[...rules].filter((c) => !worn.has(c) && templates.has(c)).length} styled classes are other pages' templates'; ` +
       `hooks ${Object.keys(HOOKS).join(", ")}`);
     assert.deepEqual(unstyled, [], "set by the client and styled by no rule");
