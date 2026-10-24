@@ -181,11 +181,11 @@ type Caveat struct {
 type CaveatTheme string
 
 const (
-	// ThemeLeftOut is money or a column the drawn schedule does not carry.
-	ThemeLeftOut CaveatTheme = "left-out"
 	// ThemeBooksDisagree is two of the city's own pages printing different
 	// figures for one thing.
 	ThemeBooksDisagree CaveatTheme = "books-disagree"
+	// ThemeLeftOut is money or a column the drawn schedule does not carry.
+	ThemeLeftOut CaveatTheme = "left-out"
 	// ThemeSameMoneyTwice is one printed figure a reader could add twice.
 	ThemeSameMoneyTwice CaveatTheme = "same-money-twice"
 	// ThemeKindsOfYear is a column that is not the same kind of number as its
@@ -203,10 +203,10 @@ const (
 
 // caveatThemeWords is each theme as the caveats page heads and explains it.
 var caveatThemeWords = map[CaveatTheme][2]string{
-	ThemeLeftOut: {"What isn't in the picture",
-		"Money or columns a schedule doesn't carry, or that this site reads and doesn't draw. A total here can be smaller than one printed elsewhere for that reason alone."},
 	ThemeBooksDisagree: {"Where the city's own books disagree",
 		"Two of the city's pages print different figures or labels for the same thing, by anything from a dollar to hundreds of thousands. This site draws one as printed and says which; it corrects neither."},
+	ThemeLeftOut: {"What isn't in the picture",
+		"Money or columns a schedule doesn't carry, or that this site reads and doesn't draw. A total here can be smaller than one printed elsewhere for that reason alone."},
 	ThemeSameMoneyTwice: {"Don't add or compare these",
 		"Figures that look as if they should be added together or set side by side, and should not: the same dollars shown twice, or two different measures under similar names."},
 	ThemeKindsOfYear: {"Not every year is the same kind of number",

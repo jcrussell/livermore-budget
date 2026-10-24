@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { bootedApp, expansionStates, columnFixture, pageFixture } from "./testlib.mjs";
+import { bootedApp, expansionStates, shapedAt, columnFixture, pageFixture } from "./testlib.mjs";
 
 const SCHEMA_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "schema");
 const read = (name) => JSON.parse(fs.readFileSync(path.join(SCHEMA_DIR, name), "utf8"));
@@ -62,7 +62,7 @@ function check(schema, value, at, out) {
  * of expansionStates' frontiers.
  */
 function marksAt(app, st) {
-  const shaped = app.formOnScreen().shape(app.fetched, { chart: app.chartOnScreen(), frontier: st.frontier, whole: st.whole });
+  const shaped = shapedAt(app, st.frontier, st.whole);
   const byID = new Map();
   for (const n of shaped.nodes.concat(app.filterFor(shaped).doc.nodes)) if (app.isMark(n.id)) byID.set(n.id, n);
   return [...byID.values()];

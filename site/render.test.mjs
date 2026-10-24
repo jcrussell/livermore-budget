@@ -625,7 +625,7 @@ describe("the expansion's drawing", () => {
     const sibling = funds.find((n) => n !== fund && app.fundGroupOf(n) === app.fundGroupOf(fund));
     const other = funds.find((n) => app.fundGroupOf(n) !== app.fundGroupOf(fund));
     const bare = nodes.find((n) => !app.fundGroupOf(n));
-    assert.ok(group && fund && sibling && other && bare, "the chart lacks a node for one of the rule's arms");
+    assert.ok(Boolean(group && fund && sibling && other && bare), "the chart lacks a node for one of the rule's arms");
     const g = app.fundGroupOf(fund);
     const arms = [
       ["a group node as source", { source: group, target: bare }, group.id],

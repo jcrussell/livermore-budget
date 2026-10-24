@@ -347,6 +347,15 @@ export async function revealed(app, id) {
 }
 
 /**
+ * One chart of the expansion as the page shapes it, with no DOM: the
+ * form's shape over the fetched document at a frontier and the splits
+ * drawn whole, which is what app.projection holds after a redraw there.
+ */
+export function shapedAt(app, frontier, whole = new Set()) {
+  return app.formOnScreen().shape(app.fetched, { chart: app.chartOnScreen(), frontier, whole });
+}
+
+/**
  * Draws out every folded tail until none is left and returns how many it
  * drew out. A tail drawn out is an entry on the list like a split, so the
  * tails are found by shaping the list with no DOM (expansionState, then the
@@ -364,8 +373,7 @@ export function expandAll(app) {
   for (let round = 0; ; round++) {
     if (round === 64) throw new Error("a chart still folds a tail after 64 rounds of drawing them out");
     const state = app.expansionState(app.fetched, entries);
-    const shaped = app.formOnScreen().shape(app.fetched,
-      { chart: app.chartOnScreen(), frontier: state.frontier, whole: state.whole });
+    const shaped = shapedAt(app, state.frontier, state.whole);
     const tails = shaped.nodes.map((n) => n.id)
       .filter((id) => app.isAggregate(id) && app.splitTailOf(id) && !entries.includes(id));
     if (!tails.length) break;
