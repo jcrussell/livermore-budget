@@ -7,16 +7,21 @@ version: 2
 # and opens a PR that moves both the SHA and the comment, which is the half
 # that keeps the pins from rotting silently.
 #
-# Go modules are deliberately not listed. The dependency set here is tiny and
-# deliberate -- anything outside cobra, go-cmp and the YAML reader needs its
-# own decision bead -- so an automated PR stream over it would be noise rather
-# than signal. The toolchain pin in go.mod is bumped by hand when govulncheck
-# reports a finding, per byob-security.2, and CI is what surfaces that.
+# Go modules are listed too. The toolchain pin in go.mod is not a module and
+# is bumped by hand when govulncheck reports a finding (byob-security.2).
 updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
+      include: scope
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
     open-pull-requests-limit: 5
     commit-message:
       prefix: chore
