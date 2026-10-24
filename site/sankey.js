@@ -16,6 +16,7 @@
 import {
   capColumn, fmt, fmtShortSigned, foldDocument, isExpansionSchedule, isFundGroup, isLink, labelledAsParent, openSplitOf, reducedOf, say, splitTailID, splitsOf, tailFigure, tierFrontier,
 } from "./core.js";
+import { share } from "./format.js";
 
 export const NODE_WIDTH = 14;
 
@@ -161,22 +162,6 @@ export function markContra(drawn) {
       }
       return l.contra ? Object.assign({}, l, { contra: "" }) : l;
     }),
-  });
-}
-
-/**
- * The chart as its documents print it, markContra undone: a link carrying a
- * contra sentence after markContra was printed negative, so it goes back to
- * its own sign, so a chart as drawn can be summed at the signs printed.
- * @param {FiscProjection} drawn
- * @returns {FiscProjection}
- */
-export function unmarkContra(drawn) {
-  if (!drawn.links.some((l) => l.contra && l.value_cents > 0)) return drawn;
-  return Object.assign({}, drawn, {
-    links: drawn.links.map((l) => l.contra && l.value_cents > 0
-      ? Object.assign({}, l, { value_cents: -l.value_cents })
-      : l),
   });
 }
 
@@ -935,12 +920,8 @@ export function columnShare(laid, d) {
   }
   // No share of a column of one: it is 100% by construction.
   if (!total || siblings < 2) return "";
-  const pct = (100 * d.value) / total;
-  // A CEILING AS WELL AS A FLOOR: toFixed(1) would round a divided column's
-  // largest share to "100.0", a whole its sibling denies.
-  const shown = pct < 0.1 ? "<0.1" : pct > 99.9 ? ">99.9" : pct.toFixed(1);
   // "our" is what survives the diamond being read aloud.
-  return "\u25c7 our " + shown + "% of this column";
+  return "\u25c7 our " + share(d.value, total) + " of this column";
 }
 
 /**

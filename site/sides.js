@@ -13,7 +13,7 @@
  */
 
 import * as core from "./core.js";
-import { configOf, dollars, hashFields, hashValue, citedPages, pageLinks, selectYear, tipHint, tipper, wireYearSelect, yearKey } from "./format.js";
+import { clone, configOf, sayRefusal, dollars, share, hashFields, hashValue, citedPages, pageLinks, selectYear, tipHint, tipper, wireYearSelect, yearKey } from "./format.js";
 
 /** The hash's fields: the column and the opened nodes, in order. */
 const HASH_FIELDS = ["y", "o"];
@@ -163,17 +163,6 @@ export function outside(doc, opened, id) {
 }
 
 /**
- * A tile's share of its side's drawn total, as this page's percentage.
- * @param {number} part
- * @param {number} whole
- */
-export function share(part, whole) {
-  if (!whole) return "";
-  const pct = (100 * Math.abs(part)) / Math.abs(whole);
-  return pct < 0.1 ? "<0.1%" : pct.toFixed(1) + "%";
-}
-
-/**
  * The total a side's shares are of: its roots that are not printed
  * reductions, their count and their cents, and how many roots are left out.
  * @param {Side} side
@@ -211,22 +200,6 @@ export function tileShare(tile, side) {
 export function opensAs(tile) {
   return "◇ " + tile.splits.map((sp) => `${sp.members.length} ${sp.key}${sp.alternative ? " (alternative)" : ""}`).join("; ") +
     ", by our count";
-}
-
-/**
- * Clones the page's template for one piece of a figure.
- * @param {Document} doc
- * @param {string} id
- * @returns {HTMLElement | SVGElement}
- */
-export function clone(doc, id) {
-  const tmpl = doc.getElementById(id);
-  if (!(tmpl instanceof doc.defaultView.HTMLTemplateElement)) {
-    throw new Error(`the page carries no <template id="${id}"> to clone`);
-  }
-  const el = tmpl.content.firstElementChild;
-  if (!el) throw new Error(`<template id="${id}"> is empty`);
-  return /** @type {HTMLElement | SVGElement} */ (el.cloneNode(true));
 }
 
 /**
@@ -279,28 +252,6 @@ export function fillTip(doc, tip, tile, side, docs, pinned) {
     hint.textContent = "Click its figure, or press P, to keep this open and follow its pages.";
     tip.append(hint);
   }
-}
-
-/**
- * Says a refusal at the top of the page, or clears it.
- * @param {Document} doc
- * @param {string} text
- */
-export function say(doc, text) {
-  let el = doc.getElementById("sides-refusal");
-  if (!text) {
-    if (el) el.remove();
-    return;
-  }
-  if (!el) {
-    el = doc.createElement("p");
-    el.id = "sides-refusal";
-    el.className = "refusal";
-    el.setAttribute("role", "alert");
-    const main = doc.getElementById("sides-main");
-    if (main) main.prepend(el);
-  }
-  el.textContent = text;
 }
 
 /**
@@ -381,7 +332,7 @@ export async function boot(win, renderer) {
       throw new Error(`the page declares a ${config.overview.form} chart and this script draws a ${renderer.form}`);
     }
   } catch (e) {
-    say(doc, "This page could not read its config: " + String(e));
+    sayRefusal(doc, "sides", "This page could not read its config: " + String(e));
     return;
   }
   /** @type {Map<string, Promise<any>>} */
@@ -432,7 +383,7 @@ export async function boot(win, renderer) {
         // After what restore() said of the year, so a hash wrong in both is
         // answered for both.
         const prior = doc.getElementById("sides-refusal");
-        say(doc, (prior ? prior.textContent + " " : "") + "Some of what the address opens could not be drawn: " + drawn.refused.join("; "));
+        sayRefusal(doc, "sides", (prior ? prior.textContent + " " : "") + "Some of what the address opens could not be drawn: " + drawn.refused.join("; "));
       }
       const hash = hashOf(state);
       if (win.location.hash !== hash) {
@@ -443,12 +394,12 @@ export async function boot(win, renderer) {
       if (ticket !== shown) return;
       // The control and the top bar's links go back to the column on screen.
       selectYear(doc, yearKey(state.year));
-      say(doc, "The chart could not be drawn: " + String(e));
+      sayRefusal(doc, "sides", "The chart could not be drawn: " + String(e));
     }
   };
   /** @type {(tile: core.SideTile, key?: string) => void} */
   const toggle = (tile, key) => {
-    say(doc, "");
+    sayRefusal(doc, "sides", "");
     tips.unpin(false);
     tips.hide();
     if (!schedule) return;
@@ -469,13 +420,13 @@ export async function boot(win, renderer) {
   };
   const restore = async () => {
     const st = parseHash(win.location.hash, config);
-    say(doc, st.refused);
+    sayRefusal(doc, "sides", st.refused);
     await show({ year: st.year, opened: st.opened }, false);
   };
   wireYearSelect(doc, (key) => {
     const year = config.years.find((/** @type {any} */ y) => yearKey(y.path) === key);
     if (!year) return;
-    say(doc, "");
+    sayRefusal(doc, "sides", "");
     void show({ year: year.path, opened: state.opened }, true);
   });
   win.addEventListener("popstate", () => void restore());

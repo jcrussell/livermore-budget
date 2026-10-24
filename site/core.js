@@ -1681,13 +1681,12 @@ export function foldSmaller(links, byID, smallest, keep = null) {
     const m = /** @type {{source: string, target: string, far: string, legs: FiscLink[]}} */ (merges.get(entry));
     if (m.legs.length < 2) return m.legs[0];
     const ids = new Set();
-    const pages = new Set();
+    const locators = pagesCitedBy(m.legs);
     let cents = 0;
     let transfer = m.legs[0].transfer_id;
     for (const l of m.legs) {
       cents += l.value_cents;
       for (const id of l.fact_ids) ids.add(id);
-      for (const k of locatorKeys(l.locators || [])) pages.add(k);
       if (l.transfer_id !== transfer) transfer = "";
       // Kept at its source, a leg no longer arrives at its own target.
       if (!isSmaller(m.target)) continue;
@@ -1700,11 +1699,11 @@ export function foldSmaller(links, byID, smallest, keep = null) {
       slot: typeof farNode.slot === "number" ? farNode.slot : undefined, side };
     mark.flows += m.legs.length;
     mark.cents += cents;
-    for (const k of pages) mark.pages.add(k);
+    for (const k of locatorKeys(locators)) mark.pages.add(k);
     marks.set(markID, mark);
     return withCells(Object.assign({}, m.legs[0], {
       source: m.source, target: m.target, value_cents: cents, transfer_id: transfer,
-      fact_ids: Array.from(ids).sort(), locators: regroupLocators(pages),
+      fact_ids: Array.from(ids).sort(), locators,
       merged: say("smaller_flow", { flows: m.legs.length, threshold: fmt(smallest) }),
       legs: m.legs.slice(),
     }), m.legs);
@@ -1810,14 +1809,12 @@ export function sideTree(doc, frontier, tier) {
   /** @param {FiscLink[]} ribbons */
   const figure = (ribbons) => {
     const ids = new Set();
-    const keys = new Set();
     let cents = 0;
     for (const l of ribbons) {
       cents += l.value_cents;
       for (const id of l.fact_ids) ids.add(id);
-      for (const k of locatorKeys(l.locators || [])) keys.add(k);
     }
-    return { cents, fact_ids: Array.from(ids).sort(), locators: regroupLocators(keys) };
+    return { cents, fact_ids: Array.from(ids).sort(), locators: pagesCitedBy(ribbons) };
   };
   /**
    * @param {FiscNode} n
@@ -1866,22 +1863,4 @@ export function sideTree(doc, frontier, tier) {
   if (!roots.length) throw new Error("cannot draw tier " + tier + " as a side: " + doc.projection + " draws no root at it");
   roots.sort((a, b) => b.size - a.size || a.label.localeCompare(b.label));
   return { roots, cents, size };
-}
-
-/**
- * Every tile of a side's tree, parents before children, each with its depth.
- * @param {SideTile[]} roots
- * @returns {{tile: SideTile, depth: number}[]}
- */
-export function sideTiles(roots) {
-  /** @type {{tile: SideTile, depth: number}[]} */
-  const out = [];
-  const walk = (/** @type {SideTile[]} */ tiles, /** @type {number} */ depth) => {
-    for (const t of tiles) {
-      out.push({ tile: t, depth });
-      if (t.children) walk(t.children, depth + 1);
-    }
-  };
-  walk(roots, 0);
-  return out;
 }

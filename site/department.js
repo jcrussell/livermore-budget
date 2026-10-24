@@ -15,11 +15,11 @@
  * and never computed here.
  */
 
-import { sumReading } from "./core.js";
+import { pagesCitedBy, sumReading } from "./core.js";
 import { rank } from "./glance.js";
-import { configOf, dollars, hashFields, hashValue, selectYear, share, tipper, wireYearSelect, yearKey } from "./format.js";
+import { clone, configOf, sayRefusal, dollars, hashFields, hashValue, selectYear, share, tipper, wireYearSelect, yearKey } from "./format.js";
 import { LEDGER } from "./ledger.js";
-import { clone, fillTip, shareTotal, tileShare } from "./sides.js";
+import { fillTip, shareTotal, tileShare } from "./sides.js";
 
 /** @typedef {import("./core.js").SideTile} SideTile */
 /** @typedef {{doc_id: string, pages: number[]}} Locator */
@@ -83,22 +83,6 @@ export function parseHash(hash, config) {
 }
 
 /**
- * @param {Locator[]} a
- * @param {Locator[]} b
- * @returns {Locator[]}
- */
-function unionLocators(a, b) {
-  const out = a.map((l) => ({ doc_id: l.doc_id, pages: [...l.pages] }));
-  for (const l of b) {
-    const had = out.find((o) => o.doc_id === l.doc_id);
-    if (!had) out.push({ doc_id: l.doc_id, pages: [...l.pages] });
-    else for (const p of l.pages) if (!had.pages.includes(p)) had.pages.push(p);
-  }
-  for (const l of out) l.pages.sort((x, y) => x - y);
-  return out;
-}
-
-/**
  * One row per distinct node at one end of the links, its cents summed and
  * its fact ids and locators unioned, largest first, read as core.sumReading
  * reads the node and the links it sums.
@@ -122,9 +106,9 @@ function rowsBy(links, nodes, end, schedule) {
     at.links.push(l);
     r.cents += l.value_cents;
     for (const id of l.fact_ids) if (!r.factIds.includes(id)) r.factIds.push(id);
-    r.locators = unionLocators(r.locators, l.locators);
   }
   for (const [i, at] of by) {
+    at.row.locators = pagesCitedBy(at.links);
     const reading = sumReading(nodes[i], at.links, schedule + " draws " + at.row.id);
     at.row.derived = reading.derived;
     at.row.contra = reading.contra;
@@ -542,28 +526,6 @@ export function openBar(doc, department, open) {
 }
 
 /**
- * Says a refusal at the top of the page, or clears it.
- * @param {Document} doc
- * @param {string} text
- */
-function say(doc, text) {
-  let el = doc.getElementById("department-refusal");
-  if (!text) {
-    if (el) el.remove();
-    return;
-  }
-  if (!el) {
-    el = doc.createElement("p");
-    el.id = "department-refusal";
-    el.className = "refusal";
-    el.setAttribute("role", "alert");
-    const main = doc.getElementById("department-main");
-    if (main) main.prepend(el);
-  }
-  el.textContent = text;
-}
-
-/**
  * Boots the page: reads the config, opens the view the hash names, and wires
  * the two selects and Back and Forward. The template calls this; it resolves
  * once the opening view is drawn or refused.
@@ -576,7 +538,7 @@ export async function boot(win = globalThis.window) {
   try {
     config = readConfig(doc);
   } catch (e) {
-    say(doc, "This page could not read its config: " + String(e));
+    sayRefusal(doc, "department", "This page could not read its config: " + String(e));
     return;
   }
   const deptSelect = /** @type {HTMLSelectElement | null} */ (doc.getElementById("department-select"));
@@ -658,13 +620,13 @@ export async function boot(win = globalThis.window) {
       if (barsOf) current = { year: barsOf, department: current.department };
       if (current.year) selectYear(doc, yearKey(current.year));
       if (deptSelect && current.department) deptSelect.value = current.department;
-      say(doc, "This department could not be drawn: " + String(e));
+      sayRefusal(doc, "department", "This department could not be drawn: " + String(e));
       return undefined;
     }
   };
   /** @param {{year: string, department: string}} st */
   const choose = (st) => {
-    say(doc, "");
+    sayRefusal(doc, "department", "");
     const hash = hashOf(st);
     if (win.location.hash !== hash) win.history.pushState(null, "", hash);
     void show(st).then((view) => {
@@ -720,7 +682,7 @@ export async function boot(win = globalThis.window) {
   const asking = () => asked || current;
   const restore = async () => {
     const st = parseHash(win.location.hash, config);
-    say(doc, st.refused);
+    sayRefusal(doc, "department", st.refused);
     // A view refused or overtaken by a later choice is not on screen, so the
     // hash is left naming what the reader or that choice named.
     const view = await show(st);

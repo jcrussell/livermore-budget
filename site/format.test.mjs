@@ -15,7 +15,7 @@ test("format.js imports with no DOM and no global, and exports only functions", 
   delete globalThis.d3;
   assert.equal(typeof globalThis.document, "undefined", "nothing installed a DOM before the import");
   const mod = await import(MODULE);
-  assert.deepEqual(Object.keys(mod).sort(), ["carryYear", "citedPages", "configOf", "dollars", "hashFields", "hashValue", "hiddenEdges", "linkedPage", "pageLinks", "pageOf", "pinnable", "placeTip", "refuseFigure", "scrollCues", "selectYear", "share", "tipHint", "tipper", "wireYearSelect", "yearKey"]);
+  assert.deepEqual(Object.keys(mod).sort(), ["carryYear", "citedPages", "clone", "configOf", "dollars", "hashFields", "hashValue", "hiddenEdges", "linkedPage", "pageLinks", "pageOf", "pinnable", "placeTip", "plus", "refuseFigure", "rowCents", "sayRefusal", "scrollCues", "selectYear", "share", "tipHint", "tipper", "wireYearSelect", "yearKey"]);
   assert.ok(Object.values(mod).every((v) => typeof v === "function"));
 });
 
@@ -57,14 +57,17 @@ test("dollars refuses anything but a safe integer of cents", async () => {
   }
 });
 
-// Mutation: drop the zero guard and share(1, 0) reads "Infinity%".
-test("share is a signed percentage to a tenth, and nothing of a whole of nothing", async () => {
+// Mutation: drop the zero guard and share(1, 0) reads "Infinity%"; drop the
+// ceiling and share(9995, 10000) reads "100.0%".
+test("share is a percentage to a tenth that never rounds a part to nothing or to the whole", async () => {
   const { share } = await import(MODULE);
   assert.equal(share(1, 3), "33.3%");
   assert.equal(share(2, 3), "66.7%");
   assert.equal(share(3, 3), "100.0%");
-  assert.equal(share(-1, 4), "-25.0%");
-  assert.equal(share(1, 10000), "0.0%");
+  assert.equal(share(-1, 4), "25.0%");
+  assert.equal(share(0, 4), "0.0%");
+  assert.equal(share(1, 10000), "<0.1%");
+  assert.equal(share(9995, 10000), ">99.9%");
   assert.equal(share(1, 0), "");
   assert.equal(share(0, 0), "");
 });
@@ -187,4 +190,56 @@ test("hiddenEdges and scrollCues mark the edges a scroller hides", async () => {
   box.dispatchEvent(new window.Event("scroll"));
   assert.equal(box.dataset.more, "left");
   assert.equal(window.document.querySelector(".other").dataset.more, undefined);
+});
+
+// One clone for every page module. Mutation: return the template itself
+// rather than a copy and the second clone is the first.
+test("clone copies a template's first element, and refuses a missing or empty template", async () => {
+  const { clone } = await import(MODULE);
+  const { window } = new JSDOM(`<template id="t"><li class="x">a</li></template><template id="empty"></template><div id="d"></div>`);
+  const doc = window.document;
+  const a = clone(doc, "t");
+  const b = clone(doc, "t");
+  assert.equal(a.className, "x");
+  assert.ok(a !== b && !a.isConnected, "clone handed back the template's node, not a copy");
+  assert.throws(() => clone(doc, "nope"), /no <template id="nope">/);
+  assert.throws(() => clone(doc, "d"), /no <template id="d">/);
+  assert.throws(() => clone(doc, "empty"), /is empty/);
+});
+
+// One refusal per page, replaced rather than stacked, and cleared by an empty
+// sentence. Mutation: drop the getElementById reuse and a second say stacks.
+test("sayRefusal prepends one alert to the page's main, replaces its words, and clears it", async () => {
+  const { sayRefusal } = await import(MODULE);
+  const { window } = new JSDOM(`<main id="sides-main"><p>chart</p></main>`);
+  const doc = window.document;
+  sayRefusal(doc, "sides", "first");
+  sayRefusal(doc, "sides", "second");
+  const alerts = doc.querySelectorAll("#sides-main > .refusal[role=alert]");
+  assert.equal(alerts.length, 1);
+  assert.equal(alerts[0].textContent, "second");
+  assert.equal(doc.getElementById("sides-main").firstElementChild.id, "sides-refusal");
+  sayRefusal(doc, "sides", "");
+  assert.equal(doc.getElementById("sides-refusal"), null);
+});
+
+// One reader for every page that sums Go's table. Mutation: read the cell
+// with Number(raw) and an empty data-cents becomes a printed 0 rather than a
+// refusal.
+test("rowCents reads a row's figures, absent where none is printed, and refuses an empty or fractional one", async () => {
+  const { rowCents, plus } = await import(MODULE);
+  const { window } = new JSDOM(`<table>
+    <tr id="ok"><td data-column="0" data-cents="-150"></td><td data-column="2" data-cents="0"></td><td data-column="1"></td></tr>
+    <tr id="empty"><td data-column="0" data-cents=""></td></tr>
+    <tr id="frac"><td data-column="0" data-cents="1.5"></td></tr>
+    <tr id="out"><td data-column="3" data-cents="1"></td></tr></table>`);
+  const row = (id) => window.document.getElementById(id);
+  assert.deepEqual(rowCents(row("ok"), 3, "ok"), [-150, null, 0]);
+  assert.throws(() => rowCents(row("empty"), 3, "empty"), /empty carries "" cents/);
+  assert.throws(() => rowCents(row("frac"), 3, "frac"), /frac carries "1.5" cents/);
+  assert.throws(() => rowCents(row("out"), 3, "out"), /in column 3/);
+  assert.equal(plus(null, null), null);
+  assert.equal(plus(null, 0), 0);
+  assert.equal(plus(5, null), 5);
+  assert.equal(plus(5, -2), 3);
 });

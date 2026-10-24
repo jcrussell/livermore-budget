@@ -112,7 +112,6 @@ func TestWriteProducesTheSiteLayout(t *testing.T) {
 		// as sankey.js does: verbatimAssets is not per view.
 		"department.js",
 		"capital.js",
-		"debt.js",
 		"glance.js",
 		"sides.js",
 		"ledger.js",

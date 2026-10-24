@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { columnFixture, installBrowser, plannedFetch, repoRoot, settle } from "./testlib.mjs";
+import { columnFixture, installBrowser, plannedFetch, repoRoot, settle, sideTiles } from "./testlib.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -70,8 +70,8 @@ function refusal(document) {
 
 test("the modules import with no page config, no d3 and no DOM, and run nothing", () => {
   assert.ok(domless, "nothing installed a DOM before the import");
-  assert.deepEqual(Object.keys(sides).sort(), ["KEY_MARK", "boot", "clone", "closing",
-    "fillTip", "frontierOf", "hashOf", "opensAs", "outside", "parseHash", "readConfig", "render", "say", "share", "shareTotal", "sidesAt", "sidesOf", "tileShare"]);
+  assert.deepEqual(Object.keys(sides).sort(), ["KEY_MARK", "boot", "closing",
+    "fillTip", "frontierOf", "hashOf", "opensAs", "outside", "parseHash", "readConfig", "render", "shareTotal", "sidesAt", "sidesOf", "tileShare"]);
   assert.deepEqual(Object.keys(forms.ledger).sort(), ["LEDGER", "RANKED", "boot", "widthOf"]);
 });
 
@@ -95,7 +95,7 @@ describe("core.sideTree keeps every sum through every split", () => {
       const walk = (frontier, tier, depth) => {
         const tree = core.sideTree(doc, frontier, tier);
         assert.equal(tree.cents, totals[0], `${stem} tier ${tier}: the side's sum moved at depth ${depth}`);
-        for (const { tile } of core.sideTiles(tree.roots)) {
+        for (const { tile } of sideTiles(tree.roots)) {
           if (tile.children) {
             assert.equal(tile.children.reduce((a, c) => a + c.cents, 0), tile.cents, `${tile.id}'s members do not sum to it`);
             assert.equal(new Set(tile.children.map((c) => c.id)).size, tile.children.length, `${tile.id} draws a member twice`);
@@ -104,7 +104,7 @@ describe("core.sideTree keeps every sum through every split", () => {
           assert.equal(tile.size, Math.abs(tile.cents));
         }
         if (depth >= 2) return;
-        for (const { tile } of core.sideTiles(tree.roots)) {
+        for (const { tile } of sideTiles(tree.roots)) {
           if (tile.children) continue;
           for (const sp of tile.splits) {
             splits++;
@@ -126,11 +126,11 @@ describe("core.sideTree keeps every sum through every split", () => {
     const roots = core.rootFrontier(doc);
     const parent = "revenue/taxes/property";
     const key = core.splitsOf(doc, parent)[0].key;
-    const opened = core.sideTiles(core.sideTree(doc, core.expand(doc, roots, parent, key), 0).roots)
+    const opened = sideTiles(core.sideTree(doc, core.expand(doc, roots, parent, key), 0).roots)
       .find((x) => x.tile.id === parent).tile;
     const [marked, other] = opened.children.filter((c) => !c.derived);
     for (const l of doc.links) if (l.source === marked.id || l.target === marked.id) l.derived = true;
-    const again = core.sideTiles(core.sideTree(doc, core.expand(doc, roots, parent, key), 0).roots);
+    const again = sideTiles(core.sideTree(doc, core.expand(doc, roots, parent, key), 0).roots);
     assert.ok(again.find((x) => x.tile.id === marked.id).tile.derived, `${marked.id} reads as printed`);
     assert.ok(!again.find((x) => x.tile.id === other.id).tile.derived, `${other.id} reads as inferred`);
   });
@@ -187,9 +187,9 @@ describe("each form draws every tile once and its tip names its pages", () => {
           assert.match(label, /: ◇ \d+ bars by our count, .* in all by our sum$/, label);
         }
         const ids = marks.map((m) => m.dataset.id).sort();
-        assert.deepEqual(ids, core.sideTiles(tree.roots).map((x) => x.tile.id).sort());
+        assert.deepEqual(ids, sideTiles(tree.roots).map((x) => x.tile.id).sort());
         for (const m of marks) {
-          const tile = core.sideTiles(tree.roots).find((x) => x.tile.id === m.dataset.id).tile;
+          const tile = sideTiles(tree.roots).find((x) => x.tile.id === m.dataset.id).tile;
           assert.equal(Number(m.dataset.cents), tile.cents, `${m.dataset.id} carries other cents`);
           assert.equal(m.getAttribute("tabindex"), "0");
           assert.equal(m.getAttribute("role"), "button");
@@ -346,7 +346,7 @@ test("a year switch keeps the opened node and redraws the other year's figures",
   assert.ok(now.classList.contains("opened"));
   const tree = core.sideTree(expansionOf("fy2026-adopted", config), core.expand(expansionOf("fy2026-adopted", config),
     core.rootFrontier(expansionOf("fy2026-adopted", config)), "revenue/taxes/sales", "lines"), 0);
-  const tile = core.sideTiles(tree.roots).find((x) => x.tile.id === "revenue/taxes/sales").tile;
+  const tile = sideTiles(tree.roots).find((x) => x.tile.id === "revenue/taxes/sales").tile;
   assert.equal(Number(now.dataset.cents), tile.cents);
   assert.notEqual(Number(now.dataset.cents), Number(was.dataset.cents), "the two years print the same sales tax");
   assert.equal(document.getElementById("lede-year").textContent, "FY 2025-26 adopted");
@@ -371,7 +371,7 @@ test("shift-click opens the alternative split, and the hash names it", async () 
   const browser = await booted("ledger");
   const { document, window, config } = browser;
   const doc = expansionOf("fy2027-adopted", config);
-  const two = core.sideTiles(core.sideTree(doc, core.rootFrontier(doc), 5).roots)
+  const two = sideTiles(core.sideTree(doc, core.rootFrontier(doc), 5).roots)
     .find((x) => x.tile.splits.some((sp) => sp.alternative)).tile;
   const alt = two.splits.find((sp) => sp.alternative);
   const mark = document.querySelector(`li.bar-row[data-id="${two.id}"]`);
@@ -480,7 +480,7 @@ test("a click pins a tile's tip, linking the page text and the PDF page of every
   const doc = expansionOf("fy2027-adopted", config);
   const tiles = new Map();
   for (const side of sides.sidesOf(config)) {
-    for (const x of core.sideTiles(core.sideTree(doc, core.rootFrontier(doc), side.tier).roots)) tiles.set(x.tile.id, x.tile);
+    for (const x of sideTiles(core.sideTree(doc, core.rootFrontier(doc), side.tier).roots)) tiles.set(x.tile.id, x.tile);
   }
   const opener = [...document.querySelectorAll(MARK.ledger)].find((m) => m.classList.contains("can-open"));
   const id = opener.dataset.id;
@@ -490,7 +490,7 @@ test("a click pins a tile's tip, linking the page text and the PDF page of every
   // Every leaf now drawn, the opened tile's members among them.
   const frontier = core.expand(doc, core.rootFrontier(doc), id, core.splitsOf(doc, id).find((sp) => !sp.alternative).key);
   for (const side of sides.sidesOf(config)) {
-    for (const x of core.sideTiles(core.sideTree(doc, frontier, side.tier).roots)) tiles.set(x.tile.id, x.tile);
+    for (const x of sideTiles(core.sideTree(doc, frontier, side.tier).roots)) tiles.set(x.tile.id, x.tile);
   }
   const leaves = [...document.querySelectorAll(MARK.ledger)].filter((m) => !m.classList.contains("can-open"));
   assert.ok(leaves.length >= 2, "fewer than two tiles that do not open");
@@ -552,7 +552,7 @@ test("every drawn row on Bars pins a tip linking its pages, by P or by a click o
   const frontier = core.expand(doc, core.rootFrontier(doc), id, core.splitsOf(doc, id).find((sp) => !sp.alternative).key);
   const tiles = new Map();
   for (const side of sides.sidesOf(config)) {
-    for (const x of core.sideTiles(core.sideTree(doc, frontier, side.tier).roots)) tiles.set(x.tile.id, x.tile);
+    for (const x of sideTiles(core.sideTree(doc, frontier, side.tier).roots)) tiles.set(x.tile.id, x.tile);
   }
   const rows = [...document.querySelectorAll(MARK.ledger)];
   assert.deepEqual(rows.map((m) => m.dataset.id).sort(), [...tiles.keys()].sort());

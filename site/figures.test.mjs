@@ -7,6 +7,7 @@
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
+import { share } from "./format.js";
 import {
   bootedApp, split, settle, clickYear, columnFixture, pageFixture, dollars, shortDollars, everySplit, revealed,
 } from "./testlib.mjs";
@@ -145,9 +146,7 @@ for (const year of YEARS) {
         assert.ok(!tip.includes("of this column") && !panel.includes("of this column"), `${n.id}: ${tip} | ${panel}`);
       }
       for (const n of parts) {
-        const pct = (100 * n.value) / total;
-        const shown = pct < 0.1 ? "<0.1" : pct > 99.9 ? ">99.9" : pct.toFixed(1);
-        assert.equal(app.shareOf(n), `◇ our ${shown}% of this column`, n.id);
+        assert.equal(app.shareOf(n), `◇ our ${share(n.value, total)} of this column`, n.id);
       }
     });
 

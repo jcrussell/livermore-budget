@@ -7,7 +7,7 @@ import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  loadApp, bootedApp, columnFixture, goldenGraph, pageFixture, publishedColumns,
+  loadApp, bootedApp, columnFixture, goldenGraph, pageFixture, publishedColumns, unmarkContra,
 } from "./testlib.mjs";
 
 /** A module drawing one tier set: the pinned config with the overview's tiers replaced. */
@@ -433,16 +433,16 @@ describe("a parent the document does not carry", () => {
 });
 
 describe("a reduction read back off the chart on screen", () => {
-  // markContra flips a reduction to draw it; unmarkContra is what lets the
-  // chart as drawn be summed at its printed sign (the expansion walk below)
-  // and drawn again with its sentence.
-  test("unmarkContra undoes markContra, and marking again keeps every sentence", async () => {
+  // markContra flips a reduction to draw it and keeps what it was: undone,
+  // the chart is at its printed sign (the expansion walk below) and marks
+  // again with its sentence.
+  test("markContra can be undone, and marking again keeps every sentence", async () => {
     const app = (await loadApp()).app;
     for (const stem of ["fy2026-adopted", "fy2027-adopted"]) {
       const printed = fundFlows(app, stem);
       assert.ok(printed.links.some((l) => l.value_cents < 0), `${stem} prints no reduction, so nothing here is held`);
       const shown = app.markContra(printed);
-      const back = app.unmarkContra(shown);
+      const back = unmarkContra(shown);
       assert.deepEqual(back.links.map((l) => l.value_cents), printed.links.map((l) => l.value_cents),
         `${stem}: a reduction read back off the screen is not at its printed sign`);
       const again = app.markContra(back);
@@ -573,7 +573,7 @@ describe("the expansion's caps preserve what they fold, at every split the page 
       for (const st of expansionStates(app, doc)) {
         charts++;
         const raw = app.foldDocument(doc, st.frontier);
-        const drawn = app.unmarkContra(app.expansionOf(doc, st.frontier, chart, st.whole));
+        const drawn = unmarkContra(app.expansionOf(doc, st.frontier, chart, st.whole));
         // (a) SUMS, and (b) NO RIBBON LOST OR DUPLICATED: the same cents and
         // the same facts -- a ribbon dropped loses its facts, one drawn twice
         // doubles its cents.
@@ -749,7 +749,7 @@ describe("an open hub's ribbons are the leaves it repeats", () => {
       let toMembers = 0;
       let fromMembers = 0;
       for (const st of expansionStates(app, doc)) {
-        const drawn = app.unmarkContra(app.expansionOf(doc, st.frontier, CONFIG.overview, st.whole));
+        const drawn = unmarkContra(app.expansionOf(doc, st.frontier, CONFIG.overview, st.whole));
         // A ribbon's cells are what the tally reads it as: all of it, once.
         for (const l of drawn.links) {
           const cells = app.cellsOf(l);

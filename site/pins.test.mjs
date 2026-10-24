@@ -9,8 +9,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { loadApp, stylesheet, columnFixture, publishedColumns, repoRoot } from "./testlib.mjs";
-import { NAMED as GLANCE_NAMED } from "./glance.js";
-import { NAMED as CHANGE_NAMED } from "./change.js";
+import { NAMED } from "./glance.js";
 
 const read = (name) => JSON.parse(fs.readFileSync(path.join(repoRoot, "schema", name), "utf8"));
 
@@ -73,9 +72,9 @@ describe("the literals the client shares", () => {
   test("every rank a ranked page can give a named group has a ramp step in each theme and a rule on that page", (t) => {
     const css = stylesheet().replace(/\/\*[\s\S]*?\*\//g, "");
     const pages = [
-      ["department", GLANCE_NAMED + 1, '.department-seg[data-rank="N"]'],
-      ["glance", GLANCE_NAMED + 1, '.glance-seg[data-rank="N"]'],
-      ["change", CHANGE_NAMED + 1, '.change-seg[data-rank="N"]'],
+      ["department", NAMED + 1, '.department-seg[data-rank="N"]'],
+      ["glance", NAMED + 1, '.glance-seg[data-rank="N"]'],
+      ["change", NAMED + 1, '.change-seg[data-rank="N"]'],
     ];
     const missing = [];
     let top = 0;
@@ -90,7 +89,7 @@ describe("the literals the client shares", () => {
       const found = [...css.matchAll(new RegExp(`--glance-${n}:\\s*#[0-9a-f]{6};`, "g"))].length;
       if (found !== 3) missing.push(`--glance-${n} set ${found} times, not once per theme block`);
     }
-    t.diagnostic(`ranks reached: department and glance ${GLANCE_NAMED + 1}, change ${CHANGE_NAMED + 1}`);
+    t.diagnostic(`ranks reached: ${NAMED + 1} on department, glance and change`);
     assert.deepEqual(missing, []);
   });
 });

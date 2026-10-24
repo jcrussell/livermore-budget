@@ -8,13 +8,8 @@
  * runs nothing; the template calls boot().
  */
 
-import { dollars, linkedPage, pageLinks, pinnable, refuseFigure, tipHint, tipper } from "./format.js";
-
-/** How many categories a figure names before the rest fold into one tail. */
-export const NAMED = 5;
-
-/** What the folded tail is called. */
-export const TAIL_LABEL = "Everything else";
+import { NAMED, TAIL_LABEL } from "./glance.js";
+import { clone, dollars, linkedPage, pageLinks, pinnable, plus, refuseFigure, rowCents, tipHint, tipper } from "./format.js";
 
 /** How tall the tallest column's bands are drawn, in px, gaps aside. */
 export const HEIGHT = 240;
@@ -50,34 +45,10 @@ export function readRows(table) {
       const head = tr.querySelector("th[scope=row]");
       const label = head ? (head.textContent || "").trim() : "";
       if (!category || !label) throw new Error(`a row (${label || "no label"}) carries no category`);
-      /** @type {(number | null)[]} */
-      const cents = new Array(columns).fill(null);
-      for (const td of Array.from(tr.querySelectorAll("td[data-column]"))) {
-        const at = Number(td.getAttribute("data-column"));
-        const raw = td.getAttribute("data-cents");
-        if (raw === null) continue;
-        // Number("") is 0, and an empty attribute is not a printed zero.
-        const v = /^-?\d+$/.test(raw) ? Number(raw) : NaN;
-        if (!Number.isSafeInteger(v) || !(at >= 0 && at < columns)) {
-          throw new Error(`${label} carries ${JSON.stringify(raw)} cents in column ${at}`);
-        }
-        cents[at] = v;
-      }
-      rows.push({ category, label, cents });
+      rows.push({ category, label, cents: rowCents(tr, columns, label) });
     }
   }
   return { rows, columns };
-}
-
-/**
- * Adds a cell into a running sum, absent into absent staying absent: a sum
- * is null until a printed figure, a printed zero included, reaches it.
- * @param {number | null} sum
- * @param {number | null} c
- * @returns {number | null}
- */
-function plus(sum, c) {
-  return c === null ? sum : (sum ?? 0) + c;
 }
 
 /**
@@ -201,13 +172,6 @@ export function draw(section, tips = tipper(section.ownerDocument)) {
   if (!(table instanceof doc.defaultView.HTMLTableElement) || !figure || !holder || !legend || !caption) {
     throw new Error("a change figure has no table, or no chart with columns, a legend and a caption to fill");
   }
-  const clone = (/** @type {string} */ id) => {
-    const tmpl = doc.getElementById(id);
-    if (!(tmpl instanceof doc.defaultView.HTMLTemplateElement) || !tmpl.content.firstElementChild) {
-      throw new Error(`the page carries no <template id="${id}"> to clone`);
-    }
-    return /** @type {HTMLElement} */ (tmpl.content.firstElementChild.cloneNode(true));
-  };
   const { rows, columns } = readRows(table);
   const bands = rank(groupRows(rows, columns));
   const { sums, tallest } = totals(bands, columns);
@@ -230,7 +194,7 @@ export function draw(section, tips = tipper(section.ownerDocument)) {
 
   holder.replaceChildren();
   heads.forEach((th, i) => {
-    const col = clone("change-column");
+    const col = clone(doc, "change-column");
     col.dataset.column = String(i);
     const sum = sums[i];
     if (sum !== null) col.dataset.cents = String(sum);
@@ -252,7 +216,7 @@ export function draw(section, tips = tipper(section.ownerDocument)) {
     for (const b of bands) {
       const c = b.cents[i];
       if (!c) continue;
-      const seg = clone("change-segment");
+      const seg = clone(doc, "change-segment");
       seg.dataset.rank = String(b.rank);
       seg.dataset.cents = String(c);
       seg.style.height = px(c) + "px";
@@ -290,7 +254,7 @@ export function draw(section, tips = tipper(section.ownerDocument)) {
 
   legend.replaceChildren();
   for (const b of bands) {
-    const li = clone("change-entry");
+    const li = clone(doc, "change-entry");
     li.dataset.rank = String(b.rank);
     const name = li.querySelector(".change-name");
     const detail = li.querySelector(".change-detail");

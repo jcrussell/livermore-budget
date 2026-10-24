@@ -27,13 +27,19 @@ export function dollars(cents) {
 }
 
 /**
- * A part's share of the whole as a signed percentage to a tenth, or "" of
- * a whole of nothing.
+ * A part's share of the whole as a percentage to a tenth, or "" of a whole
+ * of nothing. A share that would round to 0.0 or to 100.0 and is neither
+ * reads "<0.1%" or ">99.9%": a sliver is not nothing, and the largest of
+ * several parts is not the whole its siblings deny.
  * @param {number} part
  * @param {number} whole
  */
 export function share(part, whole) {
-  return whole === 0 ? "" : (100 * part / whole).toFixed(1) + "%";
+  if (!whole) return "";
+  const pct = (100 * Math.abs(part)) / Math.abs(whole);
+  if (pct > 0 && pct < 0.1) return "<0.1%";
+  if (pct < 100 && pct > 99.9) return ">99.9%";
+  return pct.toFixed(1) + "%";
 }
 
 /**
@@ -470,4 +476,81 @@ export function scrollCues(doc) {
     if (win && typeof win.ResizeObserver === "function") new win.ResizeObserver(() => mark(el)).observe(el);
   }
   if (win) win.addEventListener("resize", () => boxes.forEach(mark));
+}
+
+/**
+ * Clones the page's template for one piece of a figure.
+ * @param {Document} doc
+ * @param {string} id
+ * @returns {HTMLElement | SVGElement}
+ */
+export function clone(doc, id) {
+  const tmpl = doc.getElementById(id);
+  if (!(tmpl instanceof doc.defaultView.HTMLTemplateElement)) {
+    throw new Error(`the page carries no <template id="${id}"> to clone`);
+  }
+  const el = tmpl.content.firstElementChild;
+  if (!el) throw new Error(`<template id="${id}"> is empty`);
+  return /** @type {HTMLElement | SVGElement} */ (el.cloneNode(true));
+}
+
+/**
+ * Says a refusal at the top of a page's main element, `<page>-main`, in one
+ * `<page>-refusal` alert, or clears it when text is empty.
+ * @param {Document} doc
+ * @param {string} page
+ * @param {string} text
+ */
+export function sayRefusal(doc, page, text) {
+  let el = doc.getElementById(`${page}-refusal`);
+  if (!text) {
+    if (el) el.remove();
+    return;
+  }
+  if (!el) {
+    el = doc.createElement("p");
+    el.id = `${page}-refusal`;
+    el.className = "refusal";
+    el.setAttribute("role", "alert");
+    const main = doc.getElementById(`${page}-main`);
+    if (main) main.prepend(el);
+  }
+  el.textContent = text;
+}
+
+/**
+ * One table row's figures Go rendered, one entry per column, null where the
+ * row prints none. Refuses a figure that is not an integer of cents, an
+ * empty attribute included, and a cell outside the columns.
+ * @param {HTMLTableRowElement} tr
+ * @param {number} columns
+ * @param {string} who the row, as a refusal names it
+ * @returns {(number | null)[]}
+ */
+export function rowCents(tr, columns, who) {
+  /** @type {(number | null)[]} */
+  const cents = new Array(columns).fill(null);
+  for (const td of Array.from(tr.querySelectorAll("td[data-column]"))) {
+    const at = Number(td.getAttribute("data-column"));
+    const raw = td.getAttribute("data-cents");
+    if (raw === null) continue;
+    // Number("") is 0, and an empty attribute is not a printed zero.
+    const v = /^-?\d+$/.test(raw) ? Number(raw) : NaN;
+    if (!Number.isSafeInteger(v) || !(at >= 0 && at < columns)) {
+      throw new Error(`${who} carries ${JSON.stringify(raw)} cents in column ${at}`);
+    }
+    cents[at] = v;
+  }
+  return cents;
+}
+
+/**
+ * Adds a cell into a running sum, absent into absent staying absent: a sum
+ * is null until a printed figure, a printed zero included, reaches it.
+ * @param {number | null} sum
+ * @param {number | null} c
+ * @returns {number | null}
+ */
+export function plus(sum, c) {
+  return c === null ? sum : (sum ?? 0) + c;
 }

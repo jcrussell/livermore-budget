@@ -2,8 +2,6 @@ package export_test
 
 import (
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -92,10 +90,9 @@ func debtView() export.View {
 // TestDebtPageRendersEveryFigureOfItsDocument holds the debt view to its
 // document: each figure links to its page, a printed dash renders as a dash
 // and is a figure, a blank cell renders as not printed and is not a zero, a
-// band says it is a band, and the client module is written beside the page.
+// band says it is a band.
 //
-// Mutation: render a nil figure as "$0" and "not printed" vanishes; drop
-// "debt.js" from verbatimAssets and the module goes unwritten.
+// Mutation: render a nil figure as "$0" and "not printed" vanishes.
 func TestDebtPageRendersEveryFigureOfItsDocument(t *testing.T) {
 	dir := t.TempDir()
 	if _, err := writeSite(export.Options{
@@ -111,7 +108,6 @@ func TestDebtPageRendersEveryFigureOfItsDocument(t *testing.T) {
 	for _, want := range []string{
 		"<h1>A debt title</h1>",
 		"A debt lede.",
-		`<script type="module" src="./debt.js"></script>`,
 		`<span aria-current="page">Debt</span>`,
 		`id="sources-view"`,
 		"$730,000",
@@ -135,9 +131,6 @@ func TestDebtPageRendersEveryFigureOfItsDocument(t *testing.T) {
 	}
 	if n := strings.Count(html, "not printed</span>"); n != 2 {
 		t.Errorf("debt.html renders %d unprinted cells, want the band's 2", n)
-	}
-	if _, err := os.Stat(filepath.Join(dir, "debt.js")); err != nil {
-		t.Errorf("debt.html loads ./debt.js and the site does not carry it: %v", err)
 	}
 }
 

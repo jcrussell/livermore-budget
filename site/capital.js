@@ -8,7 +8,7 @@
  * it so. Importing it runs nothing; the template calls boot().
  */
 
-import { dollars, hashFields, hashValue, selectYear, wireYearSelect } from "./format.js";
+import { dollars, hashFields, hashValue, plus, rowCents, selectYear, wireYearSelect } from "./format.js";
 
 /**
  * @typedef {{ fund: string, column: string, query: string }} Filter
@@ -31,23 +31,11 @@ export function readTable(table) {
   for (const body of Array.from(table.tBodies)) {
     for (const el of Array.from(body.rows)) {
       const head = el.querySelector("th[scope=row]");
-      /** @type {(number | null)[]} */
-      const cents = new Array(columns).fill(null);
-      for (const td of Array.from(el.querySelectorAll("td[data-column]"))) {
-        const at = Number(td.getAttribute("data-column"));
-        const raw = td.getAttribute("data-cents");
-        if (raw === null) continue;
-        const v = Number(raw);
-        if (!Number.isSafeInteger(v) || !(at >= 0 && at < columns)) {
-          throw new Error(`a cell of fund ${el.dataset.fund} carries ${raw} cents in column ${at}`);
-        }
-        cents[at] = v;
-      }
       rows.push({
         el,
         fund: el.dataset.fund || "",
         project: head ? (head.textContent || "").trim() : "",
-        cents,
+        cents: rowCents(el, columns, `a row of fund ${el.dataset.fund}`),
       });
     }
   }
@@ -80,7 +68,7 @@ export function sumShown(rows, columns, filter) {
   for (const row of rows) {
     if (!isShown(row, filter)) continue;
     row.cents.forEach((c, i) => {
-      if (c !== null) out[i] = (out[i] ?? 0) + c;
+      out[i] = plus(out[i], c);
     });
   }
   return out;

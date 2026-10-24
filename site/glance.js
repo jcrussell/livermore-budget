@@ -9,7 +9,7 @@
  */
 
 import {
-  dollars, hashFields, hashValue, linkedPage, pageLinks, pinnable, refuseFigure, selectYear, share, tipHint, tipper,
+  clone, dollars, hashFields, hashValue, linkedPage, pageLinks, pinnable, refuseFigure, selectYear, share, tipHint, tipper,
   wireYearSelect,
 } from "./format.js";
 
@@ -92,22 +92,6 @@ export function rank(groups) {
     members: rest.map((s) => s.label),
   });
   return { segments: named, whole };
-}
-
-/**
- * Clones the page's template for one piece of the figure.
- * @param {Document} doc
- * @param {string} id
- * @returns {HTMLElement}
- */
-function clone(doc, id) {
-  const tmpl = doc.getElementById(id);
-  if (!(tmpl instanceof doc.defaultView.HTMLTemplateElement)) {
-    throw new Error(`the page carries no <template id="${id}"> to clone`);
-  }
-  const el = tmpl.content.firstElementChild;
-  if (!el) throw new Error(`<template id="${id}"> is empty`);
-  return /** @type {HTMLElement} */ (el.cloneNode(true));
 }
 
 /**

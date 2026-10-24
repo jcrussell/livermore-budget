@@ -640,7 +640,7 @@ describe("every department is a bar of the funds that pay for it", () => {
     for (const b of drawn) {
       assert.equal(b.segs.reduce((a, s) => a + s.cents, 0), b.cents, `${b.id}: drawn segments`);
       assert.ok(b.segs.every((s) => s.title.includes("◇ our ")), `${b.id}: a segment's title names no share as ours`);
-      assert.ok(b.shares.length === b.segs.length && b.shares.every((s) => /^◇ \d+\.\d%$/.test(s)), `${b.id}: ${b.shares.join(", ")}`);
+      assert.ok(b.shares.length === b.segs.length && b.shares.every((s) => /^◇ [<>]?\d+\.\d%$/.test(s)), `${b.id}: ${b.shares.join(", ")}`);
     }
     const tracks = [...document.querySelectorAll("#department-list .department-track")].map((el) => parseFloat(el.style.width));
     assert.equal(tracks[0], 100);

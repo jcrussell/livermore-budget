@@ -585,3 +585,30 @@ export function pinGestures(window, a, b) {
   fire(document.activeElement, "keydown", { key: "Escape" });
   return pinned.label;
 }
+
+/**
+ * The chart as its documents print it, markContra undone: a link carrying a
+ * contra sentence was printed negative, so it goes back to its own sign and
+ * the chart as drawn can be summed at the signs printed.
+ */
+export function unmarkContra(drawn) {
+  if (!drawn.links.some((l) => l.contra && l.value_cents > 0)) return drawn;
+  return Object.assign({}, drawn, {
+    links: drawn.links.map((l) => l.contra && l.value_cents > 0
+      ? Object.assign({}, l, { value_cents: -l.value_cents })
+      : l),
+  });
+}
+
+/** Every tile of a side's tree, parents before children, each with its depth. */
+export function sideTiles(roots) {
+  const out = [];
+  const walk = (tiles, depth) => {
+    for (const t of tiles) {
+      out.push({ tile: t, depth });
+      if (t.children) walk(t.children, depth + 1);
+    }
+  };
+  walk(roots, 0);
+  return out;
+}

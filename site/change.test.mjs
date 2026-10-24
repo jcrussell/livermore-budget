@@ -10,6 +10,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { JSDOM } from "jsdom";
+import { NAMED, TAIL_LABEL } from "./glance.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const MODULE = pathToFileURL(path.join(HERE, "change.js")).href;
@@ -47,7 +48,7 @@ test("change.js imports with no page config, no d3 and no DOM, and runs nothing"
   assert.equal(typeof globalThis.document, "undefined", "nothing installed a DOM before the import");
   const mod = await import(MODULE);
   assert.deepEqual(Object.keys(mod).sort(),
-    ["GAP", "HEIGHT", "LEAST", "NAMED", "TAIL_LABEL", "boot", "draw", "groupRows", "headWords", "millions", "rank", "readRows", "totals"]);
+    ["GAP", "HEIGHT", "LEAST", "boot", "draw", "groupRows", "headWords", "millions", "rank", "readRows", "totals"]);
 });
 
 test("the page carries four figures, three charted, and boot fills each chart", async () => {
@@ -95,9 +96,9 @@ describe("each column's bands sum to its printed rows, and every kind is in one 
       const kinds = new Set(rows.map((r) => r.category));
       assert.deepEqual(bands.flatMap((b) => b.members).sort(), [...kinds].sort(), "a kind is lost or doubled");
       const named = bands.filter((b) => b.rank);
-      if (kinds.size > mod.NAMED + 1) {
-        assert.equal(named.length, mod.NAMED);
-        assert.equal(bands[bands.length - 1].label, mod.TAIL_LABEL);
+      if (kinds.size > NAMED + 1) {
+        assert.equal(named.length, NAMED);
+        assert.equal(bands[bands.length - 1].label, TAIL_LABEL);
       } else assert.equal(named.length, kinds.size);
       // A rank is a kind's and holds in every column: the band of rank r
       // in each column names the same kind.

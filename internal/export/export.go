@@ -106,7 +106,7 @@ const RepositoryURL = "https://github.com/jcrussell/livermore-budget"
 // verbatimAssets are copied from the embedded site tree byte for byte. The
 // page template is not in this list: it is rendered, and vendor/ is walked.
 var verbatimAssets = []string{"app.js", "core.js", "sankey.js",
-	"department.js", "capital.js", "debt.js", "glance.js", "sides.js", "ledger.js",
+	"department.js", "capital.js", "glance.js", "sides.js", "ledger.js",
 	"change.js", "format.js", "theme.js", "style.css", ".nojekyll"}
 
 // View is one HTML page of the site: one document, rendered by one template.
