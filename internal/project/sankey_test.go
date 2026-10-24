@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -394,7 +395,7 @@ func TestContraRowNetsIntoParent(t *testing.T) {
 	if len(l.FactIDs) != 3 {
 		t.Errorf("got %d fact ids, want 3: a netted link cites every row behind it", len(l.FactIDs))
 	}
-	if !sortedStrings(l.FactIDs) {
+	if !slices.IsSorted(l.FactIDs) {
 		t.Errorf("got fact ids %v, want them ascending", l.FactIDs)
 	}
 	if l.Derived {
@@ -818,15 +819,6 @@ func caveatText(g *Document) string {
 		texts = append(texts, c.Text)
 	}
 	return strings.Join(texts, "\n")
-}
-
-func sortedStrings(s []string) bool {
-	for i := 1; i < len(s); i++ {
-		if s[i-1] > s[i] {
-			return false
-		}
-	}
-	return true
 }
 
 // The contested-total caveat.

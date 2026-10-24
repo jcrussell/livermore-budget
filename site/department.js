@@ -103,7 +103,7 @@ function rowsBy(links, nodes, end, schedule) {
       by.set(i, at);
     }
     const r = at.row;
-    if (l.fact_ids.length && !(Array.isArray(l.locators) && l.locators.length)) {
+    if (l.fact_ids.length && !(Array.isArray(l.locators) && pagesCitedBy([l]).length)) {
       throw new Error(`${schedule} draws ${r.id} citing facts on no page`);
     }
     at.links.push(l);

@@ -297,7 +297,7 @@ func sortedSpendKeys(m map[spendKey]*cellSum) []spendKey {
 }
 
 // sortColumns orders a column list the way every Slices implementation does:
-// fiscal year, then basis.
+// fiscal year, then a band's last year, then basis.
 func sortColumns(cols []Column) {
 	slices.SortFunc(cols, func(a, b Column) int {
 		return cmp.Or(cmp.Compare(a.FiscalYear, b.FiscalYear), cmp.Compare(a.Through, b.Through), cmp.Compare(a.Basis, b.Basis))

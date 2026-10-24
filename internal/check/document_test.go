@@ -158,9 +158,8 @@ func (*silent) Slices(_ []fact.Fact, _ string) []project.Options { return nil }
 // TestAProjectionThatProducesNothingIsNotADefect: the export command builds the
 // slices each projection declares, so a projection declaring none writes no
 // file and there is no document to be wrong about. A fixture of the spine
-// alone, such as internal/check/fixture_test.go's, declares no trends slice,
-// and that is not a corpus finding. A published document that silently stops
-// being built is fisc-w7d.
+// alone declares no trends slice, and that is not a corpus finding. A
+// published document that stops being built is publishedProjectionBuilt's.
 func TestAProjectionThatProducesNothingIsNotADefect(t *testing.T) {
 	t.Parallel()
 	built, failed, err := buildProjections(

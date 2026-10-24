@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/hint"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 	"github.com/jcrussell/livermore-budget/schema"
@@ -178,7 +178,7 @@ func debtCaveats() []Caveat {
 			side = "interest"
 		}
 		drift[i] = fmt.Sprintf("%s %s %s, %s %s", debtFundTypeLabel(d.fundType), side,
-			mapping.YearLabel(d.year, 0), amount.Cents(c).Dollars(), dir)
+			yearLabel(d.year, 0), amount.Cents(c).Dollars(), dir)
 	}
 	return []Caveat{
 		{
@@ -581,7 +581,7 @@ func debtRequirementRows(facts []*fact.Fact) (DebtRequirements, error) {
 		}
 		named[i] = true
 		c := ColumnOf(f)
-		if f.RowLabel != mapping.YearLabel(c.FiscalYear, c.Through) {
+		if f.RowLabel != yearLabel(c.FiscalYear, c.Through) {
 			return out, fmt.Errorf("%s: fact %s prints %q and is %s", DebtServiceProjection,
 				f.ID, f.RowLabel, c)
 		}
@@ -623,4 +623,15 @@ func debtRequirementRows(facts []*fact.Fact) (DebtRequirements, error) {
 		sort.Strings(out.Totals[i].FactIDs)
 	}
 	return out, nil
+}
+
+// yearLabel is how pp.80-81 print a requirements row's years: "2026" for the
+// year ending June 30, 2026, "2031-2035" for a band. It is spelled here and
+// not read from internal/mapping, so the refusal that holds a published row
+// label to the page's convention does not share the function that wrote it.
+func yearLabel(year, through int) string {
+	if through == 0 {
+		return strconv.Itoa(year)
+	}
+	return strconv.Itoa(year) + "-" + strconv.Itoa(through)
 }

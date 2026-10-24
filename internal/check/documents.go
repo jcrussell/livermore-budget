@@ -83,12 +83,9 @@ func (*documentsAreChecked) Run(_ context.Context, s *Subject) (Result, error) {
 	// A REGISTERED PROJECTION THAT PRODUCED NOTHING IS NOT REPORTED HERE. The
 	// export command builds the slices each projection says it is of, so a
 	// projection declaring none writes no file and there is no document to be
-	// wrong; Projection.Slices calls that a statement about the corpus.
-	//
-	// WHAT IT LEAVES UNCOVERED IS REAL AND IS FILED. A document the site
-	// PUBLISHES that silently stops being built is still a defect, and only the
-	// spine is guarded against it today, by publishedProjectionBuilt. See
-	// fisc-w7d.
+	// wrong; Projection.Slices calls that a statement about the corpus. A
+	// document the site PUBLISHES that stops being built is
+	// publishedProjectionBuilt's finding.
 
 	// The other direction, and it is the one that expires an exemption rather
 	// than leaving it for whoever forgets: an entry naming a shape nothing

@@ -71,7 +71,7 @@ function refusal(document) {
 test("the modules import with no page config, no d3 and no DOM, and run nothing", () => {
   assert.ok(domless, "nothing installed a DOM before the import");
   assert.deepEqual(Object.keys(sides).sort(), ["KEY_MARK", "boot", "closing",
-    "fillTip", "frontierOf", "hashOf", "opensAs", "outside", "parseHash", "readConfig", "render", "shareTotal", "sidesAt", "tileShare"]);
+    "fillTip", "frontierOf", "hashOf", "opensAs", "outside", "parseHash", "readConfig", "render", "shareTotal", "tileShare"]);
   assert.deepEqual(Object.keys(forms.ledger).sort(), ["LEDGER", "RANKED", "boot", "widthOf"]);
 });
 

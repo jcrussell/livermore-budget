@@ -199,7 +199,7 @@ export function opensAs(tile) {
  * @param {SidesRenderer} renderer
  * @returns {{doc: FiscProjection, sides: Side[]}}
  */
-export function sidesAt(config, column, frontier, renderer) {
+function sidesAt(config, column, frontier, renderer) {
   const doc = core.scheduleOf(column, config.primary);
   if (!doc) throw new Error(`the column carries no ${config.primary} schedule`);
   if (!core.isExpansionSchedule(doc)) throw new Error(`${config.primary} declares no splits, so nothing here opens`);

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"testing"
@@ -305,7 +306,7 @@ func TestJSONRoundTripsWithEveryKeyPresent(t *testing.T) {
 		t.Fatalf("decode the report: %v\n%s", err, out)
 	}
 	if diff := cmp.Diff([]string{"counts", "declared_vacuous", "full", "generated_by",
-		"results", "strict", "undeclared_vacuous"}, sortedKeys(top)); diff != "" {
+		"results", "strict", "undeclared_vacuous"}, slices.Sorted(maps.Keys(top))); diff != "" {
 		t.Errorf("top-level keys (-want +got):\n%s", diff)
 	}
 
@@ -314,7 +315,7 @@ func TestJSONRoundTripsWithEveryKeyPresent(t *testing.T) {
 		t.Fatalf("decode counts: %v", err)
 	}
 	if diff := cmp.Diff([]string{"error", "fail", "pass", "skipped", "vacuous"},
-		sortedKeys(counts)); diff != "" {
+		slices.Sorted(maps.Keys(counts))); diff != "" {
 		t.Errorf("counts keys (-want +got):\n%s", diff)
 	}
 
@@ -329,7 +330,7 @@ func TestJSONRoundTripsWithEveryKeyPresent(t *testing.T) {
 		if diff := cmp.Diff([]string{
 			"check_id", "description", "findings",
 			"status", "subjects", "summary", "tier",
-		}, sortedKeys(res)); diff != "" {
+		}, slices.Sorted(maps.Keys(res))); diff != "" {
 			t.Errorf("result keys (-want +got):\n%s", diff)
 		}
 		if string(res["findings"]) == "null" {
@@ -543,15 +544,6 @@ func TestReportColumnsLineUp(t *testing.T) {
 	if got := strings.Count(errOut, "FAIL"); got != 1 {
 		t.Errorf("the word FAIL appears %d times, want once: %s", got, errOut)
 	}
-}
-
-func sortedKeys[V any](m map[string]V) []string {
-	out := make([]string, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	slices.Sort(out)
-	return out
 }
 
 // TestTheHelpDescribesTheExitCodeContractItActuallyHas is a test on prose,
