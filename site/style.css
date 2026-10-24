@@ -251,6 +251,12 @@ h3 {
    rule below would have to offset against. The sticky `th` of a table
    lives inside .table-scroll, which is `overflow: auto` and therefore its own
    containing block, so the two never compete. */
+/* A fragment target lands below the sticky .wip-banner rather than under it:
+   two lines of banner on a phone, with room to spare. */
+html {
+  scroll-padding-top: 4em;
+}
+
 .wip-banner {
   position: sticky;
   top: 0;

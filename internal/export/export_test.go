@@ -1861,6 +1861,23 @@ func sorted(in []string) []string {
 	return out
 }
 
+// TestAFragmentTargetLandsBelowTheStickyBanner: .wip-banner is sticky at the
+// top of every page, so html carries a scroll-padding-top or a link to a
+// caveat on caveats.html scrolls its summary under the banner. Like the
+// measure test below it witnesses a declaration, not a rendering; the
+// rendering was read in Chromium at 1100px and 390px.
+//
+// Mutation: delete the html rule and this goes red.
+func TestAFragmentTargetLandsBelowTheStickyBanner(t *testing.T) {
+	b, err := fs.ReadFile(site.FS(), "style.css")
+	if err != nil {
+		t.Fatalf("read embedded style.css: %v", err)
+	}
+	if !regexp.MustCompile(`(?m)^html \{\s*scroll-padding-top: [1-9]`).Match(b) {
+		t.Error("style.css gives html no scroll-padding-top, so a fragment lands under .wip-banner")
+	}
+}
+
 // TestTheStylesheetHasOneTextMeasure witnesses ONE DECLARATION, NOT ONE
 // RENDERING, and the distinction is the whole of what this test is worth.
 //
