@@ -323,7 +323,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		cited = append(cited, m.Sources...)
 		hero := heroFor(m)
 		counts := countsRef{Facts: m.Counts.Facts, Nodes: m.Counts.Nodes, Links: m.Counts.Links}
-		caveats, refErr := cx.refs(m.Caveats, stem)
+		caveats, refErr := cx.refs(m.Caveats, stem, v.Path)
 		if refErr != nil {
 			return pageData{}, refErr
 		}
@@ -337,7 +337,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			// come first.
 			cited = append(cited, chart.doc.Metadata.Sources...)
 			counts = chart.doc.Metadata.Counts
-			drawnRefs, drawnErr := cx.refs(chart.doc.Metadata.Caveats, chart.stem)
+			drawnRefs, drawnErr := cx.refs(chart.doc.Metadata.Caveats, chart.stem, v.Path)
 			if drawnErr != nil {
 				return pageData{}, drawnErr
 			}

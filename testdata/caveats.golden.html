@@ -1,0 +1,1105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What these figures do not say</title>
+<meta name="description" content="Every reason a figure on this site does not say what it looks like it says, in full, with the document each one belongs to.">
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="style.css">
+<script>
+  try {
+    var t = localStorage.getItem("fisc-theme");
+    if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+  } catch (e) {   }
+</script>
+</head>
+<body class="prose-page">
+
+<div class="wip-banner" role="status">⚠️ Work in progress — early preview, coverage is incomplete.</div>
+
+<nav class="site-nav" aria-label="Views">
+  <button type="button" id="nav-toggle" aria-expanded="false" aria-controls="nav-views" hidden>Menu <span class="nav-here">Caveats</span></button>
+  <ul id="nav-views">
+    <li><a href="index.html" data-years="fy2026-adopted fy2027-adopted">At a glance</a></li>
+    <li><a href="flows.html" data-years="fy2026-adopted fy2027-adopted">Flows</a></li>
+    <li><a href="ledger.html" data-years="fy2026-adopted fy2027-adopted">Bars</a></li>
+    <li><a href="change.html">Over time</a></li>
+    <li><a href="balances.html">Fund balances</a></li>
+    <li><a href="department.html" data-years="fy2024-actual fy2025-revised fy2026-adopted fy2027-adopted">Departments</a></li>
+    <li><a href="capital.html" data-years="fy2026-adopted fy2027-adopted fy2028-projected fy2029-projected fy2030-projected">Capital projects</a></li>
+    <li><a href="debt.html">Debt</a></li>
+    <li><span aria-current="page">Caveats</span></li>
+    <li><a href="provenance.html">Sources and data</a></li>
+  </ul>
+  <button type="button" id="theme-toggle" hidden>Dark mode</button>
+</nav>
+<template id="lede-more"><button type="button" class="lede-more">More</button></template>
+<script type="module">import { boot } from "./theme.js"; boot(window);</script>
+
+<header class="page-head">
+  <div>
+    <h1>What these figures do not say</h1>
+    <p class="lede">Every page here shows figures the city printed, and every one of them has edges: a schedule that stops short, a total the city&#39;s own book contradicts, a classification that is ours rather than theirs. Those are collected here in full, so the pages that draw the money can say them in a line and point at this one. Nothing on this page is a hedge; each is a specific thing a specific document does not do.</p>
+  </div>
+</header>
+
+<main>
+
+<p class="lede">
+  50 caveats across 29
+  published documents, in 7 kinds.
+  Open one to read it in full.
+</p>
+
+<section class="caveat-themes" aria-labelledby="caveats-kinds">
+  <h2 id="caveats-kinds">The kinds</h2>
+  <dl class="caveat-kinds">
+    <dt id="caveats-of-left-out">What isn&#39;t in the picture <span class="subtle">(18)</span></dt>
+    <dd>Money or columns a schedule doesn&#39;t carry, or that this site reads and doesn&#39;t draw. A total here can be smaller than one printed elsewhere for that reason alone.</dd>
+    <dt id="caveats-of-books-disagree">Where the city&#39;s own books disagree <span class="subtle">(6)</span></dt>
+    <dd>Two of the city&#39;s pages print different figures or labels for the same thing, by anything from a dollar to hundreds of thousands. This site draws one as printed and says which; it corrects neither.</dd>
+    <dt id="caveats-of-same-money-twice">Don&#39;t add or compare these <span class="subtle">(5)</span></dt>
+    <dd>Figures that look as if they should be added together or set side by side, and should not: the same dollars shown twice, or two different measures under similar names.</dd>
+    <dt id="caveats-of-kinds-of-year">Not every year is the same kind of number <span class="subtle">(8)</span></dt>
+    <dd>Actual, revised, adopted, projected and unaudited columns measure different things. A change from one to another isn&#39;t growth.</dd>
+    <dt id="caveats-of-our-reading">Where this site, not the city, decided <span class="subtle">(7)</span></dt>
+    <dd>A label, a grouping or a classification this site chose to draw the city&#39;s figures. The figures are printed; these choices are ours.</dd>
+    <dt id="caveats-of-checked">What we checked and found to agree <span class="subtle">(2)</span></dt>
+    <dd>Not limits: places where one schedule was held against another and they agree.</dd>
+    <dt id="caveats-of-data-files">For anyone using the data files <span class="subtle">(4)</span></dt>
+    <dd>Only matters if you add up the figures in a downloaded file. No page draws them this way.</dd>
+  </dl>
+</section>
+<section class="caveat-page" id="caveats-on-index">
+  <h2>On <a href="index.html">At a glance</a></h2>
+  <h3 id="caveats-on-index--left-out">What isn&#39;t in the picture</h3>
+  <div class="caveats">
+    <details class="caveat" id="caveat-transfer-legs-unpaired">
+      <summary>Transfers in and transfers out are two separate totals here, and they need not match.</summary>
+      <div class="caveat-variant">
+      <p><strong>FY 2025-26 adopted:</strong> This chart draws the money the city&#39;s funds move to one another as two totals, Transfers In and Transfers Out, without pairing each payment with its receipt; Transfers In opens into Budget Book p76&#39;s fund-by-fund list. Transfers out ($59,612,734) exceed transfers in ($21,525,997) by $38,086,737. The difference is what the operating funds send to capital projects, the Capital Improvement Program, which Budget Book p222 lists fund by fund; those capital funds are not on this chart.</p>
+      <p class="subtle">
+        About <code>transfers/in</code>, <code>transfers/out</code> in <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>sankey</code>).
+      </p>
+      </div>
+      <div class="caveat-variant">
+      <p><strong>FY 2026-27 adopted:</strong> This chart draws the money the city&#39;s funds move to one another as two totals, Transfers In and Transfers Out, without pairing each payment with its receipt; Transfers In opens into Budget Book p76&#39;s fund-by-fund list. Transfers out ($72,386,884) exceed transfers in ($21,624,633) by $50,762,251. The difference is what the operating funds send to capital projects, the Capital Improvement Program, which Budget Book p222 lists fund by fund; those capital funds are not on this chart.</p>
+      <p class="subtle">
+        About <code>transfers/in</code>, <code>transfers/out</code> in <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>sankey-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="index.html">At a glance</a>, <a href="flows.html">Flows</a>, <a href="ledger.html">Bars</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-transfer-legs-unpaired">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveat-internal-service-is-outside-the-external-headline">
+      <summary>Charges one city department bills another are left out of the headline totals.</summary>
+      <div class="caveat-variant">
+      <p>Internal Service Funds charge other city departments for things like vehicles and computers. That is the city paying itself, so the headline leaves it out. The all-funds totals include it, and match the city&#39;s own citywide totals.</p>
+      <p class="subtle">
+        About <code>fund-group/internal-service</code> in <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>sankey</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>sankey-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="index.html">At a glance</a>, <a href="flows.html">Flows</a>, <a href="ledger.html">Bars</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-internal-service-is-outside-the-external-headline">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveat-working-capital-is-a-stock">
+      <summary>The money funds hold at the start and end of the year is not drawn, only what moves.</summary>
+      <div class="caveat-variant">
+      <p>Budget Book pp.66-67 print each fund group&#39;s beginning and ending working capital. Those are amounts on hand, not money moving, so the chart draws no ribbon for them, and its columns will not add up row for row to that page.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>sankey</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>sankey-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="index.html">At a glance</a>, <a href="flows.html">Flows</a>, <a href="ledger.html">Bars</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-working-capital-is-a-stock">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveat-permanent-funds-have-no-column">
+      <summary>The city&#39;s two Permanent Funds have no column on this page, so they are not drawn.</summary>
+      <div class="caveat-variant">
+      <p>The city has a seventh kind of fund, Permanent Funds (2 funds), and Budget Book pp.66-67 print no column for them.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>sankey</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>sankey-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="index.html">At a glance</a>, <a href="flows.html">Flows</a>, <a href="ledger.html">Bars</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-permanent-funds-have-no-column">Link to this caveat</a></p>
+    </details>
+  </div>
+  <h3 id="caveats-on-index--books-disagree">Where the city&#39;s own books disagree</h3>
+  <div class="caveats">
+    <details class="caveat" id="caveat-contested-total-internal-service">
+      <summary>The budget book prints two different totals for Internal Service Funds spending; this chart draws the summary page&#39;s.</summary>
+      <div class="caveat-variant">
+      <p>Internal Service Funds spending is drawn at $26,544,515, which is what pp.66-67 print for FY2027 adopted. Other schedules in the same book make it $26,294,515: pp.75, 183, 205 and 209 print that figure, and p61 prints $26,906,515, which is that figure plus the $612,000 transfer to the CIP it prints beside it, and the 78 rows of pp.85-125 add up to it. The difference is $250,000, in a single Services &amp; Supplies row. This chart keeps the summary page&#39;s figure because the Services &amp; Supplies figure that would bring pp.66-67 into line with the other schedules is printed on no page of the book, and every figure here is one the city printed.</p>
+      <p class="subtle">
+        About <code>fund-group/internal-service</code> in <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>sankey-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="index.html">At a glance</a>, <a href="flows.html">Flows</a>, <a href="ledger.html">Bars</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-contested-total-internal-service">Link to this caveat</a></p>
+    </details>
+  </div>
+  <h3 id="caveats-on-index--same-money-twice">Don&#39;t add or compare these</h3>
+  <div class="caveats">
+    <details class="caveat" id="caveat-a-department-here-is-not-a-division">
+      <summary>A department here is not the division of the same name elsewhere; don&#39;t add them.</summary>
+      <div class="caveat-variant">
+      <p>Budget Book pp.85-125 print two blocks per page: spending by DIVISION above, and each DEPARTMENT&#39;s funding sources below. Five names are both a department and a division beneath it: City Council, City Manager, City Attorney, General Services and Administrative Services. A mark here is the whole department across every fund; a mark of the same name on the General Fund&#39;s breakdown is one division of it.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>department-funding</code>), <a href="fy2024-actual.json">fy2024-actual.json</a> (<code>department-funding-2024-actual</code>), <a href="fy2025-revised.json">fy2025-revised.json</a> (<code>department-funding-2025-revised</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>department-funding-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="index.html">At a glance</a>, <a href="department.html">Departments</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-a-department-here-is-not-a-division">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveat-what-a-fund-pays-departments-is-not-what-it-takes-in">
+      <summary>What a fund pays departments is not what it takes in; two different pages print them.</summary>
+      <div class="caveat-variant">
+      <p>What a fund takes in is printed on Budget Book pp.127-140; what departments draw from it is printed on pp.85-125. They are two pages, not one figure read twice, and either may be the larger.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>department-funding</code>), <a href="fy2024-actual.json">fy2024-actual.json</a> (<code>department-funding-2024-actual</code>), <a href="fy2025-revised.json">fy2025-revised.json</a> (<code>department-funding-2025-revised</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>department-funding-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="index.html">At a glance</a>, <a href="department.html">Departments</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-what-a-fund-pays-departments-is-not-what-it-takes-in">Link to this caveat</a></p>
+    </details>
+  </div>
+  <h3 id="caveats-on-index--kinds-of-year">Not every year is the same kind of number</h3>
+  <div class="caveats">
+    <details class="caveat" id="caveat-two-of-the-four-columns-tie-to-no-citywide-total">
+      <summary>The FY2023-24 actual and FY2024-25 revised columns are checked only department by department.</summary>
+      <div class="caveat-variant">
+      <p>Budget Book pp.66-67 print citywide totals for the two adopted years only, so the actual and revised columns here are checked against each department&#39;s own printed total and nothing citywide. Five of the eleven departments miss that total by exactly one dollar, all in the FY2023-24 actual column; the mapping declares each as the city&#39;s own rounding.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>department-funding</code>), <a href="fy2024-actual.json">fy2024-actual.json</a> (<code>department-funding-2024-actual</code>), <a href="fy2025-revised.json">fy2025-revised.json</a> (<code>department-funding-2025-revised</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>department-funding-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="index.html">At a glance</a>, <a href="department.html">Departments</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-two-of-the-four-columns-tie-to-no-citywide-total">Link to this caveat</a></p>
+    </details>
+  </div>
+  <h3 id="caveats-on-index--our-reading">Where this site, not the city, decided</h3>
+  <div class="caveats">
+    <details class="caveat" id="caveat-constraint-tier-is-our-reading">
+      <summary>How restricted each fund&#39;s money is comes from this site&#39;s reading of the city&#39;s fund descriptions.</summary>
+      <div class="caveat-variant">
+      <p>How tightly a fund&#39;s money is restricted is this site&#39;s reading of the Description of Funds (Budget Book pp. 258-261), not a figure the city printed. Each fund shows the sentence it was read from. &#34;unknown&#34; means those pages do not say; it is a reading, not a gap.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>department-funding</code>), <a href="fy2024-actual.json">fy2024-actual.json</a> (<code>department-funding-2024-actual</code>), <a href="fy2025-revised.json">fy2025-revised.json</a> (<code>department-funding-2025-revised</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>department-funding-2027</code>), <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>expansion</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>expansion-2027</code>), <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>fund-flows</code>), <a href="fy2024-actual.json">fy2024-actual.json</a> (<code>fund-flows-2024-actual</code>), <a href="fy2025-revised.json">fy2025-revised.json</a> (<code>fund-flows-2025-revised</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>fund-flows-2027</code>), <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>fund-sources-uses</code>), <a href="fy2024-actual.json">fy2024-actual.json</a> (<code>fund-sources-uses-2024-actual</code>), <a href="fy2025-revised.json">fy2025-revised.json</a> (<code>fund-sources-uses-2025-revised</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>fund-sources-uses-2027</code>), <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>transfers-by-fund</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>transfers-by-fund-2027</code>), <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>transfers-out</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>transfers-out-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="index.html">At a glance</a>, <a href="flows.html">Flows</a>, <a href="ledger.html">Bars</a>, <a href="department.html">Departments</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-constraint-tier-is-our-reading">Link to this caveat</a></p>
+    </details>
+  </div>
+</section>
+<section class="caveat-page" id="caveats-on-flows">
+  <h2>On <a href="flows.html">Flows</a> and <a href="ledger.html">Bars</a></h2>
+  <h3 id="caveats-on-flows--left-out">What isn&#39;t in the picture</h3>
+  <div class="caveats">
+    <details class="caveat" id="caveats-on-flows--transfer-legs-unpaired">
+      <summary>Transfers in and transfers out are two separate totals here, and they need not match.</summary>
+      <div class="caveat-variant">
+      <p><strong>FY 2025-26 adopted:</strong> This chart draws the money the city&#39;s funds move to one another as two totals, Transfers In and Transfers Out, without pairing each payment with its receipt; Transfers In opens into Budget Book p76&#39;s fund-by-fund list. Transfers out ($59,612,734) exceed transfers in ($21,525,997) by $38,086,737. The difference is what the operating funds send to capital projects, the Capital Improvement Program, which Budget Book p222 lists fund by fund; those capital funds are not on this chart.</p>
+      <p class="subtle">
+        About <code>transfers/in</code>, <code>transfers/out</code> in <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>sankey</code>).
+      </p>
+      </div>
+      <div class="caveat-variant">
+      <p><strong>FY 2026-27 adopted:</strong> This chart draws the money the city&#39;s funds move to one another as two totals, Transfers In and Transfers Out, without pairing each payment with its receipt; Transfers In opens into Budget Book p76&#39;s fund-by-fund list. Transfers out ($72,386,884) exceed transfers in ($21,624,633) by $50,762,251. The difference is what the operating funds send to capital projects, the Capital Improvement Program, which Budget Book p222 lists fund by fund; those capital funds are not on this chart.</p>
+      <p class="subtle">
+        About <code>transfers/in</code>, <code>transfers/out</code> in <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>sankey-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="index.html">At a glance</a>, <a href="flows.html">Flows</a>, <a href="ledger.html">Bars</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveats-on-flows--transfer-legs-unpaired">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveats-on-flows--internal-service-is-outside-the-external-headline">
+      <summary>Charges one city department bills another are left out of the headline totals.</summary>
+      <div class="caveat-variant">
+      <p>Internal Service Funds charge other city departments for things like vehicles and computers. That is the city paying itself, so the headline leaves it out. The all-funds totals include it, and match the city&#39;s own citywide totals.</p>
+      <p class="subtle">
+        About <code>fund-group/internal-service</code> in <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>sankey</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>sankey-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="index.html">At a glance</a>, <a href="flows.html">Flows</a>, <a href="ledger.html">Bars</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveats-on-flows--internal-service-is-outside-the-external-headline">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveats-on-flows--working-capital-is-a-stock">
+      <summary>The money funds hold at the start and end of the year is not drawn, only what moves.</summary>
+      <div class="caveat-variant">
+      <p>Budget Book pp.66-67 print each fund group&#39;s beginning and ending working capital. Those are amounts on hand, not money moving, so the chart draws no ribbon for them, and its columns will not add up row for row to that page.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>sankey</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>sankey-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="index.html">At a glance</a>, <a href="flows.html">Flows</a>, <a href="ledger.html">Bars</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveats-on-flows--working-capital-is-a-stock">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveats-on-flows--permanent-funds-have-no-column">
+      <summary>The city&#39;s two Permanent Funds have no column on this page, so they are not drawn.</summary>
+      <div class="caveat-variant">
+      <p>The city has a seventh kind of fund, Permanent Funds (2 funds), and Budget Book pp.66-67 print no column for them.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>sankey</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>sankey-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="index.html">At a glance</a>, <a href="flows.html">Flows</a>, <a href="ledger.html">Bars</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveats-on-flows--permanent-funds-have-no-column">Link to this caveat</a></p>
+    </details>
+  </div>
+  <h3 id="caveats-on-flows--books-disagree">Where the city&#39;s own books disagree</h3>
+  <div class="caveats">
+    <details class="caveat" id="caveats-on-flows--contested-total-internal-service">
+      <summary>The budget book prints two different totals for Internal Service Funds spending; this chart draws the summary page&#39;s.</summary>
+      <div class="caveat-variant">
+      <p>Internal Service Funds spending is drawn at $26,544,515, which is what pp.66-67 print for FY2027 adopted. Other schedules in the same book make it $26,294,515: pp.75, 183, 205 and 209 print that figure, and p61 prints $26,906,515, which is that figure plus the $612,000 transfer to the CIP it prints beside it, and the 78 rows of pp.85-125 add up to it. The difference is $250,000, in a single Services &amp; Supplies row. This chart keeps the summary page&#39;s figure because the Services &amp; Supplies figure that would bring pp.66-67 into line with the other schedules is printed on no page of the book, and every figure here is one the city printed.</p>
+      <p class="subtle">
+        About <code>fund-group/internal-service</code> in <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>sankey-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="index.html">At a glance</a>, <a href="flows.html">Flows</a>, <a href="ledger.html">Bars</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveats-on-flows--contested-total-internal-service">Link to this caveat</a></p>
+    </details>
+  </div>
+  <h3 id="caveats-on-flows--same-money-twice">Don&#39;t add or compare these</h3>
+  <div class="caveats">
+    <details class="caveat" id="caveat-the-revenue-schedule-is-published-twice">
+      <summary>Revenue the charts draw is the same money the Over time page prints; don&#39;t add the two.</summary>
+      <div class="caveat-variant">
+      <p>Budget Book pp.127-140 appear in two places on this site: the charts draw one adopted year at a time, and the Over time page prints all four columns (FY2023-24 actual, FY2024-25 revised, and both adopted years). A row found in both is one printed figure shown twice.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>expansion</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>expansion-2027</code>), <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>fund-flows</code>), <a href="fy2024-actual.json">fy2024-actual.json</a> (<code>fund-flows-2024-actual</code>), <a href="fy2025-revised.json">fy2025-revised.json</a> (<code>fund-flows-2025-revised</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>fund-flows-2027</code>), <a href="data/revenue-trends.json">data/revenue-trends.json</a> (<code>revenue-trends</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="flows.html">Flows</a>, <a href="ledger.html">Bars</a>, <a href="change.html">Over time</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-the-revenue-schedule-is-published-twice">Link to this caveat</a></p>
+    </details>
+  </div>
+  <h3 id="caveats-on-flows--our-reading">Where this site, not the city, decided</h3>
+  <div class="caveats">
+    <details class="caveat" id="caveats-on-flows--constraint-tier-is-our-reading">
+      <summary>How restricted each fund&#39;s money is comes from this site&#39;s reading of the city&#39;s fund descriptions.</summary>
+      <div class="caveat-variant">
+      <p>How tightly a fund&#39;s money is restricted is this site&#39;s reading of the Description of Funds (Budget Book pp. 258-261), not a figure the city printed. Each fund shows the sentence it was read from. &#34;unknown&#34; means those pages do not say; it is a reading, not a gap.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>department-funding</code>), <a href="fy2024-actual.json">fy2024-actual.json</a> (<code>department-funding-2024-actual</code>), <a href="fy2025-revised.json">fy2025-revised.json</a> (<code>department-funding-2025-revised</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>department-funding-2027</code>), <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>expansion</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>expansion-2027</code>), <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>fund-flows</code>), <a href="fy2024-actual.json">fy2024-actual.json</a> (<code>fund-flows-2024-actual</code>), <a href="fy2025-revised.json">fy2025-revised.json</a> (<code>fund-flows-2025-revised</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>fund-flows-2027</code>), <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>fund-sources-uses</code>), <a href="fy2024-actual.json">fy2024-actual.json</a> (<code>fund-sources-uses-2024-actual</code>), <a href="fy2025-revised.json">fy2025-revised.json</a> (<code>fund-sources-uses-2025-revised</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>fund-sources-uses-2027</code>), <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>transfers-by-fund</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>transfers-by-fund-2027</code>), <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>transfers-out</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>transfers-out-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="index.html">At a glance</a>, <a href="flows.html">Flows</a>, <a href="ledger.html">Bars</a>, <a href="department.html">Departments</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveats-on-flows--constraint-tier-is-our-reading">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveat-one-row-is-one-printed-line">
+      <summary>A revenue line marked &#34;one row&#34; is how Budget Book pp.127-140 print that whole category.</summary>
+      <div class="caveat-variant">
+      <p>Some funds&#39; revenue in a category is one row named for the category, such as Charges for Services. Where a fund prints no other row of that category, this site labels the line &#34;&lt;category&gt;, one row&#34;: pp.127-140 print it as a single row for its category, so nothing is missing from it.</p>
+      <p class="subtle">
+        About <code>revenue-line/charges-for-services/charges-for-services</code>, <code>revenue-line/contributions-outsourced/contributionsoutsrce</code>, <code>revenue-line/intergovernmental/intergovernmental</code>, <code>revenue-line/miscellaneous-revenue/miscellaneous-rev</code>, <code>revenue-line/taxes/other/other-taxes</code>, <code>revenue-line/taxes/property/property-taxes</code>, <code>revenue-line/use-of-money-and-property/use-of-money-and-prop</code> in <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>expansion</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>expansion-2027</code>) — the chart flags these marks where it draws them.
+      </p>
+      <p class="subtle">
+        About <code>revenue-line/charges-for-services/charges-for-services</code>, <code>revenue-line/contributions-outsourced/contributionsoutsrce</code>, <code>revenue-line/intergovernmental/intergovernmental</code>, <code>revenue-line/miscellaneous-revenue/miscellaneous-rev</code>, <code>revenue-line/taxes/other/other-taxes</code>, <code>revenue-line/taxes/property/property-taxes</code>, <code>revenue-line/use-of-money-and-property/use-of-money-and-prop</code> in <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>fund-flows</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>fund-flows-2027</code>).
+      </p>
+      <p class="subtle">
+        About <code>revenue-line/charges-for-services/charges-for-services</code>, <code>revenue-line/contributions-outsourced/contributionsoutsrce</code>, <code>revenue-line/fines-and-forfeitures/fines-and-forfeitures</code>, <code>revenue-line/intergovernmental/intergovernmental</code>, <code>revenue-line/miscellaneous-revenue/miscellaneous-rev</code>, <code>revenue-line/taxes/other/other-taxes</code>, <code>revenue-line/taxes/property/property-taxes</code>, <code>revenue-line/use-of-money-and-property/use-of-money-and-prop</code> in <a href="fy2024-actual.json">fy2024-actual.json</a> (<code>fund-flows-2024-actual</code>).
+      </p>
+      <p class="subtle">
+        About <code>revenue-line/charges-for-services/charges-for-services</code>, <code>revenue-line/contributions-outsourced/contributionsoutsrce</code>, <code>revenue-line/intergovernmental/intergovernmental</code>, <code>revenue-line/miscellaneous-revenue/miscellaneous-rev</code>, <code>revenue-line/other-financing-sources/oth-financing-source</code>, <code>revenue-line/taxes/other/other-taxes</code>, <code>revenue-line/taxes/property/property-taxes</code>, <code>revenue-line/use-of-money-and-property/use-of-money-and-prop</code> in <a href="fy2025-revised.json">fy2025-revised.json</a> (<code>fund-flows-2025-revised</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="flows.html">Flows</a>, <a href="ledger.html">Bars</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-one-row-is-one-printed-line">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveat-the-line-so-named-is-one-row-of-several">
+      <summary>A revenue line marked &#34;the line so named&#34; is one row, not its category&#39;s total.</summary>
+      <div class="caveat-variant">
+      <p>Budget Book pp.127-140 print some funds&#39; revenue under a category as one row named for the category itself, beside other rows of the same category. This site labels that line &#34;&lt;row&gt;, the line so named&#34;: its figure is that one row, and the category&#39;s other rows are drawn beside it.</p>
+      <p class="subtle">
+        About <code>revenue-line/miscellaneous-revenue/miscellaneous-revenue</code> in <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>expansion</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>expansion-2027</code>) — the chart flags these marks where it draws them.
+      </p>
+      <p class="subtle">
+        About <code>revenue-line/miscellaneous-revenue/miscellaneous-revenue</code> in <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>fund-flows</code>), <a href="fy2024-actual.json">fy2024-actual.json</a> (<code>fund-flows-2024-actual</code>), <a href="fy2025-revised.json">fy2025-revised.json</a> (<code>fund-flows-2025-revised</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>fund-flows-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="flows.html">Flows</a>, <a href="ledger.html">Bars</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-the-line-so-named-is-one-row-of-several">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveat-some-fund-group-money-is-not-by-fund">
+      <summary>Some fund groups carry money that no single fund&#39;s own page prints.</summary>
+      <div class="caveat-variant">
+      <p><strong>FY 2025-26 adopted:</strong> Budget Book pp.66-67 print each fund group&#39;s change in balance as one figure. Where some of a group&#39;s funds draw on their balances and others add to them, that figure is the net of the funds&#39; changes, which no single fund carries, so for 3 fund groups each group&#39;s net is drawn on a box of its own. A fund of such a group is drawn with what it takes in and spends, so its in and out differ by its own change in balance; its details show its two printed balances from pp.186-209 and the change between them. Where pp.66-67 print more for a group than its funds&#39; pages do, the difference sits on the same box, and the box&#39;s note says why.</p>
+      <p class="subtle">
+        About <code>fund-group-only/capital</code>, <code>fund-group-only/enterprise</code>, <code>fund-group-only/special-revenue</code>, <code>fund/101</code>, <code>fund/200</code>, <code>fund/201</code>, <code>fund/202</code>, <code>fund/203</code>, <code>fund/205</code>, <code>fund/206</code>, <code>fund/210</code>, <code>fund/211</code>, <code>fund/221</code>, <code>fund/222</code>, <code>fund/223</code>, <code>fund/224</code>, <code>fund/225</code>, <code>fund/240</code>, <code>fund/241</code>, <code>fund/242</code>, <code>fund/280</code>, <code>fund/282</code>, <code>fund/283</code>, <code>fund/284</code>, <code>fund/285</code>, <code>fund/286</code>, <code>fund/287</code>, <code>fund/288</code>, <code>fund/289</code>, <code>fund/290</code>, <code>fund/300</code>, <code>fund/310</code>, <code>fund/311</code>, <code>fund/320</code>, <code>fund/321</code>, <code>fund/330</code>, <code>fund/331</code>, <code>fund/510</code>, <code>fund/511</code>, <code>fund/512</code>, <code>fund/513</code>, <code>fund/550</code>, <code>fund/551</code>, <code>fund/552</code>, <code>fund/553</code>, <code>fund/560</code>, <code>fund/561</code>, <code>fund/580</code>, <code>fund/583</code>, <code>fund/600</code>, <code>fund/610</code>, <code>fund/612</code>, <code>fund/620</code>, <code>fund/622</code>, <code>fund/623</code>, <code>fund/640</code>, <code>fund/642</code>, <code>fund/643</code> in <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>expansion</code>) — the chart flags these marks where it draws them.
+      </p>
+      </div>
+      <div class="caveat-variant">
+      <p><strong>FY 2026-27 adopted:</strong> Budget Book pp.66-67 print each fund group&#39;s change in balance as one figure. Where some of a group&#39;s funds draw on their balances and others add to them, that figure is the net of the funds&#39; changes, which no single fund carries, so for 4 fund groups each group&#39;s net is drawn on a box of its own. A fund of such a group is drawn with what it takes in and spends, so its in and out differ by its own change in balance; its details show its two printed balances from pp.186-209 and the change between them. Where pp.66-67 print more for a group than its funds&#39; pages do, the difference sits on the same box, and the box&#39;s note says why.</p>
+      <p class="subtle">
+        About <code>fund-group-only/capital</code>, <code>fund-group-only/enterprise</code>, <code>fund-group-only/internal-service</code>, <code>fund-group-only/special-revenue</code>, <code>fund/101</code>, <code>fund/200</code>, <code>fund/201</code>, <code>fund/202</code>, <code>fund/203</code>, <code>fund/205</code>, <code>fund/206</code>, <code>fund/210</code>, <code>fund/211</code>, <code>fund/221</code>, <code>fund/222</code>, <code>fund/223</code>, <code>fund/224</code>, <code>fund/225</code>, <code>fund/240</code>, <code>fund/242</code>, <code>fund/280</code>, <code>fund/282</code>, <code>fund/283</code>, <code>fund/284</code>, <code>fund/285</code>, <code>fund/286</code>, <code>fund/287</code>, <code>fund/288</code>, <code>fund/289</code>, <code>fund/290</code>, <code>fund/300</code>, <code>fund/310</code>, <code>fund/311</code>, <code>fund/320</code>, <code>fund/321</code>, <code>fund/330</code>, <code>fund/331</code>, <code>fund/510</code>, <code>fund/511</code>, <code>fund/512</code>, <code>fund/513</code>, <code>fund/550</code>, <code>fund/551</code>, <code>fund/552</code>, <code>fund/553</code>, <code>fund/560</code>, <code>fund/561</code>, <code>fund/580</code>, <code>fund/600</code>, <code>fund/610</code>, <code>fund/612</code>, <code>fund/620</code>, <code>fund/622</code>, <code>fund/623</code>, <code>fund/640</code>, <code>fund/642</code>, <code>fund/643</code> in <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>expansion-2027</code>) — the chart flags these marks where it draws them.
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="flows.html">Flows</a>, <a href="ledger.html">Bars</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-some-fund-group-money-is-not-by-fund">Link to this caveat</a></p>
+    </details>
+  </div>
+  <h3 id="caveats-on-flows--checked">What we checked and found to agree</h3>
+  <div class="caveats">
+    <details class="caveat" id="caveat-the-expansion-is-the-spine-at-finer-grain">
+      <summary>Click into any part of the citywide chart and the pages it opens into add back up to it, to the cent.</summary>
+      <div class="caveat-variant">
+      <p>Each part of the citywide chart opens into the finer pages of the budget book that break it down: revenue lines (pp.127-140), funds, General Fund divisions (pp.167-170), spending categories (pp.167-183) or departments (pp.85-125), transfers (p76 and p222) and fund balances (pp.186-209). Added up, they equal the citywide figures on pp.66-67. A box marked derived holds money a page prints for a group and no finer page breaks down.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>expansion</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>expansion-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Checked for <a href="flows.html">Flows</a>, <a href="ledger.html">Bars</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-the-expansion-is-the-spine-at-finer-grain">Link to this caveat</a></p>
+    </details>
+  </div>
+</section>
+<section class="caveat-page" id="caveats-on-change">
+  <h2>On <a href="change.html">Over time</a></h2>
+  <h3 id="caveats-on-change--left-out">What isn&#39;t in the picture</h3>
+  <div class="caveats">
+    <details class="caveat" id="caveat-no-general-fund-transfers-in-row">
+      <summary>pp.127-130 print no General Fund Transfers In row, so that total is below the city&#39;s summary.</summary>
+      <div class="caveat-variant">
+      <p>Budget Book pp.127-130 print no General Fund Transfers In row, so the General Fund total here is below the city&#39;s summary: by $480,400 in FY2025-26 and $486,735 in FY2026-27, the transfers pp.66-67 print and p76 itemises. Nothing here is short; the row is simply not on these pages.</p>
+      <p class="subtle">
+        Shipped inside <a href="data/revenue-trends.json">data/revenue-trends.json</a> (<code>revenue-trends</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="change.html">Over time</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-no-general-fund-transfers-in-row">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveat-capital-reserves-are-not-in-this-schedule">
+      <summary>FY2024-25&#39;s Capital Funds column is $4,125,627 short, because one fund has no section.</summary>
+      <div class="caveat-variant">
+      <p>The Capital Funds column for FY2024-25 adds up to $30,713,648 against the $34,839,275 the city prints on p63, because General Fund CIP Reserves has no section on pp.131-140. The $4,125,627 difference is a fund these pages don&#39;t carry, not a wrong figure.</p>
+      <p class="subtle">
+        Shipped inside <a href="data/revenue-trends.json">data/revenue-trends.json</a> (<code>revenue-trends</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="change.html">Over time</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-capital-reserves-are-not-in-this-schedule">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveat-other-financing-not-published">
+      <summary>The table stops before Other financing and Net change, whose 2023 totals are misprinted.</summary>
+      <div class="caveat-variant">
+      <p>pp.168-169 go on past the excess line to an Other financing sources (uses) block and a Net change in fund balances line. Neither is published: the block&#39;s printed 2023 total repeats the 2022 figure (its parts add up to $39,259,064 against a printed $(1,767,367)), and Net change 2023 carries the same copy.</p>
+      <p class="subtle">
+        Shipped inside <a href="data/changes-in-fund-balances.json">data/changes-in-fund-balances.json</a> (<code>changes-in-fund-balances</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="change.html">Over time</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-other-financing-not-published">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveat-governmental-funds-only">
+      <summary>These schedules leave out water, sewer and the city&#39;s other business-like funds.</summary>
+      <div class="caveat-variant">
+      <p>These schedules cover the governmental funds: the General Fund plus special revenue, debt service and capital project funds. Water, sewer and the other enterprise funds are outside them, so the totals here are well below the budget pages&#39;, which draw every fund. The gap is scope, not error.</p>
+      <p class="subtle">
+        Shipped inside <a href="data/changes-in-fund-balances.json">data/changes-in-fund-balances.json</a> (<code>changes-in-fund-balances</code>), <a href="data/fund-balances.json">data/fund-balances.json</a> (<code>fund-balances</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="change.html">Over time</a>, <a href="balances.html">Fund balances</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-governmental-funds-only">Link to this caveat</a></p>
+    </details>
+  </div>
+  <h3 id="caveats-on-change--same-money-twice">Don&#39;t add or compare these</h3>
+  <div class="caveats">
+    <details class="caveat" id="caveats-on-change--the-revenue-schedule-is-published-twice">
+      <summary>Revenue the charts draw is the same money the Over time page prints; don&#39;t add the two.</summary>
+      <div class="caveat-variant">
+      <p>Budget Book pp.127-140 appear in two places on this site: the charts draw one adopted year at a time, and the Over time page prints all four columns (FY2023-24 actual, FY2024-25 revised, and both adopted years). A row found in both is one printed figure shown twice.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>expansion</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>expansion-2027</code>), <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>fund-flows</code>), <a href="fy2024-actual.json">fy2024-actual.json</a> (<code>fund-flows-2024-actual</code>), <a href="fy2025-revised.json">fy2025-revised.json</a> (<code>fund-flows-2025-revised</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>fund-flows-2027</code>), <a href="data/revenue-trends.json">data/revenue-trends.json</a> (<code>revenue-trends</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="flows.html">Flows</a>, <a href="ledger.html">Bars</a>, <a href="change.html">Over time</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveats-on-change--the-revenue-schedule-is-published-twice">Link to this caveat</a></p>
+    </details>
+  </div>
+  <h3 id="caveats-on-change--kinds-of-year">Not every year is the same kind of number</h3>
+  <div class="caveats">
+    <details class="caveat" id="caveat-four-columns-are-four-measurements">
+      <summary>Actual, revised and adopted are different kinds of number, so no growth rate is given across them.</summary>
+      <div class="caveat-variant">
+      <p>FY2023-24 is money that actually moved, FY2024-25 is a mid-year re-forecast, and the two later years are plans adopted together. Each column says which it is; growth from one kind to another is not published, because it would not mean anything.</p>
+      <p class="subtle">
+        Shipped inside <a href="data/revenue-trends.json">data/revenue-trends.json</a> (<code>revenue-trends</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="change.html">Over time</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-four-columns-are-four-measurements">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveat-statistical-section-unaudited">
+      <summary>These ten-year tables are unaudited; the auditor&#39;s opinion covers only the latest year&#39;s statements.</summary>
+      <div class="caveat-variant">
+      <p>p161 heads this section &#34;Statistical Section (Unaudited)&#34;, and the auditor&#39;s report (p29) says its opinion does not cover it. The audited statements cover the year just ended, so at most a table&#39;s 2025 column can be checked against them; the other nine years rest on this section alone.</p>
+      <p class="subtle">
+        Shipped inside <a href="data/changes-in-fund-balances.json">data/changes-in-fund-balances.json</a> (<code>changes-in-fund-balances</code>), <a href="data/fund-balances.json">data/fund-balances.json</a> (<code>fund-balances</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="change.html">Over time</a>, <a href="balances.html">Fund balances</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-statistical-section-unaudited">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveat-property-tax-reclassified">
+      <summary>Property taxes and Intergovernmental change definition in FY2024-25, so that year&#39;s jump is partly a relabel.</summary>
+      <div class="caveat-variant">
+      <p>p168&#39;s footnote on the Property Taxes row reads: &#34;VLF Comp revenue reclassified to Property tax in FY 2024-25. Previously reported under Intergovernmental.&#34; Part of any movement in either line that year is the relabelling, not the economy.</p>
+      <p class="subtle">
+        Shipped inside <a href="data/changes-in-fund-balances.json">data/changes-in-fund-balances.json</a> (<code>changes-in-fund-balances</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="change.html">Over time</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-property-tax-reclassified">Link to this caveat</a></p>
+    </details>
+  </div>
+  <h3 id="caveats-on-change--checked">What we checked and found to agree</h3>
+  <div class="caveats">
+    <details class="caveat" id="caveat-pp168-169-tie-to-p54">
+      <summary>This table&#39;s 2025 column matches the audited statement (p54) to the dollar on five lines.</summary>
+      <div class="caveat-variant">
+      <p>Total revenues $221,212,743, Total Expenditures $186,516,649, the excess $34,696,094, Total other financing sources (uses) $(18,458,098) and Net change in fund balances $16,237,996 are the same in this table and in p54&#39;s Total Governmental Funds column. That includes the two lines this table withholds: what rules them out is their 2023 column, not their 2025 one.</p>
+      <p class="subtle">
+        Shipped inside <a href="data/changes-in-fund-balances.json">data/changes-in-fund-balances.json</a> (<code>changes-in-fund-balances</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Checked for <a href="change.html">Over time</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-pp168-169-tie-to-p54">Link to this caveat</a></p>
+    </details>
+  </div>
+</section>
+<section class="caveat-page" id="caveats-on-balances">
+  <h2>On <a href="balances.html">Fund balances</a></h2>
+  <h3 id="caveats-on-balances--left-out">What isn&#39;t in the picture</h3>
+  <div class="caveats">
+    <details class="caveat" id="caveat-all-other-funds-print-no-assigned-row">
+      <summary>All Other Governmental Funds prints no Assigned row, so that block has four parts, not five.</summary>
+      <div class="caveat-variant">
+      <p>p167&#39;s All Other Governmental Funds block prints Nonspendable, Restricted, Committed and Unassigned, and no Assigned line in any year. The row is missing, not zero: a zero would be a printed dash.</p>
+      <p class="subtle">
+        Shipped inside <a href="data/fund-balances.json">data/fund-balances.json</a> (<code>fund-balances</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="balances.html">Fund balances</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-all-other-funds-print-no-assigned-row">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveats-on-balances--governmental-funds-only">
+      <summary>These schedules leave out water, sewer and the city&#39;s other business-like funds.</summary>
+      <div class="caveat-variant">
+      <p>These schedules cover the governmental funds: the General Fund plus special revenue, debt service and capital project funds. Water, sewer and the other enterprise funds are outside them, so the totals here are well below the budget pages&#39;, which draw every fund. The gap is scope, not error.</p>
+      <p class="subtle">
+        Shipped inside <a href="data/changes-in-fund-balances.json">data/changes-in-fund-balances.json</a> (<code>changes-in-fund-balances</code>), <a href="data/fund-balances.json">data/fund-balances.json</a> (<code>fund-balances</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="change.html">Over time</a>, <a href="balances.html">Fund balances</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveats-on-balances--governmental-funds-only">Link to this caveat</a></p>
+    </details>
+  </div>
+  <h3 id="caveats-on-balances--books-disagree">Where the city&#39;s own books disagree</h3>
+  <div class="caveats">
+    <details class="caveat" id="caveat-p167-does-not-tie-to-p41">
+      <summary>The annual report&#39;s summary table (p41) does not match the General Fund&#39;s audited 2025 balance.</summary>
+      <div class="caveat-variant">
+      <p>This schedule&#39;s five General Fund parts for 2025 add up to $87,043,576, and the audited statement (p54) prints exactly that. The management discussion on p41 shows the same balance in millions as $87.10, which is not where $87,043,576 rounds. All three are published as printed.</p>
+      <p class="subtle">
+        Shipped inside <a href="data/fund-balances.json">data/fund-balances.json</a> (<code>fund-balances</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="balances.html">Fund balances</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-p167-does-not-tie-to-p41">Link to this caveat</a></p>
+    </details>
+  </div>
+  <h3 id="caveats-on-balances--kinds-of-year">Not every year is the same kind of number</h3>
+  <div class="caveats">
+    <details class="caveat" id="caveats-on-balances--statistical-section-unaudited">
+      <summary>These ten-year tables are unaudited; the auditor&#39;s opinion covers only the latest year&#39;s statements.</summary>
+      <div class="caveat-variant">
+      <p>p161 heads this section &#34;Statistical Section (Unaudited)&#34;, and the auditor&#39;s report (p29) says its opinion does not cover it. The audited statements cover the year just ended, so at most a table&#39;s 2025 column can be checked against them; the other nine years rest on this section alone.</p>
+      <p class="subtle">
+        Shipped inside <a href="data/changes-in-fund-balances.json">data/changes-in-fund-balances.json</a> (<code>changes-in-fund-balances</code>), <a href="data/fund-balances.json">data/fund-balances.json</a> (<code>fund-balances</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="change.html">Over time</a>, <a href="balances.html">Fund balances</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveats-on-balances--statistical-section-unaudited">Link to this caveat</a></p>
+    </details>
+  </div>
+</section>
+<section class="caveat-page" id="caveats-on-department">
+  <h2>On <a href="department.html">Departments</a></h2>
+  <h3 id="caveats-on-department--left-out">What isn&#39;t in the picture</h3>
+  <div class="caveats">
+    <details class="caveat" id="caveat-no-fund-axis-on-these-pages">
+      <summary>These rows say what a division spends, not which fund pays for it.</summary>
+      <div class="caveat-variant">
+      <p>The upper block of Budget Book pp.85-125 prints what each division spends by category, whatever fund pays for it, so no row here has a fund. The fund breakdown is the lower block of the same pages, drawn as its own chart, and it is by department, not division, so the two cannot be joined. A division here has no fund group, and a chart coloured by group leaves it grey.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>department-spending</code>), <a href="fy2024-actual.json">fy2024-actual.json</a> (<code>department-spending-2024-actual</code>), <a href="fy2025-revised.json">fy2025-revised.json</a> (<code>department-spending-2025-revised</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>department-spending-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="department.html">Departments</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-no-fund-axis-on-these-pages">Link to this caveat</a></p>
+    </details>
+  </div>
+  <h3 id="caveats-on-department--same-money-twice">Don&#39;t add or compare these</h3>
+  <div class="caveats">
+    <details class="caveat" id="caveats-on-department--a-department-here-is-not-a-division">
+      <summary>A department here is not the division of the same name elsewhere; don&#39;t add them.</summary>
+      <div class="caveat-variant">
+      <p>Budget Book pp.85-125 print two blocks per page: spending by DIVISION above, and each DEPARTMENT&#39;s funding sources below. Five names are both a department and a division beneath it: City Council, City Manager, City Attorney, General Services and Administrative Services. A mark here is the whole department across every fund; a mark of the same name on the General Fund&#39;s breakdown is one division of it.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>department-funding</code>), <a href="fy2024-actual.json">fy2024-actual.json</a> (<code>department-funding-2024-actual</code>), <a href="fy2025-revised.json">fy2025-revised.json</a> (<code>department-funding-2025-revised</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>department-funding-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="index.html">At a glance</a>, <a href="department.html">Departments</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveats-on-department--a-department-here-is-not-a-division">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveats-on-department--what-a-fund-pays-departments-is-not-what-it-takes-in">
+      <summary>What a fund pays departments is not what it takes in; two different pages print them.</summary>
+      <div class="caveat-variant">
+      <p>What a fund takes in is printed on Budget Book pp.127-140; what departments draw from it is printed on pp.85-125. They are two pages, not one figure read twice, and either may be the larger.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>department-funding</code>), <a href="fy2024-actual.json">fy2024-actual.json</a> (<code>department-funding-2024-actual</code>), <a href="fy2025-revised.json">fy2025-revised.json</a> (<code>department-funding-2025-revised</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>department-funding-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="index.html">At a glance</a>, <a href="department.html">Departments</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveats-on-department--what-a-fund-pays-departments-is-not-what-it-takes-in">Link to this caveat</a></p>
+    </details>
+  </div>
+  <h3 id="caveats-on-department--kinds-of-year">Not every year is the same kind of number</h3>
+  <div class="caveats">
+    <details class="caveat" id="caveats-on-department--two-of-the-four-columns-tie-to-no-citywide-total">
+      <summary>The FY2023-24 actual and FY2024-25 revised columns are checked only department by department.</summary>
+      <div class="caveat-variant">
+      <p>Budget Book pp.66-67 print citywide totals for the two adopted years only, so the actual and revised columns here are checked against each department&#39;s own printed total and nothing citywide. Five of the eleven departments miss that total by exactly one dollar, all in the FY2023-24 actual column; the mapping declares each as the city&#39;s own rounding.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>department-funding</code>), <a href="fy2024-actual.json">fy2024-actual.json</a> (<code>department-funding-2024-actual</code>), <a href="fy2025-revised.json">fy2025-revised.json</a> (<code>department-funding-2025-revised</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>department-funding-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="index.html">At a glance</a>, <a href="department.html">Departments</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveats-on-department--two-of-the-four-columns-tie-to-no-citywide-total">Link to this caveat</a></p>
+    </details>
+  </div>
+  <h3 id="caveats-on-department--our-reading">Where this site, not the city, decided</h3>
+  <div class="caveats">
+    <details class="caveat" id="caveats-on-department--constraint-tier-is-our-reading">
+      <summary>How restricted each fund&#39;s money is comes from this site&#39;s reading of the city&#39;s fund descriptions.</summary>
+      <div class="caveat-variant">
+      <p>How tightly a fund&#39;s money is restricted is this site&#39;s reading of the Description of Funds (Budget Book pp. 258-261), not a figure the city printed. Each fund shows the sentence it was read from. &#34;unknown&#34; means those pages do not say; it is a reading, not a gap.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>department-funding</code>), <a href="fy2024-actual.json">fy2024-actual.json</a> (<code>department-funding-2024-actual</code>), <a href="fy2025-revised.json">fy2025-revised.json</a> (<code>department-funding-2025-revised</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>department-funding-2027</code>), <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>expansion</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>expansion-2027</code>), <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>fund-flows</code>), <a href="fy2024-actual.json">fy2024-actual.json</a> (<code>fund-flows-2024-actual</code>), <a href="fy2025-revised.json">fy2025-revised.json</a> (<code>fund-flows-2025-revised</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>fund-flows-2027</code>), <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>fund-sources-uses</code>), <a href="fy2024-actual.json">fy2024-actual.json</a> (<code>fund-sources-uses-2024-actual</code>), <a href="fy2025-revised.json">fy2025-revised.json</a> (<code>fund-sources-uses-2025-revised</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>fund-sources-uses-2027</code>), <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>transfers-by-fund</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>transfers-by-fund-2027</code>), <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>transfers-out</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>transfers-out-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="index.html">At a glance</a>, <a href="flows.html">Flows</a>, <a href="ledger.html">Bars</a>, <a href="department.html">Departments</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveats-on-department--constraint-tier-is-our-reading">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveat-the-ribbons-are-a-cross-tab">
+      <summary>Each ribbon here is a cell of one printed table, not money moving from one box to another.</summary>
+      <div class="caveat-variant">
+      <p>These pages print one table: divisions down, spending categories across. A chart can read it either way round, and neither is money moving, so every ribbon here says so. Adding up a whole column gives that column&#39;s printed total and nothing more.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>department-spending</code>), <a href="fy2024-actual.json">fy2024-actual.json</a> (<code>department-spending-2024-actual</code>), <a href="fy2025-revised.json">fy2025-revised.json</a> (<code>department-spending-2025-revised</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>department-spending-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="department.html">Departments</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-the-ribbons-are-a-cross-tab">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveat-the-boundary-is-not-classified-here">
+      <summary>Spending here is all counted as outside the city, including charges between departments.</summary>
+      <div class="caveat-variant">
+      <p>Elsewhere on this site, spending is outside money or a charge between departments according to the fund group it comes from. These rows name no fund group, so every ribbon is published as outside money, and Internal Service Fund charges are inside these figures. Don&#39;t add a figure from here to an outside-money total from another page.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>department-spending</code>), <a href="fy2024-actual.json">fy2024-actual.json</a> (<code>department-spending-2024-actual</code>), <a href="fy2025-revised.json">fy2025-revised.json</a> (<code>department-spending-2025-revised</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>department-spending-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="department.html">Departments</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-the-boundary-is-not-classified-here">Link to this caveat</a></p>
+    </details>
+  </div>
+</section>
+<section class="caveat-page" id="caveats-on-capital">
+  <h2>On <a href="capital.html">Capital projects</a></h2>
+  <h3 id="caveats-on-capital--left-out">What isn&#39;t in the picture</h3>
+  <div class="caveats">
+    <details class="caveat" id="caveat-cip-listing-fund-611-unpublished">
+      <summary>Fund 611&#39;s storm grant projects are left out, so the rows add up to less than the printed total.</summary>
+      <div class="caveat-variant">
+      <p>p230 lists fund 611&#39;s storm projects twice, under a federal and a state grant block, on lines identical but for their figures, and neither block is published. Both still count in the listing&#39;s grand total. FY 2025-26: the listing prints $70,765,450, fund 611&#39;s blocks $2,246,250 and $1,486,563, and the printed total is $1 under its own rows, so the rows here sum to $67,032,638; FY 2026-27: the listing prints $70,559,870, fund 611&#39;s blocks $2,912,750 and $134,438, and the printed total is $1 under its own rows, so the rows here sum to $67,512,683; FY 2027-28: the listing prints $69,034,500, fund 611&#39;s blocks $2,075,000 and $518,750, so the rows here sum to $66,440,750; FY 2028-29: the listing prints $56,440,500, fund 611&#39;s blocks $0 and $0, so the rows here sum to $56,440,500; FY 2029-30: the listing prints $51,891,000, fund 611&#39;s blocks $0 and $0, so the rows here sum to $51,891,000.</p>
+      <p class="subtle">
+        Shipped inside <a href="data/cip-projects.json">data/cip-projects.json</a> (<code>cip-projects</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="capital.html">Capital projects</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-cip-listing-fund-611-unpublished">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveat-cip-listing-columns-not-published">
+      <summary>Three of the listing&#39;s columns are checked against its totals but not shown.</summary>
+      <div class="caveat-variant">
+      <p>pp.224-235 also print an FY 2024-25 column, whose basis these pages don&#39;t state; an FY 2030-45 column, fifteen years in one figure; and each row&#39;s TOTAL. All three are checked against the printed fund totals, and none is shown. Nor is the program a project belongs to, which pp.236-245 print.</p>
+      <p class="subtle">
+        Shipped inside <a href="data/cip-projects.json">data/cip-projects.json</a> (<code>cip-projects</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="capital.html">Capital projects</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-cip-listing-columns-not-published">Link to this caveat</a></p>
+    </details>
+  </div>
+  <h3 id="caveats-on-capital--kinds-of-year">Not every year is the same kind of number</h3>
+  <div class="caveats">
+    <details class="caveat" id="caveat-cip-listing-carries-forward">
+      <summary>A project&#39;s budget here includes money carried forward from earlier years, so it is not all new.</summary>
+      <div class="caveat-variant">
+      <p>The FY 2025-26 and FY 2026-27 columns are each project&#39;s adopted budget, including unspent money carried forward from earlier years. The listing&#39;s grand totals are $70,765,450 for FY 2025-26 against p222&#39;s $47,084,623, and $70,559,870 for FY 2026-27 against p222&#39;s $58,988,871 new appropriations. No page says how much of a project&#39;s figure is carried forward.</p>
+      <p class="subtle">
+        Shipped inside <a href="data/cip-projects.json">data/cip-projects.json</a> (<code>cip-projects</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="capital.html">Capital projects</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-cip-listing-carries-forward">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveat-cip-listing-plan-years-are-projected">
+      <summary>FY 2027-28 to FY 2029-30 are the plan&#39;s projections, not adopted budgets.</summary>
+      <div class="caveat-variant">
+      <p>The city adopts a two-year budget. The listing&#39;s three later columns, FY 2027-28, FY 2028-29 and FY 2029-30, are projected: nothing has been appropriated for them, and a later budget may change any of them.</p>
+      <p class="subtle">
+        Shipped inside <a href="data/cip-projects.json">data/cip-projects.json</a> (<code>cip-projects</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="capital.html">Capital projects</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-cip-listing-plan-years-are-projected">Link to this caveat</a></p>
+    </details>
+  </div>
+</section>
+<section class="caveat-page" id="caveats-on-debt">
+  <h2>On <a href="debt.html">Debt</a></h2>
+  <h3 id="caveats-on-debt--books-disagree">Where the city&#39;s own books disagree</h3>
+  <div class="caveats">
+    <details class="caveat" id="caveat-the-last-band-ends-in-2052">
+      <summary>The budget book labels the last band 2051-2055; the annual report prints it as 2051-2052.</summary>
+      <div class="caveat-variant">
+      <p>The city&#39;s FY2025 annual financial report prints the same principal and interest on p86 under 2051-2052, and on p84 gives 2052 as the 2022 Certificates of Participation&#39;s last year. This site shows the band as the Budget Book prints it.</p>
+      <p class="subtle">
+        Shipped inside <a href="data/debt-service.json">data/debt-service.json</a> (<code>debt-service</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="debt.html">Debt</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-the-last-band-ends-in-2052">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveat-by-issue-short-of-the-funds-debt-services">
+      <summary>The adopted budget by loan adds up to a little less than the funds&#39; debt service budgets.</summary>
+      <div class="caveat-variant">
+      <p>The issues&#39; adopted totals fall short of the Debt Services the funds&#39; spending pages print by $119,578 in FY 2025-26 and $110,926 in FY 2026-27. The difference is mostly in fund 224, which budgets more than its HUD loans&#39; printed payments, and fund 402, which budgets less than its 2022 certificates&#39;. The FY 2024-25 revised column ties exactly. Neither figure is corrected to the other.</p>
+      <p class="subtle">
+        Shipped inside <a href="data/debt-service.json">data/debt-service.json</a> (<code>debt-service</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="debt.html">Debt</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-by-issue-short-of-the-funds-debt-services">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveat-requirements-are-not-the-budget">
+      <summary>A few scheduled 2026 and 2027 payments differ from the budget above them by a few dollars.</summary>
+      <div class="caveat-variant">
+      <p>Each fund type&#39;s scheduled payment for 2026 and 2027 can be held against the issues it pays in the budget above it. Most agree to the dollar; 4 cells differ by $1 to $5: Governmental Funds principal 2026, $1 less; Airport Fund interest 2027, $1 less; Water Fund principal 2027, $5 more; Water Fund interest 2027, $1 less. Both are published as printed.</p>
+      <p class="subtle">
+        Shipped inside <a href="data/debt-service.json">data/debt-service.json</a> (<code>debt-service</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="debt.html">Debt</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-requirements-are-not-the-budget">Link to this caveat</a></p>
+    </details>
+  </div>
+  <h3 id="caveats-on-debt--kinds-of-year">Not every year is the same kind of number</h3>
+  <div class="caveats">
+    <details class="caveat" id="caveat-requirements-are-projected">
+      <summary>The debt payments through 2055 are what the city owes on its schedule, not money budgeted.</summary>
+      <div class="caveat-variant">
+      <p>pp.80-81 print beside the budget what the city&#39;s certificates, loans and lease oblige it to pay each year. No council adopts those: the adopted figures are the by-issue budget for FY 2025-26 and FY 2026-27, and every scheduled payment is published as projected.</p>
+      <p class="subtle">
+        Shipped inside <a href="data/debt-service.json">data/debt-service.json</a> (<code>debt-service</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="debt.html">Debt</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-requirements-are-projected">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveat-a-band-is-five-years">
+      <summary>From 2031 each row is five years in one figure, not one year.</summary>
+      <div class="caveat-variant">
+      <p>The schedule prints one row a year through June 30, 2030, then one row for each five years, 2031-2035 to 2051-2055. Each figure is the five years&#39; total, as printed; the page doesn&#39;t say how it falls year by year, and this site doesn&#39;t divide it.</p>
+      <p class="subtle">
+        Shipped inside <a href="data/debt-service.json">data/debt-service.json</a> (<code>debt-service</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="debt.html">Debt</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-a-band-is-five-years">Link to this caveat</a></p>
+    </details>
+  </div>
+  <h3 id="caveats-on-debt--our-reading">Where this site, not the city, decided</h3>
+  <div class="caveats">
+    <details class="caveat" id="caveat-the-equipment-lease-is-one-lender">
+      <summary>The two Lease/Purchase rows are one equipment loan, each row one fund&#39;s share of its payments.</summary>
+      <div class="caveat-variant">
+      <p>p80 prints the governmental lease across three lines, which this site joins as Banc of America Equipment Lease/Purchase Loan, the name the Airport&#39;s row carries. The city&#39;s FY2025 annual financial report (p86) describes one equipment purchase agreement with Bank of America from 2012, paid by the Facilities Rehabilitation Internal Service Fund and the Airport. The Internal Service Funds&#39; 2026 and 2027 payments are this row&#39;s to the dollar.</p>
+      <p class="subtle">
+        Shipped inside <a href="data/debt-service.json">data/debt-service.json</a> (<code>debt-service</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="debt.html">Debt</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-the-equipment-lease-is-one-lender">Link to this caveat</a></p>
+    </details>
+  </div>
+</section>
+<section class="caveat-page" id="caveats-in-the-data-files">
+  <h2>In the data files</h2>
+  <p class="subtle">
+    No page states these: they are about adding up a
+    <a href="provenance.html">downloaded file</a>.
+  </p>
+  <div class="caveats">
+    <details class="caveat" id="caveat-an-opened-box-repeats-its-members">
+      <summary>In this file an opened box repeats its members&#39; links, so adding every link counts money twice.</summary>
+      <div class="caveat-variant">
+      <p><strong>FY 2025-26 adopted:</strong> An opened node draws a link to each of its members. The General Fund&#39;s link to each division totals the rows drawn beyond it; every other node&#39;s repeats each link arriving at the member, or leaving it where the node takes nothing in, with the same figure and facts. A remainder cites the members it is the difference of. So 369 printed figures sit behind more than one link, and summing every value_cents in this file counts them more than once.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>expansion</code>).
+      </p>
+      </div>
+      <div class="caveat-variant">
+      <p><strong>FY 2026-27 adopted:</strong> An opened node draws a link to each of its members. The General Fund&#39;s link to each division totals the rows drawn beyond it; every other node&#39;s repeats each link arriving at the member, or leaving it where the node takes nothing in, with the same figure and facts. A remainder cites the members it is the difference of. So 392 printed figures sit behind more than one link, and summing every value_cents in this file counts them more than once.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>expansion-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on no page: it is about adding up a downloaded file.
+      </p>
+      <p class="caveat-link"><a href="#caveat-an-opened-box-repeats-its-members">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveat-mixed-grain-double-counts">
+      <summary>Adding up every link in this file counts some money two or three times.</summary>
+      <div class="caveat-variant">
+      <p><strong>FY 2023-24 actual:</strong> This file holds the same money at more than one level of detail: 246 printed figures sit behind more than one link. A revenue row is behind its flow into a fund, its line&#39;s rollup into its category, and its fund&#39;s rollup into the fund&#39;s group; a spending row is behind its department&#39;s category rows and the fund-to-department link that totals them. Sum within one pair of adjacent tiers, never across the whole graph; the file publishes no headline for this reason.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2024-actual.json">fy2024-actual.json</a> (<code>fund-flows-2024-actual</code>).
+      </p>
+      </div>
+      <div class="caveat-variant">
+      <p><strong>FY 2024-25 revised:</strong> This file holds the same money at more than one level of detail: 242 printed figures sit behind more than one link. A revenue row is behind its flow into a fund, its line&#39;s rollup into its category, and its fund&#39;s rollup into the fund&#39;s group; a spending row is behind its department&#39;s category rows and the fund-to-department link that totals them. Sum within one pair of adjacent tiers, never across the whole graph; the file publishes no headline for this reason.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2025-revised.json">fy2025-revised.json</a> (<code>fund-flows-2025-revised</code>).
+      </p>
+      </div>
+      <div class="caveat-variant">
+      <p><strong>FY 2025-26 adopted:</strong> This file holds the same money at more than one level of detail: 228 printed figures sit behind more than one link. A revenue row is behind its flow into a fund, its line&#39;s rollup into its category, and its fund&#39;s rollup into the fund&#39;s group; a spending row is behind its department&#39;s category rows and the fund-to-department link that totals them. Sum within one pair of adjacent tiers, never across the whole graph; the file publishes no headline for this reason.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>fund-flows</code>).
+      </p>
+      </div>
+      <div class="caveat-variant">
+      <p><strong>FY 2026-27 adopted:</strong> This file holds the same money at more than one level of detail: 226 printed figures sit behind more than one link. A revenue row is behind its flow into a fund, its line&#39;s rollup into its category, and its fund&#39;s rollup into the fund&#39;s group; a spending row is behind its department&#39;s category rows and the fund-to-department link that totals them. Sum within one pair of adjacent tiers, never across the whole graph; the file publishes no headline for this reason.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>fund-flows-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on no page: it is about adding up a downloaded file.
+      </p>
+      <p class="caveat-link"><a href="#caveat-mixed-grain-double-counts">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveat-one-figure-is-two-ribbons">
+      <summary>Every printed transfer is drawn from both ends, so adding every ribbon in this file counts each transfer twice.</summary>
+      <div class="caveat-variant">
+      <p>Budget Book p76 names both ends of every transfer it prints, and this file draws both: a leg into the fund that gets the money and a leg out of the fund that sends it, under one transfer_id and at one value. So the number of transfers is half metadata.counts.links, and adding every value_cents gives twice p76&#39;s grand total: $21,525,997 in FY 2025-26 and $21,624,633 in FY 2026-27.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>transfers-by-fund</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>transfers-by-fund-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on no page: it is about adding up a downloaded file.
+      </p>
+      <p class="caveat-link"><a href="#caveat-one-figure-is-two-ribbons">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveat-every-transfer-out-is-two-ribbons">
+      <summary>Every transfer out is drawn from both ends, so adding every ribbon in this file counts each twice.</summary>
+      <div class="caveat-variant">
+      <p><strong>FY 2025-26 adopted:</strong> Budget Book p76 and p222 name both ends of every transfer they print, and this file draws both, under one transfer_id and at one value. Adding every value_cents gives twice the $59,612,734 the city transfers out.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>transfers-out</code>).
+      </p>
+      </div>
+      <div class="caveat-variant">
+      <p><strong>FY 2026-27 adopted:</strong> Budget Book p76 and p222 name both ends of every transfer they print, and this file draws both, under one transfer_id and at one value. Adding every value_cents gives twice the $72,386,884 the city transfers out.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>transfers-out-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on no page: it is about adding up a downloaded file.
+      </p>
+      <p class="caveat-link"><a href="#caveat-every-transfer-out-is-two-ribbons">Link to this caveat</a></p>
+    </details>
+  </div>
+</section>
+<section class="caveat-page" id="caveats-in-data-no-page-draws">
+  <h2>In data no page states caveats for</h2>
+  <p class="subtle">
+    These are carried only by documents no page above lists caveats for: schedules no page draws
+    yet, and the finer schedules a chart opens into when you click through. They are owed to
+    whoever fetches the file.
+  </p>
+  <div class="caveats">
+    <details class="caveat" id="caveat-only-the-general-fund-has-divisions">
+      <summary>Only the General Fund&#39;s spending is broken down by division; other funds go straight to categories.</summary>
+      <div class="caveat-variant">
+      <p>Budget Book pp.167-170 break the General Fund&#39;s spending down by division, then by category. pp.173-183 print every other fund by category alone, so those funds are drawn straight to their categories. Revenue and spending come from different pages and need not balance fund by fund: a fund with printed revenue and no printed spending is drawn with money arriving and none leaving, and the other way round.</p>
+      <p class="subtle">
+        About <code>fund-group/capital</code>, <code>fund-group/debt-service</code>, <code>fund-group/enterprise</code>, <code>fund-group/internal-service</code>, <code>fund-group/special-revenue</code>, <code>fund/100</code> in <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>fund-flows</code>), <a href="fy2024-actual.json">fy2024-actual.json</a> (<code>fund-flows-2024-actual</code>), <a href="fy2025-revised.json">fy2025-revised.json</a> (<code>fund-flows-2025-revised</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>fund-flows-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        No page states it.
+      </p>
+      <p class="caveat-link"><a href="#caveat-only-the-general-fund-has-divisions">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveat-the-cip-funds-block-is-not-drawn">
+      <summary>Capital project funds are not drawn here; their money is on the capital projects pages.</summary>
+      <div class="caveat-variant">
+      <p>Budget Book pp.190, 196, 202 and 208 print a block of capital project funds below the operating funds. That money is outside the operating budget pp.66-67 total, and p222 lists it, so this chart draws the operating funds alone; adding the block would produce group totals no page prints.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>fund-sources-uses</code>), <a href="fy2024-actual.json">fy2024-actual.json</a> (<code>fund-sources-uses-2024-actual</code>), <a href="fy2025-revised.json">fy2025-revised.json</a> (<code>fund-sources-uses-2025-revised</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>fund-sources-uses-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        No page states it.
+      </p>
+      <p class="caveat-link"><a href="#caveat-the-cip-funds-block-is-not-drawn">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveat-each-fund-change-is-gross">
+      <summary>Each fund&#39;s own change in balance is drawn, so these can add to more than the citywide chart&#39;s.</summary>
+      <div class="caveat-variant">
+      <p><strong>FY 2023-24 actual:</strong> Budget Book pp.186-209 print each fund&#39;s beginning and ending balance, and this chart draws the change fund by fund: 30 funds draw $35,949,908 and 36 funds contribute $25,403,328. Netted within each fund group, the same changes come to draws of $17,009,977 and contributions of $6,463,397, and that net is what the citywide chart draws, from pp.66-67&#39;s own figures. Within a fund group some funds draw and others contribute, so these add up to more than the group&#39;s net change.</p>
+      <p class="subtle">
+        About <code>fund-balance/draw</code>, <code>fund-balance/contribution</code> in <a href="fy2024-actual.json">fy2024-actual.json</a> (<code>fund-sources-uses-2024-actual</code>).
+      </p>
+      </div>
+      <div class="caveat-variant">
+      <p><strong>FY 2024-25 revised:</strong> Budget Book pp.186-209 print each fund&#39;s beginning and ending balance, and this chart draws the change fund by fund: 39 funds draw $92,697,242 and 23 funds contribute $26,609,243. Netted within each fund group, the same changes come to draws of $66,087,999 and contributions of $0, and that net is what the citywide chart draws, from pp.66-67&#39;s own figures. Within a fund group some funds draw and others contribute, so these add up to more than the group&#39;s net change.</p>
+      <p class="subtle">
+        About <code>fund-balance/draw</code>, <code>fund-balance/contribution</code> in <a href="fy2025-revised.json">fy2025-revised.json</a> (<code>fund-sources-uses-2025-revised</code>).
+      </p>
+      </div>
+      <div class="caveat-variant">
+      <p><strong>FY 2025-26 adopted:</strong> Budget Book pp.186-209 print each fund&#39;s beginning and ending balance, and this chart draws the change fund by fund: 36 funds draw $23,235,743 and 25 funds contribute $26,323,176. Netted within each fund group, the same changes come to draws of $9,681,900 and contributions of $12,769,333, and that net is what the citywide chart draws, from pp.66-67&#39;s own figures. Within a fund group some funds draw and others contribute, so these add up to more than the group&#39;s net change.</p>
+      <p class="subtle">
+        About <code>fund-balance/draw</code>, <code>fund-balance/contribution</code> in <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>fund-sources-uses</code>).
+      </p>
+      </div>
+      <div class="caveat-variant">
+      <p><strong>FY 2026-27 adopted:</strong> Budget Book pp.186-209 print each fund&#39;s beginning and ending balance, and this chart draws the change fund by fund: 34 funds draw $30,300,084 and 25 funds contribute $26,043,373. Netted within each fund group, the same changes come to draws of $17,040,061 and contributions of $12,783,350, and that net is what the citywide chart draws, from pp.66-67&#39;s own figures. Within a fund group some funds draw and others contribute, so these add up to more than the group&#39;s net change.</p>
+      <p class="subtle">
+        About <code>fund-balance/draw</code>, <code>fund-balance/contribution</code> in <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>fund-sources-uses-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        No page states it.
+      </p>
+      <p class="caveat-link"><a href="#caveat-each-fund-change-is-gross">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveat-sources-and-uses-differ">
+      <summary>For some funds drawn here, money in does not equal money out.</summary>
+      <div class="caveat-variant">
+      <p>Each fund&#39;s page prints its beginning balance plus money in as equal to money out plus its ending balance. For 18 funds drawn here, money in and money out differ. For 18 funds the printed figures themselves miss by at most $1, and are drawn as printed.</p>
+      <p class="subtle">
+        About <code>fund/201</code>, <code>fund/210</code>, <code>fund/220</code>, <code>fund/224</code>, <code>fund/225</code>, <code>fund/240</code>, <code>fund/282</code>, <code>fund/284</code>, <code>fund/289</code>, <code>fund/290</code>, <code>fund/300</code>, <code>fund/311</code>, <code>fund/510</code>, <code>fund/512</code>, <code>fund/553</code>, <code>fund/560</code>, <code>fund/561</code>, <code>fund/640</code> in <a href="fy2024-actual.json">fy2024-actual.json</a> (<code>fund-sources-uses-2024-actual</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        No page states it.
+      </p>
+      <p class="caveat-link"><a href="#caveat-sources-and-uses-differ">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveat-a-fund-is-drawn-once-per-end">
+      <summary>A fund that both pays and receives appears twice, under one name.</summary>
+      <div class="caveat-variant">
+      <p>This is money moving between the city&#39;s own funds, and a flow chart cannot draw a box pointing at itself. So a fund&#39;s paying end and its receiving end are separate boxes; two boxes with one name are one fund seen from both ends.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>transfers-by-fund</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>transfers-by-fund-2027</code>), <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>transfers-out</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>transfers-out-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        No page states it.
+      </p>
+      <p class="caveat-link"><a href="#caveat-a-fund-is-drawn-once-per-end">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveat-only-the-budget-columns-are-published">
+      <summary>Only p76&#39;s two adopted years are drawn; its two earlier columns don&#39;t add up.</summary>
+      <div class="caveat-variant">
+      <p>p76&#39;s FY2023-24 and FY2024-25 columns miss its own printed grand total by $6,858,051 and by exactly $5,000,000, far more than rounding, so no figure from them is published. Budget Book pp.66-67 print no actual or revised column to check them against either.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>transfers-by-fund</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>transfers-by-fund-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        No page states it.
+      </p>
+      <p class="caveat-link"><a href="#caveat-only-the-budget-columns-are-published">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveat-the-paying-side-is-not-the-whole-of-transfers-out">
+      <summary>A fund&#39;s payments here are not all it transfers out: capital transfers are listed elsewhere.</summary>
+      <div class="caveat-variant">
+      <p>Each receiving section of p76 equals the matching Transfers In on Budget Book pp.66-67 to the cent, so the payments drawn here add up to transfers in, not to the city&#39;s transfers out. What p76 leaves out is what each fund sends to capital projects, which p222 lists.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>transfers-by-fund</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>transfers-by-fund-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        No page states it.
+      </p>
+      <p class="caveat-link"><a href="#caveat-the-paying-side-is-not-the-whole-of-transfers-out">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveat-transfers-out-are-two-schedules">
+      <summary>The city&#39;s transfers out come from two printed lists, so a fund can appear on both.</summary>
+      <div class="caveat-variant">
+      <p><strong>FY 2025-26 adopted:</strong> Budget Book p76 lists what the operating funds transfer to one another, $21,525,997 here, and p222 what they transfer to capital project funds, $38,086,737. pp.66-67 print Transfers Out as the two together, and the build checks that sum by fund group to the cent. A fund on both lists pays both.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>transfers-out</code>).
+      </p>
+      </div>
+      <div class="caveat-variant">
+      <p><strong>FY 2026-27 adopted:</strong> Budget Book p76 lists what the operating funds transfer to one another, $21,624,633 here, and p222 what they transfer to capital project funds, $50,762,251. pp.66-67 print Transfers Out as the two together, and the build checks that sum by fund group to the cent. A fund on both lists pays both.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>transfers-out-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        No page states it.
+      </p>
+      <p class="caveat-link"><a href="#caveat-transfers-out-are-two-schedules">Link to this caveat</a></p>
+    </details>
+    <details class="caveat" id="caveat-the-cip-funds-are-outside-the-operating-budget">
+      <summary>Money sent to capital project funds leaves the citywide chart; no box there receives it.</summary>
+      <div class="caveat-variant">
+      <p>Budget Book p204 prints the capital project funds on a line of their own, beside the operating budget, and pp.66-67 total the operating budget alone. So money an operating fund sends to a capital project fund leaves the citywide chart as Transfers Out. This chart draws each capital project fund that receives it, but not what that fund spends it on.</p>
+      <p class="subtle">
+        Shipped inside <a href="fy2026-adopted.json">fy2026-adopted.json</a> (<code>transfers-out</code>), <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>transfers-out-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        No page states it.
+      </p>
+      <p class="caveat-link"><a href="#caveat-the-cip-funds-are-outside-the-operating-budget">Link to this caveat</a></p>
+    </details>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <p>Built from the City of Livermore's published budget PDFs · <a href="provenance.html">Sources and data</a>
+    · <a href="https://github.com/jcrussell/livermore-budget">Code on GitHub</a></p>
+</footer>
+
+</body>
+</html>
+

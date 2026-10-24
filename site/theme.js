@@ -127,8 +127,44 @@ export function wireLede(win) {
 }
 
 /**
+ * Opens every closed <details> the element the URL's fragment names is, or
+ * is inside, and scrolls it into view. A browser scrolls to a fragment but
+ * does not reliably open the <details> it names, which on the caveats page
+ * would land a reader on a folded summary, or on nothing where the target is
+ * inside one. A fragment naming nothing, or nothing folded, is left alone.
+ * @param {Window} win
+ */
+function openTarget(win) {
+  let id = "";
+  try {
+    id = decodeURIComponent(win.location.hash.slice(1));
+  } catch (e) { /* a malformed fragment names nothing */ }
+  const el = id && win.document.getElementById(id);
+  if (!el) return;
+  let opened = false;
+  for (let d = el.closest("details"); d; d = d.parentElement && d.parentElement.closest("details")) {
+    if (!d.open) {
+      d.open = true;
+      opened = true;
+    }
+  }
+  if (opened && typeof el.scrollIntoView === "function") el.scrollIntoView();
+}
+
+/**
+ * Opens the fragment's target now (openTarget) and on every later change of
+ * fragment, which is what following a link within the page does.
+ * @param {Window} win
+ */
+export function wireTargets(win) {
+  openTarget(win);
+  win.addEventListener("hashchange", () => openTarget(win));
+}
+
+/**
  * Wires the page's chrome: the menu (wireMenu), the folding prose
- * (wireHowTo), the clamped page lede (wireLede), the cue on every box that
+ * (wireHowTo), the clamped page lede (wireLede), a folded fragment target
+ * (wireTargets), the cue on every box that
  * scrolls sideways (format.js scrollCues), and the page's theme toggle, shown
  * and following the OS setting so the button never announces the opposite of
  * what it does. A page with no toggle keeps no theme control.
@@ -138,6 +174,7 @@ export function boot(win = globalThis.window) {
   wireMenu(win);
   wireHowTo(win);
   wireLede(win);
+  wireTargets(win);
   scrollCues(win.document);
   const doc = win.document;
   const button = doc.getElementById("theme-toggle");

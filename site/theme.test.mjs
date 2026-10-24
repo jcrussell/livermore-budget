@@ -15,7 +15,7 @@ const PAGES = readdirSync(TESTDATA).filter((f) => f.endsWith(".golden.html")).so
 test("theme.js imports with no DOM and runs nothing", async () => {
   assert.equal(typeof globalThis.document, "undefined", "nothing installed a DOM before the import");
   const mod = await import(MODULE);
-  assert.deepEqual(Object.keys(mod).sort(), ["THEME_EVENT", "THEME_KEY", "boot", "prefersDark", "syncTheme", "wireHowTo", "wireLede", "wireMenu"]);
+  assert.deepEqual(Object.keys(mod).sort(), ["THEME_EVENT", "THEME_KEY", "boot", "prefersDark", "syncTheme", "wireHowTo", "wireLede", "wireMenu", "wireTargets"]);
 });
 
 /** One pinned page in a browser, theme.js booted against it as its top bar does. */
@@ -175,6 +175,46 @@ test("wireHowTo folds the how-to-read prose on a narrow screen and opens it on a
   mq.matches = false;
   listeners.forEach((f) => f());
   assert.ok(blocks.every((d) => d.open), "a block stayed closed on a wide screen");
+});
+
+// A fragment naming a folded caveat opens it, at load and on a later
+// fragment change, over the pinned caveats page: the canonical anchor on the
+// <details> itself, a section's own anchor for a caveat another section
+// states first, and the link inside an open one, which is not re-scrolled.
+// Mutation: open only the element the fragment names and not the <details>
+// it is inside, and the inner-link arm goes red.
+test("wireTargets opens the folded caveat a fragment names", async () => {
+  const { JSDOM } = await import("jsdom");
+  const mod = await import(MODULE);
+  const html = readFileSync(path.join(TESTDATA, "caveats.golden.html"), "utf8");
+  const { window } = new JSDOM(html, { url: "https://example.test/caveats.html#caveat-transfer-legs-unpaired" });
+  const doc = window.document;
+  let scrolled = 0;
+  window.Element.prototype.scrollIntoView = () => { scrolled++; };
+  const folded = [...doc.querySelectorAll("details.caveat")];
+  assert.ok(folded.length > 1 && folded.every((d) => !d.open), "the pinned caveats page ships a caveat open");
+  mod.wireTargets(window);
+  const first = /** @type {HTMLDetailsElement} */ (doc.getElementById("caveat-transfer-legs-unpaired"));
+  assert.ok(first && first.open, "the canonical anchor stayed folded at load");
+  assert.equal(scrolled, 1);
+  const again = /** @type {HTMLDetailsElement} */ (doc.getElementById("caveats-on-flows--transfer-legs-unpaired"));
+  assert.ok(again && !again.open, "a second section's copy opened with the first");
+  window.location.hash = "#caveats-on-flows--transfer-legs-unpaired";
+  window.dispatchEvent(new window.HashChangeEvent("hashchange"));
+  assert.ok(again.open, "a section's own anchor stayed folded on hashchange");
+  // The inside of a folded caveat: its own link names the <details>, so
+  // give a paragraph inside one an id and name that.
+  const inner = folded.find((d) => !d.open);
+  assert.ok(inner, "every caveat is open, so the inner arm has nothing to open");
+  const p = /** @type {Element} */ (inner.querySelector("p"));
+  p.id = "inner-target";
+  window.location.hash = "#inner-target";
+  window.dispatchEvent(new window.HashChangeEvent("hashchange"));
+  assert.ok(inner.open, "a target inside a folded caveat left it folded");
+  const before = scrolled;
+  window.location.hash = "#no-such-anchor";
+  window.dispatchEvent(new window.HashChangeEvent("hashchange"));
+  assert.equal(scrolled, before, "a fragment naming nothing scrolled the page");
 });
 
 // The page lede gets "More" only where the clamp cuts it, and a press drops

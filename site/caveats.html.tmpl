@@ -25,34 +25,52 @@
 <main>
 
 <p class="lede">
-  {{len .Entries}} caveat{{if ne (len .Entries) 1}}s{{end}}, each stated once, across {{.Documents}}
+  {{len .Entries}} caveat{{if ne (len .Entries) 1}}s{{end}} across {{.Documents}}
   published document{{if ne .Documents 1}}s{{end}}, in {{len .Themes}} kind{{if ne (len .Themes) 1}}s{{end}}.
+  Open one to read it in full.
 </p>
 
 <section class="caveat-themes" aria-labelledby="caveats-kinds">
   <h2 id="caveats-kinds">The kinds</h2>
   <dl class="caveat-kinds">
     {{- range .Themes}}
-    <dt><a href="#{{.Anchor}}">{{.Heading}}</a> <span class="subtle">({{len .Entries}})</span></dt>
+    <dt id="{{.Anchor}}">{{.Heading}} <span class="subtle">({{len .Entries}})</span></dt>
     <dd>{{.Blurb}}</dd>
     {{- end}}
   </dl>
 </section>
 
-{{- /* A section lists the caveats of every document its views reach
-       (caveatsOfView), which is what each view's own line counts; views
-       stating the same caveats share one. */}}
+{{- /* A section states, folded and in full, the caveats of every document
+       its views reach (caveatsOfView), which is what each view's own line
+       counts; views stating the same caveats share one. A caveat two
+       sections share is written in each, under each section's own anchor. */}}
 {{- range .Sections}}
+{{- $s := .}}
 <section class="caveat-page" id="{{.Anchor}}">
   <h2>On {{range $i, $p := .Pages}}{{if $i}} and {{end}}<a href="{{$p.Path}}">{{$p.Label}}</a>{{end}}</h2>
   {{- range .Groups}}
   <h3 id="{{.Anchor}}">{{.Heading}}</h3>
-  <ul class="caveats">
+  <div class="caveats">
     {{- range .Entries}}
-    <li><a href="#{{.Anchor}}">{{.Summary}}</a></li>
+    {{template "caveat" ($s.At .)}}
     {{- end}}
-  </ul>
+  </div>
   {{- end}}
+</section>
+{{- end}}
+
+{{- if .DataFiles}}
+<section class="caveat-page" id="caveats-in-the-data-files">
+  <h2>In the data files</h2>
+  <p class="subtle">
+    No page states these: they are about adding up a
+    {{if .SourcesPath}}<a href="{{.SourcesPath}}">downloaded file</a>{{else}}downloaded file{{end}}.
+  </p>
+  <div class="caveats">
+    {{- range .DataFiles}}
+    {{template "caveat" .Canonical}}
+    {{- end}}
+  </div>
 </section>
 {{- end}}
 
@@ -64,53 +82,11 @@
     yet, and the finer schedules a chart opens into when you click through. They are owed to
     whoever fetches the file.
   </p>
-  <ul class="caveats">
+  <div class="caveats">
     {{- range .Unviewed}}
-    <li><a href="#{{.Anchor}}">{{.Summary}}</a></li>
+    {{template "caveat" .Canonical}}
     {{- end}}
-  </ul>
-</section>
-{{- end}}
-
-{{- range .Themes}}
-<section class="caveat-doc" id="{{.Anchor}}" aria-labelledby="{{.Anchor}}-h">
-  <h2 id="{{.Anchor}}-h">{{.Heading}}</h2>
-  {{- range .Entries}}
-  <article class="caveat" id="{{.Anchor}}">
-    <h3><a href="#{{.Anchor}}" class="anchor-link">{{.Summary}}</a></h3>
-    {{- range .Variants}}
-    <div class="caveat-variant">
-    <p>{{if .Of}}<strong>{{.Of}}:</strong> {{end}}{{.Text}}</p>
-    {{- range .About}}
-    <p class="subtle">
-      {{- if .AppliesTo}}
-      About
-      {{- range $i, $n := .AppliesTo}}{{if $i}},{{end}} <code>{{$n}}</code>{{end}} in
-      {{- else}}
-      Shipped inside
-      {{- end}}
-      {{- range $i, $f := .Files}}{{if $i}},{{end}} <a href="{{$f.DataPath}}">{{$f.DataPath}}</a> (<code>{{$f.Stem}}</code>)
-      {{- end}}
-      {{- if and .AppliesTo .Flagged}} — the chart flags these marks where it draws them{{end}}.
-    </p>
-    {{- end}}
-    </div>
-    {{- end}}
-    <p class="subtle">
-      {{- if and .Pages .Checked}}
-      Checked for
-      {{- range $i, $p := .Pages}}{{if $i}},{{end}} <a href="{{$p.Path}}">{{$p.Label}}</a>{{end}}.
-      {{- else if .Pages}}
-      Stated on
-      {{- range $i, $p := .Pages}}{{if $i}},{{end}} <a href="{{$p.Path}}">{{$p.Label}}</a>{{end}}.
-      {{- else if .DataFiles}}
-      Stated on no page: it is about adding up a downloaded file.
-      {{- else}}
-      No page states it: see "In data no page states caveats for".
-      {{- end}}
-    </p>
-  </article>
-  {{- end}}
+  </div>
 </section>
 {{- end}}
 
@@ -120,3 +96,41 @@
 
 </body>
 </html>
+{{- /* "caveat" is one caveat folded under its summary, at the anchor the
+       list it is in gives it: its texts, the files each ships in, and the
+       pages that state it. */}}
+{{define "caveat"}}<details class="caveat" id="{{.Anchor}}">
+      <summary>{{.Entry.Summary}}</summary>
+      {{- range .Entry.Variants}}
+      <div class="caveat-variant">
+      <p>{{if .Of}}<strong>{{.Of}}:</strong> {{end}}{{.Text}}</p>
+      {{- range .About}}
+      <p class="subtle">
+        {{- if .AppliesTo}}
+        About
+        {{- range $i, $n := .AppliesTo}}{{if $i}},{{end}} <code>{{$n}}</code>{{end}} in
+        {{- else}}
+        Shipped inside
+        {{- end}}
+        {{- range $i, $f := .Files}}{{if $i}},{{end}} <a href="{{$f.DataPath}}">{{$f.DataPath}}</a> (<code>{{$f.Stem}}</code>)
+        {{- end}}
+        {{- if and .AppliesTo .Flagged}} — the chart flags these marks where it draws them{{end}}.
+      </p>
+      {{- end}}
+      </div>
+      {{- end}}
+      <p class="subtle">
+        {{- if and .Entry.Pages .Entry.Checked}}
+        Checked for
+        {{- range $i, $p := .Entry.Pages}}{{if $i}},{{end}} <a href="{{$p.Path}}">{{$p.Label}}</a>{{end}}.
+        {{- else if .Entry.Pages}}
+        Stated on
+        {{- range $i, $p := .Entry.Pages}}{{if $i}},{{end}} <a href="{{$p.Path}}">{{$p.Label}}</a>{{end}}.
+        {{- else if .Entry.DataFiles}}
+        Stated on no page: it is about adding up a downloaded file.
+        {{- else}}
+        No page states it.
+        {{- end}}
+      </p>
+      <p class="caveat-link"><a href="#{{.Anchor}}">Link to this caveat</a></p>
+    </details>{{end}}

@@ -1234,18 +1234,6 @@ svg.sankey .node {
   font-size: 14px;
 }
 
-/* A summary is a link to its own paragraph on caveats.html. The whole row is
-   the target rather than a word in it, because the row IS the sentence.
-
-   THE REST OF THE STYLING IS THE DEFAULT ON PURPOSE: an undecorated summary
-   over the <li>'s own --ink-2 reads as plain text, and a reader could not tell
-   the paragraph had moved rather than been deleted. Only the hover state is
-   stated. */
-.caveats li a:hover,
-.caveats li a:focus {
-  color: var(--ink-1);
-}
-
 .derived-list {
   list-style: none;
   padding: 0;
@@ -1325,15 +1313,13 @@ details > summary {
 /* One page's list, and the caveats in full. The rule above each is what
    separates one from the next without a box around either. */
 .caveat-themes,
-.caveat-page,
-.caveat-doc {
+.caveat-page {
   margin-top: 32px;
   border-top: 1px solid var(--grid);
 }
 
 .caveat-themes > h2,
-.caveat-page > h2,
-.caveat-doc > h2 {
+.caveat-page > h2 {
   font-size: 18px;
   margin-bottom: 4px;
 }
@@ -1359,34 +1345,27 @@ details > summary {
   margin: 14px 0 4px;
 }
 
-/* The summary is the heading, and the text below it is the caveat. The left
-   rule is the same mark .caveats li carries on the chart pages, so a reader who
-   followed a link from one arrives at something that looks like what they
-   clicked. */
+/* One caveat, folded under its summary. The left rule is the same mark
+   .caveats li carries on a page with no caveats page, so the two read as one
+   kind of thing. NO display ON THE SUMMARY: the list marker is the disclosure
+   triangle, and display: flex or block removes it (see .apparatus). */
 .caveat {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
   border-left: 3px solid var(--rule);
-  padding: 2px 0 2px 14px;
-  margin: 16px 0;
+  border-radius: var(--radius);
+  padding: 0 14px;
   max-width: var(--measure);
 }
 
-.caveat > h3 {
-  font-size: 15px;
-  font-weight: 600;
-  margin: 0 0 6px;
-}
-
-/* The heading links to its own anchor, which is how a reader copies a link to
-   one caveat. Undecorated until hovered, because every heading on the page
-   carrying an underline reads as a list of links rather than as prose. */
-.anchor-link {
+.caveat > summary {
+  padding: 10px 0;
   color: var(--ink-1);
-  text-decoration: none;
+  font-size: 14px;
 }
 
-.anchor-link:hover,
-.anchor-link:focus {
-  text-decoration: underline;
+.caveat[open] > summary {
+  font-weight: 600;
 }
 
 .caveat > p,
@@ -1396,14 +1375,16 @@ details > summary {
   font-size: 14px;
 }
 
-/* :target is the caveat a reader followed a link to. It is the only feedback
-   that the anchor did anything on a long page. */
-.caveat:target {
-  border-left-color: var(--critical);
+.caveat > .caveat-link {
+  margin-bottom: 10px;
+  font-size: 13px;
 }
 
-.caveat:target > h3 {
-  color: var(--ink-1);
+/* :target is the caveat a reader followed a link to, which wireTargets has
+   opened. It is the only feedback that the link did anything on a long
+   page. */
+.caveat:target {
+  border-left-color: var(--critical);
 }
 
 /* ---------- the measure ---------- */

@@ -88,7 +88,7 @@ func TestTheCaveatIndexStatesEachCaveatOnce(t *testing.T) {
 	}
 
 	for _, stem := range []string{"a", "b"} {
-		refs, err := cx.refs([]caveatMeta{{ID: "x"}, {ID: "y"}}, stem)
+		refs, err := cx.refs([]caveatMeta{{ID: "x"}, {ID: "y"}}, stem, stem+".html")
 		if err != nil {
 			t.Fatalf("refs(%s): %v", stem, err)
 		}
@@ -97,7 +97,7 @@ func TestTheCaveatIndexStatesEachCaveatOnce(t *testing.T) {
 				stem, refs[0].Href, refs[1].Href)
 		}
 	}
-	if _, err := cx.refs([]caveatMeta{{ID: "x"}}, "c-typo"); err == nil {
+	if _, err := cx.refs([]caveatMeta{{ID: "x"}}, "c-typo", "a.html"); err == nil {
 		t.Error("a caveat of a document the index never read is linked rather than refused")
 	}
 
@@ -247,7 +247,7 @@ func TestASiteWithNoCaveatsPageLinksNoCaveat(t *testing.T) {
 		t.Fatalf("buildCaveatIndex: %v", err)
 	}
 	here := cx.here("a.html")
-	if here.Count != 1 || here.Href != "" || len(here.Entries) != 1 || here.Entries[0].Summary != "X." || cx.href(here.Entries[0]) != "" {
+	if here.Count != 1 || here.Href != "" || len(here.Entries) != 1 || here.Entries[0].Summary != "X." || cx.href("a.html", here.Entries[0]) != "" {
 		t.Errorf("a.html's line = %+v, want one unlinked summary", here)
 	}
 }
@@ -376,6 +376,38 @@ func TestViewsStatingOneSetInTwoOrdersShareASection(t *testing.T) {
 	}
 	if cx.views[0].Section == nil || cx.views[0].Section != cx.views[1].Section {
 		t.Error("a.html and b.html state x and y in two orders and do not share a section")
+	}
+}
+
+// TestACaveatTwoSectionsShareIsLinkedToEachViewsOwn: x is in two sections,
+// so the caveats page writes it twice; the canonical anchor is on the first,
+// in nav order, the second takes its section's fragment, and each view's
+// link lands on its own section's text. z is in one section and is linked
+// at its canonical anchor from any view.
+//
+// Mutation: have href ignore the view and b.html links x at caveat-x, which
+// is a.html's section. Mutation: put the canonical anchor on every section
+// and the claim refuses caveat-x twice.
+func TestACaveatTwoSectionsShareIsLinkedToEachViewsOwn(t *testing.T) {
+	o, nav := caveatSite(
+		`[{"id":"x","summary":"X.","theme":"left-out","text":"T.","applies_to":[]}]`,
+		`[{"id":"x","summary":"X.","theme":"left-out","text":"T.","applies_to":[]},{"id":"z","summary":"Z.","theme":"left-out","text":"T.","applies_to":[]}]`,
+		`[]`)
+	cx, err := buildCaveatIndex(o, ColumnIndex{}, nav)
+	if err != nil {
+		t.Fatalf("buildCaveatIndex: %v", err)
+	}
+	a, b := cx.views[0].Section, cx.views[1].Section
+	if a == nil || b == nil || a == b {
+		t.Fatal("a.html and b.html state different caveats and do not have a section each")
+	}
+	x, z := cx.byRef[caveatKey{"b", "x"}], cx.byRef[caveatKey{"b", "z"}]
+	got := []string{a.At(x).Anchor, b.At(x).Anchor, b.At(z).Anchor,
+		cx.href("a.html", x), cx.href("b.html", x), cx.href("a.html", z), cx.href("b.html", z)}
+	want := []string{"caveat-x", "caveats-on-b--x", "caveat-z",
+		"caveats.html#caveat-x", "caveats.html#caveats-on-b--x", "caveats.html#caveat-z", "caveats.html#caveat-z"}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("anchors and links (-want +got):\n%s", diff)
 	}
 }
 

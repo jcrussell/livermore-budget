@@ -81,6 +81,9 @@ type caveatIndex struct {
 	// views is every view's section, in nav order, empty ones included; two
 	// views stating the same entries share one *caveatSection.
 	views []*caveatView
+	// dataFiles are the entries of project.ThemeDataFiles, which no view
+	// states: they are about adding up a downloaded file.
+	dataFiles []*caveatEntry
 	// unviewed are the entries no view states and of no data-files theme,
 	// which has its own list: every document carrying one is one no view
 	// states caveats for, either drawn by no view or only stitched into an
@@ -88,8 +91,8 @@ type caveatIndex struct {
 	unviewed []*caveatEntry
 }
 
-// caveatEntry is one distinct caveat, rendered whole. Anchor is what every
-// other page's link lands on.
+// caveatEntry is one distinct caveat. Anchor is its canonical fragment, on
+// the first place the caveats page states it in full.
 type caveatEntry struct {
 	ID      string
 	Anchor  string
@@ -157,7 +160,23 @@ type caveatSection struct {
 	Anchor  string
 	Groups  []caveatGroup
 	Entries []*caveatEntry
+	// anchors is each entry's fragment in this section: its canonical
+	// Anchor where this is the first section stating it, else one of this
+	// section's own.
+	anchors map[*caveatEntry]string
 }
+
+// caveatAt is one entry where the caveats page states it in full.
+type caveatAt struct {
+	Anchor string
+	Entry  *caveatEntry
+}
+
+// At is e as s states it, under e's fragment in s.
+func (s *caveatSection) At(e *caveatEntry) caveatAt { return caveatAt{s.anchors[e], e} }
+
+// Canonical is e under its canonical anchor, as a list stating it once has it.
+func (e *caveatEntry) Canonical() caveatAt { return caveatAt{e.Anchor, e} }
 
 // caveatView is one view and the section stating its caveats, nil for a
 // view stating none.
@@ -383,6 +402,7 @@ func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, 
 	fragments := map[string]string{
 		"caveats-kinds":                 "the kinds list",
 		"caveats-in-data-no-page-draws": "the list no page states",
+		"caveats-in-the-data-files":     "the data files' list",
 	}
 	claim := func(fragment, by string) error {
 		if prev, dup := fragments[fragment]; dup {
@@ -443,10 +463,8 @@ func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, 
 
 	cx.themes = groupByTheme(cx.entries, caveatThemePrefix)
 	for _, g := range cx.themes {
-		for _, f := range []string{g.Anchor, g.Anchor + "-h"} {
-			if err := claim(f, fmt.Sprintf("theme %q", g.Theme)); err != nil {
-				return nil, err
-			}
+		if err := claim(g.Anchor, fmt.Sprintf("theme %q", g.Theme)); err != nil {
+			return nil, err
 		}
 	}
 
@@ -501,8 +519,29 @@ func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, 
 			cv.Section = s
 		}
 	}
+	// Every section states its entries in full, so an entry two sections
+	// share is written twice: its canonical anchor goes on the first, in nav
+	// order, and each later one takes a fragment of its section's.
+	canonical := map[*caveatEntry]bool{}
+	for _, s := range sections {
+		s.anchors = map[*caveatEntry]string{}
+		for _, e := range s.Entries {
+			if !canonical[e] {
+				canonical[e] = true
+				s.anchors[e] = e.Anchor
+				continue
+			}
+			s.anchors[e] = s.Anchor + "--" + e.ID
+			if err := claim(s.anchors[e], fmt.Sprintf("caveat %q in view %q's section", e.ID, s.Pages[0].Path)); err != nil {
+				return nil, err
+			}
+		}
+	}
 	for _, e := range cx.entries {
-		if len(e.Pages) == 0 && e.Theme != project.ThemeDataFiles {
+		switch {
+		case e.Theme == project.ThemeDataFiles:
+			cx.dataFiles = append(cx.dataFiles, e)
+		case len(e.Pages) == 0:
 			cx.unviewed = append(cx.unviewed, e)
 		}
 	}
@@ -532,25 +571,34 @@ func (dc documentCaveats) label() string {
 	return label
 }
 
-// href is where a page links one entry, or "" with no caveats page.
-func (cx *caveatIndex) href(e *caveatEntry) string {
+// href is where the view at path links one entry: its text in that view's
+// own section, else its canonical anchor; "" with no caveats page.
+func (cx *caveatIndex) href(path string, e *caveatEntry) string {
 	if cx.base == "" {
 		return ""
 	}
-	return cx.base + "#" + e.Anchor
+	anchor := e.Anchor
+	for _, cv := range cx.views {
+		if cv.Path == path && cv.Section != nil {
+			if a, ok := cv.Section.anchors[e]; ok {
+				anchor = a
+			}
+		}
+	}
+	return cx.base + "#" + anchor
 }
 
-// refs is one document's caveats as a page links them, each to its deduped
-// entry. A caveat the index does not carry is refused rather than linked
-// nowhere.
-func (cx *caveatIndex) refs(metas []caveatMeta, stem string) ([]caveatRef, error) {
+// refs is one document's caveats as the view at path links them, each to its
+// deduped entry. A caveat the index does not carry is refused rather than
+// linked nowhere.
+func (cx *caveatIndex) refs(metas []caveatMeta, stem, path string) ([]caveatRef, error) {
 	out := make([]caveatRef, 0, len(metas))
 	for _, m := range metas {
 		e, ok := cx.byRef[caveatKey{stem, m.ID}]
 		if !ok {
 			return nil, fmt.Errorf("%s caveat %q is in no published document the caveats index read", stem, m.ID)
 		}
-		out = append(out, caveatRef{ID: e.ID, Summary: e.Summary, Href: cx.href(e)})
+		out = append(out, caveatRef{ID: e.ID, Summary: e.Summary, Href: cx.href(path, e)})
 	}
 	return out, nil
 }
@@ -577,14 +625,17 @@ func (cx *caveatIndex) here(path string) caveatsHere {
 	return caveatsHere{}
 }
 
-// caveatsPageData is every distinct caveat, once, and each view's share.
+// caveatsPageData is each view's caveats in full, folded, and the kinds.
 type caveatsPageData struct {
 	chrome
-	// Themes are every entry by theme, in project.CaveatThemes order.
+	// Themes are the kinds every entry is of, in project.CaveatThemes order.
 	Themes []caveatGroup
 	// Sections are the by-page list, one per distinct set of entries, in
 	// nav order of the first view stating it.
 	Sections []*caveatSection
+	// DataFiles are the caveats about adding up a downloaded file, which no
+	// page states.
+	DataFiles []*caveatEntry
 	// Unviewed are the caveats no page states, carried only by documents no
 	// page states caveats for (drawn by no view, or only stitched into an
 	// expansion one draws), and owed to whoever fetches the file.
@@ -594,9 +645,9 @@ type caveatsPageData struct {
 	Documents int
 }
 
-// buildCaveatsPage lists every distinct caveat once, under an anchor every
-// other page's link lands on, by theme, and a section per set of views
-// stating the same caveats. It names no projection: it is an index across
+// buildCaveatsPage states every caveat in full, folded, in a section per set
+// of views stating the same caveats, and the rest in the data files' list and
+// the list no page states. It names no projection: it is an index across
 // documents. It refuses an empty page; buildCaveatIndex refuses the rest.
 func buildCaveatsPage(o *Options, v View, nav []navItem, cx *caveatIndex, ix ColumnIndex) (caveatsPageData, error) {
 	if len(cx.entries) == 0 {
@@ -636,6 +687,7 @@ func buildCaveatsPage(o *Options, v View, nav []navItem, cx *caveatIndex, ix Col
 		},
 		Themes:    cx.themes,
 		Sections:  sections,
+		DataFiles: cx.dataFiles,
 		Unviewed:  cx.unviewed,
 		Entries:   cx.entries,
 		Documents: len(carrying),

@@ -11,13 +11,14 @@ import (
 )
 
 // TestTheSidesFixturesAreWhatGoWrites holds testdata/ledger.golden.html,
-// which site/sides.test.mjs runs the form module over, to the page Go writes
-// over clientSubset, the build stamp aside. The page carries no figure: it fetches the pinned columns, so the
+// which site/sides.test.mjs runs the form module over, and
+// testdata/caveats.golden.html, which site/theme.test.mjs opens fragments
+// on, to the pages Go writes over clientSubset, the build stamp aside. The page carries no figure: it fetches the pinned columns, so the
 // fixture pins the config and the markup the client fills.
 func TestTheSidesFixturesAreWhatGoWrites(t *testing.T) {
 	dir := clientExport(t)
 	root := repoRootForTest(t)
-	for _, name := range []string{"ledger"} {
+	for _, name := range []string{"ledger", "caveats"} {
 		served, err := os.ReadFile(filepath.Join(dir, name+".html"))
 		if err != nil {
 			t.Fatal(err)

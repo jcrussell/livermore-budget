@@ -348,7 +348,9 @@ func TestExportRunWritesASiteAndSaysHowToServeIt(t *testing.T) {
 
 // TestEveryCaveatSummaryLinksToAnAnchorThatExists holds every link into
 // caveats.html, on every page the site writes, to a fragment the caveats page
-// carries once, and holds the caveats page to each caveat stated once.
+// carries once, and holds the caveats page to each caveat folded in place:
+// its text inside the <details> its summary opens, no link on the page
+// jumping to another caveat, and each caveat once in any one list.
 //
 // The asset walks stat "caveats.html" and stop there, because the filesystem
 // has no opinion about a fragment; a link to one the page lacks renders as a
@@ -389,7 +391,8 @@ func TestEveryCaveatSummaryLinksToAnAnchorThatExists(t *testing.T) {
 	// chart-flag split names nodes, and two such lines would read alike.
 	// Mutation: split About on Flagged for an empty applies_to and
 	// caveat-constraint-tier-is-our-reading says it twice.
-	for _, a := range regexp.MustCompile(`(?s)<article class="caveat" id="([^"]+)">(.*?)</article>`).FindAllStringSubmatch(caveatsPage, -1) {
+	folded := regexp.MustCompile(`(?s)<details class="caveat" id="([^"]+)">(.*?)</details>`).FindAllStringSubmatch(caveatsPage, -1)
+	for _, a := range folded {
 		for _, va := range strings.Split(a[2], `<div class="caveat-variant">`)[1:] {
 			if n := strings.Count(va, "Shipped inside"); n > 1 {
 				t.Errorf("caveats.html says where a text of %s ships %d times", a[1], n)
@@ -399,7 +402,7 @@ func TestEveryCaveatSummaryLinksToAnAnchorThatExists(t *testing.T) {
 	// A checked caveat is on no page's line, so the caveats page names the
 	// pages it was checked for rather than saying a page states it.
 	// Mutation: drop the template's Checked branch and this goes red.
-	checked := regexp.MustCompile(`(?s)<article class="caveat" id="caveat-pp168-169-tie-to-p54">(.*?)</article>`).FindStringSubmatch(caveatsPage)
+	checked := regexp.MustCompile(`(?s)<details class="caveat" id="caveat-pp168-169-tie-to-p54">(.*?)</details>`).FindStringSubmatch(caveatsPage)
 	if checked == nil || strings.Contains(checked[1], "Stated on") || !strings.Contains(checked[1], "Checked for") {
 		t.Error("caveats.html says a page states caveat-pp168-169-tie-to-p54, a check no page's line lists")
 	}
@@ -415,21 +418,57 @@ func TestEveryCaveatSummaryLinksToAnAnchorThatExists(t *testing.T) {
 		t.Fatal("caveats.html carries no caveat anchors, so this test asserts nothing")
 	}
 
-	// EACH CAVEAT ONCE: no two entries in full read alike as headings,
-	// which a reader could not tell apart in a page's list.
-	entry := regexp.MustCompile(`(?s)<article class="caveat" id="[^"]+">\s*<h3><a [^>]*>([^<]*)</a></h3>\s*<div class="caveat-variant">`)
-	stated := map[string]bool{}
-	for _, m := range entry.FindAllStringSubmatch(caveatsPage, -1) {
-		if stated[m[1]] {
-			t.Errorf("caveats.html heads two caveats %q", m[1])
+	// FOLDED IN PLACE: every caveat is a <details> whose summary opens onto
+	// its text, and the only fragment link inside one is to itself, so
+	// reading a caveat never moves the reader to another part of the page.
+	//
+	// Mutation: link a section's summaries to "#caveat-..." in place of
+	// folding the text under them, and the <details> count falls short.
+	entry := regexp.MustCompile(`(?s)^\s*<summary>([^<]+)</summary>\s*<div class="caveat-variant">`)
+	self := regexp.MustCompile(`href="#([^"]+)"`)
+	for _, a := range folded {
+		if !entry.MatchString(a[2]) {
+			t.Errorf("caveats.html folds %s under no summary followed by its text", a[1])
 		}
-		stated[m[1]] = true
+		for _, l := range self.FindAllStringSubmatch(a[2], -1) {
+			if l[1] != a[1] {
+				t.Errorf("caveats.html's %s links #%s, which moves the reader off the caveat they opened", a[1], l[1])
+			}
+		}
 	}
-	if len(stated) == 0 || len(stated) != strings.Count(caveatsPage, `<article class="caveat"`) {
-		t.Fatalf("caveats.html states %d caveats in full that this test can read, of %d",
-			len(stated), strings.Count(caveatsPage, `<article class="caveat"`))
+	if n := strings.Count(caveatsPage, `<details class="caveat"`); n == 0 || n != len(folded) {
+		t.Fatalf("caveats.html folds %d caveats this test can read, of %d", len(folded), n)
 	}
-	t.Logf("caveats.html states %d caveats in full", len(stated))
+	if n := strings.Count(caveatsPage, `href="#`); n != len(folded) {
+		t.Errorf("caveats.html carries %d fragment links and %d caveats, each linking only itself", n, len(folded))
+	}
+
+	// EACH CAVEAT ONCE IN A LIST, and once canonically: a section may repeat
+	// a caveat another states, but never two of its own alike, and each
+	// distinct summary carries one caveat- anchor.
+	canonical := map[string]bool{}
+	for _, sec := range strings.Split(caveatsPage, "<section")[1:] {
+		stated := map[string]bool{}
+		for _, m := range regexp.MustCompile(`(?s)<details class="caveat" id="([^"]+)">\s*<summary>([^<]+)</summary>`).FindAllStringSubmatch(sec, -1) {
+			if stated[m[2]] {
+				t.Errorf("a section of caveats.html states %q twice", m[2])
+			}
+			stated[m[2]] = true
+			if strings.HasPrefix(m[1], "caveat-") {
+				if canonical[m[2]] {
+					t.Errorf("caveats.html gives %q two canonical anchors", m[2])
+				}
+				canonical[m[2]] = true
+			}
+		}
+	}
+	for _, a := range folded {
+		if s := entry.FindStringSubmatch(a[2]); s != nil && !canonical[s[1]] {
+			t.Errorf("caveats.html states %q with no canonical anchor, so a link from a page that "+
+				"does not state it has nowhere to land", s[1])
+		}
+	}
+	t.Logf("caveats.html folds %d caveats, %d distinct", len(folded), len(canonical))
 
 	// One theme's list in a page's section on caveats.html, as the number of
 	// caveats it lists, and the heading of the section it is in.
@@ -438,9 +477,10 @@ func TestEveryCaveatSummaryLinksToAnAnchorThatExists(t *testing.T) {
 		if !ok {
 			return -1, ""
 		}
-		body, _, _ := strings.Cut(rest, "</ul>")
+		body, _, _ := strings.Cut(rest, "</section>")
+		body, _, _ = strings.Cut(body, "<h3 ")
 		heading := before[strings.LastIndex(before, "<h2>"):]
-		return strings.Count(body, "<li>"), heading
+		return strings.Count(body, `<details class="caveat"`), heading
 	}
 	line := regexp.MustCompile(`<p class="caveats-line">Limits on these figures:(.*?)</p>`)
 	themeLink := regexp.MustCompile(`<a href="caveats\.html#([^"]+)">[^<]*\((\d+)\)</a>`)
