@@ -2553,6 +2553,29 @@ func TestEveryFileOpensToWhatItIsBeforeItDownloads(t *testing.T) {
 	if data == nil {
 		t.Fatal("provenance.html folds no data file")
 	}
+	// The year and the caveats are the projection's own, read here from it.
+	var meta struct {
+		Metadata struct {
+			FiscalYearLabel string `json:"fiscal_year_label"`
+			Basis           string `json:"basis"`
+			Caveats         []struct {
+				ID string `json:"id"`
+			} `json:"caveats"`
+		} `json:"metadata"`
+	}
+	if err := json.NewDecoder(bytes.NewReader(goldenSankey(t))).Decode(&meta); err != nil {
+		t.Fatal(err)
+	}
+	ids := map[string]bool{}
+	for _, c := range meta.Metadata.Caveats {
+		ids[c.ID] = true
+	}
+	if year := meta.Metadata.FiscalYearLabel + " " + meta.Metadata.Basis; !strings.Contains(data[1], "— "+year) {
+		t.Errorf("the data file's summary %q does not name its year, %q", data[1], year)
+	}
+	if want := fmt.Sprintf("Carries %d caveats in its metadata", len(ids)); len(ids) < 2 || !strings.Contains(data[2], want) {
+		t.Errorf("the data file does not say %q:\n%s", want, data[2])
+	}
 	if !strings.Contains(data[2], `Drawn on <a href="index.html">Budget flows</a>.`) {
 		t.Errorf("the data file %q does not say the page that draws it:\n%s", data[1], data[2])
 	}

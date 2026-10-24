@@ -151,7 +151,7 @@ func TestTwoTextsOfOneYearAreRefused(t *testing.T) {
 //
 // Mutation: drop the data-files test from the section loop and a.html's
 // section lists d. Mutation: drop the data-files arm of the list split and
-// d is stated nowhere on the caveats page. Mutation: keep the checked group in here and a.html's
+// d falls into the list no page states. Mutation: keep the checked group in here and a.html's
 // line is 2 in two themes.
 func TestADataFilesCaveatIsStatedOnNoPageAndACheckIsNoLimit(t *testing.T) {
 	o, nav := caveatSite(
@@ -391,7 +391,8 @@ func TestViewsStatingOneSetInTwoOrdersShareASection(t *testing.T) {
 //
 // Mutation: have href ignore the view and b.html links x at caveat-x, which
 // is a.html's section. Mutation: put the canonical anchor on every section
-// and the claim refuses caveat-x twice.
+// and b's anchor for x reads caveat-x; the rendered page then carries the id
+// twice, which TestEveryCaveatSummaryLinksToAnAnchorThatExists refuses.
 func TestACaveatTwoSectionsShareIsLinkedToEachViewsOwn(t *testing.T) {
 	o, nav := caveatSite(
 		`[{"id":"x","summary":"X.","theme":"left-out","text":"T.","applies_to":[]}]`,

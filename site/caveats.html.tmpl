@@ -27,7 +27,8 @@
 <p class="lede">
   {{len .Entries}} caveat{{if ne (len .Entries) 1}}s{{end}} across {{.Documents}}
   published document{{if ne .Documents 1}}s{{end}}, in {{len .Themes}} kind{{if ne (len .Themes) 1}}s{{end}}.
-  Open one to read it in full.
+  Open one to read it in full. A caveat about more than one page is repeated
+  under each.
 </p>
 
 <section class="caveat-themes" aria-labelledby="caveats-kinds">
@@ -132,5 +133,5 @@
         No page states it.
         {{- end}}
       </p>
-      <p class="caveat-link"><a href="#{{.Anchor}}">Link to this caveat</a></p>
+      <p class="caveat-link"><a href="#{{.Anchor}}" aria-label="Link to this caveat: {{.Entry.Summary}}">Link to this caveat</a></p>
     </details>{{end}}
