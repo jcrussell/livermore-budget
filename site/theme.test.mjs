@@ -256,3 +256,22 @@ test("wireLede offers More only where the lede is cut, and a press shows it whol
     }
   }
 });
+
+// A lede repainted after boot is measured again, as a year switch repaints
+// its year words. Mutation: drop the MutationObserver in wireLede, and the
+// lede the repaint cut gets no More.
+test("wireLede measures the lede again when its words are repainted", async () => {
+  const { JSDOM } = await import("jsdom");
+  const mod = await import(MODULE);
+  const { window } = new JSDOM(readFileSync(path.join(TESTDATA, "ledger.golden.html"), "utf8"));
+  const lede = window.document.querySelector(".page-head .lede");
+  let scroll = 72;
+  Object.defineProperty(lede, "scrollHeight", { get: () => scroll });
+  Object.defineProperty(lede, "clientHeight", { value: 72 });
+  mod.wireLede(window);
+  assert.equal(window.document.querySelector(".lede-more"), null);
+  scroll = 120;
+  lede.append(" and some longer words");
+  await new Promise((r) => setTimeout(r, 0));
+  assert.ok(window.document.querySelector(".lede-more"), "the repainted lede was cut and offered no More");
+});

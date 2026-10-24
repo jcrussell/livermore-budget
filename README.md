@@ -48,7 +48,7 @@ The spine gives the all-funds picture the chart draws:
   reconciles against exactly
 
 The site's pages are the views `data/views.yaml` declares, in its nav order.
-`index.html` is the glance page: of every $100 the city budgets, where it comes
+`index.html` is the glance page: as shares of what the city budgets, where it comes
 from, what it buys and which department spends it, each bar a sum of the printed
 cells listed beneath it. `flows.html` is the fund-group spine as a Sankey, with a
 toggle between the two adopted years: **click a fund group and it opens** into that group's own funds from

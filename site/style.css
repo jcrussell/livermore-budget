@@ -1667,8 +1667,8 @@ noscript p {
 }
 /* 1199px: below the frame's full 1180px the views and the toggle no
    longer fit one row, and a nav of two rows is the wrap the menu exists to
-   end. */
-@media (max-width: 1199px) {
+   end. On screen only: a printed copy lists every view. */
+@media screen and (max-width: 1199px) {
   .site-nav[data-menu] #nav-toggle {
     display: inline-flex;
     align-items: center;
@@ -2676,12 +2676,14 @@ noscript p {
 
 /* FLOWS ON A NARROW SCREEN: the note pointing to the bars shows and the
    chart's card folds, until the reader asks for the chart anyway (app.js
-   sets data-chart-anyway on the root), on a page that carries the note.
+   sets data-chart-anyway on the root). The card folds only once app.js has
+   shown the note's button, so with no script the card and its noscript
+   pointer to the data stay, and only on screen, so paper keeps the chart.
    Under 700px the opening chart's labels draw too small to read. */
 .narrow-note {
   display: none;
 }
-@media (max-width: 700px) {
+@media screen and (max-width: 700px) {
   html:not([data-chart-anyway]) .narrow-note {
     display: block;
     margin: 12px 0;
@@ -2693,7 +2695,7 @@ noscript p {
   .narrow-note p {
     margin: 0 0 10px;
   }
-  html:not([data-chart-anyway]) body:has(#narrow-note) #chart-card {
+  html:not([data-chart-anyway]) body:has(#narrow-show:not([hidden])) #chart-card {
     display: none;
   }
 }

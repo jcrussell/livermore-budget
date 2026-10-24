@@ -125,6 +125,10 @@ export function wireLede(win) {
   };
   check();
   win.addEventListener("resize", check);
+  // A page repaints the lede's year words after boot, which can cut it.
+  if (typeof win.MutationObserver === "function") {
+    new win.MutationObserver(check).observe(lede, { childList: true, characterData: true, subtree: true });
+  }
 }
 
 /**

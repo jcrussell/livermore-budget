@@ -315,7 +315,30 @@ test("the year select shows one year at a time and carries it to the other pages
   assert.equal(window.location.hash, "#y=" + other);
   assert.match(doc.querySelector('nav.site-nav a[href^="flows"]').getAttribute("href"), new RegExp("#y=" + other + "$"));
 
+  // A hash naming no year leaves the year on screen. Mutation: fall back to
+  // the option the template selects, and this shows the newest again.
+  window.location.hash = "#y=fy2099-adopted";
+  window.dispatchEvent(new window.HashChangeEvent("hashchange"));
+  assert.deepEqual(shown(doc), [other]);
+
   const asked = new JSDOM(PAGE, { url: "http://x/index.html#y=" + other });
   (await import(MODULE)).boot(asked.window.document);
   assert.deepEqual(shown(asked.window.document), [other]);
+});
+
+// A year switch unpins a tip over the year it hides, or the tip would state
+// that year's figure beside the other year's bars. Mutation: drop the unpin
+// in boot's turn, and the tip stays pinned and shown.
+test("a year switch unpins a tip pinned over the year it hides", async () => {
+  const { installBrowser, tipState, fire } = await import("./testlib.mjs");
+  const { window, document } = installBrowser({ html: PAGE });
+  (await import(MODULE)).boot(document);
+  const select = document.getElementById("year-select");
+  const seg = document.querySelector(`section.glance-year[data-year="${select.value}"] .glance-seg`);
+  fire(seg, "click");
+  assert.ok(tipState(document).pinned, "the click pinned no tip");
+  select.value = [...select.options].map((o) => o.value).find((v) => v !== select.value);
+  select.dispatchEvent(new window.Event("change"));
+  const tip = tipState(document);
+  assert.ok(!tip.pinned && !tip.shown, "a tip over the hidden year is still pinned or shown");
 });
