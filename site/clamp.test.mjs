@@ -12,16 +12,7 @@ import * as sankey from "./sankey.js";
 /** The frontiers measured: the root, the General Fund opened, everything open. */
 function frontiers(doc) {
   const root = core.rootFrontier(doc);
-  let all = root;
-  for (let changed = true; changed;) {
-    changed = false;
-    for (const id of [...all]) {
-      const splits = core.splitsOf(doc, id);
-      if (!splits.length || core.openSplitOf(doc, all, id) !== "") continue;
-      all = core.expand(doc, all, id, splits.find((sp) => !sp.alternative).key);
-      changed = true;
-    }
-  }
+  const all = core.expandAllFrom(doc, root).frontier;
   return [
     { name: "root", frontier: root },
     { name: "fund-group/general by funds", frontier: core.expand(doc, root, "fund-group/general", "funds") },

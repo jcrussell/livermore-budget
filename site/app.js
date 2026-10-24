@@ -919,20 +919,9 @@ export function collapseNode(id) {
  */
 export function expandAll() {
   if (!fetched || !frontier) return false;
-  let open = frontier;
-  const next = expansions.slice();
-  for (let pass = 0; pass < 16; pass++) {
-    const shut = fetched.nodes.filter((n) => open.has(n.id) && core.splitsOf(fetched, n.id).length &&
-      core.openSplitOf(fetched, open, n.id) === "");
-    if (!shut.length) break;
-    for (const n of shut) {
-      const key = core.splitsOf(fetched, n.id)[0].key;
-      next.push(entryOf(n.id, key));
-      open = core.expand(fetched, open, n.id, key);
-    }
-  }
-  if (next.length === expansions.length) return false;
-  return redraw(next, "That could not be split");
+  const { splits } = core.expandAllFrom(fetched, frontier);
+  if (!splits.length) return false;
+  return redraw(expansions.concat(splits.map((sp) => entryOf(sp.node, sp.key))), "That could not be split");
 }
 
 /**
@@ -3259,16 +3248,13 @@ export function searchMatches(query) {
 export function revealEntries(id, shaped = new Map()) {
   if (!fetched) return expansions.slice();
   const doc = fetched;
-  const chain = [];
-  for (let at = nodeOf(id), hops = 0; at && at.parent && hops < 9; at = nodeOf(at.parent), hops++) chain.unshift(at);
+  const chain = core.revealChain(doc, id);
   let next = expansions.slice();
-  for (const member of chain) {
-    const splits = core.splitsOf(doc, member.parent);
-    const key = member.alternative || (splits.length ? splits[0].key : "");
+  for (const { node, key } of chain) {
     const open = expansionState(doc, next).frontier;
-    if (core.openSplitOf(doc, open, member.parent) === key) continue;
-    const inside = core.withinNode(doc, member.parent);
-    next = next.filter((e) => !entryInside(e, inside)).concat([entryOf(member.parent, key)]);
+    if (core.openSplitOf(doc, open, node) === key) continue;
+    const inside = core.withinNode(doc, node);
+    next = next.filter((e) => !entryInside(e, inside)).concat([entryOf(node, key)]);
   }
   const own = chain[chain.length - 1];
   if (own) {
@@ -3279,9 +3265,7 @@ export function revealEntries(id, shaped = new Map()) {
       drawn = formOnScreen().shape(doc, { chart: CONFIG.overview, frontier: state.frontier, whole: state.whole });
       shaped.set(at, drawn);
     }
-    const splits = core.splitsOf(doc, own.parent);
-    const key = own.alternative || (splits.length ? splits[0].key : "");
-    const tail = core.splitTailID(own.parent, key);
+    const tail = core.splitTailID(own.node, own.key);
     if (!drawn.nodes.some((n) => n.id === id) && drawn.nodes.some((n) => n.id === tail)) next.push(tail);
   }
   return next;

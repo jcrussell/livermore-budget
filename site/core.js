@@ -1133,29 +1133,64 @@ export function straightFrom(doc, id) {
 }
 
 /**
- * The frontier with a node drawn: each ancestor of it opened, from its root
- * down, by the split the next node on the chain is a member of.
+ * The splits that draw a node, root first: each ancestor of it, and the key
+ * of the split the next node down is a member of (its alternative's, else
+ * the ancestor's primary split, which splitsOf and openSplitOf give every
+ * member with no alternative). What revealing the node opens, whether as a
+ * frontier (reveal) or as the page's expansions (app.js revealEntries).
+ * @param {FiscProjection} doc the expansion schedule
+ * @param {string} id
+ * @returns {{node: string, key: string}[]}
+ */
+export function revealChain(doc, id) {
+  const byID = new Map(doc.nodes.map((n) => [n.id, n]));
+  const chain = [];
+  for (let at = byID.get(id), hops = 0; at && at.parent && hops < 9; at = byID.get(at.parent), hops++) {
+    const primary = splitsOf(doc, at.parent).find((sp) => !sp.alternative);
+    chain.unshift({ node: at.parent, key: at.alternative || (primary ? primary.key : "") });
+  }
+  return chain;
+}
+
+/**
+ * The frontier with a node drawn: each split of revealChain opened, from
+ * the root down, where it is not open already.
  * @param {FiscProjection} doc the expansion schedule
  * @param {Iterable<string>} frontier
  * @param {string} id
  * @returns {Set<string>} a new set
  */
 export function reveal(doc, frontier, id) {
-  const byID = new Map(doc.nodes.map((n) => [n.id, n]));
-  const chain = [];
-  for (let at = byID.get(id), hops = 0; at && hops < 9; hops++) {
-    chain.unshift(at);
-    at = at.parent ? byID.get(at.parent) : undefined;
-  }
   let out = new Set(frontier);
-  for (let i = 0; i + 1 < chain.length; i++) {
-    const at = chain[i].id;
-    const next = chain[i + 1];
-    const primary = splitsOf(doc, at).find((sp) => !sp.alternative);
-    const key = next.alternative || (primary ? primary.key : "");
-    if (openSplitOf(doc, out, at) !== key) out = expand(doc, out, at, key);
+  for (const { node, key } of revealChain(doc, id)) {
+    if (openSplitOf(doc, out, node) !== key) out = expand(doc, out, node, key);
   }
   return out;
+}
+
+/**
+ * Expand all from a frontier: every node it draws unsplit split by its
+ * first declared split, and every node that exposes, until none is left or
+ * 16 passes have run. The splits in the order opened, and the frontier they
+ * reach; app.js expandAll draws them.
+ * @param {FiscProjection} doc the expansion schedule
+ * @param {Set<string>} frontier
+ * @returns {{splits: {node: string, key: string}[], frontier: Set<string>}}
+ */
+export function expandAllFrom(doc, frontier) {
+  let open = frontier;
+  const splits = [];
+  for (let pass = 0; pass < 16; pass++) {
+    const shut = doc.nodes.filter((n) => open.has(n.id) && splitsOf(doc, n.id).length &&
+      openSplitOf(doc, open, n.id) === "");
+    if (!shut.length) break;
+    for (const n of shut) {
+      const key = splitsOf(doc, n.id)[0].key;
+      splits.push({ node: n.id, key });
+      open = expand(doc, open, n.id, key);
+    }
+  }
+  return { splits, frontier: open };
 }
 
 /**

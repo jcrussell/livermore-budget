@@ -97,16 +97,7 @@ describe("the marks this client makes", () => {
     let tails = 0;
     for (const year of pageFixture().config.years) {
       const doc = app.scheduleOf(columnFixture(year.path.replace(/\.json$/, "")), "expansion");
-      let all = app.rootFrontier(doc);
-      for (let changed = true; changed;) {
-        changed = false;
-        for (const id of [...all]) {
-          const splits = app.splitsOf(doc, id);
-          if (!splits.length || app.openSplitOf(doc, all, id) !== "") continue;
-          all = app.expand(doc, all, id, splits.find((sp) => !sp.alternative).key);
-          changed = true;
-        }
-      }
+      const all = app.expandAllFrom(doc, app.rootFrontier(doc)).frontier;
       for (const n of app.expansionOf(doc, all, app.CONFIG.overview, new Set()).nodes) {
         if (!app.isMark(n.id)) continue;
         tails++;

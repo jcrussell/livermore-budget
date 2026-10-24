@@ -894,16 +894,7 @@ const EXPANSION_CLAIMED = {
 /** The expansion's frontiers, each from the schedule's own helpers. */
 function expansionFrontiers(doc) {
   const root = core.rootFrontier(doc);
-  let all = root;
-  for (let changed = true; changed;) {
-    changed = false;
-    for (const id of [...all]) {
-      const splits = core.splitsOf(doc, id);
-      if (!splits.length || core.openSplitOf(doc, all, id) !== "") continue;
-      all = core.expand(doc, all, id, splits.find((sp) => !sp.alternative).key);
-      changed = true;
-    }
-  }
+  const all = core.expandAllFrom(doc, root).frontier;
   const none = new Set();
   const every = new Set(doc.splits.map((sp) => sp.node + "\u001f" + sp.key));
   return [

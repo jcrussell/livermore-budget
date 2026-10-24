@@ -38,10 +38,12 @@ const cell = (s, t, kind) => `${s} > ${t} (${kind})`;
 const ids = (f) => [...f].sort();
 
 /**
- * Every node opened by its declared split until nothing more opens: `alt`
- * where the node offers that alternative, its primary split elsewhere.
+ * Expand all (core.expandAllFrom) with no `alt`; with one, every node opened
+ * by that alternative where it offers it and by its primary split elsewhere,
+ * a frontier the page offers no single gesture for.
  */
 function expandAll(doc, alt) {
+  if (!alt) return core.expandAllFrom(doc, core.rootFrontier(doc)).frontier;
   let f = core.rootFrontier(doc);
   for (let changed = true; changed;) {
     changed = false;
@@ -302,6 +304,52 @@ describe("a fold climbs only through what expand opened straight through", () =>
     t.diagnostic(`P open straight through: [${ids(opened)}]; M by alt: [${ids(switched)}]; folding Y folds ${top}`);
     assert.deepEqual({ opened: ids(opened), switched: ids(switched), top, fromM: core.straightFrom(doc, "M"), fromA: core.straightFrom(doc, "A") },
       { opened: ["A", "B", "M", "P"], switched: ["M", "P", "Y", "Y1", "Y2"], top: "M", fromM: "P", fromA: "A" });
+  });
+});
+
+// PLANTED: no pinned column declares an alternative before its node's
+// primary split. M lists "alt" first; A is a member of M's primary split
+// "rows", so revealing A's member opens M by "rows", the split A belongs to,
+// and not the first M declares. revealChain is the chain app.js
+// revealEntries walks too, so this is the page's reveal.
+// Mutation: key a member with no alternative by its parent's first split
+// and the chain names "alt", and reveal throws that M's alt does not draw A.
+describe("revealing a node opens each ancestor by the split the node below belongs to", () => {
+  const node = (id, parent = "", alternative = "") => Object.assign({ id, tier: 0, parent, label: id, role: "r" }, alternative ? { alternative } : {});
+  const split = (n, key, alternative = false) => ({ node: n, key, form: "extend", alternative });
+  const doc = {
+    projection: "synthetic",
+    nodes: [node("P"), node("M", "P"), node("A", "M"), node("B", "M"), node("Y", "M", "alt"), node("A1", "A"), node("A2", "A")],
+    links: [],
+    splits: [split("P", "one"), split("M", "alt", true), split("M", "rows"), split("A", "more")],
+  };
+
+  test("an alternative declared first is not the split a primary member is revealed by", () => {
+    assert.deepEqual(core.revealChain(doc, "A1"), [{ node: "P", key: "one" }, { node: "M", key: "rows" }, { node: "A", key: "more" }]);
+    assert.deepEqual(core.revealChain(doc, "Y"), [{ node: "P", key: "one" }, { node: "M", key: "alt" }]);
+    const open = core.reveal(doc, core.rootFrontier(doc), "A1");
+    assert.ok(open.has("A1") && open.has("A2"), `revealing A1 draws [${ids(open)}]`);
+  });
+});
+
+// PLANTED: on the pinned columns one pass of Expand all opens everything,
+// since each root's split exposes no node with a split of its own. Here P's
+// split exposes M and N, and M splits again, so Expand all needs a second
+// pass. Mutation: stop expandAllFrom after one pass and M stays shut.
+describe("Expand all opens what a split exposes, until nothing is left shut", () => {
+  const node = (id, parent = "", alternative = "") => Object.assign({ id, tier: 0, parent, label: id, role: "r" }, alternative ? { alternative } : {});
+  const split = (n, key, alternative = false) => ({ node: n, key, form: "extend", alternative });
+  const doc = {
+    projection: "synthetic",
+    nodes: [node("P"), node("M", "P"), node("N", "P"), node("A", "M"), node("B", "M"), node("C", "M", "alt")],
+    links: [],
+    splits: [split("P", "one"), split("M", "rows"), split("M", "alt", true)],
+  };
+
+  test("a node a split exposes is split in turn, by its first declared split", () => {
+    const all = core.expandAllFrom(doc, core.rootFrontier(doc));
+    assert.deepEqual(all.splits, [{ node: "P", key: "one" }, { node: "M", key: "rows" }]);
+    assert.deepEqual(ids(all.frontier), ["A", "B", "M", "N", "P"]);
   });
 });
 

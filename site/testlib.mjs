@@ -331,18 +331,13 @@ export async function split(app, ...entries) {
 }
 
 /**
- * Splits every node above `id` in the expansion schedule, root first, by the
- * split the next node down is a member of, so `id` is drawn: core.reveal's
- * chain, walked through the page's gestures.
+ * Splits every node above `id` so `id` is drawn: the app's revealChain,
+ * walked through the page's gestures, skipping a split already open.
  */
 export async function revealed(app, id) {
-  const chain = [];
-  for (let at = app.nodeOf(id); at && at.parent; at = app.nodeOf(at.parent)) chain.unshift(at);
-  for (const member of chain) {
-    if (app.frontier && app.frontier.has(member.id)) continue;
-    const first = app.splitsHere({ id: member.parent })[0];
-    const key = member.alternative || first.key;
-    await split(app, key === first.key ? member.parent : member.parent + app.ALTERNATIVE_MARK + key);
+  for (const { node, key } of app.revealChain(app.fetched, id)) {
+    if (app.frontier && app.openSplitOf(app.fetched, app.frontier, node) === key) continue;
+    await split(app, app.entryOf(node, key));
   }
 }
 
@@ -374,8 +369,7 @@ export function expandAll(app) {
     if (round === 64) throw new Error("a chart still folds a tail after 64 rounds of drawing them out");
     const state = app.expansionState(app.fetched, entries);
     const shaped = shapedAt(app, state.frontier, state.whole);
-    const tails = shaped.nodes.map((n) => n.id)
-      .filter((id) => app.isAggregate(id) && app.splitTailOf(id) && !entries.includes(id));
+    const tails = shaped.nodes.filter((n) => app.expandable(n) && !entries.includes(n.id)).map((n) => n.id);
     if (!tails.length) break;
     entries = entries.concat(tails);
   }
@@ -440,17 +434,7 @@ export function expansionStates(app, doc) {
   for (const sp of doc.splits) {
     out.push({ where: `${sp.node} by ${sp.key}`, frontier: app.expand(doc, app.reveal(doc, root, sp.node), sp.node, sp.key) });
   }
-  let all = root;
-  for (let changed = true; changed;) {
-    changed = false;
-    for (const id of [...all]) {
-      const splits = app.splitsOf(doc, id);
-      if (!splits.length || app.openSplitOf(doc, all, id) !== "") continue;
-      all = app.expand(doc, all, id, splits[0].key);
-      changed = true;
-    }
-  }
-  out.push({ where: "everything by primary splits", frontier: all });
+  out.push({ where: "everything by primary splits", frontier: app.expandAllFrom(doc, root).frontier });
   const every = new Set(doc.splits.map((sp) => sp.node + "\u001f" + sp.key));
   return out.flatMap((st) => [Object.assign({ whole: new Set() }, st),
     Object.assign({}, st, { where: st.where + ", drawn out", whole: every })]);

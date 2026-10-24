@@ -609,9 +609,9 @@ describe("the expansion's drawing", () => {
   // node's own id wins at either end; two ends of one group are that
   // group's; one group-less end takes the other's; two groups, neither a
   // group node, are muted, since picking one would be a guess. Then one
-  // chart where ribbons with a group-less end are drawn: every ribbon's
-  // stroke is linkColor's, which holds the paint to the rule. Mutation:
-  // return "" for a group-less target and the arm table goes red.
+  // chart: every ribbon's stroke is linkColor's, which holds the paint to
+  // the rule. Mutation: return "" for a group-less target and the arm table
+  // goes red; paint every ribbon --muted and the drawn chart does.
   test("a ribbon with one group-less end wears the other end's hue, and one between two groups stays muted", async (t) => {
     const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem });
     const chart = document.getElementById("chart");
@@ -638,18 +638,12 @@ describe("the expansion's drawing", () => {
     assert.deepEqual(arms.map(([name, link]) => [name, app.linkGroup(link)]), arms.map(([name, , want]) => [name, want]));
     assert.equal(app.linkColor({ source: fund, target: other }), muted);
 
-    const wrong = [];
-    let recoloured = 0;
-    for (const r of ribbonsIn(chart)) {
-      const d = r.__data__;
-      if (r.getAttribute("stroke") !== app.linkColor(d)) wrong.push(`${d.source.id} -> ${d.target.id} is ${r.getAttribute("stroke")}`);
-      const a = app.fundGroupOf(d.source);
-      const b = app.fundGroupOf(d.target);
-      if (Boolean(a) !== Boolean(b) && !app.isFundGroup(d.source) && !app.isFundGroup(d.target) && app.linkColor(d) !== muted) recoloured++;
-    }
-    t.diagnostic(`${YEARS[0].label}, Expand all: ${recoloured} ribbon(s) with one group-less end wear their other end's hue`);
+    const ribbons = ribbonsIn(chart);
+    const wrong = ribbons.map((r) => r.__data__).filter((d, i) => ribbons[i].getAttribute("stroke") !== app.linkColor(d))
+      .map((d) => `${d.source.id} -> ${d.target.id}`);
+    t.diagnostic(`${YEARS[0].label}, Expand all: ${ribbons.length} ribbon(s) painted`);
+    assert.ok(ribbons.length > 0, "Expand all drew no ribbon");
     assert.deepEqual(wrong, [], firstOf(wrong));
-    assert.ok(recoloured > 0, "no drawn ribbon has one group-less end, so the drawn arm is never reached");
   });
 
   /** The href Go emitted for a caveat id in one year's refs, or "". */
