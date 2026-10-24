@@ -184,7 +184,8 @@ test("wireHowTo folds the how-to-read prose on a narrow screen and opens it on a
 // target inside a folded one. One already open is not re-scrolled.
 // Mutation: open only the element the fragment names and not the <details>
 // it is inside, and the inner arm goes red. Mutation: drop the click
-// listener and the closed-then-relinked arm goes red. Mutation: scroll
+// listener and the closed-then-relinked arm goes red. Mutation: drop the
+// modifier test and the new-tab arm goes red. Mutation: scroll
 // whether or not anything opened and the already-open arm goes red.
 test("wireTargets opens the folded caveat a fragment names", async () => {
   const { JSDOM } = await import("jsdom");
@@ -206,6 +207,10 @@ test("wireTargets opens the folded caveat a fragment names", async () => {
   const relink = /** @type {HTMLElement} */ (first.querySelector(".caveat-link a"));
   relink.click();
   assert.ok(first.open, "a link to the fragment already in the URL left its caveat folded");
+  first.open = false;
+  relink.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true, ctrlKey: true }));
+  assert.ok(!first.open, "a click to open the link in a new tab opened the caveat here");
+  first.open = true;
   const settled = scrolled;
   window.dispatchEvent(new window.HashChangeEvent("hashchange"));
   assert.equal(scrolled, settled, "a target already open was scrolled to again");

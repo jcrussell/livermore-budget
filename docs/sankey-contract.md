@@ -96,8 +96,8 @@ the section of a view stating it. A page links the copy in its own section. A do
 repeating an id is refused at build time by `project.ValidateCaveats`.
 
 **caveats.html states each id in full in every section that lists it**,
-folded under its summary, and once more where no section does: in the data
-files' list or the list no page states. One id carries one
+folded under its summary. A caveat no section lists is stated once, in the
+data files' list or in the list no page states. One id carries one
 `summary` and one `theme` in every document, and `buildCaveatIndex` refuses one
 that does not, so a figure that varies by year or schedule belongs in the text.
 Where documents carry one id with different texts, each text is listed under the

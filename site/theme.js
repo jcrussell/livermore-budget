@@ -153,7 +153,7 @@ function openTarget(win) {
 
 /**
  * Opens the fragment's target now (openTarget), on every later change of
- * fragment, and on a click of a link to the fragment already in the URL,
+ * fragment, and on a plain click of a link to the fragment already in the URL,
  * which changes nothing and so fires no hashchange: a reader who closed the
  * caveat they arrived at and follows its link again would otherwise see
  * nothing happen.
@@ -163,6 +163,9 @@ export function wireTargets(win) {
   openTarget(win);
   win.addEventListener("hashchange", () => openTarget(win));
   win.document.addEventListener("click", (e) => {
+    // A click that does not navigate this page -- to a new tab, or one a
+    // handler took -- opens nothing here.
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     const a = e.target instanceof win.Element ? e.target.closest("a[href^='#']") : null;
     if (a && /** @type {HTMLAnchorElement} */ (a).hash === win.location.hash) openTarget(win);
   });

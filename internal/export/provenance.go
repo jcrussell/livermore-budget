@@ -755,7 +755,7 @@ func buildProvenancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			SourcesPath: v.Path,
 			SourcesPage: true,
 			ExportedBy:  o.GeneratedBy,
-			Projections: projectionRefs(o, ix),
+			// NO Projections: DataFiles lists every data file, described.
 			// NO DataPath. Every other page names the projection it draws;
 			// this one draws none, and pointing it at an unrelated document
 			// would be a false statement about where its figures came from.
