@@ -1355,6 +1355,11 @@ test("the narrow screen's note shows its button, which puts the chart back, and 
   assert.ok(document.documentElement.hasAttribute("data-chart-anyway"), "the press did not unfold the card");
   // The pressed button folds away, so focus goes to the card that unfolded.
   // Mutation: drop the focus call in wireNarrow.
-  assert.ok(document.activeElement === document.getElementById("chart-card"), document.activeElement && document.activeElement.id);
+  const card = document.getElementById("chart-card");
+  assert.ok(document.activeElement === card, document.activeElement && document.activeElement.id);
+  // Once focus leaves, the card takes no focus from a tap on its blank
+  // space. Mutation: drop the blur listener in wireNarrow.
+  card.blur();
+  assert.ok(!card.hasAttribute("tabindex"), "the card keeps tabindex after focus leaves");
   assert.ok(app.chartDrawn(), "no chart is drawn after the press");
 });

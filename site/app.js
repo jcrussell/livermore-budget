@@ -3718,6 +3718,7 @@ export function wireNarrow() {
     if (card) {
       card.setAttribute("tabindex", "-1");
       card.focus();
+      card.addEventListener("blur", () => card.removeAttribute("tabindex"), { once: true });
     }
     askRoom();
   });

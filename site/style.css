@@ -440,6 +440,9 @@ button[aria-pressed="true"] {
   font-size: 13px;
   color: var(--ink-2);
 }
+.legend-head[hidden] {
+  display: none;
+}
 
 /* ---------- filters ---------- */
 
@@ -1579,6 +1582,7 @@ noscript p {
 
   .chart-toolbar,
   .rail-toggle,
+  .lede-more,
   .filters,
   .drawer-head,
   .chart-menu,
@@ -1695,9 +1699,9 @@ noscript p {
   }
   .site-nav[data-menu][data-open] #nav-views {
     order: 3;
+    flex: 0 0 100%;
     flex-direction: column;
     align-self: stretch;
-    width: 100%;
     gap: 0;
     padding-bottom: 6px;
   }
@@ -2249,8 +2253,9 @@ noscript p {
 
 /* end capital.html */
 
-/* The glance page, at index.html. Only that page's rules go in this block. */
-.glance-year + .glance-year {
+/* The glance page, at index.html. Only that page's rules go in this block.
+   A rule between years only where two show, as they do with no script. */
+.glance-year:not([hidden]) ~ .glance-year:not([hidden]) {
   margin-top: 40px;
   padding-top: 24px;
   border-top: 1px solid var(--border);
@@ -2676,15 +2681,15 @@ noscript p {
 
 /* FLOWS ON A NARROW SCREEN: the note pointing to the bars shows and the
    chart's card folds, until the reader asks for the chart anyway (app.js
-   sets data-chart-anyway on the root). The card folds only once app.js has
-   shown the note's button, so with no script the card and its noscript
-   pointer to the data stay, and only on screen, so paper keeps the chart.
+   sets data-chart-anyway on the root). Both turn only once app.js has
+   shown the note's button, so with no script, where no screen draws the
+   chart, the card and its noscript pointer to the data stay, and only on screen, so paper keeps the chart.
    Under 700px the opening chart's labels draw too small to read. */
 .narrow-note {
   display: none;
 }
 @media screen and (max-width: 700px) {
-  html:not([data-chart-anyway]) .narrow-note {
+  html:not([data-chart-anyway]) body:has(#narrow-show:not([hidden])) .narrow-note {
     display: block;
     margin: 12px 0;
     padding: 12px 14px;
