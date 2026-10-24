@@ -157,11 +157,11 @@ test("one year shows only its column, and a projected year still says so", async
 });
 
 
-// The top bar's year is the column whose header carries its key, read from
+// The year select's year is the column whose header carries its key, read from
 // the hash and written back, and carried onto the links whose view offers it.
 // Mutation: skip carryYear in format.js selectYear and the links keep their
 // bare hrefs.
-test("the top bar's year opens from the hash, narrows the table, and is carried to the views that offer it", async () => {
+test("the selected year opens from the hash, narrows the table, and is carried to the views that offer it", async () => {
   const { doc } = await booted("#y=fy2026-adopted");
   const win = doc.defaultView;
   const href = (path) => doc.querySelector(`nav.site-nav a[href^="${path}"]`).getAttribute("href");

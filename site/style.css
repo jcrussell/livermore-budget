@@ -2707,8 +2707,8 @@ noscript p {
 
 /* HOW-TO-READ PROSE FOLDS ON A NARROW SCREEN: each block is a <details>
    shipped open, with its summary hidden where there is room, so a wide page
-   reads it unfolded. Under 760px the summary shows and theme.js wireHowTo
-   closes the block, so the figures come first. With no script it stays open. */
+   reads it unfolded. Under 760px the summary shows and the script folds the
+   block, so the figures come first. With no script it stays open. */
 .how-to-read > summary {
   display: none;
 }

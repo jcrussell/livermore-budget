@@ -1,5 +1,5 @@
 // What site/format.js does for every page module that imports it: dollars,
-// shares, a page's config, its hash's fields and the top bar's year select. Imported with nothing on
+// shares, a page's config, its hash's fields and the year select. Imported with nothing on
 // the global, so a module that read one or held state at import fails first.
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -107,7 +107,7 @@ test("hashFields reads the named fields, decoded, and skips the rest", async () 
 // Mutation: drop `offers` from carryYear's test and the link to a view that
 // does not publish the year is handed it; drop the strip of the old fragment
 // and a second year appends a second `#y=`.
-test("the top bar's year select is enabled, says the year, and carries it only to the views that offer it", async () => {
+test("the year select is enabled, says the year, and carries it only to the views that offer it", async () => {
   const { wireYearSelect, selectYear, yearKey } = await import(MODULE);
   const { window } = new JSDOM(`<nav class="site-nav"><ul>
     <li><a href="flows.html" data-years="fy2026-adopted fy2027-adopted">Flows</a></li>

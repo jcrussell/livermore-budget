@@ -10,7 +10,7 @@
 
 import * as core from "./core.js";
 import { dollars } from "./format.js";
-import { boot as bootSides, shareTotal } from "./sides.js";
+import { boot as bootSides, countedBars, shareTotal } from "./sides.js";
 
 /** How many roots wear a hue of their own before the rest wear the tail's gray. */
 export const RANKED = 5;
@@ -34,10 +34,7 @@ export function widthOf(size, scale) {
  */
 export function listLabel(side) {
   const whole = shareTotal(side);
-  const one = whole.roots === 1;
-  return `${side.heading}: ◇ ${whole.roots} ${one ? "bar" : "bars"} by our count` +
-    (whole.reductions ? (one ? " that is not a printed reduction" : " that are not printed reductions") : "") +
-    `, ${dollars(whole.cents)} in all by our sum`;
+  return `${side.heading}: ◇ ${countedBars(whole, " by our count")}, ${dollars(whole.cents)} in all by our sum`;
 }
 
 /**

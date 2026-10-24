@@ -70,7 +70,7 @@ function refusal(document) {
 
 test("the modules import with no page config, no d3 and no DOM, and run nothing", () => {
   assert.ok(domless, "nothing installed a DOM before the import");
-  assert.deepEqual(Object.keys(sides).sort(), ["KEY_MARK", "boot", "closing",
+  assert.deepEqual(Object.keys(sides).sort(), ["KEY_MARK", "boot", "closing", "countedBars",
     "fillTip", "frontierOf", "hashOf", "opensAs", "outside", "parseHash", "readConfig", "render", "shareTotal", "tileShare"]);
   assert.deepEqual(Object.keys(forms.ledger).sort(), ["LEDGER", "RANKED", "boot", "listLabel", "widthOf"]);
 });
@@ -196,7 +196,7 @@ describe("each form draws every tile once and its tip names its pages", () => {
         // drop the ◇ from ledger.js's aria-label.
         if (form === "ledger") {
           const label = section.querySelector("[aria-label]").getAttribute("aria-label");
-          assert.match(label, /: ◇ \d+ bars? by our count(?: that (?:are not printed reductions|is not a printed reduction))?, .* in all by our sum$/, label);
+          assert.match(label, /: ◇ (?:1 bar by our count(?: that is not a printed reduction)?|(?:0|[2-9]|\d\d+) bars by our count(?: that are not printed reductions)?), .* in all by our sum$/, label);
         }
         const ids = marks.map((m) => m.dataset.id).sort();
         assert.deepEqual(ids, sideTiles(tree.roots).map((x) => x.tile.id).sort());
@@ -334,6 +334,11 @@ test("a hash naming the other year and an opened node is restored, and a bad ent
   // ledger.js listLabel, and this reads "2 bars ... $0.80".
   assert.equal(forms.ledger.listLabel(/** @type {any} */ ({ ...side, heading: "In" })),
     "In: ◇ 1 bar by our count that is not a printed reduction, $1 in all by our sum");
+  // One spelling of the count for every total and label, agreeing in
+  // number. Mutation: always "bars", or always "that are not", in
+  // countedBars, and a row goes red.
+  assert.deepEqual([[1, 0], [1, 1], [2, 0], [2, 3]].map(([roots, reductions]) => sides.countedBars({ roots, reductions }, " here")),
+    ["1 bar here", "1 bar here that is not a printed reduction", "2 bars here", "2 bars here that are not printed reductions"]);
   const two = { heading: "In", tree: { cents: 130, roots: [...side.tree.roots, { contra: "", cents: 50 }] } };
   assert.equal(forms.ledger.listLabel(/** @type {any} */ (two)),
     "In: ◇ 2 bars by our count that are not printed reductions, $1.50 in all by our sum");

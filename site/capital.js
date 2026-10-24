@@ -2,10 +2,9 @@
 /**
  * fisc — the client module capital.html loads. The table is server-rendered
  * with every figure Go cited; this module filters its rows by fund and by
- * project name, narrows it to the year the year select names, and sums
- * the rows left shown. The sum
- * is ours, not the listing's printed TOTAL, and the template's footer labels
- * it so. Importing it runs nothing; the template calls boot().
+ * project name, narrows it to the year selected, and sums the rows left
+ * shown. The sum is ours, not the listing's printed TOTAL, and the
+ * template's footer labels it so. Importing it runs nothing; the template calls boot().
  */
 
 import { dollars, hashFields, hashValue, plus, rowCents, selectYear, wireYearSelect } from "./format.js";

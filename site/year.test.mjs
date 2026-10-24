@@ -1,4 +1,4 @@
-// year.test.mjs — the top bar's year select: that the client reads the fields the
+// year.test.mjs — the year select: that the client reads the fields the
 // packager writes, since a wrong field name renders an empty headline and
 // throws nothing.
 

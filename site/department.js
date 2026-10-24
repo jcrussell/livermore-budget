@@ -19,7 +19,7 @@ import { locatorKeys, pagesCitedBy, sumReading } from "./core.js";
 import { rank } from "./glance.js";
 import { clone, configOf, sayRefusal, dollars, hashFields, hashValue, selectYear, share, tipper, wireYearSelect, yearKey } from "./format.js";
 import { LEDGER } from "./ledger.js";
-import { fillTip, shareTotal, tileShare } from "./sides.js";
+import { countedBars, fillTip, shareTotal, tileShare } from "./sides.js";
 
 /** @typedef {import("./core.js").SideTile} SideTile */
 /** @typedef {{doc_id: string, pages: number[]}} Locator */
@@ -387,8 +387,7 @@ export function render(doc, config, column, st, groups = [], tips = tipper(doc))
     if (!section) throw new Error(`the page has no section for the ${key} side`);
     const total = section.querySelector(".sides-total");
     const whole = shareTotal(/** @type {any} */ (side));
-    if (total) total.textContent = `◇ our sum of the ${whole.roots} bars on this side` +
-      (whole.reductions ? " that are not printed reductions" : "") + `: ${dollars(whole.cents)}`;
+    if (total) total.textContent = `◇ our sum of the ${countedBars(whole, " on this side")}: ${dollars(whole.cents)}`;
     LEDGER.draw(section, /** @type {any} */ (side), ctx);
     for (const li of Array.from(section.querySelectorAll("li.bar-row"))) {
       const el = /** @type {HTMLElement} */ (li);

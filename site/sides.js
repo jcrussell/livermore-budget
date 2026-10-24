@@ -166,6 +166,19 @@ export function shareTotal(side) {
 }
 
 /**
+ * The words for shareTotal's count, agreeing in number: "1 bar" or "N bars",
+ * then `where`, then, where the side has printed reductions, that the count
+ * leaves them out. Every side's total and list label says its count so.
+ * @param {{roots: number, reductions: number}} whole
+ * @param {string} where
+ */
+export function countedBars(whole, where) {
+  const one = whole.roots === 1;
+  return `${whole.roots} ${one ? "bar" : "bars"}${where}` +
+    (whole.reductions ? (one ? " that is not a printed reduction" : " that are not printed reductions") : "");
+}
+
+/**
  * A tile's share of its side marked ours, or "" for a printed reduction:
  * a reduction takes no share and its side's total leaves out every root
  * that is one.
@@ -276,8 +289,7 @@ export function render(win, config, column, st, renderer, toggle, tips) {
     if (!section) throw new Error(`the page has no section for tier ${side.tier}`);
     const total = section.querySelector(".sides-total");
     const whole = shareTotal(side);
-    if (total) total.textContent = `◇ our sum of the ${whole.roots} drawn at this tier` +
-      (whole.reductions ? " that are not printed reductions" : "") + `: ${dollars(whole.cents)}`;
+    if (total) total.textContent = `◇ our sum of the ${countedBars(whole, " drawn at this tier")}: ${dollars(whole.cents)}`;
     renderer.draw(section, side, ctx);
   }
   const year = config.years.find((/** @type {any} */ y) => y.path === st.year);
