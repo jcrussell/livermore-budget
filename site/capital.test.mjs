@@ -95,6 +95,17 @@ test("the footer is the sum of the rows shown, whatever the fund", async () => {
   }
 });
 
+// An empty data-cents is not a printed zero. Mutation: read cells with
+// Number() in readTable and the empty one sums as $0.
+test("readTable refuses a cell whose cents are empty or not an integer", async () => {
+  const { mod, doc } = await booted();
+  for (const raw of ["", "1.5", "0x10"]) {
+    const table = /** @type {HTMLTableElement} */ (doc.getElementById("capital-table").cloneNode(true));
+    table.querySelector("td[data-cents]").setAttribute("data-cents", raw);
+    assert.throws(() => mod.readTable(table), /carries .* cents/, JSON.stringify(raw));
+  }
+});
+
 test("the funds partition the rows, and their sums add up to every fund's", async (t) => {
   const { mod, doc } = await booted();
   const { rows, columns } = mod.readTable(doc.getElementById("capital-table"));

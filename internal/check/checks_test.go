@@ -1770,8 +1770,7 @@ func fundRule(id string, fund int, group, totalRow string) mapping.Rule {
 }
 
 // TestRuleFundsMatchTheirHeadings covers a fund mis-assigned WITHIN its own
-// fund type, which
-// changes no column sum and which every other check passes.
+// fund type, which changes no column sum and which every other check passes.
 func TestRuleFundsMatchTheirHeadings(t *testing.T) {
 	t.Parallel()
 	const id = "rule-funds-match-their-headings"

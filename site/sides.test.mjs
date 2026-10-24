@@ -471,6 +471,15 @@ test("a config declaring another form is refused, and a missing config is said",
   const bare = installBrowser({ html: html.replace('id="sides-config"', 'id="nothing"') });
   await forms.ledger.boot(bare.window);
   assert.match(refusal(bare.document), /carries no sides config/);
+  // Mutation: drop boot's renderer.sidesOf and a chart with no sides fetches
+  // a column before it refuses.
+  const sideless = installBrowser({ html: html.replace('"ledger":{"sides"', '"ledger":{"none"') });
+  const asked = plannedFetch({}, config.exported_by);
+  sideless.window.fetch = asked;
+  await forms.ledger.boot(sideless.window);
+  await settle();
+  assert.match(refusal(sideless.document), /could not read its config: .*declares no sides for its ledger chart/);
+  assert.equal(asked.asked.length, 0, "a chart with no sides still fetched a column");
 });
 
 /** The page-text links the config's docs name for a tile's locators, in order and once each. */

@@ -171,8 +171,8 @@ test("the legend's shares are marked ours and sum to 100% within their rounding"
   const { doc } = await booted();
   for (const b of bars(doc)) {
     const pers = [...b.section.querySelectorAll(".glance-per")].map((el) => el.textContent);
-    for (const p of pers) assert.match(p, /^◇ (<0\.1|\d+\.\d)%$/, `${b.label} ${b.id}`);
-    const sum = pers.reduce((a, p) => a + (p.includes("<") ? 0.05 : Number(p.slice(2, -1))), 0);
+    for (const p of pers) assert.match(p, /^◇ (<0\.1|>99\.9|\d+\.\d)%$/, `${b.label} ${b.id}`);
+    const sum = pers.reduce((a, p) => a + (p.includes("<") ? 0.05 : p.includes(">") ? 99.95 : Number(p.slice(2, -1))), 0);
     assert.ok(Math.abs(sum - 100) <= 0.05 * pers.length + 1e-9, `${b.label} ${b.id}: ${pers.join(" + ")} = ${sum}`);
     for (const el of b.section.querySelectorAll(".glance-detail")) assert.ok(!el.textContent.includes("%"), el.textContent);
     for (const el of b.section.querySelectorAll(".glance-track > *")) {
