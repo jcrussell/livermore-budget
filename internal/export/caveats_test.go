@@ -150,7 +150,8 @@ func TestTwoTextsOfOneYearAreRefused(t *testing.T) {
 // whose lists differ get sections of their own.
 //
 // Mutation: drop the data-files test from the section loop and a.html's
-// section lists d. Mutation: keep the checked group in here and a.html's
+// section lists d. Mutation: drop the data-files arm of the list split and
+// d is stated nowhere on the caveats page. Mutation: keep the checked group in here and a.html's
 // line is 2 in two themes.
 func TestADataFilesCaveatIsStatedOnNoPageAndACheckIsNoLimit(t *testing.T) {
 	o, nav := caveatSite(
@@ -177,6 +178,9 @@ func TestADataFilesCaveatIsStatedOnNoPageAndACheckIsNoLimit(t *testing.T) {
 	}
 	if len(cx.unviewed) != 0 {
 		t.Errorf("%d caveats are listed as owed to a page, want none", len(cx.unviewed))
+	}
+	if len(cx.dataFiles) != 1 || cx.dataFiles[0].ID != "d" {
+		t.Errorf("the data files' list is %d caveats, want d alone, which no other list states", len(cx.dataFiles))
 	}
 	var themes []string
 	for _, g := range cx.themes {

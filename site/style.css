@@ -1387,6 +1387,48 @@ details > summary {
   border-left-color: var(--critical);
 }
 
+/* One file on Sources and data, folded under its name: opening it says
+   what the file is, and only the link at its foot downloads it. The same
+   box as a caveat, without the rule, because it is not a warning. */
+.files {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 16px;
+}
+
+.file {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0 14px;
+}
+
+.file > summary {
+  padding: 10px 0;
+  color: var(--ink-1);
+  font-size: 14px;
+}
+
+.file > p {
+  margin: 0 0 8px;
+  color: var(--ink-2);
+  font-size: 14px;
+}
+
+.download {
+  display: inline-block;
+  padding: 4px 12px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  color: var(--ink-1);
+  text-decoration: none;
+}
+
+.download:hover,
+.download:focus {
+  border-color: var(--ink-2);
+}
+
 /* ---------- the measure ---------- */
 
 /* THE PROSE THAT HAD NO MEASURE. Everything below inherited main's 1180px,
@@ -1404,7 +1446,7 @@ details > summary {
    ONE DECLARATION, not one rendering. */
 .caveats li,
 .derived-list li,
-.downloads li,
+.file,
 .caveat-page > p,
 .detail p,
 .apparatus > p,

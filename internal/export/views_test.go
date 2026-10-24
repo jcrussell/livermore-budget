@@ -1819,9 +1819,9 @@ func TestEveryViewLinksTheSourcesPageInPlaceOfItsList(t *testing.T) {
 		t.Fatal("the site writes no data file, so the check below covers nothing")
 	}
 	_, files, _ := strings.Cut(listed, `id="data-files"`)
-	files, _, _ = strings.Cut(files, "</ul>")
+	files, _, _ = strings.Cut(files, "</div>")
 	for _, f := range data {
-		if !strings.Contains(files, `<a href="`+f+`">`) {
+		if !strings.Contains(files, `<a class="download" href="`+f+`" download>`) {
 			t.Errorf("provenance.html's data files do not list %s", f)
 		}
 	}
@@ -2485,8 +2485,51 @@ func TestTheSankeyPageNamesItsSourcesForEveryYear(t *testing.T) {
 }
 
 // detailsDepth is how many <details> elements are open at byte i of page.
+func inSummary(page string, i int) bool {
+	return strings.LastIndex(page[:i], "<summary") > strings.LastIndex(page[:i], "</summary>")
+}
+
 func detailsDepth(page string, i int) int {
 	return strings.Count(page[:i], "<details") - strings.Count(page[:i], "</details>")
+}
+
+// TestEveryFileOpensToWhatItIsBeforeItDownloads holds provenance.html's
+// downloads and data files to one disclosure each: the summary names the
+// file and carries no link, so a click opens it rather than downloading it;
+// the body says what the file is and ends in the one link that downloads it.
+//
+// Mutation: put the download link in the <summary> and the no-link arm goes
+// red. Mutation: drop the "Drawn on" clause and the pages arm goes red.
+func TestEveryFileOpensToWhatItIsBeforeItDownloads(t *testing.T) {
+	dir, err := provenanceSite(t, nil)
+	if err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	page := readFile(t, dir, "provenance.html")
+	file := regexp.MustCompile(`(?s)<details class="file">\s*<summary>(.*?)</summary>(.*?)</details>`)
+	got := file.FindAllStringSubmatch(page, -1)
+	if n := strings.Count(page, `<details class="file">`); n < 2 || n != len(got) {
+		t.Fatalf("provenance.html folds %d files this test can read, of %d; want the CSV and the data file", len(got), n)
+	}
+	download := regexp.MustCompile(`<a class="download" href="([^"]+)" download>Download ([^<]+)</a>`)
+	for _, f := range got {
+		if strings.Contains(f[1], "<a ") {
+			t.Errorf("the summary %q carries a link, so opening it can download the file instead", f[1])
+		}
+		links := download.FindAllStringSubmatch(f[2], -1)
+		if len(links) != 1 || links[0][1] != links[0][2] || !strings.Contains(f[1], links[0][1]) {
+			t.Errorf("the file under %q downloads %v, want one link to the file its summary names", f[1], links)
+		}
+	}
+	data := got[len(got)-1]
+	if !strings.Contains(data[2], `Drawn on <a href="index.html">Budget flows</a>.`) {
+		t.Errorf("the data file %q does not say the page that draws it:\n%s", data[1], data[2])
+	}
+	// The document's link is the registry's, as sourcesFor composes it.
+	if !strings.Contains(data[2], `Read from
+      <a href="`+budgetDocs()[0].PDFURL+`">`+budgetDocs()[0].Title+`</a>,`) {
+		t.Errorf("the data file %q does not say what it is read from, linked to its PDF:\n%s", data[1], data[2])
+	}
 }
 
 // TestTheTablePagesFoldTheirApparatusAndNotTheirWarnings holds balances.html
@@ -2494,7 +2537,8 @@ func detailsDepth(page string, i int) int {
 // apparatus ships in a CLOSED disclosure whose heading stays in the <summary>
 // and whose content is inside it, the caveats line sits below the table it
 // qualifies, and the text a reader needs before the first mark -- the Shape
-// paragraph, the locator rule, the downloads -- is inside no <details> at all.
+// paragraph, the locator rule, the downloads' names -- is inside no <details>
+// at all or in a <summary>, which a closed one shows.
 func TestTheTablePagesFoldTheirApparatusAndNotTheirWarnings(t *testing.T) {
 	var hdoc map[string]any
 	if err := json.Unmarshal(historyDoc(balancesFixture()...), &hdoc); err != nil {
@@ -2557,7 +2601,7 @@ func TestTheTablePagesFoldTheirApparatusAndNotTheirWarnings(t *testing.T) {
 			switch {
 			case i < 0:
 				t.Errorf("%s does not print %q", tc.page, want)
-			case detailsDepth(tc.html, i) != 0:
+			case detailsDepth(tc.html, i) != 0 && !inSummary(tc.html, i):
 				t.Errorf("%s folds %q behind a <details>; it is stated where a reader meets it",
 					tc.page, want)
 			}

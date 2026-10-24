@@ -284,6 +284,9 @@ type provenancePageData struct {
 	chrome
 	Rows      []provenanceRow
 	Downloads []downloadRef
+	// DataFiles is every published data file with what it is, so a reader
+	// opens one to read about it before downloading it.
+	DataFiles []dataFileRef
 	Documents int
 	Pages     int
 	Records   int
@@ -563,6 +566,83 @@ type provenanceRow struct {
 	TextURL  string
 }
 
+// dataFileRef is one published data file as the provenance page describes
+// it: every document folded into Path, together.
+type dataFileRef struct {
+	Path string
+	// Label is the fiscal year and basis its documents state, "" where they
+	// state none.
+	Label string
+	// Pages are the views that draw it, in nav order.
+	Pages []navItem
+	// Sources are the city's documents it cites, each with the pages.
+	Sources []sourceRef
+	// Caveats is how many distinct caveats travel inside it, and
+	// CaveatsPath the caveats page, "" when the site has none.
+	Caveats     int
+	CaveatsPath string
+}
+
+// dataFilesOf describes every published data file. A file's documents are
+// the stems ix.PublishedPath folds into it; its pages are the views whose
+// [View.ReachedStems] reach one of them; its sources go through sourcesFor,
+// so no URL is composed here.
+func dataFilesOf(o *Options, nav []navItem, byID map[string]Doc, ix ColumnIndex,
+	pageTextBase func(string) string) ([]dataFileRef, error) {
+	stemsOf := map[string][]string{}
+	for _, stem := range slices.Sorted(maps.Keys(o.Projections)) {
+		p := ix.PublishedPath(stem)
+		stemsOf[p] = append(stemsOf[p], stem)
+	}
+	reachedBy := map[string][]navItem{}
+	for i, v := range o.Views {
+		if !templateRendersADocument(v.Template) {
+			continue
+		}
+		reached, err := v.ReachedStems(ix)
+		if err != nil {
+			return nil, err
+		}
+		seen := map[string]bool{}
+		for _, stem := range reached {
+			p := ix.PublishedPath(stem)
+			if _, built := o.Projections[stem]; !built || seen[p] {
+				continue
+			}
+			seen[p] = true
+			reachedBy[p] = append(reachedBy[p], navItem{Label: nav[i].Label, Path: v.Path})
+		}
+	}
+	out := make([]dataFileRef, 0, len(stemsOf))
+	for _, p := range slices.Sorted(maps.Keys(stemsOf)) {
+		f := dataFileRef{Path: p, Pages: reachedBy[p], CaveatsPath: caveatsPathOf(o)}
+		var cited []sourceMeta
+		caveats := map[string]bool{}
+		for _, stem := range stemsOf[p] {
+			raw := o.Projections[stem]
+			var dc documentCaveats
+			var ds documentSources
+			if err := json.Unmarshal(raw, &dc); err != nil {
+				return nil, fmt.Errorf("decode %s caveats: %w", stem, err)
+			}
+			if err := json.Unmarshal(raw, &ds); err != nil {
+				return nil, fmt.Errorf("decode %s sources: %w", stem, err)
+			}
+			if f.Label == "" {
+				f.Label = dc.label()
+			}
+			for _, c := range dc.Metadata.Caveats {
+				caveats[c.ID] = true
+			}
+			cited = append(cited, ds.Metadata.Sources...)
+		}
+		f.Caveats = len(caveats)
+		f.Sources, _ = sourcesFor(unionSources(cited), byID, pageTextBase, o.RecordsBase)
+		out = append(out, f)
+	}
+	return out, nil
+}
+
 // downloadRef is one whole-store artifact offered for download.
 type downloadRef struct {
 	Path  string
@@ -655,6 +735,10 @@ func buildProvenancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	if err != nil {
 		return provenancePageData{}, err
 	}
+	dataFiles, err := dataFilesOf(o, nav, byID, ix, pageTextBase)
+	if err != nil {
+		return provenancePageData{}, err
+	}
 
 	title := v.Title
 	if title == "" {
@@ -676,6 +760,7 @@ func buildProvenancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		},
 		Rows:      rows,
 		Downloads: downloads,
+		DataFiles: dataFiles,
 		Documents: len(order),
 		Pages:     len(rows),
 		Records:   records,

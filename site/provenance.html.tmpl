@@ -44,17 +44,49 @@
 </p>
 
 <h2>Download</h2>
-<ul class="downloads">
+<p class="subtle">Open a file to read what it holds, then download it.</p>
+<div class="files">
   {{- range .Downloads}}
-  <li><a href="{{.Path}}">{{.Label}}</a> <span class="subtle">— {{.Path}}, {{.Bytes}} bytes{{if .Note}}. {{.Note}}{{end}}</span></li>
+  <details class="file">
+    <summary>{{.Label}} <span class="subtle">— {{.Path}}</span></summary>
+    {{- if .Note}}
+    <p>{{.Note}}</p>
+    {{- end}}
+    <p><a class="download" href="{{.Path}}" download>Download {{.Path}}</a> <span class="subtle">{{.Bytes}} bytes</span></p>
+  </details>
   {{- end}}
-</ul>
+</div>
+<h3>The data files</h3>
 <p>Every data file the site's pages are drawn from, each fetchable on its own:</p>
-<ul class="downloads" id="data-files">
-  {{- range .Projections}}
-  <li><a href="{{.Path}}">{{.Path}}</a></li>
+<div class="files" id="data-files">
+  {{- range .DataFiles}}
+  <details class="file">
+    <summary>{{.Path}} <span class="subtle">—
+      {{- if .Label}} {{.Label}}{{else if .Pages}} for{{range $i, $p := .Pages}}{{if $i}},{{end}} {{$p.Label}}{{end}}{{else}} drawn by no page{{end}}</span></summary>
+    <p>
+      {{- if .Pages}}
+      Drawn on
+      {{- range $i, $p := .Pages}}{{if $i}},{{end}} <a href="{{$p.Path}}">{{$p.Label}}</a>{{end}}.
+      {{- else}}
+      No page draws it; it is published for whoever fetches it.
+      {{- end}}
+    </p>
+    {{- if .Sources}}
+    <p>Read from
+      {{- range $i, $s := .Sources}}{{if $i}};{{end}}
+      {{if $s.PDFURL}}<a href="{{$s.PDFURL}}">{{$s.Title}}</a>{{else}}{{$s.Title}}{{end}},
+      {{len $s.Pages}} page{{if ne (len $s.Pages) 1}}s{{end}}
+      {{- end}}.
+    </p>
+    {{- end}}
+    {{- if .Caveats}}
+    <p>Carries {{.Caveats}} caveat{{if ne .Caveats 1}}s{{end}} in its metadata
+      {{- if .CaveatsPath}}; each is stated in full on <a href="{{.CaveatsPath}}">the caveats page</a>{{end}}.</p>
+    {{- end}}
+    <p><a class="download" href="{{.Path}}" download>Download {{.Path}}</a></p>
+  </details>
   {{- end}}
-</ul>
+</div>
 <p class="subtle">Packaged by {{.ExportedBy}}.</p>
 
 {{- /* Every column's derived nodes with their rationale and source note:
@@ -86,10 +118,10 @@
 </section>
 {{- end}}
 
-{{- /* THE PAGE TABLE FOLDS AND THE DOWNLOADS DO NOT: the downloads are what
-       this page is for, and the locator paragraph above is what makes every
-       link in the table citable. The table is an index a reader opens to find
-       one page. */}}
+{{- /* THE PAGE TABLE FOLDS WHOLE: it is an index a reader opens to find one
+       page. Each download folds on its own, under a summary naming it, so
+       the file list stays in view; the locator paragraph above is what makes
+       every link in the table citable. */}}
 <details class="apparatus" id="pages-view">
   <summary>
     <h2>By page</h2>
