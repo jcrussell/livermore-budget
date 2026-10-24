@@ -3,10 +3,10 @@ package export
 import (
 	"bytes"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
-	"sort"
 	"strings"
 
 	yaml "go.yaml.in/yaml/v3"
@@ -110,7 +110,7 @@ func buildProjectionsFrom(repoRoot string, facts []fact.Fact) (map[string][]byte
 	out := map[string][]byte{}
 	builtAt := map[string]builtDoc{}
 	for _, p := range project.Registry(reg) {
-		declared := slicesOf(p, facts, version)
+		declared := p.Slices(facts, version)
 		for _, o := range declared {
 			stem, err := project.Stem(p.Name(), o, declared)
 			if err != nil {
@@ -203,33 +203,7 @@ func assertPublishedBuilt(builtAt map[string]builtDoc) error {
 // builtStems is the stems built, in order, for a refusal that has to say what
 // it did build.
 func builtStems(builtAt map[string]builtDoc) []string {
-	out := make([]string, 0, len(builtAt))
-	for stem := range builtAt {
-		out = append(out, stem)
-	}
-	sort.Strings(out)
-	return out
-}
-
-// slicesOf is the slices one projection is built over.
-//
-// A projection that says which slices it is of is asked; one that does not is
-// built over the published spine slices, one per published fiscal year, which is
-// what every projection got before project.Sliced existed.
-func slicesOf(p project.Projection, facts []fact.Fact, version string) []project.Options {
-	if sl, ok := p.(project.Sliced); ok {
-		return sl.Slices(facts, version)
-	}
-	years := project.PublishedFiscalYears()
-	out := make([]project.Options, 0, len(years))
-	for _, year := range years {
-		out = append(out, project.Options{
-			Columns: []project.Column{{FiscalYear: year, Basis: project.PublishedBasis}},
-			Scopes:  []string{project.PublishedScope},
-			Version: version,
-		})
-	}
-	return out
+	return slices.Sorted(maps.Keys(builtAt))
 }
 
 // builtDoc is a document that has claimed a stem, and which projection claimed

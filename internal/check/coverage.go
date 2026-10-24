@@ -140,7 +140,7 @@ func (*publishedProjectionBuilt) Run(_ context.Context, s *Subject) (Result, err
 	//
 	// It is keyed on the projection NAME, and that is not belt-and-braces.
 	// Since each projection is built over the slices it declares
-	// (project.Sliced), "some projection was built at the published triple"
+	// (Projection.Slices), "some projection was built at the published triple"
 	// does not imply the published DOCUMENT was: a second projection whose
 	// slices happen to include that triple would satisfy this check while the
 	// site's chart was of nothing.

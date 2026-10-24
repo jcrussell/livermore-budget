@@ -481,9 +481,10 @@ func validatePagesShape(pages []int, slug string, ef errFunc) error {
 }
 
 // validateProvenance is the fourth invariant on an entry that carries derived,
-// rationale and source_note -- the same three-way check validateCategory makes,
-// including the asymmetry: a forgotten `derived: true` is far likelier than a
-// stray rationale, and it fails open.
+// rationale and source_note: a derived entry carries both, and a published one
+// neither. A forgotten `derived: true` is far likelier than a stray rationale,
+// and it fails open: the entry reads as justified while `verify` never demands
+// the justification.
 func validateProvenance(slug string, derived bool, rationale, sourceNote string, ef errFunc) error {
 	switch {
 	case derived && rationale == "":
@@ -700,22 +701,7 @@ func validateCategory(c Category, catf errFunc) error {
 
 	// The fourth provenance invariant: a classification we inferred and a
 	// term the city printed must not be presented alike.
-	switch {
-	case c.Derived && c.Rationale == "":
-		return catf(c.Slug, "rationale", "is required when derived is true")
-	case c.Derived && c.SourceNote == "":
-		return catf(c.Slug, "source_note", "is required when derived is true")
-	case !c.Derived && c.Rationale != "":
-		// The likelier mistake by far is a forgotten `derived: true` rather
-		// than a stray rationale, and it fails open: the entry reads as
-		// justified while `verify` never demands the justification.
-		return catf(c.Slug, "derived",
-			"is not set, but a rationale is given; a published term needs no rationale")
-	case !c.Derived && c.SourceNote != "":
-		return catf(c.Slug, "derived",
-			"is not set, but a source_note is given; a published term needs no source_note")
-	}
-	return nil
+	return validateProvenance(c.Slug, c.Derived, c.Rationale, c.SourceNote, catf)
 }
 
 // validateParent checks the hierarchy against the grammar taxonomy.yaml

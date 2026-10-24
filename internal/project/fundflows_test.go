@@ -891,8 +891,7 @@ func TestNoRevenueLineReadsAsItsCategory(t *testing.T) {
 	}
 	met := map[string]bool{}
 	for _, p := range []interface {
-		Sliced
-		Name() string
+		Projection
 		Document([]fact.Fact, Options) (*Document, error)
 	}{&fundFlows{Labels: store.reg}, &expansion{Labels: store.reg}} {
 		for _, o := range p.Slices(store.facts, "revenue-line label test") {

@@ -18,7 +18,7 @@ import (
 type seriesOnly struct{}
 
 var _ project.Projection = (*seriesOnly)(nil)
-var _ project.Sliced = (*seriesOnly)(nil)
+var _ project.Projection = (*seriesOnly)(nil)
 
 func (*seriesOnly) Name() string { return "series-only" }
 
@@ -180,7 +180,7 @@ func (*silent) Slices(_ []fact.Fact, _ string) []project.Options { return nil }
 // does not carry into a corpus defect: internal/check/fixture_test.go is a
 // miniature of the spine, the trends projection is of nothing there, and ~70
 // runChecks call sites would have gone red reporting on a test's own scope.
-// project.Sliced's doc comment already settles what the state means -- "an empty
+// project.Projection.Slices' doc comment already settles what the state means -- "an empty
 // result means the store carries nothing this projection is of, which is a
 // statement about the corpus and not an error".
 //

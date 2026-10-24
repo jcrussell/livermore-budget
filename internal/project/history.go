@@ -51,7 +51,6 @@ type FundBalances struct {
 
 var (
 	_ Projection = (*FundBalances)(nil)
-	_ Sliced     = (*FundBalances)(nil)
 )
 
 // Name is the file stem: fund-balances becomes fund-balances.json.
@@ -94,7 +93,6 @@ type FundBalanceChanges struct {
 
 var (
 	_ Projection = (*FundBalanceChanges)(nil)
-	_ Sliced     = (*FundBalanceChanges)(nil)
 )
 
 // Name is the file stem: changes-in-fund-balances.json.

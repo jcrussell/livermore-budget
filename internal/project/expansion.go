@@ -255,7 +255,6 @@ type expansion struct {
 
 var (
 	_ Projection = (*expansion)(nil)
-	_ Sliced     = (*expansion)(nil)
 )
 
 // Name is [Projection]'s, and it is this document's file stem.

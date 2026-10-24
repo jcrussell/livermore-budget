@@ -27,7 +27,7 @@ func committedDocs(t *testing.T, year int) map[string]*Document {
 	out := map[string]*Document{}
 	for _, p := range Registry(store.reg) {
 		g, ok := p.(interface {
-			Sliced
+			Projection
 			Document([]fact.Fact, Options) (*Document, error)
 		})
 		if !ok {

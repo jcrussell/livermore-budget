@@ -43,7 +43,6 @@ type CIPProjects struct {
 
 var (
 	_ Projection = (*CIPProjects)(nil)
-	_ Sliced     = (*CIPProjects)(nil)
 )
 
 // Name is the file stem: cip-projects becomes cip-projects.json.

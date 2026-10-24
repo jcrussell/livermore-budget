@@ -73,7 +73,6 @@ type Trends struct {
 
 var (
 	_ Projection = (*Trends)(nil)
-	_ Sliced     = (*Trends)(nil)
 )
 
 // Name is the file stem: revenue-trends becomes revenue-trends.json.

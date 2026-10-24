@@ -1710,7 +1710,7 @@ func TestStemAsksHowManyDocumentsNotHowManyColumns(t *testing.T) {
 
 // TestBuildProjectionsDoesNotRefuseASecondSchedule is fisc-neh, pinned.
 //
-// A Sliced projection is built over the slices it declares, not over the
+// A projection is built over the slices it declares, not over the
 // published fiscal years: a trends projection declares one slice of a
 // different schedule, and refusing it for lacking the SPINE slice fails
 // `fisc export` before it writes a file.

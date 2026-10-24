@@ -126,7 +126,7 @@ func TestADocumentSelectingBothReadingsIsAFinding(t *testing.T) {
 	if res.Status != StatusFail || len(res.Findings) != 2 {
 		t.Fatalf("status %s with %d findings, want two failures:\n  %v", res.Status, len(res.Findings), res.Findings)
 	}
-	if !strings.Contains(res.Findings[0].Detail, "which reading it takes") {
+	if !strings.Contains(res.Findings[0].Detail, "count it twice") {
 		t.Errorf("the both-readings finding does not say what is missing: %s", res.Findings[0].Detail)
 	}
 	if !strings.Contains(res.Findings[1].Detail, "not an antichain") {

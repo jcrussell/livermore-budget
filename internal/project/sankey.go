@@ -572,16 +572,7 @@ type sankey struct {
 	Labels labels
 }
 
-var (
-	_ Projection = (*sankey)(nil)
-	// Sliced is asserted here and not only relied on. It is consumed through a
-	// runtime type assertion in both callers -- pkg/cmd/export's data.go and
-	// internal/check's subject.go -- so a drift in Slices' signature would
-	// compile clean, make both assertions return false, and silently fall back
-	// to PublishedFiscalYears() x PublishedBasis. The spine would then stop
-	// being built over the years it declares with no error anywhere.
-	_ Sliced = (*sankey)(nil)
-)
+var _ Projection = (*sankey)(nil)
 
 // Name is the file stem: sankey.json.
 func (*sankey) Name() string { return "sankey" }
@@ -637,7 +628,7 @@ func (s *sankey) Document(facts []fact.Fact, o Options) (*Document, error) {
 	}
 	// The headline is a total over a view the lattice refuses unless its
 	// cuts are summable together.
-	view, err := structure.ViewOf("headline", o.Scopes, nil)
+	view, err := structure.ViewOf("headline", o.Scopes)
 	if err != nil {
 		return nil, fmt.Errorf("sankey: %w", err)
 	}
@@ -834,10 +825,9 @@ func isStock(f *fact.Fact) bool {
 // printed; netCells refuses a netted fact in the same slice.
 func headlineOver(v structure.View, facts []fact.Fact) Headline {
 	var h Headline
-	identities := structure.BudgetBookIdentities()
 	for i := range facts {
 		f := &facts[i]
-		if !v.Admits(f, identities) {
+		if !v.Admits(f) {
 			continue
 		}
 		external := boundaryKind(f.FundGroup) == KindExternal
@@ -880,14 +870,12 @@ func headlineOver(v structure.View, facts []fact.Fact) Headline {
 // check over nothing and pass it.
 func SelectFacts(facts []fact.Fact, o Options) ([]fact.Fact, error) {
 	var view *structure.View
-	var identities []structure.Identity
 	if o.ThroughCuts {
 		v, err := o.view()
 		if err != nil {
 			return nil, fmt.Errorf("selecting through the cuts: %w", err)
 		}
 		view = &v
-		identities = structure.BudgetBookIdentities()
 	}
 	out := make([]fact.Fact, 0, len(facts))
 	for i := range facts {
@@ -906,7 +894,7 @@ func SelectFacts(facts []fact.Fact, o Options) ([]fact.Fact, error) {
 			}
 			continue
 		}
-		if view != nil && !view.Admits(f, identities) {
+		if view != nil && !view.Admits(f) {
 			continue
 		}
 		out = append(out, *f)

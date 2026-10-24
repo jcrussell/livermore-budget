@@ -478,8 +478,7 @@ type Options struct {
 	// A Sankey of two budgets is not a chart of anything, so [Sankey] refuses
 	// any Options with more than one column; a four-year trend of one printed
 	// row is a chart of exactly one thing, and cannot be expressed at all if
-	// the year is singular. [Sliced]'s doc comment promised that document
-	// before this field could hold it (fisc-ai0).
+	// the year is singular.
 	//
 	// THE ABSENT-MEANS-EVERY-YEAR DESIGN IS DELIBERATELY NOT AVAILABLE. A zero
 	// FiscalYear meaning "all of them" would be smaller, and it would put the
@@ -635,7 +634,7 @@ func (o Options) validate() error {
 
 // view is the view a ThroughCuts selection admits facts through.
 func (o Options) view() (structure.View, error) {
-	return structure.ViewOf("selection", o.Scopes, nil)
+	return structure.ViewOf("selection", o.Scopes)
 }
 
 // onlyScope is the one schedule a single-schedule document is of, and the
@@ -694,30 +693,11 @@ type Projection interface {
 	Name() string
 	// Build renders the projection as canonical, deterministic JSON.
 	Build(facts []fact.Fact, o Options) ([]byte, error)
-}
-
-// Sliced is a projection that says which slices of the fact store it is of.
-//
-// It exists because the alternative was `fisc verify` deciding for it, and that
-// decision does not generalise. internal/check used to derive one slice per
-// (fiscal year, basis) present within the SPINE scope and build every registered
-// projection over every one of them — correct while the Sankey was the only
-// projection, and wrong for the first one that is of a different schedule, which
-// would be handed a slice containing none of its facts.
-//
-// The projection is the right place to answer it: it is the thing that knows
-// which schedule it draws and whether one document per year is meaningful for
-// it. A Sankey of two budgets is not a chart of anything, so Sankey returns one
-// slice per year; a four-year trend line is a chart of exactly one thing, so a
-// trends projection returns a single slice spanning all four.
-//
-// A projection that does not implement this is still built — over the slices the
-// caller chose — so this is an opt-in refinement rather than a new obligation.
-type Sliced interface {
-	// Slices returns the options this projection wants to be built under, in a
-	// stable order, given the whole fact store. An empty result means the store
-	// carries nothing this projection is of, which is a statement about the
-	// corpus and not an error.
+	// Slices returns the options this projection is built under, in a stable
+	// order, given the whole fact store: a Sankey one per year, a trend one
+	// spanning every year. An empty result means the store carries nothing
+	// this projection is of, which is a statement about the corpus and not an
+	// error.
 	Slices(facts []fact.Fact, version string) []Options
 }
 

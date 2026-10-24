@@ -111,7 +111,7 @@ func TestHistorySlicesTakeTheWholeScope(t *testing.T) {
 		vocab.KindRevenue, "taxes/sales", "", 300)
 
 	for _, tc := range []struct {
-		p     Sliced
+		p     Projection
 		facts []fact.Fact
 		scope string
 	}{

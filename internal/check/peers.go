@@ -185,7 +185,7 @@ func (*peersOverlapOnlyByDeclaredIdentity) run(s *Subject, cuts []structure.Cut)
 		}
 		seen[key] = true
 		views++
-		if _, err := structure.ViewOf(p.Name, p.Options.Scopes, nil); err != nil {
+		if _, err := structure.ViewOf(p.Name, p.Options.Scopes); err != nil {
 			findings = append(findings, finding(p.Name, "%v", err))
 		}
 	}

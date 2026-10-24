@@ -395,40 +395,24 @@ func absenceDeclared(facts []fact.Fact, present, missing Cut, r restriction, key
 }
 
 // A View is a set of cuts a total may be taken over: an antichain of the
-// lattice, and where two of its cuts are joined by an identity, a declaration
-// of which reading the total takes.
+// lattice no identity joins two cuts of.
 type View struct {
 	Name string
 	Cuts []Cut
-	// Readings maps an identity name to the cut whose reading the view
-	// takes. Required for every identity joining two cuts of the view.
-	Readings map[string]string
-	// absent is, per identity, the cells an exception between its two cuts
-	// declares the reading's side has no row for and the other side prints.
-	// Admits takes the other side's figure there, since the reading has none.
-	absent map[string]map[Key]bool
 }
 
-// NewView refuses a set that is not summable: a cut named twice, an identity
-// joining two of its cuts with no reading, a reading for an identity joining
-// none, or two cuts at different levels that both print some money. The
-// antichain is over money both print, not levels alone: revenue by fund and
-// expenditure by fund, department and object are summable together, and so
-// are two cuts whose declared fund groups are disjoint.
+// NewView refuses a set that is not summable: a cut named twice, two of its
+// cuts an identity says print one figure, or two cuts at different levels
+// that both print some money. The antichain is over money both print, not
+// levels alone: revenue by fund and expenditure by fund, department and
+// object are summable together, and so are two cuts whose declared fund
+// groups are disjoint.
 //
 // TWO LEVELS NEITHER OF WHICH REFINES THE OTHER ARE REFUSED TOO. A fund's
 // total revenue (fund-balance-revenues, at fund, category a placeholder) and
 // the spine's revenue by fund group and category share no refinement edge, yet
 // both carry the General Fund's revenue, so a total over both counts it twice.
-// Only two cuts at one level can be told apart by an identity, so a pair at
-// different levels has no reading that could make it summable.
-//
-// exceptions are read for the absences they declare between a joined pair:
-// where the reading's side has no row and the other side prints one, the view
-// counts the other side's figure, so a declared absence does not leave a total
-// short. Peers holds each such pin to the figure the present side prints.
-func NewView(name string, cuts []Cut, identities []Identity, exceptions []Exception,
-	readings map[string]string) (View, error) {
+func NewView(name string, cuts []Cut, identities []Identity) (View, error) {
 	names := map[string]Cut{}
 	for _, c := range cuts {
 		if _, dup := names[c.Name]; dup {
@@ -455,163 +439,24 @@ func NewView(name string, cuts []Cut, identities []Identity, exceptions []Except
 				name, a.Name, a.Level, b.Name, b.Level, sharedKinds(a, b))
 		}
 	}
-	joined := map[string]bool{}
 	for _, id := range identities {
 		_, hasA := names[id.A]
 		_, hasB := names[id.B]
-		if !hasA || !hasB {
-			continue
-		}
-		joined[id.Name] = true
-		reading, ok := readings[id.Name]
-		if !ok {
+		if hasA && hasB {
 			return View{}, fmt.Errorf("view %q holds both %q and %q, which identity %q says print one "+
-				"figure for %v; a total over both would count it twice, so the view must say which "+
-				"reading it takes", name, id.A, id.B, id.Name, id.Kinds)
-		}
-		if reading != id.A && reading != id.B {
-			return View{}, fmt.Errorf("view %q takes reading %q for identity %q, which joins %q and %q",
-				name, reading, id.Name, id.A, id.B)
+				"figure for %v, so a total over both would count it twice", name, id.A, id.B, id.Name, id.Kinds)
 		}
 	}
-	for idName := range readings {
-		if !joined[idName] {
-			return View{}, fmt.Errorf("view %q declares a reading for identity %q, which joins no two "+
-				"of its cuts", name, idName)
-		}
-	}
-	if err := oneReadingPerCell(name, identities, joined, readings); err != nil {
-		return View{}, err
-	}
-	absent := map[string]map[Key]bool{}
-	for _, id := range identities {
-		if !joined[id.Name] {
-			continue
-		}
-		reading, other := readings[id.Name], id.A
-		if reading == id.A {
-			other = id.B
-		}
-		at := names[reading].Level
-		for _, e := range exceptions {
-			onPair := e.Cut == reading && e.Against == other || e.Cut == other && e.Against == reading
-			if e.At != at || !onPair {
-				continue
-			}
-			for _, p := range e.Cells {
-				read, printed := p.Cut, p.Against
-				if e.Cut == other {
-					read, printed = p.Against, p.Cut
-				}
-				if read.Present || !printed.Present {
-					continue
-				}
-				if absent[id.Name] == nil {
-					absent[id.Name] = map[Key]bool{}
-				}
-				absent[id.Name][e.Key(p)] = true
-			}
-		}
-	}
-	return View{Name: name, Cuts: cuts, Readings: readings, absent: absent}, nil
-}
-
-// anyOtherCategory stands for every category an identity with no Categories
-// covers and no identity names; no category is spelled with a NUL.
-const anyOtherCategory = "\x00"
-
-// oneReadingPerCell refuses readings that do not agree around the view: for
-// each cell the joined identities cover, the cuts they join less every cut a
-// covering identity's reading declines must be exactly one. Three cuts joined
-// pairwise can be read in a cycle, each identity declining a different cut,
-// and then every reading of the figure is declined and a total counts it
-// zero times; two left over count it twice.
-func oneReadingPerCell(name string, identities []Identity, joined map[string]bool,
-	readings map[string]string) error {
-	type cell struct {
-		kind     vocab.Kind
-		category string
-	}
-	var cells []cell
-	seen := map[cell]bool{}
-	add := func(c cell) {
-		if !seen[c] {
-			seen[c] = true
-			cells = append(cells, c)
-		}
-	}
-	for _, id := range identities {
-		if !joined[id.Name] {
-			continue
-		}
-		if len(id.Categories) == 0 {
-			for _, k := range id.Kinds {
-				add(cell{k, anyOtherCategory})
-			}
-		}
-		for _, kc := range id.Categories {
-			add(cell{kc.Kind, kc.Category})
-		}
-	}
-	for _, c := range cells {
-		var printed, declined []string
-		for _, id := range identities {
-			if !joined[id.Name] || !id.coversCell(c.kind, c.category) {
-				continue
-			}
-			other := id.A
-			if readings[id.Name] == id.A {
-				other = id.B
-			}
-			printed = append(printed, id.A, id.B)
-			declined = append(declined, other)
-		}
-		var left []string
-		for _, cut := range printed {
-			if !slices.Contains(declined, cut) && !slices.Contains(left, cut) {
-				left = append(left, cut)
-			}
-		}
-		if len(left) == 1 {
-			continue
-		}
-		where := string(c.kind)
-		if c.category != anyOtherCategory {
-			where += " under " + c.category
-		}
-		if len(left) == 0 {
-			return fmt.Errorf("view %q declines every reading of %s: its readings decline each of "+
-				"%v in turn, so a total over it counts that figure zero times; the readings of one "+
-				"figure must name one cut", name, where, declined)
-		}
-		return fmt.Errorf("view %q keeps %d readings of %s, %v, so a total over it counts that "+
-			"figure more than once; the readings of one figure must name one cut", name, len(left), where, left)
-	}
-	return nil
+	return View{Name: name, Cuts: cuts}, nil
 }
 
 // Admits says whether a fact is counted by the view: it falls in one of the
-// view's cuts, and it is not the reading the view declined, unless the reading
-// it would have taken instead is declared absent at the fact's cell.
-func (v View) Admits(f *fact.Fact, identities []Identity) bool {
+// view's cuts.
+func (v View) Admits(f *fact.Fact) bool {
 	for _, c := range v.Cuts {
-		if !c.admits(f) {
-			continue
+		if c.admits(f) {
+			return true
 		}
-		for _, id := range identities {
-			reading, ok := v.Readings[id.Name]
-			if !ok || !id.coversCell(f.Kind, f.Category) {
-				continue
-			}
-			other := id.A
-			if reading == id.A {
-				other = id.B
-			}
-			if c.Name == other && !v.absent[id.Name][KeyOf(f, c.Level)] {
-				return false
-			}
-		}
-		return true
 	}
 	return false
 }
@@ -629,7 +474,7 @@ func CutsOf(scopes []string) []Cut {
 
 // ViewOf is the view a document's scope set names, refused as NewView refuses
 // and also when a scope has no cut.
-func ViewOf(name string, scopes []string, readings map[string]string) (View, error) {
+func ViewOf(name string, scopes []string) (View, error) {
 	cuts := CutsOf(scopes)
 	for _, sc := range scopes {
 		found := false
@@ -643,7 +488,7 @@ func ViewOf(name string, scopes []string, readings map[string]string) (View, err
 			return View{}, fmt.Errorf("view %q selects scope %q, which no declared cut reads", name, sc)
 		}
 	}
-	return NewView(name, cuts, BudgetBookIdentities(), BudgetBookExceptions(), readings)
+	return NewView(name, cuts, BudgetBookIdentities())
 }
 
 func kindsMeet(a, b Cut) bool { return len(sharedKinds(a, b)) > 0 }

@@ -821,10 +821,7 @@ func buildProjections(ps []project.Projection, facts []fact.Fact, version string
 		// handed a slice containing none of its facts and would refuse to
 		// build -- a red check reporting a scheduling mistake as a corpus
 		// defect.
-		want := slices
-		if sl, ok := p.(project.Sliced); ok {
-			want = sl.Slices(facts, version)
-		}
+		want := p.Slices(facts, version)
 
 		// A projection that is not a graph is RECORDED WITH A NIL GRAPH, not
 		// refused. Refusing was the old behaviour and it was the wrong failure

@@ -89,7 +89,7 @@ func (*documentsAreChecked) Run(_ context.Context, s *Subject) (Result, error) {
 	// not carry into a defect -- internal/check/fixture_test.go is
 	// spine-only, so the trends projection declares nothing there and 70-odd
 	// test call sites would report a corpus finding about a test's own scope.
-	// project.Sliced's doc comment already settles what that state means: "an
+	// project.Projection.Slices' doc comment already settles what that state means: "an
 	// empty result means the store carries nothing this projection is of, which
 	// is a statement about the corpus and not an error".
 	//

@@ -374,7 +374,6 @@ type DebtService struct{}
 
 var (
 	_ Projection = (*DebtService)(nil)
-	_ Sliced     = (*DebtService)(nil)
 )
 
 // Name is the file stem.

@@ -108,7 +108,6 @@ type fundFlows struct {
 
 var (
 	_ Projection = (*fundFlows)(nil)
-	_ Sliced     = (*fundFlows)(nil)
 )
 
 // Name is [Projection]'s, and it is this document's file stem.
