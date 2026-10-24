@@ -7,7 +7,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 
-import { bootedApp, everySplit, split, settle, clickYear, fire, pageFixture, refusals, dollars } from "./testlib.mjs";
+import { bootedApp, expansionStates, split, settle, clickYear, fire, pageFixture, refusals, dollars } from "./testlib.mjs";
 
 const CONFIG = pageFixture().config;
 const YEARS = CONFIG.years;
@@ -213,8 +213,12 @@ describe("drawn plus hidden is the chart", () => {
       // and filterFor refuses to draw; a group or kind filter never does.
       const refusedNode = [];
       let drawnNode = 0;
-      const visit = (where) => {
-        const doc = app.projection;
+      // EACH CHART SHAPED AS THE PAGE SHAPES IT, with no DOM: the claim is
+      // the filter's arithmetic over the shaped document, which is what
+      // app.projection holds after a redraw.
+      const shapeAt = (frontier, wholeSplits) =>
+        app.formOnScreen().shape(app.fetched, { chart: CONFIG.overview, frontier, whole: wholeSplits });
+      const visit = (where, doc) => {
         for (const state of samples(app, doc)) {
           const named = where +
             ` [${[...state.groups, ...state.kinds, ...state.nodes].join(", ")}${state.only ? " only " + state.only : ""}` +
@@ -236,10 +240,10 @@ describe("drawn plus hidden is the chart", () => {
           states++;
         }
       };
-      visit("(the root)");
-      const walked = await everySplit(app, async (where) => visit(where));
-      assert.equal(walked.refused, "", walked.refused);
-      t.diagnostic(`${year.label}: ${walked.visited + 1} chart(s), ${states} filter state(s); ${hidden} ribbon(s) hidden ` +
+      visit("(the root)", shapeAt(app.rootFrontier(app.fetched), new Set()));
+      const charts = expansionStates(app, app.fetched);
+      for (const st of charts) visit(st.where, shapeAt(st.frontier, st.whole));
+      t.diagnostic(`${year.label}: ${charts.length + 1} chart(s), ${states} filter state(s); ${hidden} ribbon(s) hidden ` +
         `and ${merged} merged ribbon(s) drawn across them; ${faults.length} fault(s)`);
       t.diagnostic(`${year.label}: ${drawnNode} node filter state(s) drawn, ${cut} ribbon(s) cut along their cells, ${refusedNode.length} refused` +
         (refusedNode.length ? `, the first ${refusedNode[0]}` : ""));

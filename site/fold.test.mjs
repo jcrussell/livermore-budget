@@ -7,7 +7,7 @@ import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  loadApp, bootedApp, columnFixture, goldenGraph, pageFixture, publishedColumns, unmarkContra,
+  loadApp, bootedApp, columnFixture, goldenGraph, pageFixture, publishedColumns, unmarkContra, expansionStates,
 } from "./testlib.mjs";
 
 /** A module drawing one tier set: the pinned config with the overview's tiers replaced. */
@@ -506,33 +506,6 @@ describe("a printed flow and an inferred one", () => {
     assert.equal(merged().contra, "", "one leg's reduction words named the merged ribbon");
   });
 });
-
-/**
- * Every chart of the expansion the page offers, one split at a time from the
- * root and everything split by its first split, each capped as the page caps
- * it and drawn out whole.
- */
-function expansionStates(app, doc) {
-  const root = app.rootFrontier(doc);
-  const out = [];
-  for (const sp of doc.splits) {
-    out.push({ where: `${sp.node} by ${sp.key}`, frontier: app.expand(doc, app.reveal(doc, root, sp.node), sp.node, sp.key) });
-  }
-  let all = root;
-  for (let changed = true; changed;) {
-    changed = false;
-    for (const id of [...all]) {
-      const splits = app.splitsOf(doc, id);
-      if (!splits.length || app.openSplitOf(doc, all, id) !== "") continue;
-      all = app.expand(doc, all, id, splits[0].key);
-      changed = true;
-    }
-  }
-  out.push({ where: "everything by primary splits", frontier: all });
-  const every = new Set(doc.splits.map((sp) => sp.node + "\u001f" + sp.key));
-  return out.flatMap((st) => [Object.assign({ whole: new Set() }, st),
-    Object.assign({}, st, { where: st.where + ", drawn out", whole: every })]);
-}
 
 /** Cents and cited fact ids over a set of links. */
 function totals(links) {

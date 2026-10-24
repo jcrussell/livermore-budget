@@ -922,24 +922,6 @@ function layOut(doc, column, chart, frontier, whole) {
   return { drawn, slots, held, height, laid, refused };
 }
 
-/**
- * The frontier with `id` drawn and then split by `key`, its ancestors split
- * to reveal it first, as a reader reaches it on the page: each ancestor by
- * the split its member belongs to, the primary unless the member is an
- * alternative's.
- */
-function revealAndSplit(doc, frontier, id, key) {
-  const index = new Map(doc.nodes.map((n) => [n.id, n]));
-  const chain = [];
-  for (let at = index.get(id); at && at.parent; at = index.get(at.parent)) chain.unshift(at);
-  let open = frontier;
-  for (const member of chain) {
-    if (open.has(member.id)) continue;
-    open = core.expand(doc, open, member.parent, member.alternative || core.splitsOf(doc, member.parent)[0].key);
-  }
-  return core.expand(doc, open, id, key);
-}
-
 function expansionFrontiers(doc) {
   const root = core.rootFrontier(doc);
   let all = root;
@@ -1276,7 +1258,7 @@ describe("an outward label fitted to its gutter", () => {
 // a slot no drawn ribbon reaches; layOutAt's scaffold carries a path into it,
 // and its clamp check still refuses a ribbon running backward against the
 // slots. This walks every pair the pinned schedules declare, each reached as
-// a reader reaches it (ancestors revealed, then both split), and holds each
+// a reader reaches it (core.reveal, then both split), and holds each
 // to a layout d3 accepts with every laid node in its slot's column. The
 // page renders none of it: what can go wrong here is the layout, and the
 // rendered page draws whatever layOutAt hands it.
@@ -1304,7 +1286,8 @@ describe("every pair of extend splits the schedule declares, laid out", () => {
           const where = `${a.node} by ${a.key} with ${b.node} by ${b.key}`;
           let frontier;
           try {
-            frontier = revealAndSplit(doc, revealAndSplit(doc, root, a.node, a.key), b.node, b.key);
+            const first = core.expand(doc, core.reveal(doc, root, a.node), a.node, a.key);
+            frontier = core.expand(doc, core.reveal(doc, first, b.node), b.node, b.key);
           } catch (e) {
             faults.push(`${where}: cannot be opened: ${e.message}`);
             continue;

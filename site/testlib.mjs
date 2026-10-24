@@ -348,11 +348,31 @@ export async function revealed(app, id) {
 
 /**
  * Draws out every folded tail until none is left and returns how many it
- * drew out. Not a loop over today's tails: drawing one out can expose another.
- * The bound turns a re-engaging fold into a failure, not a hang.
+ * drew out. A tail drawn out is an entry on the list like a split, so the
+ * tails are found by shaping the list with no DOM (expansionState, then the
+ * form's shape) until a shape folds none, and the page is redrawn once with
+ * all of them; drawing one out can expose another, which is why it is a
+ * fixed point. A tail the page still offers after that, which a filter's
+ * fold alone would show, is drawn out by its gesture. The bounds turn a
+ * re-engaging fold into a failure, not a hang.
  */
 export function expandAll(app) {
-  for (let done = 0; done < 64; done++) {
+  let entries = app.expansions.slice();
+  for (let round = 0; ; round++) {
+    if (round === 64) throw new Error("a chart still folds a tail after 64 rounds of drawing them out");
+    const state = app.expansionState(app.fetched, entries);
+    const shaped = app.formOnScreen().shape(app.fetched,
+      { chart: app.chartOnScreen(), frontier: state.frontier, whole: state.whole });
+    const tails = shaped.nodes.map((n) => n.id)
+      .filter((id) => app.isAggregate(id) && app.splitTailOf(id) && !entries.includes(id));
+    if (!tails.length) break;
+    entries = entries.concat(tails);
+  }
+  let done = entries.length - app.expansions.length;
+  if (done && !app.redraw(entries, "That could not be drawn out")) {
+    throw new Error(`drawing out ${done} tail(s) at once was refused`);
+  }
+  for (; done < 64 + entries.length; done++) {
     const tail = app.projection.nodes.find((n) => app.expandable(n));
     if (!tail) return done;
     if (!app.drawOutTail(tail)) throw new Error(`${tail.id} would not draw out`);
@@ -394,6 +414,35 @@ export async function everySplit(app, visit) {
   app.collapseAll();
   await settle();
   return { visited, refused: "" };
+}
+
+/**
+ * Every chart of the expansion the page offers, one split at a time from the
+ * root and everything split by its first split, each capped as the page caps
+ * it and drawn out whole: each a frontier and the splits drawn whole, which
+ * the Sankey form's shape takes with no DOM. It reaches what everySplit
+ * renders, and more: every split drawn out as well as Expand all.
+ */
+export function expansionStates(app, doc) {
+  const root = app.rootFrontier(doc);
+  const out = [];
+  for (const sp of doc.splits) {
+    out.push({ where: `${sp.node} by ${sp.key}`, frontier: app.expand(doc, app.reveal(doc, root, sp.node), sp.node, sp.key) });
+  }
+  let all = root;
+  for (let changed = true; changed;) {
+    changed = false;
+    for (const id of [...all]) {
+      const splits = app.splitsOf(doc, id);
+      if (!splits.length || app.openSplitOf(doc, all, id) !== "") continue;
+      all = app.expand(doc, all, id, splits[0].key);
+      changed = true;
+    }
+  }
+  out.push({ where: "everything by primary splits", frontier: all });
+  const every = new Set(doc.splits.map((sp) => sp.node + "\u001f" + sp.key));
+  return out.flatMap((st) => [Object.assign({ whole: new Set() }, st),
+    Object.assign({}, st, { where: st.where + ", drawn out", whole: every })]);
 }
 
 /** The refusal banners on the page's <main>. */

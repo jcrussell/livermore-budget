@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { bootedApp, everySplit, columnFixture, pageFixture } from "./testlib.mjs";
+import { bootedApp, expansionStates, columnFixture, pageFixture } from "./testlib.mjs";
 
 const SCHEMA_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "schema");
 const read = (name) => JSON.parse(fs.readFileSync(path.join(SCHEMA_DIR, name), "utf8"));
@@ -56,12 +56,15 @@ function check(schema, value, at, out) {
 }
 
 /**
- * Every mark on screen, once: the shaped chart's, and the ones the filters
- * draw on top of it.
+ * Every mark a chart of the expansion draws, once, with no DOM: the chart as
+ * the page shapes it (what app.projection holds after a redraw), and the
+ * marks the page's filter draws on top of it (what chartDrawn holds), at one
+ * of expansionStates' frontiers.
  */
-function marksOnScreen(app) {
+function marksAt(app, st) {
+  const shaped = app.formOnScreen().shape(app.fetched, { chart: app.chartOnScreen(), frontier: st.frontier, whole: st.whole });
   const byID = new Map();
-  for (const n of app.projection.nodes.concat(app.chartDrawn().nodes)) if (app.isMark(n.id)) byID.set(n.id, n);
+  for (const n of shaped.nodes.concat(app.filterFor(shaped).doc.nodes)) if (app.isMark(n.id)) byID.set(n.id, n);
   return [...byID.values()];
 }
 
@@ -72,18 +75,17 @@ describe("the marks this client makes", () => {
     app.setFilter({ smallest: app.SMALLEST_STOPS[3] });
     /** @type {Map<string, {role: string, where: string, faults: string[]}>} */
     const seen = new Map();
-    const walked = await everySplit(app, async (where) => {
-      for (const n of marksOnScreen(app)) {
-        if (!app.isMark(n.id)) continue;
-        const key = where + " :: " + n.id;
-        seen.set(key, { role: n.role, where, faults: check(MARK, n, n.id, []) });
+    const charts = expansionStates(app, app.fetched);
+    for (const st of charts) {
+      for (const n of marksAt(app, st)) {
+        const key = st.where + " :: " + n.id;
+        seen.set(key, { role: n.role, where: st.where, faults: check(MARK, n, n.id, []) });
       }
-    });
-    assert.equal(walked.refused, "", walked.refused);
+    }
     const roles = new Map();
     for (const m of seen.values()) roles.set(m.role, (roles.get(m.role) || 0) + 1);
     const faults = [...seen.values()].flatMap((m) => m.faults.map((f) => `${m.where}: ${f}`));
-    t.diagnostic(`${walked.visited} chart(s) walked; marks by role: ${[...roles].map(([r, n]) => `${r} ${n}`).join(", ")}; faults: ${faults.length}`);
+    t.diagnostic(`${charts.length} chart(s) walked; marks by role: ${[...roles].map(([r, n]) => `${r} ${n}`).join(", ")}; faults: ${faults.length}`);
     assert.deepEqual(faults, []);
     // The page builds no other kind of mark.
     assert.deepEqual([...roles.keys()].sort(), ["aggregate", "smaller"]);
@@ -139,8 +141,9 @@ describe("the marks this client makes", () => {
     const faults = [];
     const roles = new Map();
     let together = 0;
-    const walked = await everySplit(app, async (where) => {
-      for (const n of marksOnScreen(app)) {
+    const charts = expansionStates(app, app.fetched);
+    for (const { where, ...st } of charts) {
+      for (const n of marksAt(app, st)) {
         roles.set(n.role, (roles.get(n.role) || 0) + 1);
         const [label, rationale, note] = wordsOf[n.role];
         const at = where + " :: " + n.id;
@@ -151,9 +154,8 @@ describe("the marks this client makes", () => {
         }
         if (n.role === "aggregate" && n.source_note.includes("«aggregate_together» ")) together++;
       }
-    });
-    assert.equal(walked.refused, "", walked.refused);
-    t.diagnostic(`${walked.visited} chart(s); marks by role: ${[...roles].map(([r, n]) => `${r} ${n}`).join(", ")}; ` +
+    }
+    t.diagnostic(`${charts.length} chart(s); marks by role: ${[...roles].map(([r, n]) => `${r} ${n}`).join(", ")}; ` +
       `${together} aggregate note(s) carry the figure clause`);
     assert.deepEqual(faults, []);
     for (const role of Object.keys(wordsOf)) assert.ok(roles.has(role), `no chart drew a ${role}`);
