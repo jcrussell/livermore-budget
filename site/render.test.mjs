@@ -12,7 +12,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 import {
-  bootedApp, loadApp, split, expandAll, everySplit, everyExtendPair, settle, refusals, columnFixture, pageFixture, fire, repoRoot,
+  bootedApp, loadApp, split, expandAll, everySplit, settle, refusals, columnFixture, pageFixture, fire, repoRoot,
   dollars, shortDollars, clickYear,
 } from "./testlib.mjs";
 
@@ -1217,6 +1217,8 @@ describe("a count the client takes is marked as its own", () => {
 // TWO EXTEND SPLITS DRAWN TOGETHER: each opens its members
 // a slot beside its parent's, so two open together can declare a slot further
 // out than any drawn ribbon reaches. Every node is still drawn in its slot.
+// Every pair the schedules declare is walked in site/layout.test.mjs, at the
+// layout and with no DOM; this renders the one sequence that first refused.
 describe("two extend splits open together", () => {
   /** Each laid node whose d3 layer is not its slot's rank, by id. */
   const misplaced = (app) => {
@@ -1225,21 +1227,6 @@ describe("two extend splits open together", () => {
   };
 
   for (const year of YEARS) {
-    test(`${year.label}: every pair of extend splits draws, each node in its slot's column`, async (t) => {
-      const { app, document } = await bootedApp({ checkedStem: year.stem });
-      const faults = [];
-      const walked = await everyExtendPair(app, (where) => {
-        for (const m of misplaced(app)) faults.push(`${where}: ${m}`);
-        if (refusals(document).length) faults.push(`${where}: a refusal banner is up`);
-      });
-      t.diagnostic(`${year.label}: ${walked.visited} of ${walked.pairs} pair(s) drew; ${walked.refused.length} refused` +
-        (walked.refused.length ? ":\n  " + walked.refused.join("\n  ") : ""));
-      assert.ok(walked.pairs > 0, "the schedule declares no pair of extend splits, so nothing here is tested");
-      assert.deepEqual(walked.refused, []);
-      assert.equal(walked.visited, walked.pairs);
-      assert.deepEqual(faults.slice(0, 5), [], `${faults.length} fault(s)`);
-    });
-
     // The sequence the bead measured the refusal on.
     test(`${year.label}: the General Fund split by funds, fund/100 by divisions, then capital outlay by divisions draws`, async (t) => {
       const { app, document } = await bootedApp({ checkedStem: year.stem });

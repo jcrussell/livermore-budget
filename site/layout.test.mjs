@@ -892,6 +892,54 @@ const EXPANSION_CLAIMED = {
 };
 
 /** The expansion's frontiers, each from the schedule's own helpers. */
+/**
+ * One frontier of the expansion shaped and laid out as the page does it
+ * (the Sankey form's shape, then layOutAt at no room), with no DOM: the
+ * drawn document, its slots, how many nodes each slot holds, the canvas
+ * height it was laid out on, and the laid
+ * graph, or the refusal d3-sankey's clamp check threw, which the page shows
+ * as a banner.
+ */
+function layOut(doc, column, chart, frontier, whole) {
+  const index = new Map(doc.nodes.map((n) => [n.id, n]));
+  const groups = column.fund_groups.map((g) => g.id);
+  const drawn = sankey.markContra(sankey.expansionOf(doc, frontier, chart, whole));
+  const slots = sankey.slotsOf(drawn.nodes, chart.sankey.tiers);
+  const held = [];
+  for (const at of slots.values()) held[at] = (held[at] || 0) + 1;
+  // At no room: the canvas the hint alone sizes, which grow is read off.
+  const height = sankey.canvasHeight(chart, drawn.nodes, 0);
+  let laid = { nodes: [], links: [] };
+  let refused = "";
+  try {
+    laid = sankey.layOutAt(drawn, {
+      tiers: chart.sankey.tiers, columns: held.length,
+      groupOf: (n) => core.fundGroupOf(index, n), placeOf: (id) => groups.indexOf(id),
+    }, height);
+  } catch (e) {
+    refused = `d3-sankey refused the layout: ${e.message}`;
+  }
+  return { drawn, slots, held, height, laid, refused };
+}
+
+/**
+ * The frontier with `id` drawn and then split by `key`, its ancestors split
+ * to reveal it first, as a reader reaches it on the page: each ancestor by
+ * the split its member belongs to, the primary unless the member is an
+ * alternative's.
+ */
+function revealAndSplit(doc, frontier, id, key) {
+  const index = new Map(doc.nodes.map((n) => [n.id, n]));
+  const chain = [];
+  for (let at = index.get(id); at && at.parent; at = index.get(at.parent)) chain.unshift(at);
+  let open = frontier;
+  for (const member of chain) {
+    if (open.has(member.id)) continue;
+    open = core.expand(doc, open, member.parent, member.alternative || core.splitsOf(doc, member.parent)[0].key);
+  }
+  return core.expand(doc, open, id, key);
+}
+
 function expansionFrontiers(doc) {
   const root = core.rootFrontier(doc);
   let all = root;
@@ -960,27 +1008,11 @@ describe("the expansion schedule laid out in slots, at the root, one group open 
       const column = columnFixture(year.path.replace(/\.json$/, ""));
       const doc = core.scheduleOf(column, "expansion");
       const index = new Map(doc.nodes.map((n) => [n.id, n]));
-      const groups = column.fund_groups.map((g) => g.id);
       const out = {};
       for (const f of expansionFrontiers(doc)) {
-        const drawn = sankey.markContra(sankey.expansionOf(doc, f.frontier, chart, f.whole));
-        const slots = sankey.slotsOf(drawn.nodes, chart.sankey.tiers);
-        const held = [];
-        for (const at of slots.values()) held[at] = (held[at] || 0) + 1;
-        // At no room: the canvas the hint alone sizes, which grow is read off.
-        const height = sankey.canvasHeight(chart, drawn.nodes, 0);
         // A layout d3 refuses is a measurement here, so the slots are still
         // read against their pin rather than lost to the hook.
-        let laid = { nodes: [], links: [] };
-        let refused = "";
-        try {
-          laid = sankey.layOutAt(drawn, {
-            tiers: chart.sankey.tiers, columns: held.length,
-            groupOf: (n) => core.fundGroupOf(index, n), placeOf: (id) => groups.indexOf(id),
-          }, height);
-        } catch (e) {
-          refused = `d3-sankey refused the layout: ${e.message}`;
-        }
+        const { drawn, slots, held, height, laid, refused } = layOut(doc, column, chart, f.frontier, f.whole);
         const over = expansionLabels(doc, laid, slots, held.length).filter((l) => l.clearance < 0)
           .sort((a, b) => a.clearance - b.clearance);
         out[f.name] = {
@@ -1237,4 +1269,56 @@ describe("an outward label fitted to its gutter", () => {
     assert.deepEqual({ cut: w.cut, starts: w.label.startsWith("An"), ends: w.label.endsWith("It"),
       fits: sankey.labelAdvance(w, "  $1.2M", "") <= room }, { cut: true, starts: true, ends: true, fits: true });
   });
+});
+
+// EVERY PAIR OF EXTEND SPLITS, LAID OUT WITH NO DOM. An extend split draws
+// its members a slot after their parent's, so two open together can declare
+// a slot no drawn ribbon reaches; layOutAt's scaffold carries a path into it,
+// and its clamp check still refuses a ribbon running backward against the
+// slots. This walks every pair the pinned schedules declare, each reached as
+// a reader reaches it (ancestors revealed, then both split), and holds each
+// to a layout d3 accepts with every laid node in its slot's column. The
+// page renders none of it: what can go wrong here is the layout, and the
+// rendered page draws whatever layOutAt hands it.
+//
+// Mutation: hand d3 the drawn links alone in layOutAt (drop scaffoldOf's
+// result) and pairs refuse with "belongs in column N and no ribbon drawn
+// reaches that far".
+describe("every pair of extend splits the schedule declares, laid out", () => {
+  before(() => loadD3());
+
+  for (const year of pageFixture().config.years) {
+    test(`${year.label}: every pair lays out, each node in its slot's column`, (t) => {
+      const chart = pageFixture().config.overview;
+      const column = columnFixture(year.path.replace(/\.json$/, ""));
+      const doc = core.scheduleOf(column, "expansion");
+      const root = core.rootFrontier(doc);
+      const none = new Set();
+      const extend = doc.splits.filter((sp) => sp.form === "extend");
+      const faults = [];
+      let pairs = 0;
+      for (let i = 0; i < extend.length; i++) {
+        for (let j = i + 1; j < extend.length; j++) {
+          pairs++;
+          const [a, b] = [extend[i], extend[j]];
+          const where = `${a.node} by ${a.key} with ${b.node} by ${b.key}`;
+          let frontier;
+          try {
+            frontier = revealAndSplit(doc, revealAndSplit(doc, root, a.node, a.key), b.node, b.key);
+          } catch (e) {
+            faults.push(`${where}: cannot be opened: ${e.message}`);
+            continue;
+          }
+          const { slots, laid, refused } = layOut(doc, column, chart, frontier, none);
+          if (refused) faults.push(`${where}: ${refused}`);
+          for (const n of laid.nodes) {
+            if (n.layer !== slots.get(n.id)) faults.push(`${where}: ${n.id} in ${n.layer}, slot ${slots.get(n.id)}`);
+          }
+        }
+      }
+      t.diagnostic(`${year.label}: ${extend.length} extend splits, ${pairs} pair(s), ${faults.length} fault(s)`);
+      assert.ok(pairs > 0, "the schedule declares no pair of extend splits, so nothing here is tested");
+      assert.deepEqual(faults.slice(0, 5), [], `${faults.length} fault(s)`);
+    });
+  }
 });
