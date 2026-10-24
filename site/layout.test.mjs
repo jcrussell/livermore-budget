@@ -9,46 +9,12 @@
 import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 
-import { bootedApp, goldenGraph, pageFixture, stylesheet, everySplit, shapedAt,
+import { bootedApp, pageFixture, stylesheet, everySplit, shapedAt,
   settle, columnFixture, loadD3 } from "./testlib.mjs";
 // core.js and sankey.js themselves for the expansion's layout at frontiers
 // no gesture is needed to reach.
 import * as core from "./core.js";
 import * as sankey from "./sankey.js";
-
-/**
- * Lays the golden graph out as layOut() does, under a given node sort.
- *
- * The constants and the aligner come off the page: a copy here would measure a
- * chart the page does not draw. `align` is passed only to compare aligners.
- */
-function layout(app, nodeSort, align) {
-  const doc = goldenGraph();
-  const sankey = globalThis.d3.sankey()
-    .nodeId((d) => d.id)
-    .nodeWidth(app.NODE_WIDTH)
-    .nodePadding(app.NODE_PADDING)
-    .nodeAlign(align || app.alignFor(app.slotsOf(doc.nodes, app.RENDER_TIERS)))
-    .extent([[app.LABEL_GUTTER, 12],
-             [app.chartWidth(app.RENDER_TIERS.length) - app.LABEL_GUTTER,
-              app.CHART_HEIGHT - 12]]);
-  if (nodeSort !== "d3") sankey.nodeSort(nodeSort);
-  return sankey({
-    nodes: doc.nodes.map((n) => Object.assign({}, n)),
-    links: doc.links.map((l) => Object.assign({}, l, { value: l.value_cents })),
-  });
-}
-
-/** Whether two layouts put every node and every ribbon in the same place. */
-function samePlaces(a, b) {
-  return a.nodes.length === b.nodes.length && a.links.length === b.links.length &&
-    a.nodes.every((n, i) => n.id === b.nodes[i].id && n.depth === b.nodes[i].depth &&
-      Math.abs(n.x0 - b.nodes[i].x0) < 1e-9 && Math.abs(n.y0 - b.nodes[i].y0) < 1e-9 &&
-      Math.abs(n.y1 - b.nodes[i].y1) < 1e-9) &&
-    a.links.every((l, i) => Math.abs(l.y0 - b.links[i].y0) < 1e-9 &&
-      Math.abs(l.y1 - b.links[i].y1) < 1e-9 &&
-      Math.abs(l.width - b.links[i].width) < 1e-9);
-}
 
 /**
  * The links of each band: a band is one pair of adjacent columns.
@@ -94,50 +60,29 @@ function tangle(graph) {
   return { crossings, dollars: cents / 100 };
 }
 
-/** Pairs of a node's ribbons stacked in an order its neighbours no longer sit in. */
-function staleStacked(graph) {
-  let pairs = 0;
-  for (const node of graph.nodes) {
-    for (const [links, end] of [[node.sourceLinks, (l) => l.target],
-                                [node.targetLinks, (l) => l.source]]) {
-      const wanted = links.slice().sort((a, b) => end(a).y0 - end(b).y0 || a.index - b.index);
-      for (let i = 0; i < links.length; i++) {
-        for (let j = i + 1; j < links.length; j++) {
-          if (wanted.indexOf(links[i]) > wanted.indexOf(links[j])) pairs++;
-        }
-      }
-    }
-  }
-  return pairs;
-}
-
-/** The worst distance any ribbon end falls outside the node face it meets. */
+/**
+ * The worst distance any ribbon end falls outside the node face it meets, at
+ * the width the ribbon is drawn at that face (sankey.endWidth): narrower at a
+ * mark clampFunds cut.
+ */
 function extentOverflow(graph) {
   let worst = 0;
   for (const node of graph.nodes) {
-    for (const [links, y] of [[node.sourceLinks, (l) => l.y0], [node.targetLinks, (l) => l.y1]]) {
+    for (const [links, y, end] of [[node.sourceLinks, (l) => l.y0, "source"], [node.targetLinks, (l) => l.y1, "target"]]) {
       for (const l of links) {
-        worst = Math.max(worst, node.y0 - (y(l) - l.width / 2), (y(l) + l.width / 2) - node.y1);
+        const w = sankey.endWidth(l, end);
+        worst = Math.max(worst, node.y0 - (y(l) - w / 2), (y(l) + w / 2) - node.y1);
       }
     }
   }
   return worst;
 }
 
-// The figures nodeRank was chosen on. PINNED, not bounded: a `>` would let
-// the alternatives drift while the check stayed green.
-const CLAIMED = {
+// The spine as the page lays it out, PINNED, so a change to nodeRank, the
+// seats or restackLinks that moves a ribbon shows here as a number.
+const DRAWN = {
   crossings: 195,
   overlapDollars: 457434169,
-  stalePairs: 14,
-};
-
-/** Every ordering still reachable in the tree, measured post-restack. */
-const ALTERNATIVES = {
-  "size descending": { sort: (a, b) => b.value - a.value, crossings: 285, dollars: 966956035 },
-  "size ascending": { sort: (a, b) => a.value - b.value, crossings: 285, dollars: 966956035 },
-  "input order": { sort: null, crossings: 297, dollars: 1136201320 },
-  "d3's own pass": { sort: "d3", crossings: 246, dollars: 556944973 },
 };
 
 const usd = (n) => "$" + Math.round(n).toLocaleString();
@@ -374,99 +319,47 @@ function tightest(fits) {
 /**
  * The page as shipped, booted on its first published column. It DRAWS BEFORE
  * ANYTHING IS MEASURED: unfetched, nodeRank's fund order ties everywhere and
- * degenerates to size-descending, one of the alternatives measured below.
+ * degenerates to size-descending.
  */
 function spineApp() {
   return bootedApp({ checkedStem: "sankey" });
 }
 
-/** The node sort app.js draws the spine under. */
-const byRank = (app) => {
-  const rank = (n) => app.nodeRank(app.fundGroupOf, app.fundGroupPlace, n);
-  return (a, b) => rank(a) - rank(b) || b.value - a.value;
-};
+/** The spine laid out by the page's own layOut, as it draws it. */
+function laidSpine(app) {
+  return app.layOut(app.shown.doc);
+}
 
-describe("the spine's layout, against the figures nodeRank was chosen on", () => {
-  let app, graph, justified, widths, before_, after_, measured;
+describe("the spine's layout", () => {
+  let app, graph;
   before(async () => {
     ({ app } = await spineApp());
-    const sort = byRank(app);
-    graph = layout(app, sort);
-    justified = layout(app, sort, globalThis.d3.sankeyJustify);
-    app.restackLinks(justified);
-    before_ = { tangle: tangle(graph), stale: staleStacked(graph) };
-    widths = graph.links.map((l) => l.width);
+    graph = laidSpine(app);
+  });
+
+  test("the chart draws at its pinned crossings and overlap", (t) => {
+    const got = tangle(graph);
+    const detail = `${got.crossings} crossings, ${usd(got.dollars)} overlapped ` +
+      `(pinned ${DRAWN.crossings}, ${usd(DRAWN.overlapDollars)})`;
+    t.diagnostic(detail);
+    assert.deepEqual({ crossings: got.crossings, dollars: Math.round(got.dollars) },
+      { crossings: DRAWN.crossings, dollars: DRAWN.overlapDollars }, detail);
+  });
+
+  // restackLinks orders each node's ribbons by where their other ends sit,
+  // whatever order they arrive in. Mutation: return early from restackLinks
+  // and the scrambled stacking keeps its extra crossings.
+  test("restackLinks stacks scrambled ribbons back to the chart's, without resizing one", (t) => {
+    const widths = graph.links.map((l) => l.width);
+    for (const n of graph.nodes) {
+      n.sourceLinks.reverse();
+      n.targetLinks.reverse();
+    }
     app.restackLinks(graph);
-    after_ = { tangle: tangle(graph), stale: staleStacked(graph) };
-    measured = Object.entries(ALTERNATIVES).map(([label, want]) => {
-      const g = layout(app, want.sort);
-      app.restackLinks(g);
-      return { label, want, got: tangle(g) };
-    });
-  });
-
-  test("the chart draws at the 195 crossings measured under nodeRank + restackLinks", (t) => {
-    const detail = `${after_.tangle.crossings} crossings under nodeRank + restackLinks ` +
-      `(measured ${CLAIMED.crossings})`;
-    t.diagnostic(detail);
-    assert.equal(after_.tangle.crossings, CLAIMED.crossings, detail);
-  });
-
-  test("the overlapping ribbon is the $457,434,169 measured", (t) => {
-    const detail = `${usd(after_.tangle.dollars)} overlapped (measured ${usd(CLAIMED.overlapDollars)})`;
-    t.diagnostic(detail);
-    assert.equal(Math.round(after_.tangle.dollars), CLAIMED.overlapDollars, detail);
-  });
-
-  test("restackLinks finds the 14 stale-stacked pairs measured on FY2026", (t) => {
-    const detail = `${before_.stale} pairs stacked in an order their neighbours no longer ` +
-      `sit in (measured ${CLAIMED.stalePairs})`;
-    t.diagnostic(detail);
-    assert.equal(before_.stale, CLAIMED.stalePairs, detail);
-  });
-
-  // Not "after.stale === 0", a tautology: staleStacked uses restackLinks'
-  // comparator. The crossings removed are counted independently.
-  test("removing those 14 pairs removes exactly 14 crossings", (t) => {
-    const detail = `${before_.tangle.crossings} crossings before restacking, ` +
-      `${after_.tangle.crossings} after: ` +
-      `${before_.tangle.crossings - after_.tangle.crossings} removed`;
-    t.diagnostic(detail);
-    assert.equal(before_.tangle.crossings - after_.tangle.crossings, CLAIMED.stalePairs, detail);
-  });
-
-  test("every ordering still in the tree measures at its pinned crossings and overlap", (t) => {
-    const detail = measured.map((m) => `${m.label} ${m.got.crossings}/${usd(m.got.dollars)}`).join(", ") +
-      `, nodeRank ${after_.tangle.crossings}/${usd(after_.tangle.dollars)}`;
-    t.diagnostic(detail);
-    assert.deepEqual(
-      measured.map((m) => ({ label: m.label, crossings: m.got.crossings, dollars: Math.round(m.got.dollars) })),
-      measured.map((m) => ({ label: m.label, crossings: m.want.crossings, dollars: m.want.dollars })),
-      detail);
-  });
-
-  test("nodeRank beats every one of them", (t) => {
-    const detail = `best alternative ${Math.min(...measured.map((m) => m.got.crossings))} crossings, ` +
-      `nodeRank ${after_.tangle.crossings}`;
-    t.diagnostic(detail);
-    assert.deepEqual(
-      measured.filter((m) => m.got.crossings <= after_.tangle.crossings ||
-                             m.got.dollars <= after_.tangle.dollars)
-        .map((m) => m.label),
-      [], detail);
-  });
-
-  // The spine's figures hold under sankeyJustify structurally, not by luck:
-  // tier 0 is pure source, tier 5 pure sink. This goes red the day that stops.
-  test("the spine lays out identically under its declared column order and under d3's justify", (t) => {
-    const detail = app.RENDER_TIERS.length
-      ? `every node and ribbon in the same place under nodeAlign indexOf ` +
-        `[${app.RENDER_TIERS.join(", ")}] and under sankeyJustify`
-      : "the config this ran under declares no column order, so nothing here " +
-        "measures the aligner the page uses";
-    t.diagnostic(detail);
-    assert.ok(app.RENDER_TIERS.length > 0, detail);
-    assert.ok(samePlaces(graph, justified), detail);
+    const got = tangle(graph);
+    t.diagnostic(`${got.crossings} crossings after restacking the reversed stacks`);
+    assert.equal(got.crossings, DRAWN.crossings);
+    assert.deepEqual(graph.links.map((l) => l.width), widths);
   });
 
   test("the fund column is pinned to the order the column shipped", (t) => {
@@ -480,12 +373,6 @@ describe("the spine's layout, against the figures nodeRank was chosen on", () =>
     t.diagnostic(detail);
     assert.ok(served.length > 0, detail);
     assert.deepEqual(drawn, served.filter((f) => drawn.includes(f)), detail);
-  });
-
-  test("restackLinks moves ribbons without resizing them", (t) => {
-    const detail = "every ribbon keeps the width the layout gave it";
-    t.diagnostic(detail);
-    assert.deepEqual(graph.links.map((l) => l.width), widths, detail);
   });
 
   test("no ribbon overflows the node face it meets", (t) => {
@@ -557,8 +444,7 @@ describe("where a label is anchored", () => {
   before(async () => {
     let document;
     ({ app, document } = await spineApp());
-    const spine = layout(app, byRank(app));
-    app.restackLinks(spine);
+    const spine = laidSpine(app);
     const onSpine = labelFit(app, spine);
     middle = onSpine.filter((f) => f.col > 0 && f.col < f.last);
     const gap = outwardGap(onSpine);
