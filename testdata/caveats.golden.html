@@ -56,10 +56,10 @@
 <section class="caveat-themes" aria-labelledby="caveats-kinds">
   <h2 id="caveats-kinds">The kinds</h2>
   <dl class="caveat-kinds">
-    <dt id="caveats-of-left-out">What isn&#39;t in the picture <span class="subtle">(18)</span></dt>
-    <dd>Money or columns a schedule doesn&#39;t carry, or that this site reads and doesn&#39;t draw. A total here can be smaller than one printed elsewhere for that reason alone.</dd>
     <dt id="caveats-of-books-disagree">Where the city&#39;s own books disagree <span class="subtle">(6)</span></dt>
     <dd>Two of the city&#39;s pages print different figures or labels for the same thing, by anything from a dollar to hundreds of thousands. This site draws one as printed and says which; it corrects neither.</dd>
+    <dt id="caveats-of-left-out">What isn&#39;t in the picture <span class="subtle">(18)</span></dt>
+    <dd>Money or columns a schedule doesn&#39;t carry, or that this site reads and doesn&#39;t draw. A total here can be smaller than one printed elsewhere for that reason alone.</dd>
     <dt id="caveats-of-same-money-twice">Don&#39;t add or compare these <span class="subtle">(5)</span></dt>
     <dd>Figures that look as if they should be added together or set side by side, and should not: the same dollars shown twice, or two different measures under similar names.</dd>
     <dt id="caveats-of-kinds-of-year">Not every year is the same kind of number <span class="subtle">(8)</span></dt>
@@ -74,6 +74,22 @@
 </section>
 <section class="caveat-page" id="caveats-on-index">
   <h2>On <a href="index.html">At a glance</a></h2>
+  <h3 id="caveats-on-index--books-disagree">Where the city&#39;s own books disagree</h3>
+  <div class="caveats">
+    <details class="caveat" id="caveat-contested-total-internal-service">
+      <summary>The budget book prints two different totals for Internal Service Funds spending; this chart draws the summary page&#39;s.</summary>
+      <div class="caveat-variant">
+      <p>Internal Service Funds spending is drawn at $26,544,515, which is what pp.66-67 print for FY2027 adopted. Other schedules in the same book make it $26,294,515: pp.75, 183, 205 and 209 print that figure, and p61 prints $26,906,515, which is that figure plus the $612,000 transfer to the CIP it prints beside it, and the 78 rows of pp.85-125 add up to it. The difference is $250,000, in a single Services &amp; Supplies row. This chart keeps the summary page&#39;s figure because the Services &amp; Supplies figure that would bring pp.66-67 into line with the other schedules is printed on no page of the book, and every figure here is one the city printed.</p>
+      <p class="subtle">
+        About <code>fund-group/internal-service</code> in <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>sankey-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="index.html">At a glance</a>, <a href="flows.html">Flows</a>, <a href="ledger.html">Bars</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-contested-total-internal-service" aria-label="Link to this caveat: The budget book prints two different totals for Internal Service Funds spending; this chart draws the summary page&#39;s.">Link to this caveat</a></p>
+    </details>
+  </div>
   <h3 id="caveats-on-index--left-out">What isn&#39;t in the picture</h3>
   <div class="caveats">
     <details class="caveat" id="caveat-transfer-legs-unpaired">
@@ -133,22 +149,6 @@
         Stated on <a href="index.html">At a glance</a>, <a href="flows.html">Flows</a>, <a href="ledger.html">Bars</a>.
       </p>
       <p class="caveat-link"><a href="#caveat-permanent-funds-have-no-column" aria-label="Link to this caveat: The city&#39;s two Permanent Funds have no column on this page, so they are not drawn.">Link to this caveat</a></p>
-    </details>
-  </div>
-  <h3 id="caveats-on-index--books-disagree">Where the city&#39;s own books disagree</h3>
-  <div class="caveats">
-    <details class="caveat" id="caveat-contested-total-internal-service">
-      <summary>The budget book prints two different totals for Internal Service Funds spending; this chart draws the summary page&#39;s.</summary>
-      <div class="caveat-variant">
-      <p>Internal Service Funds spending is drawn at $26,544,515, which is what pp.66-67 print for FY2027 adopted. Other schedules in the same book make it $26,294,515: pp.75, 183, 205 and 209 print that figure, and p61 prints $26,906,515, which is that figure plus the $612,000 transfer to the CIP it prints beside it, and the 78 rows of pp.85-125 add up to it. The difference is $250,000, in a single Services &amp; Supplies row. This chart keeps the summary page&#39;s figure because the Services &amp; Supplies figure that would bring pp.66-67 into line with the other schedules is printed on no page of the book, and every figure here is one the city printed.</p>
-      <p class="subtle">
-        About <code>fund-group/internal-service</code> in <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>sankey-2027</code>).
-      </p>
-      </div>
-      <p class="subtle">
-        Stated on <a href="index.html">At a glance</a>, <a href="flows.html">Flows</a>, <a href="ledger.html">Bars</a>.
-      </p>
-      <p class="caveat-link"><a href="#caveat-contested-total-internal-service" aria-label="Link to this caveat: The budget book prints two different totals for Internal Service Funds spending; this chart draws the summary page&#39;s.">Link to this caveat</a></p>
     </details>
   </div>
   <h3 id="caveats-on-index--same-money-twice">Don&#39;t add or compare these</h3>
@@ -215,6 +215,22 @@
 </section>
 <section class="caveat-page" id="caveats-on-flows">
   <h2>On <a href="flows.html">Flows</a> and <a href="ledger.html">Bars</a></h2>
+  <h3 id="caveats-on-flows--books-disagree">Where the city&#39;s own books disagree</h3>
+  <div class="caveats">
+    <details class="caveat" id="caveats-on-flows--caveat-contested-total-internal-service">
+      <summary>The budget book prints two different totals for Internal Service Funds spending; this chart draws the summary page&#39;s.</summary>
+      <div class="caveat-variant">
+      <p>Internal Service Funds spending is drawn at $26,544,515, which is what pp.66-67 print for FY2027 adopted. Other schedules in the same book make it $26,294,515: pp.75, 183, 205 and 209 print that figure, and p61 prints $26,906,515, which is that figure plus the $612,000 transfer to the CIP it prints beside it, and the 78 rows of pp.85-125 add up to it. The difference is $250,000, in a single Services &amp; Supplies row. This chart keeps the summary page&#39;s figure because the Services &amp; Supplies figure that would bring pp.66-67 into line with the other schedules is printed on no page of the book, and every figure here is one the city printed.</p>
+      <p class="subtle">
+        About <code>fund-group/internal-service</code> in <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>sankey-2027</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="index.html">At a glance</a>, <a href="flows.html">Flows</a>, <a href="ledger.html">Bars</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveats-on-flows--caveat-contested-total-internal-service" aria-label="Link to this caveat: The budget book prints two different totals for Internal Service Funds spending; this chart draws the summary page&#39;s.">Link to this caveat</a></p>
+    </details>
+  </div>
   <h3 id="caveats-on-flows--left-out">What isn&#39;t in the picture</h3>
   <div class="caveats">
     <details class="caveat" id="caveats-on-flows--caveat-transfer-legs-unpaired">
@@ -274,22 +290,6 @@
         Stated on <a href="index.html">At a glance</a>, <a href="flows.html">Flows</a>, <a href="ledger.html">Bars</a>.
       </p>
       <p class="caveat-link"><a href="#caveats-on-flows--caveat-permanent-funds-have-no-column" aria-label="Link to this caveat: The city&#39;s two Permanent Funds have no column on this page, so they are not drawn.">Link to this caveat</a></p>
-    </details>
-  </div>
-  <h3 id="caveats-on-flows--books-disagree">Where the city&#39;s own books disagree</h3>
-  <div class="caveats">
-    <details class="caveat" id="caveats-on-flows--caveat-contested-total-internal-service">
-      <summary>The budget book prints two different totals for Internal Service Funds spending; this chart draws the summary page&#39;s.</summary>
-      <div class="caveat-variant">
-      <p>Internal Service Funds spending is drawn at $26,544,515, which is what pp.66-67 print for FY2027 adopted. Other schedules in the same book make it $26,294,515: pp.75, 183, 205 and 209 print that figure, and p61 prints $26,906,515, which is that figure plus the $612,000 transfer to the CIP it prints beside it, and the 78 rows of pp.85-125 add up to it. The difference is $250,000, in a single Services &amp; Supplies row. This chart keeps the summary page&#39;s figure because the Services &amp; Supplies figure that would bring pp.66-67 into line with the other schedules is printed on no page of the book, and every figure here is one the city printed.</p>
-      <p class="subtle">
-        About <code>fund-group/internal-service</code> in <a href="fy2027-adopted.json">fy2027-adopted.json</a> (<code>sankey-2027</code>).
-      </p>
-      </div>
-      <p class="subtle">
-        Stated on <a href="index.html">At a glance</a>, <a href="flows.html">Flows</a>, <a href="ledger.html">Bars</a>.
-      </p>
-      <p class="caveat-link"><a href="#caveats-on-flows--caveat-contested-total-internal-service" aria-label="Link to this caveat: The budget book prints two different totals for Internal Service Funds spending; this chart draws the summary page&#39;s.">Link to this caveat</a></p>
     </details>
   </div>
   <h3 id="caveats-on-flows--same-money-twice">Don&#39;t add or compare these</h3>
@@ -532,6 +532,22 @@
 </section>
 <section class="caveat-page" id="caveats-on-balances">
   <h2>On <a href="balances.html">Fund balances</a></h2>
+  <h3 id="caveats-on-balances--books-disagree">Where the city&#39;s own books disagree</h3>
+  <div class="caveats">
+    <details class="caveat" id="caveat-p167-does-not-tie-to-p41">
+      <summary>The annual report&#39;s summary table (p41) does not match the General Fund&#39;s audited 2025 balance.</summary>
+      <div class="caveat-variant">
+      <p>This schedule&#39;s five General Fund parts for 2025 add up to $87,043,576, and the audited statement (p54) prints exactly that. The management discussion on p41 shows the same balance in millions as $87.10, which is not where $87,043,576 rounds. All three are published as printed.</p>
+      <p class="subtle">
+        Shipped inside <a href="data/fund-balances.json">data/fund-balances.json</a> (<code>fund-balances</code>).
+      </p>
+      </div>
+      <p class="subtle">
+        Stated on <a href="balances.html">Fund balances</a>.
+      </p>
+      <p class="caveat-link"><a href="#caveat-p167-does-not-tie-to-p41" aria-label="Link to this caveat: The annual report&#39;s summary table (p41) does not match the General Fund&#39;s audited 2025 balance.">Link to this caveat</a></p>
+    </details>
+  </div>
   <h3 id="caveats-on-balances--left-out">What isn&#39;t in the picture</h3>
   <div class="caveats">
     <details class="caveat" id="caveat-all-other-funds-print-no-assigned-row">
@@ -559,22 +575,6 @@
         Stated on <a href="change.html">Over time</a>, <a href="balances.html">Fund balances</a>.
       </p>
       <p class="caveat-link"><a href="#caveats-on-balances--caveat-governmental-funds-only" aria-label="Link to this caveat: These schedules leave out water, sewer and the city&#39;s other business-like funds.">Link to this caveat</a></p>
-    </details>
-  </div>
-  <h3 id="caveats-on-balances--books-disagree">Where the city&#39;s own books disagree</h3>
-  <div class="caveats">
-    <details class="caveat" id="caveat-p167-does-not-tie-to-p41">
-      <summary>The annual report&#39;s summary table (p41) does not match the General Fund&#39;s audited 2025 balance.</summary>
-      <div class="caveat-variant">
-      <p>This schedule&#39;s five General Fund parts for 2025 add up to $87,043,576, and the audited statement (p54) prints exactly that. The management discussion on p41 shows the same balance in millions as $87.10, which is not where $87,043,576 rounds. All three are published as printed.</p>
-      <p class="subtle">
-        Shipped inside <a href="data/fund-balances.json">data/fund-balances.json</a> (<code>fund-balances</code>).
-      </p>
-      </div>
-      <p class="subtle">
-        Stated on <a href="balances.html">Fund balances</a>.
-      </p>
-      <p class="caveat-link"><a href="#caveat-p167-does-not-tie-to-p41" aria-label="Link to this caveat: The annual report&#39;s summary table (p41) does not match the General Fund&#39;s audited 2025 balance.">Link to this caveat</a></p>
     </details>
   </div>
   <h3 id="caveats-on-balances--kinds-of-year">Not every year is the same kind of number</h3>

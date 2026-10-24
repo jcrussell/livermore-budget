@@ -222,7 +222,7 @@ var caveatThemeWords = map[CaveatTheme][2]string{
 // CaveatThemes is the closed set of caveat themes, in the order the caveats
 // page lists them.
 func CaveatThemes() []CaveatTheme {
-	return []CaveatTheme{ThemeLeftOut, ThemeBooksDisagree, ThemeSameMoneyTwice,
+	return []CaveatTheme{ThemeBooksDisagree, ThemeLeftOut, ThemeSameMoneyTwice,
 		ThemeKindsOfYear, ThemeOurReading, ThemeChecked, ThemeDataFiles}
 }
 
