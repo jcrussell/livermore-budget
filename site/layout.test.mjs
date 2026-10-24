@@ -348,11 +348,12 @@ describe("the spine's layout", () => {
 
   // restackLinks orders each node's ribbons by where their other ends sit
   // and places them down the node's face, whatever order they arrive in. On
-  // a layout of its own, every node's stack is turned upside down (each end
-  // takes the place of its mirror in the stack), and restacking puts the
-  // chart back, each end where the page placed it and no ribbon resized.
-  // Mutation: return early from restackLinks and the inverted stacks keep
-  // their crossings.
+  // a layout of its own, every node's stack is turned upside down, its
+  // ribbons listed in reverse and each end in its mirror's place, and
+  // restacking puts the chart back, each end where the page placed it and
+  // no ribbon resized. Mutation: return early from restackLinks and the
+  // inverted stacks keep their crossings; drop its sorts and the reversed
+  // lists stack the ends upside down.
   test("restackLinks stacks scrambled ribbons back to the chart's", (t) => {
     const own = laidSpine(app);
     const placed = own.links.map((l) => [l.y0, l.y1, l.width]);
@@ -363,6 +364,8 @@ describe("the spine's layout", () => {
     for (const n of own.nodes) {
       invert(n.sourceLinks.slice().sort((a, b) => a.y0 - b.y0), "y0");
       invert(n.targetLinks.slice().sort((a, b) => a.y1 - b.y1), "y1");
+      n.sourceLinks.reverse();
+      n.targetLinks.reverse();
     }
     const scrambled = tangle(own).crossings;
     app.restackLinks(own);

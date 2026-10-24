@@ -3238,8 +3238,9 @@ export function searchMatches(query) {
  * The expansions that draw `id`: the ones on screen, with each node above it
  * split, root first, by the split the next node down is a member of (a node
  * split another way is folded back first, as expandNode does), and the tail
- * of its own split drawn out where the cap would fold it. core.reveal's
- * chain, as a list of expansions so Back can walk it.
+ * of its own split drawn out where the cap would fold it. core.revealChain,
+ * which reveals a member with no alternative by its parent's primary split,
+ * as a list of expansions so Back can walk it.
  * @param {string} id
  * @param {Map<string, FiscProjection>} [shaped] each chain's expansions
  *   asked, by its entries, to the chart they shape
