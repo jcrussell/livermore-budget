@@ -93,12 +93,8 @@ const (
 // by accident, and the whole point of this declaration is that `fisc export`
 // and `fisc verify` cannot disagree about what it contains.
 //
-// BOTH YEARS WERE ALWAYS PROJECTED AND CHECKED. internal/check derives one
-// projection per (fiscal year, basis) the spine carries, so FY2027 has been
-// building and passing every graph check since the two-year budget book was
-// mapped. What it never was, is exported: this list is what closes that gap,
-// and until it existed the site published one of the two documents that already
-// passed.
+// Which slices are BUILT is each projection's own Slices; this list is which of
+// them the site publishes.
 func PublishedFiscalYears() []int {
 	return []int{2026, 2027}
 }
@@ -106,14 +102,9 @@ func PublishedFiscalYears() []int {
 // PublishedDocument is one file the site publishes, and the slice of the fact
 // store it must be built over.
 //
-// THE PUBLISHED SET IS A LIST OF DOCUMENTS, NOT ONE DOCUMENT AND A YEAR LIST.
-// Until 2026-08-25 those were the same thing: every published file was a year of
-// the spine, so naming a projection, a basis and a scope and then iterating
-// [PublishedFiscalYears] named all of them. revenue-trends ended that. It is one
-// document, at its own scope, spanning four columns and no year at all, and a
-// year list cannot express it. Everything downstream that asked "is the
-// published slice among the built ones" had to become "is every published
-// DOCUMENT among them".
+// THE PUBLISHED SET IS A LIST OF DOCUMENTS, NOT ONE DOCUMENT AND A YEAR LIST:
+// revenue-trends is one document, at its own scope, spanning four columns and
+// no year at all, and a year list cannot express it.
 //
 // EACH ENTRY CARRIES ITS STEM, and that is not redundancy with the projection
 // name. A stem is not derivable from a declaration: [Stem] asks

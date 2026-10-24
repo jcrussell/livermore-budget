@@ -235,7 +235,7 @@ func AllCuts() []Cut {
 
 // BudgetBookIdentities are the same-figure relations between the Budget Book's
 // peers. Both readings of a transfer in stay, each with its own locator chain;
-// the identity is what lets a view take one and not the other by name.
+// the identity is what makes a view holding both refuse to sum them.
 func BudgetBookIdentities() []Identity {
 	return []Identity{{
 		Name:  "a-transfer-in-is-printed-at-both-ends",

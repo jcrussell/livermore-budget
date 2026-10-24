@@ -103,6 +103,9 @@ function rowsBy(links, nodes, end, schedule) {
       by.set(i, at);
     }
     const r = at.row;
+    if (l.fact_ids.length && !(Array.isArray(l.locators) && l.locators.length)) {
+      throw new Error(`${schedule} draws ${r.id} citing facts on no page`);
+    }
     at.links.push(l);
     r.cents += l.value_cents;
     for (const id of l.fact_ids) if (!r.factIds.includes(id)) r.factIds.push(id);

@@ -150,6 +150,15 @@ describe("a spending row is a transfer because its links say so", () => {
     }
   });
 
+  // A cited figure links its pages, or it is not drawn. Mutation: drop the
+  // locators check in rowsBy and the row draws with no page to follow.
+  test("a spending row citing facts on no page is refused", () => {
+    for (const [what, edit] of [["null", (l) => { l.locators = null; }], ["absent", (l) => { delete l.locators; }], ["empty", (l) => { l.locators = []; }]]) {
+      const column = edited("fy2024-actual", "transfers/out", edit);
+      assert.throws(() => mod.departmentFigures(column, config, works), /draws transfers\/out citing facts on no page/, what);
+    }
+  });
+
   test("a spending row whose links declare two kinds is refused", () => {
     const column = structuredClone(columnFixture("fy2026-adopted"));
     const links = column.schedules[config.spending].links;

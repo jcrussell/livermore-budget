@@ -13,7 +13,6 @@ import {
   wireYearSelect,
 } from "./format.js";
 
-
 /**
  * @typedef {{ group: string, label: string, cents: number }} Row
  * @typedef {{ id: string, label: string, cents: number, members: string[] }} Segment

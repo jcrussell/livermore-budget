@@ -10,7 +10,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -22,7 +22,6 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/registry"
 	"github.com/jcrussell/livermore-budget/internal/repo"
 	"github.com/jcrussell/livermore-budget/internal/structure"
-	"github.com/jcrussell/livermore-budget/internal/vocab"
 	"github.com/jcrussell/livermore-budget/schema"
 )
 
@@ -770,23 +769,17 @@ func parseLFSPointer(b []byte) (oid string, size int64, ok bool) {
 	return oid, size, true
 }
 
-// buildProjections builds every registered projection over every slice of the
-// fact store that carries one.
-//
-// The slices are read off the facts rather than hard-coded: each distinct
-// (fiscal year, basis) pair within spineScope gets its own graph, so mapping a
-// revised column or a second budget year puts that graph under verify's checks
-// without anyone remembering to add it here. What is NOT read off the facts is
-// the scope, which selects the schedule and therefore the projection — see
-// spineScope.
+// buildProjections builds every registered projection over the slices it
+// declares. Each projection's Slices reads them off the facts rather than a
+// list, so mapping a revised column or a second budget year puts that graph
+// under verify's checks without anyone adding it here.
 func buildProjections(ps []project.Projection, facts []fact.Fact, version string) (
 	[]projection, []projectionFailure, error,
 ) {
-	slices := factSlices(facts, version)
-	// Zero slices means zero projections: every graph check would go vacuous
-	// at once and the run exit 0, as a mistyped scope on every fact does. So
-	// this stays a hard error rather than a recorded failure.
-	if len(slices) == 0 {
+	// No fact in the spine's scope means no spine: every graph check would go
+	// vacuous at once and the run exit 0, as a mistyped scope on every fact
+	// does. So this stays a hard error rather than a recorded failure.
+	if !slices.ContainsFunc(facts, func(f fact.Fact) bool { return f.Scope == spineScope }) {
 		return nil, nil, hint.Withf(
 			fmt.Errorf("no fact is in scope %q, so there is nothing to project and nothing "+
 				"to check", spineScope),
@@ -835,42 +828,4 @@ func buildProjections(ps []project.Projection, facts []fact.Fact, version string
 		}
 	}
 	return out, failed, nil
-}
-
-// factSlices returns the projection options the fact store supports, ordered by
-// fiscal year and then basis so two runs report in the same order.
-func factSlices(facts []fact.Fact, version string) []project.Options {
-	type key struct {
-		year, through int
-		basis         vocab.Basis
-	}
-	seen := map[key]bool{}
-	for _, f := range facts {
-		if f.Scope == spineScope {
-			seen[key{f.FiscalYear, fact.BandOf(&f), f.Basis}] = true
-		}
-	}
-	keys := make([]key, 0, len(seen))
-	for k := range seen {
-		keys = append(keys, k)
-	}
-	sort.Slice(keys, func(i, j int) bool {
-		if keys[i].year != keys[j].year {
-			return keys[i].year < keys[j].year
-		}
-		if keys[i].through != keys[j].through {
-			return keys[i].through < keys[j].through
-		}
-		return keys[i].basis < keys[j].basis
-	})
-
-	out := make([]project.Options, 0, len(keys))
-	for _, k := range keys {
-		out = append(out, project.Options{
-			Columns: []project.Column{{FiscalYear: k.year, Basis: k.basis, Through: k.through}},
-			Scopes:  []string{spineScope},
-			Version: version,
-		})
-	}
-	return out
 }

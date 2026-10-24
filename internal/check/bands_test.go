@@ -66,17 +66,6 @@ func TestABandIsNeverKeyedAsItsFirstYear(t *testing.T) {
 		t.Error("structure.BalanceAtOf files a band under its first year")
 	}
 
-	spineYear, spineBand := year, b
-	spineYear.Scope, spineBand.Scope = spineScope, spineScope
-	slices := factSlices([]fact.Fact{spineYear, spineBand}, "test")
-	if len(slices) != 2 {
-		t.Fatalf("factSlices over a year and a band starting in it = %d slices, want 2", len(slices))
-	}
-	if slices[0].Columns[0].Through != 0 || slices[1].Columns[0].Through != *b.FiscalYearThrough {
-		t.Errorf("factSlices columns = %v and %v, want the year then the band",
-			slices[0].Columns[0], slices[1].Columns[0])
-	}
-
 	// SelectFacts asked for the band's first year as a year refuses the band
 	// rather than passing over it, and selects it only when named as a band.
 	o := project.Options{Columns: []project.Column{{FiscalYear: year.FiscalYear, Basis: year.Basis}},

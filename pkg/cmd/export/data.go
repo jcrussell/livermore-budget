@@ -136,8 +136,7 @@ func buildProjectionsFrom(repoRoot string, facts []fact.Fact) (map[string][]byte
 		}
 	}
 
-	// THE PUBLISHED SET IS STILL ASSERTED, and it is the half of the old
-	// cartesian product worth keeping. `fisc export` and `fisc verify` share one
+	// THE PUBLISHED SET IS ASSERTED. `fisc export` and `fisc verify` share one
 	// declaration of which slices the site publishes; what this catches is the
 	// two of them diverging -- a projection whose declared slices no longer
 	// include a published one would otherwise be checked under its own slices

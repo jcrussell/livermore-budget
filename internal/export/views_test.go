@@ -495,27 +495,34 @@ func TestTheCaveatsPagePromisesAChartFlagOnlyWhereThereIsAChart(t *testing.T) {
 // stats each: a renamed asset is a 404 in the browser and nowhere else. The
 // fragment is cut rather than skipped, so "caveats.html#x" stats the file.
 func TestEveryViewsMarkupResolves(t *testing.T) {
-	dir := twoViews(t, 127, 128)
+	single, _ := writeGolden(t)
+	sites := []struct {
+		dir   string
+		pages []string
+	}{{twoViews(t, 127, 128), []string{"index.html", "table.html"}}, {single, []string{"index.html"}}}
 	ref := regexp.MustCompile(`(?:src|href)="([^"]+)"`)
 
-	for _, page := range []string{"index.html", "table.html"} {
-		found := 0
-		for _, m := range ref.FindAllStringSubmatch(readFile(t, dir, page), -1) {
-			target := m[1]
-			if before, _, ok := strings.Cut(target, "#"); ok {
-				target = before
+	for _, site := range sites {
+		dir := site.dir
+		for _, page := range site.pages {
+			found := 0
+			for _, m := range ref.FindAllStringSubmatch(readFile(t, dir, page), -1) {
+				target := m[1]
+				if before, _, ok := strings.Cut(target, "#"); ok {
+					target = before
+				}
+				if target == "" || strings.Contains(target, "://") {
+					continue
+				}
+				found++
+				if _, err := os.Stat(filepath.Join(dir, filepath.FromSlash(target))); err != nil {
+					t.Errorf("%s references %q, which was not written: %v", page, target, err)
+				}
 			}
-			if target == "" || strings.Contains(target, "://") {
-				continue
+			if found < 4 {
+				t.Errorf("%s has %d relative references, want at least the stylesheet and its "+
+					"own data file", page, found)
 			}
-			found++
-			if _, err := os.Stat(filepath.Join(dir, filepath.FromSlash(target))); err != nil {
-				t.Errorf("%s references %q, which was not written: %v", page, target, err)
-			}
-		}
-		if found < 4 {
-			t.Errorf("%s has %d relative references, want at least the stylesheet and its "+
-				"own data file", page, found)
 		}
 	}
 }
