@@ -642,7 +642,7 @@ describe("the expansion's drawing", () => {
     const wrong = ribbons.map((r) => r.__data__).filter((d, i) => ribbons[i].getAttribute("stroke") !== app.linkColor(d))
       .map((d) => `${d.source.id} -> ${d.target.id}`);
     t.diagnostic(`${YEARS[0].label}, Expand all: ${ribbons.length} ribbon(s) painted`);
-    assert.ok(ribbons.length > 0, "Expand all drew no ribbon");
+    assert.ok(ribbons.some((r) => app.linkColor(r.__data__) !== muted), "every ribbon is muted, so the paint is not tested");
     assert.deepEqual(wrong, [], firstOf(wrong));
   });
 

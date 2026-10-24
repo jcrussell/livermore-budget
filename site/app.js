@@ -912,9 +912,9 @@ export function collapseNode(id) {
 }
 
 /**
- * Splits every node the chart draws unsplit by its first declared split, and
- * every node that exposes, until none is left: the whole budget at its finest
- * grain, its tails still folded.
+ * Splits every node the chart draws unsplit by its primary split, and every
+ * node that exposes, until none is left (core.expandAllFrom): the whole
+ * budget at its finest grain, its tails still folded.
  * @returns {boolean} whether the chart moved
  */
 export function expandAll() {

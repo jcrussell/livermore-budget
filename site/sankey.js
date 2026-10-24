@@ -929,7 +929,6 @@ export function columnShare(laid, d) {
  * the value-weighted mean place of the fund groups it touches (a barycentre),
  * or, touching none, its own group's place.
  * Supplying a nodeSort is what pins the fund column to the palette's order.
- * The layout tests under site/ measure the alternatives and pin this one.
  * Ties fall to the caller's tie-break on value.
  * @param {LaidNode} node
  * @param {(node: FiscNode | LaidNode) => string} groupOf a node's fund group

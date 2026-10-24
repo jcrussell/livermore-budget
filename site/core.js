@@ -1137,7 +1137,9 @@ export function straightFrom(doc, id) {
  * of the split the next node down is a member of (its alternative's, else
  * the ancestor's primary split, which splitsOf and openSplitOf give every
  * member with no alternative). What revealing the node opens, whether as a
- * frontier (reveal) or as the page's expansions (app.js revealEntries).
+ * frontier (reveal) or as the page's expansions (revealEntries). A parent
+ * with no split its child belongs to is refused: nothing could draw the
+ * child.
  * @param {FiscProjection} doc the expansion schedule
  * @param {string} id
  * @returns {{node: string, key: string}[]}
@@ -1147,7 +1149,9 @@ export function revealChain(doc, id) {
   const chain = [];
   for (let at = byID.get(id), hops = 0; at && at.parent && hops < 9; at = byID.get(at.parent), hops++) {
     const primary = splitsOf(doc, at.parent).find((sp) => !sp.alternative);
-    chain.unshift({ node: at.parent, key: at.alternative || (primary ? primary.key : "") });
+    const key = at.alternative || (primary ? primary.key : "");
+    if (!key) throw new Error(`cannot reveal ${id}: ${at.parent} declares no split ${at.id} belongs to`);
+    chain.unshift({ node: at.parent, key });
   }
   return chain;
 }
@@ -1170,9 +1174,9 @@ export function reveal(doc, frontier, id) {
 
 /**
  * Expand all from a frontier: every node it draws unsplit split by its
- * first declared split, and every node that exposes, until none is left or
- * 16 passes have run. The splits in the order opened, and the frontier they
- * reach; app.js expandAll draws them.
+ * primary split, the one expand opens straight through and revealChain
+ * reveals by, and every node that exposes, until none is left or 16 passes
+ * have run. The splits in the order opened, and the frontier they reach.
  * @param {FiscProjection} doc the expansion schedule
  * @param {Set<string>} frontier
  * @returns {{splits: {node: string, key: string}[], frontier: Set<string>}}
@@ -1181,11 +1185,11 @@ export function expandAllFrom(doc, frontier) {
   let open = frontier;
   const splits = [];
   for (let pass = 0; pass < 16; pass++) {
-    const shut = doc.nodes.filter((n) => open.has(n.id) && splitsOf(doc, n.id).length &&
+    const shut = doc.nodes.filter((n) => open.has(n.id) && splitsOf(doc, n.id).some((sp) => !sp.alternative) &&
       openSplitOf(doc, open, n.id) === "");
     if (!shut.length) break;
     for (const n of shut) {
-      const key = splitsOf(doc, n.id)[0].key;
+      const key = splitsOf(doc, n.id).find((sp) => !sp.alternative).key;
       splits.push({ node: n.id, key });
       open = expand(doc, open, n.id, key);
     }

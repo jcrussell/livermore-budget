@@ -319,7 +319,8 @@ describe("revealing a node opens each ancestor by the split the node below belon
   const split = (n, key, alternative = false) => ({ node: n, key, form: "extend", alternative });
   const doc = {
     projection: "synthetic",
-    nodes: [node("P"), node("M", "P"), node("A", "M"), node("B", "M"), node("Y", "M", "alt"), node("A1", "A"), node("A2", "A")],
+    nodes: [node("P"), node("M", "P"), node("A", "M"), node("B", "M"), node("Y", "M", "alt"), node("A1", "A"), node("A2", "A"),
+      node("Z", "B")],
     links: [],
     splits: [split("P", "one"), split("M", "alt", true), split("M", "rows"), split("A", "more")],
   };
@@ -330,12 +331,20 @@ describe("revealing a node opens each ancestor by the split the node below belon
     const open = core.reveal(doc, core.rootFrontier(doc), "A1");
     assert.ok(open.has("A1") && open.has("A2"), `revealing A1 draws [${ids(open)}]`);
   });
+
+  // Mutation: let revealChain key such a parent "" and reveal returns a
+  // frontier without Z, saying nothing.
+  test("a node under a parent with no split it belongs to is refused, not left undrawn", () => {
+    assert.throws(() => core.revealChain(doc, "Z"), /B declares no split Z belongs to/);
+  });
 });
 
 // PLANTED: on the pinned columns one pass of Expand all opens everything,
-// since each root's split exposes no node with a split of its own. Here P's
-// split exposes M and N, and M splits again, so Expand all needs a second
-// pass. Mutation: stop expandAllFrom after one pass and M stays shut.
+// since each root's split exposes no node with a split of its own, and no
+// node declares an alternative first. Here P's split exposes M and N, M
+// splits again, and M declares its alternative before its primary split.
+// Mutation: stop expandAllFrom after one pass and M stays shut; open each
+// node by its first declared split and M opens by "alt".
 describe("Expand all opens what a split exposes, until nothing is left shut", () => {
   const node = (id, parent = "", alternative = "") => Object.assign({ id, tier: 0, parent, label: id, role: "r" }, alternative ? { alternative } : {});
   const split = (n, key, alternative = false) => ({ node: n, key, form: "extend", alternative });
@@ -343,10 +352,10 @@ describe("Expand all opens what a split exposes, until nothing is left shut", ()
     projection: "synthetic",
     nodes: [node("P"), node("M", "P"), node("N", "P"), node("A", "M"), node("B", "M"), node("C", "M", "alt")],
     links: [],
-    splits: [split("P", "one"), split("M", "rows"), split("M", "alt", true)],
+    splits: [split("P", "one"), split("M", "alt", true), split("M", "rows")],
   };
 
-  test("a node a split exposes is split in turn, by its first declared split", () => {
+  test("a node a split exposes is split in turn, by its primary split", () => {
     const all = core.expandAllFrom(doc, core.rootFrontier(doc));
     assert.deepEqual(all.splits, [{ node: "P", key: "one" }, { node: "M", key: "rows" }]);
     assert.deepEqual(ids(all.frontier), ["A", "B", "M", "N", "P"]);

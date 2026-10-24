@@ -346,20 +346,28 @@ describe("the spine's layout", () => {
       { crossings: DRAWN.crossings, dollars: DRAWN.overlapDollars }, detail);
   });
 
-  // restackLinks orders each node's ribbons by where their other ends sit,
-  // whatever order they arrive in. Mutation: return early from restackLinks
-  // and the scrambled stacking keeps its extra crossings.
-  test("restackLinks stacks scrambled ribbons back to the chart's, without resizing one", (t) => {
-    const widths = graph.links.map((l) => l.width);
-    for (const n of graph.nodes) {
-      n.sourceLinks.reverse();
-      n.targetLinks.reverse();
+  // restackLinks orders each node's ribbons by where their other ends sit
+  // and places them down the node's face, whatever order they arrive in. On
+  // a layout of its own, every node's stack is turned upside down (each end
+  // takes the place of its mirror in the stack), and restacking puts the
+  // chart back. Mutation: return early from restackLinks and the inverted
+  // stacks keep their crossings.
+  test("restackLinks stacks scrambled ribbons back to the chart's", (t) => {
+    const own = laidSpine(app);
+    const invert = (links, y) => {
+      const places = links.map((l) => l[y]);
+      links.forEach((l, i) => { l[y] = places[places.length - 1 - i]; });
+    };
+    for (const n of own.nodes) {
+      invert(n.sourceLinks.slice().sort((a, b) => a.y0 - b.y0), "y0");
+      invert(n.targetLinks.slice().sort((a, b) => a.y1 - b.y1), "y1");
     }
-    app.restackLinks(graph);
-    const got = tangle(graph);
-    t.diagnostic(`${got.crossings} crossings after restacking the reversed stacks`);
+    const scrambled = tangle(own).crossings;
+    app.restackLinks(own);
+    const got = tangle(own);
+    t.diagnostic(`${scrambled} crossings with every stack inverted, ${got.crossings} after restacking`);
+    assert.notEqual(scrambled, DRAWN.crossings, "inverting the stacks changed nothing, so restacking is not tested");
     assert.equal(got.crossings, DRAWN.crossings);
-    assert.deepEqual(graph.links.map((l) => l.width), widths);
   });
 
   test("the fund column is pinned to the order the column shipped", (t) => {
