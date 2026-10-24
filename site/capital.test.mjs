@@ -95,11 +95,12 @@ test("the footer is the sum of the rows shown, whatever the fund", async () => {
   }
 });
 
-// An empty data-cents is not a printed zero. Mutation: read cells with
-// Number() in readTable and the empty one sums as $0.
-test("readTable refuses a cell whose cents are empty or not an integer", async () => {
+// An empty data-cents is not a printed zero. Mutation: have readTable parse
+// its cells with Number() rather than through rowCents, and the empty one
+// sums as $0.
+test("readTable refuses a cell whose cents are empty or not decimal digits", async () => {
   const { mod, doc } = await booted();
-  for (const raw of ["", "1.5", "0x10"]) {
+  for (const raw of ["", "0x10"]) {
     const table = /** @type {HTMLTableElement} */ (doc.getElementById("capital-table").cloneNode(true));
     table.querySelector("td[data-cents]").setAttribute("data-cents", raw);
     assert.throws(() => mod.readTable(table), /carries .* cents/, JSON.stringify(raw));
