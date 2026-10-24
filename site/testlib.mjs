@@ -352,8 +352,10 @@ export async function revealed(app, id) {
  * tails are found by shaping the list with no DOM (expansionState, then the
  * form's shape) until a shape folds none, and the page is redrawn once with
  * all of them; drawing one out can expose another, which is why it is a
- * fixed point. A tail the page still offers after that, which a filter's
- * fold alone would show, is drawn out by its gesture. The bounds turn a
+ * fixed point. The entries are checked by the app's own expansionState as
+ * they are shaped. A tail the page still offers after that, which a
+ * filter's fold alone would show, is drawn out by its gesture; the gesture
+ * itself is the drawing's in render.test.mjs. The bounds turn a
  * re-engaging fold into a failure, not a hang.
  */
 export function expandAll(app) {
@@ -368,16 +370,16 @@ export function expandAll(app) {
     if (!tails.length) break;
     entries = entries.concat(tails);
   }
-  let done = entries.length - app.expansions.length;
-  if (done && !app.redraw(entries, "That could not be drawn out")) {
-    throw new Error(`drawing out ${done} tail(s) at once was refused`);
+  const batched = entries.length - app.expansions.length;
+  if (batched && !app.redraw(entries, "That could not be drawn out")) {
+    throw new Error(`drawing out ${batched} tail(s) at once was refused`);
   }
-  for (; done < 64 + entries.length; done++) {
+  for (let more = 0; more < 64; more++) {
     const tail = app.projection.nodes.find((n) => app.expandable(n));
-    if (!tail) return done;
+    if (!tail) return batched + more;
     if (!app.drawOutTail(tail)) throw new Error(`${tail.id} would not draw out`);
   }
-  throw new Error("a chart still offers a tail to draw out after 64 of them");
+  throw new Error(`a chart still offers a tail to draw out after ${batched} at once and 64 more by gesture`);
 }
 
 /**

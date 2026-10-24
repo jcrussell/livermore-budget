@@ -1036,9 +1036,9 @@ describe("the classes the client sets and the rules the stylesheet carries", () 
     // The root, the tooltip on a mark and on a ribbon, the panel on a
     // ribbon, a pin, an isolation, a node menu refusing a filter, a zoom,
     // one split of each kind the page offers (a key, as primary or as an
-    // alternative), Expand all, every tail drawn out, and a refusal. A class
-    // only some other chart wears fails the "styled and worn" arm below
-    // rather than passing unseen.
+    // alternative), Expand all, every tail drawn out, and a refusal. A styled
+    // class only some other chart wears fails the "styled and worn" arm
+    // below; an unstyled one set only on an unvisited chart is not seen.
     snap();
     const mark = marksIn(chart)[0];
     const ribbon = ribbonsIn(chart)[0];
@@ -1239,7 +1239,7 @@ describe("a count the client takes is marked as its own", () => {
 // a slot beside its parent's, so two open together can declare a slot further
 // out than any drawn ribbon reaches. Every node is still drawn in its slot.
 // Every pair the schedules declare is walked in site/layout.test.mjs, at the
-// layout and with no DOM; this renders the one sequence that first refused.
+// layout and with no DOM; this renders one sequence of three, end to end.
 describe("two extend splits open together", () => {
   /** Each laid node whose d3 layer is not its slot's rank, by id. */
   const misplaced = (app) => {

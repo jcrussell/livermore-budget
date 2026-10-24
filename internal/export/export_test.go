@@ -1864,8 +1864,7 @@ func sorted(in []string) []string {
 // TestAFragmentTargetLandsBelowTheStickyBanner: .wip-banner is sticky at the
 // top of every page, so html carries a scroll-padding-top or a link to a
 // caveat on caveats.html scrolls its summary under the banner. Like the
-// measure test below it witnesses a declaration, not a rendering; the
-// rendering was read in Chromium at 1100px and 390px.
+// measure test below it witnesses a declaration, not a rendering.
 //
 // Mutation: delete the html rule and this goes red.
 func TestAFragmentTargetLandsBelowTheStickyBanner(t *testing.T) {
@@ -1873,7 +1872,8 @@ func TestAFragmentTargetLandsBelowTheStickyBanner(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read embedded style.css: %v", err)
 	}
-	if !regexp.MustCompile(`(?m)^html \{\s*scroll-padding-top: [1-9]`).Match(b) {
+	rule := regexp.MustCompile(`(?m)^html \{([^}]*)\}`).FindSubmatch(b)
+	if rule == nil || !regexp.MustCompile(`scroll-padding-top:\s*[0-9.]*[1-9]`).Match(rule[1]) {
 		t.Error("style.css gives html no scroll-padding-top, so a fragment lands under .wip-banner")
 	}
 }
