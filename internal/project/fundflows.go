@@ -106,9 +106,7 @@ type fundFlows struct {
 	Labels labels
 }
 
-var (
-	_ Projection = (*fundFlows)(nil)
-)
+var _ Projection = (*fundFlows)(nil)
 
 // Name is [Projection]'s, and it is this document's file stem.
 func (*fundFlows) Name() string { return FundFlowsProjection }

@@ -8,8 +8,7 @@
  * runs nothing; the template calls boot().
  */
 
-import { NAMED, TAIL_LABEL } from "./glance.js";
-import { clone, dollars, linkedPage, pageLinks, pinnable, plus, refuseFigure, rowCents, tipHint, tipper } from "./format.js";
+import { NAMED, TAIL_LABEL, clone, dollars, linkedPage, pageLinks, pinnable, plus, refuseFigure, rowCents, tipHint, tipper } from "./format.js";
 
 /** How tall the tallest column's bands are drawn, in px, gaps aside. */
 export const HEIGHT = 240;

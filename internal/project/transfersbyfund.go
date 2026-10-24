@@ -81,9 +81,7 @@ type transfersByFund struct {
 	Out    bool
 }
 
-var (
-	_ Projection = (*transfersByFund)(nil)
-)
+var _ Projection = (*transfersByFund)(nil)
 
 // Name is [Projection]'s, and it is this document's file stem.
 func (t *transfersByFund) Name() string {
@@ -398,16 +396,17 @@ func sortedTransferKeys(m map[transferKey]transferRow) []transferKey {
 // constraint tier on a fund's own node through annotateFund. The two ends of
 // a movement are ends and not the fund, and carry none.
 func (t *transfersByFund) addNode(nodes map[string]Node, e endpoint) {
-	addFundNode(nodes, e, t.label(e), t.Labels)
+	addFundNode(nodes, e, t.Labels)
 }
 
-// addFundNode records a node the first time a link touches it, with the
-// constraint tier on a fund's own node through annotateFund.
-func addFundNode(nodes map[string]Node, e endpoint, label string, l labels) {
+// addFundNode records a node the first time a link touches it, labelled by
+// nodeLabel, with the constraint tier on a fund's own node through
+// annotateFund.
+func addFundNode(nodes map[string]Node, e endpoint, l labels) {
 	if _, ok := nodes[e.id]; ok {
 		return
 	}
-	n := Node{ID: e.id, Label: label, Tier: e.tier(), Role: e.role, Parent: e.parent}
+	n := Node{ID: e.id, Label: nodeLabel(l, e.id, e.slug), Tier: e.tier(), Role: e.role, Parent: e.parent}
 	if e.tier() == tierFund {
 		if number, err := strconv.Atoi(e.id[len(PrefixFund):]); err == nil {
 			annotateFund(&n, l, number)
@@ -415,11 +414,6 @@ func addFundNode(nodes map[string]Node, e endpoint, label string, l labels) {
 	}
 	nodes[e.id] = n
 }
-
-// label is nodeLabel over this document's registry. The three fund-bearing
-// forms take the same words; the a-fund-is-drawn-once-per-end caveat tells the
-// reader why.
-func (t *transfersByFund) label(e endpoint) string { return nodeLabel(t.Labels, e.id, e.slug) }
 
 // FundNumber is the fund a node id names, the number the city prints for it,
 // for the three forms that name one. It returns false for any other id,

@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { loadApp, stylesheet, columnFixture, publishedColumns, repoRoot } from "./testlib.mjs";
-import { NAMED } from "./glance.js";
+import { NAMED } from "./format.js";
 
 const read = (name) => JSON.parse(fs.readFileSync(path.join(repoRoot, "schema", name), "utf8"));
 

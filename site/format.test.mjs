@@ -10,13 +10,13 @@ import { JSDOM } from "jsdom";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const MODULE = pathToFileURL(path.join(HERE, "format.js")).href;
 
-test("format.js imports with no DOM and no global, and exports only functions", async () => {
+test("format.js imports with no DOM and no global, and exports only functions and the tail's two constants", async () => {
   delete globalThis.FISC_CONFIG;
   delete globalThis.d3;
   assert.equal(typeof globalThis.document, "undefined", "nothing installed a DOM before the import");
   const mod = await import(MODULE);
-  assert.deepEqual(Object.keys(mod).sort(), ["carryYear", "citedPages", "clone", "configOf", "dollars", "hashFields", "hashValue", "hiddenEdges", "linkedPage", "pageLinks", "pageOf", "pinnable", "placeTip", "plus", "refuseFigure", "rowCents", "sayRefusal", "scrollCues", "selectYear", "share", "tipHint", "tipper", "wireYearSelect", "yearKey"]);
-  assert.ok(Object.values(mod).every((v) => typeof v === "function"));
+  assert.deepEqual(Object.keys(mod).sort(), ["NAMED", "TAIL_LABEL", "carryYear", "citedPages", "clone", "configOf", "dollars", "hashFields", "hashValue", "hiddenEdges", "linkedPage", "pageLinks", "pageOf", "pinnable", "placeTip", "plus", "refuseFigure", "rowCents", "sayRefusal", "scrollCues", "selectYear", "share", "tipHint", "tipper", "wireYearSelect", "yearKey"]);
+  assert.ok(Object.entries(mod).every(([k, v]) => typeof v === "function" || k === "NAMED" || k === "TAIL_LABEL"));
 });
 
 // Mutation: drop the sign (always "$") and the negative cases go red; print

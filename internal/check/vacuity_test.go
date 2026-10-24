@@ -2,9 +2,12 @@ package check
 
 import (
 	"errors"
+	"maps"
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 // vacant is a check that reports vacuous under whatever id the test gives it,
@@ -14,14 +17,67 @@ func vacant(id string) *fake {
 	return &fake{id: id, res: Result{Status: StatusVacuous, Summary: "nothing to look at"}}
 }
 
-// TestDeclaredVacuousIsEmpty guards the state the map should stay in, in the
-// shape uncheckedDocuments and incompleteSeries already have. An entry needs a
-// reason of a full sentence about the corpus, a fisc- bead that retires it, and
-// an id that names a check in All(); none is needed today.
-func TestDeclaredVacuousIsEmpty(t *testing.T) {
+// declarationFaults is every way a set of vacancy declarations is malformed:
+// an id naming no check in real, an entry with no fisc- bead, a reason too
+// thin to say what would have to exist, or two entries sharing a reason.
+func declarationFaults(decls map[string]vacancy, real map[string]bool) []string {
+	var out []string
+	seen := map[string]string{}
+	for _, id := range slices.Sorted(maps.Keys(decls)) {
+		v := decls[id]
+		if !real[id] {
+			out = append(out, id+": names no check All() returns")
+		}
+		if !strings.HasPrefix(v.bead, "fisc-") {
+			out = append(out, id+": no fisc- bead")
+		}
+		if len(v.reason) < 80 {
+			out = append(out, id+": a reason of under 80 characters")
+		}
+		if prev, dup := seen[v.reason]; dup {
+			out = append(out, id+": shares its reason with "+prev)
+		}
+		seen[v.reason] = id
+	}
+	return out
+}
+
+// TestEveryDeclarationIsWellFormed holds declaredVacuous to declarationFaults
+// against the canonical registry: a run may hold a subset of the checks, so
+// whether an id names a real check is asserted here and not by Run.
+func TestEveryDeclarationIsWellFormed(t *testing.T) {
 	t.Parallel()
-	if len(declaredVacuous) != 0 {
-		t.Errorf("declaredVacuous carries %d entries: %v", len(declaredVacuous), declaredVacuous)
+	real := map[string]bool{}
+	for _, c := range All() {
+		real[c.ID()] = true
+	}
+	for _, f := range declarationFaults(declaredVacuous, real) {
+		t.Error(f)
+	}
+}
+
+// TestDeclarationFaultsRefusesEachMalformedEntry runs declarationFaults over
+// one entry per fault, so the test above can fail while declaredVacuous is
+// empty. Mutation: drop any arm and its entry goes unreported.
+func TestDeclarationFaultsRefusesEachMalformedEntry(t *testing.T) {
+	t.Parallel()
+	long := strings.Repeat("a reason about the corpus that names what would have to exist ", 2)
+	got := declarationFaults(map[string]vacancy{
+		"ok":       {reason: long + "1", bead: "fisc-3s5d"},
+		"typo":     {reason: long + "2", bead: "fisc-3s5d"},
+		"no-bead":  {reason: long + "3", bead: ""},
+		"thin":     {reason: "nothing", bead: "fisc-3s5d"},
+		"copied-a": {reason: long + "4", bead: "fisc-3s5d"},
+		"copied-b": {reason: long + "4", bead: "fisc-3s5d"},
+	}, map[string]bool{"ok": true, "no-bead": true, "thin": true, "copied-a": true, "copied-b": true})
+	want := []string{
+		"copied-b: shares its reason with copied-a",
+		"no-bead: no fisc- bead",
+		"thin: a reason of under 80 characters",
+		"typo: names no check All() returns",
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("declarationFaults (-want +got):\n%s", diff)
 	}
 }
 

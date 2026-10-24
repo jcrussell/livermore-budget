@@ -69,9 +69,7 @@ type Trends struct {
 	Labels labels
 }
 
-var (
-	_ Projection = (*Trends)(nil)
-)
+var _ Projection = (*Trends)(nil)
 
 // Name is the file stem: revenue-trends becomes revenue-trends.json.
 func (*Trends) Name() string { return TrendsProjection }

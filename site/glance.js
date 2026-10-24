@@ -9,15 +9,10 @@
  */
 
 import {
-  clone, dollars, hashFields, hashValue, linkedPage, pageLinks, pinnable, refuseFigure, selectYear, share, tipHint, tipper,
+  NAMED, TAIL_LABEL, clone, dollars, hashFields, hashValue, linkedPage, pageLinks, pinnable, refuseFigure, selectYear, share, tipHint, tipper,
   wireYearSelect,
 } from "./format.js";
 
-/** How many groups a bar names before the rest fold into one tail. */
-export const NAMED = 5;
-
-/** What the folded tail is called. */
-export const TAIL_LABEL = "Everything else";
 
 /**
  * @typedef {{ group: string, label: string, cents: number }} Row

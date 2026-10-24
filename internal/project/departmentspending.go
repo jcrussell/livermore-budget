@@ -46,9 +46,7 @@ type departmentSpending struct {
 	Labels labels
 }
 
-var (
-	_ Projection = (*departmentSpending)(nil)
-)
+var _ Projection = (*departmentSpending)(nil)
 
 // Name is [Projection]'s, and it is this document's file stem.
 func (*departmentSpending) Name() string { return DepartmentSpendingProjection }

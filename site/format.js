@@ -10,6 +10,12 @@
  * call wires another set.
  */
 
+/** How many groups a ranked figure names before the rest fold into one tail. */
+export const NAMED = 5;
+
+/** What the folded tail is called. */
+export const TAIL_LABEL = "Everything else";
+
 /**
  * Whole dollars with thousands separators, signed, cents only where a
  * figure has them. Integer arithmetic throughout: the dollars and the cents

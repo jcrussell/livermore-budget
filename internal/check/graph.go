@@ -851,28 +851,19 @@ var sameTierContainers = map[string]string{project.NodeTransfersOut: project.Pre
 // actually be folded: every parent resolves, the hierarchy runs coarse to fine,
 // and no node is its own ancestor.
 //
-// THIS CHECK USED TO BE CALLED aggregation-invariance AND IT PROMISED SOMETHING
-// IT CANNOT DELIVER. Its old description — "the total at every tier depth equals
-// the total at every other depth" — cannot fail on arithmetic within one
-// document, because a fold maps each link to exactly one folded link and the sum
-// is invariant under relabelling whatever node.parent says. Node.Parent is one
-// string, so it cannot even express the double parent the old doc comment named
-// as the thing it caught. Written that way the check passes on any input, and
-// retiring a DECLARED vacuous check by replacing it with a green tautology is
-// worse than the state it replaced: the vacuity was at least visible in the
-// report. Check.ID's own doc comment says an id "says what is claimed rather
-// than what is done", so the id moved with the claim.
+// IT IS STRUCTURAL, NOT ARITHMETIC. "The total at every tier depth equals the
+// total at every other depth" cannot fail within one document: a fold maps each
+// link to exactly one folded link, and the sum is invariant under relabelling
+// whatever node.parent says.
 //
-// THE INTER-DOCUMENT FOLD IS REAL AND IS ALREADY DISCHARGED ELSEWHERE, which is
-// the other half of why this one is structural. Folding this document's fund
+// THE INTER-DOCUMENT FOLD IS DISCHARGED ELSEWHERE. Folding this document's fund
 // totals to fund groups and comparing them against the SPINE's published
 // fund-group figures is a comparison between two schedules, and
 // cuts-tie-along-the-lattice makes exactly that comparison, per cell, at zero
 // tolerance, over Subject.Facts and without a graph. Rebuilding it here would
 // buy nothing.
 //
-// WHAT IS GENUINELY NEW IS STRUCTURAL, and none of it was asserted anywhere
-// before:
+// What it asserts:
 //
 //   - every node.parent RESOLVES to a node in this document. A dangling parent
 //     is a fold that loses money: the client aggregating to a coarser tier finds

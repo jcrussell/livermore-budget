@@ -372,9 +372,7 @@ type DebtTotal struct {
 // DebtService is the debt-service projection.
 type DebtService struct{}
 
-var (
-	_ Projection = (*DebtService)(nil)
-)
+var _ Projection = (*DebtService)(nil)
 
 // Name is the file stem.
 func (*DebtService) Name() string { return DebtServiceProjection }

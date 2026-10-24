@@ -895,9 +895,9 @@ func TestAShortSeriesDoesNotShiftItsNeighboursIntoTheWrongColumn(t *testing.T) {
 	series["points"] = []any{kept}
 	// AND SAY SO IN THE DOCUMENT'S OWN COUNTS, which is not bookkeeping. A
 	// series short a column is a state this project supports; a document whose
-	// counts.points disagrees with the points it carries is a different thing
-	// and Write now refuses it. Leaving the count at 2 would make
-	// this test assert the refusal instead of the layout it is named for.
+	// counts.points disagrees with the points it carries is a different thing,
+	// and Write refuses it. Leaving the count at 2 would make this test assert
+	// the refusal instead of the layout it is named for.
 	meta := doc["metadata"].(map[string]any)
 	meta["counts"].(map[string]any)["points"] = 1
 	// AND counts.facts WITH IT, because that is what the producer would have

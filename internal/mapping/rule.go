@@ -489,9 +489,10 @@ type Part struct {
 	// the header line gives the page's column geometry, and every figure the
 	// part reads must fall in the band of the column the rule assigned it to.
 	//
-	// Absent, the part is read by text alone. The key is per-part rather than per-rule because a page can print more than
-	// one schedule, and per-part rather than global because opting a part in
-	// is a claim about a specific page that someone has looked at.
+	// Absent, the part is read by text alone. The key is per-part rather than
+	// per-rule because a page can print more than one schedule, and per-part
+	// rather than global because opting a part in is a claim about a specific
+	// page that someone has looked at.
 	//
 	// The list is a claim about column ORDER, not just about column count.
 	// Headers are matched left to right and each must occur AFTER the one

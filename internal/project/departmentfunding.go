@@ -47,9 +47,7 @@ type departmentFunding struct {
 	Labels labels
 }
 
-var (
-	_ Projection = (*departmentFunding)(nil)
-)
+var _ Projection = (*departmentFunding)(nil)
 
 // Name is [Projection]'s, and it is this document's file stem.
 func (*departmentFunding) Name() string { return DepartmentFundingProjection }
@@ -252,7 +250,7 @@ func (d *departmentFunding) fundEndpoint(number int) (endpoint, error) {
 // addNode records a node the first time a link touches it, and hangs the
 // constraint tier on a fund through annotateFund.
 func (d *departmentFunding) addNode(nodes map[string]Node, e endpoint) {
-	addFundNode(nodes, e, d.label(e), d.Labels)
+	addFundNode(nodes, e, d.Labels)
 }
 
 // addFundGroups adds the tier-2 node above every fund, which this document

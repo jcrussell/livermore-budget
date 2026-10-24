@@ -137,9 +137,10 @@ type declaredOmission struct {
 // check against, the second a rule that has been given one but has not said
 // where on a label-less page the totals begin.
 //
-// Neither says the DOCUMENT prints no total. That is a claim about the source, and only a human reading the page can make it —
-// ErrNoStatedTotals reaches here solely from a label-less part with no stop_at,
-// which is a gap in the rule.
+// Neither says the DOCUMENT prints no total. That is a claim about the source,
+// and only a human reading the page can make it — ErrNoStatedTotals reaches
+// here solely from a label-less part with no stop_at, which is a gap in the
+// rule.
 const (
 	reasonNoTotalRow     = "the rule declares no total_row"
 	reasonNoStatedTotals = "the rule gives this part no anchor for a stated total"

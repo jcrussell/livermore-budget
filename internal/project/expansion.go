@@ -253,9 +253,7 @@ type expansion struct {
 	Labels labels
 }
 
-var (
-	_ Projection = (*expansion)(nil)
-)
+var _ Projection = (*expansion)(nil)
 
 // Name is [Projection]'s, and it is this document's file stem.
 func (*expansion) Name() string { return ExpansionProjection }

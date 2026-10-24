@@ -53,9 +53,7 @@ type fundSourcesUses struct {
 	Labels labels
 }
 
-var (
-	_ Projection = (*fundSourcesUses)(nil)
-)
+var _ Projection = (*fundSourcesUses)(nil)
 
 // Name is [Projection]'s, and it is this document's file stem.
 func (*fundSourcesUses) Name() string { return FundSourcesUsesProjection }

@@ -276,9 +276,9 @@ func (*expansionOpensAsTheSpine) Run(_ context.Context, s *Subject) (Result, err
 				findings = append(findings, finding(subject, "%s: the legs completing it carry %s and the spine draws %s",
 					k, amount.Cents(whole.cents), amount.Cents(l.ValueCents)))
 			}
-			if !slices.Equal(slices.Sorted(slices.Values(slices.Compact(slices.Sorted(slices.Values(whole.printed))))), slices.Sorted(slices.Values(l.FactIDs))) {
+			if cited := slices.Compact(slices.Sorted(slices.Values(whole.printed))); !slices.Equal(cited, slices.Sorted(slices.Values(l.FactIDs))) {
 				findings = append(findings, finding(subject, "%s: the legs completing it cite %v of pp.66-67 and the cell prints %v",
-					k, slices.Compact(slices.Sorted(slices.Values(whole.printed))), l.FactIDs))
+					k, cited, l.FactIDs))
 			}
 		}
 		for _, k := range slices.Sorted(maps.Keys(completing)) {

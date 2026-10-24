@@ -9,6 +9,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { JSDOM } from "jsdom";
+import { NAMED, TAIL_LABEL } from "./format.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const MODULE = pathToFileURL(path.join(HERE, "glance.js")).href;
@@ -57,7 +58,7 @@ test("glance.js imports with no page config, no d3 and no DOM, and runs nothing"
   assert.equal(typeof globalThis.document, "undefined", "nothing installed a DOM before the import");
   const mod = await import(MODULE);
   assert.deepEqual(Object.keys(mod).sort(),
-    ["NAMED", "TAIL_LABEL", "boot", "draw", "groupRows", "rank", "readRows", "showYear"]);
+    ["boot", "draw", "groupRows", "rank", "readRows", "showYear"]);
 });
 
 test("the page carries two years of three bars, and boot fills every figure", async () => {
@@ -96,11 +97,11 @@ describe("a bar's segments are sums of its cells, and no cell is lost or counted
       for (const s of named) assert.equal(s.cents, byGroup.get(s.id), `${s.id} is not its rows' sum`);
       const members = segments.flatMap((s) => s.members);
       assert.deepEqual(members.sort(), [...new Set(rows.map((r) => r.label))].sort(), "a group is lost or doubled");
-      if (byGroup.size > mod.NAMED + 1) {
+      if (byGroup.size > NAMED + 1) {
         assert.ok(tail, `${byGroup.size} groups and no tail`);
-        assert.equal(named.length, mod.NAMED);
+        assert.equal(named.length, NAMED);
         assert.equal(tail.cents, whole - named.reduce((a, s) => a + s.cents, 0));
-        assert.equal(tail.label, mod.TAIL_LABEL);
+        assert.equal(tail.label, TAIL_LABEL);
       } else {
         assert.equal(tail, undefined, "a tail folded where every group could be named");
         assert.equal(named.length, byGroup.size);

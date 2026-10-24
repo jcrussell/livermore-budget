@@ -221,17 +221,10 @@ func declaresKind(c registry.Category, k vocab.Kind) bool {
 // THE FIRST CLAIM SPANS TWO TIERS, and this check cannot tell which a schedule
 // needs: that is its cut's DepartmentTier, held by cuts-tie-along-the-lattice.
 //
-// THE LAST TWO ARE NOW BELT AND BRACES, and they stay. The registry refuses a
-// slug that is a category slug on both tiers, so a resolving department cannot
-// collide — but this check is written against the [Vocabulary] interface rather
-// than against that one implementation, and an assertion that is currently
-// implied by a loader is not the same thing as one nobody makes.
-//
-// Until this bead the check ERRORED as soon as any fact carried a
-// department, because "resolves" could not be established against a file that did
-// not exist. That was the honest interim, and it was deliberately loud: an error
-// makes Report.Failed() true without --strict, so the registry had to land in the
-// same change as the first department-bearing fact. It has.
+// THE LAST TWO ARE BELT AND BRACES, and they stay. The registry refuses a slug
+// that is a category slug on both tiers, so a resolving department cannot
+// collide -- but this check is written against the [Vocabulary] interface
+// rather than against that one implementation.
 type factDepartmentsResolve struct{}
 
 var _ Check = (*factDepartmentsResolve)(nil)

@@ -41,9 +41,7 @@ type CIPProjects struct {
 	Labels labels
 }
 
-var (
-	_ Projection = (*CIPProjects)(nil)
-)
+var _ Projection = (*CIPProjects)(nil)
 
 // Name is the file stem: cip-projects becomes cip-projects.json.
 func (*CIPProjects) Name() string { return CIPProjectsProjection }

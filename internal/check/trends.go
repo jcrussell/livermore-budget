@@ -82,9 +82,9 @@ func (*trendPointsTieToFacts) Run(_ context.Context, s *Subject) (Result, error)
 				// It matters because internal/export DROPS such a point when it
 				// lays the table out -- there is no column to put it in -- so the
 				// figure leaves the published page without anything saying so.
-				// The packager now refuses that document too; this is
-				// the half that names WHICH point, and which is reached first
-				// because `fisc verify` runs before `fisc export`.
+				// The packager refuses that document too; this is the half
+				// that names WHICH point, and which is reached first because
+				// `fisc verify` runs before `fisc export`.
 				if col := (project.Column{FiscalYear: pt.FiscalYear, Basis: vocab.Basis(pt.Basis)}); !declared[col] {
 					findings = append(findings, finding(
 						fmt.Sprintf("%s %s %s", p.Name, series.SeriesID, fact.ColumnLabel(pt.FiscalYear, pt.Basis)),

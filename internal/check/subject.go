@@ -294,11 +294,9 @@ type Subject struct {
 	// a single year is not a repository that has lost a published document, and
 	// reading the package declaration directly would make it look like one.
 	//
-	// IT WAS A YEAR LIST UNTIL 2026-08-26, and the widening is not cosmetic. A
-	// list of years can only describe a site whose every document is a year of
-	// one schedule; revenue-trends is one document of a different scope over
-	// four columns and no year, so under the old field it was published and
-	// unguarded. See project.PublishedDocument.
+	// IT IS A LIST OF DOCUMENTS, NOT OF YEARS: revenue-trends is one document
+	// of a different scope over four columns and no year. See
+	// project.PublishedDocument.
 	Published []project.PublishedDocument
 	// BalanceExceptions is every balance the documents print apart from an
 	// identity. Both balance checks hold the store to it and report an entry

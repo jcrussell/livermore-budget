@@ -18,7 +18,6 @@ import (
 type seriesOnly struct{}
 
 var _ project.Projection = (*seriesOnly)(nil)
-var _ project.Projection = (*seriesOnly)(nil)
 
 func (*seriesOnly) Name() string { return "series-only" }
 

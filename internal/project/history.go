@@ -49,9 +49,7 @@ type FundBalances struct {
 	Labels labels
 }
 
-var (
-	_ Projection = (*FundBalances)(nil)
-)
+var _ Projection = (*FundBalances)(nil)
 
 // Name is the file stem: fund-balances becomes fund-balances.json.
 func (*FundBalances) Name() string { return FundBalancesProjection }
@@ -91,9 +89,7 @@ type FundBalanceChanges struct {
 	Labels labels
 }
 
-var (
-	_ Projection = (*FundBalanceChanges)(nil)
-)
+var _ Projection = (*FundBalanceChanges)(nil)
 
 // Name is the file stem: changes-in-fund-balances.json.
 func (*FundBalanceChanges) Name() string { return ChangesProjection }
