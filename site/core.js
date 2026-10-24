@@ -1148,9 +1148,12 @@ export function revealChain(doc, id) {
   const byID = new Map(doc.nodes.map((n) => [n.id, n]));
   const chain = [];
   for (let at = byID.get(id), hops = 0; at && at.parent && hops < 9; at = byID.get(at.parent), hops++) {
-    const primary = splitsOf(doc, at.parent).find((sp) => !sp.alternative);
+    const splits = splitsOf(doc, at.parent);
+    const primary = splits.find((sp) => !sp.alternative);
     const key = at.alternative || (primary ? primary.key : "");
-    if (!key) throw new Error(`cannot reveal ${id}: ${at.parent} declares no split ${at.id} belongs to`);
+    if (!key || !splits.some((sp) => sp.key === key)) {
+      throw new Error(`cannot reveal ${id}: ${at.parent} declares no split ${at.id} belongs to`);
+    }
     chain.unshift({ node: at.parent, key });
   }
   return chain;

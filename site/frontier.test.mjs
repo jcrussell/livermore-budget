@@ -320,7 +320,7 @@ describe("revealing a node opens each ancestor by the split the node below belon
   const doc = {
     projection: "synthetic",
     nodes: [node("P"), node("M", "P"), node("A", "M"), node("B", "M"), node("Y", "M", "alt"), node("A1", "A"), node("A2", "A"),
-      node("Z", "B")],
+      node("Z", "B"), node("W", "A", "elsewhere")],
     links: [],
     splits: [split("P", "one"), split("M", "alt", true), split("M", "rows"), split("A", "more")],
   };
@@ -336,6 +336,7 @@ describe("revealing a node opens each ancestor by the split the node below belon
   // frontier without Z, saying nothing.
   test("a node under a parent with no split it belongs to is refused, not left undrawn", () => {
     assert.throws(() => core.revealChain(doc, "Z"), /B declares no split Z belongs to/);
+    assert.throws(() => core.revealChain(doc, "W"), /A declares no split W belongs to/);
   });
 });
 

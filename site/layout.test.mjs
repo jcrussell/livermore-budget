@@ -317,9 +317,9 @@ function tightest(fits) {
 }
 
 /**
- * The page as shipped, booted on its first published column. It DRAWS BEFORE
- * ANYTHING IS MEASURED: unfetched, nodeRank's fund order ties everywhere and
- * degenerates to size-descending.
+ * The page as shipped, booted on its first published column and drawn before
+ * anything is measured: until the column is fetched there is no fund order,
+ * so nodeRank would tie everywhere and fall back to size.
  */
 function spineApp() {
   return bootedApp({ checkedStem: "sankey" });
