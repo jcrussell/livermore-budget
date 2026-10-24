@@ -619,22 +619,24 @@ func dataFilesOf(o *Options, nav []navItem, byID map[string]Doc, ix ColumnIndex,
 		var cited []sourceMeta
 		caveats := map[string]bool{}
 		for _, stem := range stemsOf[p] {
-			raw := o.Projections[stem]
-			var dc documentCaveats
-			var ds documentSources
-			if err := json.Unmarshal(raw, &dc); err != nil {
-				return nil, fmt.Errorf("decode %s caveats: %w", stem, err)
+			var d struct {
+				Metadata struct {
+					FiscalYearLabel string       `json:"fiscal_year_label"`
+					Basis           string       `json:"basis"`
+					Caveats         []caveatMeta `json:"caveats"`
+					Sources         []sourceMeta `json:"sources"`
+				} `json:"metadata"`
 			}
-			if err := json.Unmarshal(raw, &ds); err != nil {
-				return nil, fmt.Errorf("decode %s sources: %w", stem, err)
+			if err := json.Unmarshal(o.Projections[stem], &d); err != nil {
+				return nil, fmt.Errorf("decode %s metadata: %w", stem, err)
 			}
 			if f.Label == "" {
-				f.Label = dc.label()
+				f.Label = yearLabel(d.Metadata.FiscalYearLabel, d.Metadata.Basis)
 			}
-			for _, c := range dc.Metadata.Caveats {
+			for _, c := range d.Metadata.Caveats {
 				caveats[c.ID] = true
 			}
-			cited = append(cited, ds.Metadata.Sources...)
+			cited = append(cited, d.Metadata.Sources...)
 		}
 		f.Caveats = len(caveats)
 		f.Sources, _ = sourcesFor(unionSources(cited), byID, pageTextBase, o.RecordsBase)

@@ -408,8 +408,8 @@ func TestACaveatTwoSectionsShareIsLinkedToEachViewsOwn(t *testing.T) {
 	x, z := cx.byRef[caveatKey{"b", "x"}], cx.byRef[caveatKey{"b", "z"}]
 	got := []string{a.At(x).Anchor, b.At(x).Anchor, b.At(z).Anchor,
 		cx.href("a.html", x), cx.href("b.html", x), cx.href("a.html", z), cx.href("b.html", z)}
-	want := []string{"caveat-x", "caveats-on-b--x", "caveat-z",
-		"caveats.html#caveat-x", "caveats.html#caveats-on-b--x", "caveats.html#caveat-z", "caveats.html#caveat-z"}
+	want := []string{"caveat-x", "caveats-on-b--caveat-x", "caveat-z",
+		"caveats.html#caveat-x", "caveats.html#caveats-on-b--caveat-x", "caveats.html#caveat-z", "caveats.html#caveat-z"}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("anchors and links (-want +got):\n%s", diff)
 	}

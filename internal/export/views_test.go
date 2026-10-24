@@ -1819,7 +1819,7 @@ func TestEveryViewLinksTheSourcesPageInPlaceOfItsList(t *testing.T) {
 		t.Fatal("the site writes no data file, so the check below covers nothing")
 	}
 	_, files, _ := strings.Cut(listed, `id="data-files"`)
-	files, _, _ = strings.Cut(files, "</div>")
+	files, _, _ = strings.Cut(files, `<p class="subtle">Packaged by`)
 	for _, f := range data {
 		if !strings.Contains(files, `<a class="download" href="`+f+`" download>`) {
 			t.Errorf("provenance.html's data files do not list %s", f)
@@ -2484,11 +2484,30 @@ func TestTheSankeyPageNamesItsSourcesForEveryYear(t *testing.T) {
 	}
 }
 
-// detailsDepth is how many <details> elements are open at byte i of page.
-func inSummary(page string, i int) bool {
-	return strings.LastIndex(page[:i], "<summary") > strings.LastIndex(page[:i], "</summary>")
+// shownClosed is whether byte i of page is in the <summary> of an outermost
+// <details>, which a reader sees with every disclosure closed.
+func shownClosed(page string, i int) bool {
+	return detailsDepth(page, i) == 1 &&
+		strings.LastIndex(page[:i], "<summary") > strings.LastIndex(page[:i], "</summary>") &&
+		strings.LastIndex(page[:i], "<summary") > strings.LastIndex(page[:i], "<details")
 }
 
+// TestShownClosedIsAnOutermostSummaryOnly: a name in an outermost summary is
+// on screen with every disclosure closed; one in the summary of a disclosure
+// inside a closed one, or in a disclosure's body, is not.
+//
+// Mutation: drop the depth arm and the nested summary counts as shown.
+func TestShownClosedIsAnOutermostSummaryOnly(t *testing.T) {
+	page := `<details><summary>OUTER</summary><p>BODY</p>` +
+		`<details class="file"><summary>NESTED</summary></details></details>`
+	for word, want := range map[string]bool{"OUTER": true, "BODY": false, "NESTED": false} {
+		if got := shownClosed(page, strings.Index(page, word)); got != want {
+			t.Errorf("shownClosed(%s) = %v, want %v", word, got, want)
+		}
+	}
+}
+
+// detailsDepth is how many <details> elements are open at byte i of page.
 func detailsDepth(page string, i int) int {
 	return strings.Count(page[:i], "<details") - strings.Count(page[:i], "</details>")
 }
@@ -2521,7 +2540,19 @@ func TestEveryFileOpensToWhatItIsBeforeItDownloads(t *testing.T) {
 			t.Errorf("the file under %q downloads %v, want one link to the file its summary names", f[1], links)
 		}
 	}
-	data := got[len(got)-1]
+	// The one file that is not a whole-store download is the data file.
+	var data []string
+	for _, f := range got {
+		if !strings.Contains(f[1], "facts/") {
+			if data != nil {
+				t.Fatalf("provenance.html folds two data files, %q and %q; this site writes one", data[1], f[1])
+			}
+			data = f
+		}
+	}
+	if data == nil {
+		t.Fatal("provenance.html folds no data file")
+	}
 	if !strings.Contains(data[2], `Drawn on <a href="index.html">Budget flows</a>.`) {
 		t.Errorf("the data file %q does not say the page that draws it:\n%s", data[1], data[2])
 	}
@@ -2601,7 +2632,7 @@ func TestTheTablePagesFoldTheirApparatusAndNotTheirWarnings(t *testing.T) {
 			switch {
 			case i < 0:
 				t.Errorf("%s does not print %q", tc.page, want)
-			case detailsDepth(tc.html, i) != 0 && !inSummary(tc.html, i):
+			case detailsDepth(tc.html, i) != 0 && !shownClosed(tc.html, i):
 				t.Errorf("%s folds %q behind a <details>; it is stated where a reader meets it",
 					tc.page, want)
 			}

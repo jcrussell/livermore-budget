@@ -177,12 +177,15 @@ test("wireHowTo folds the how-to-read prose on a narrow screen and opens it on a
   assert.ok(blocks.every((d) => d.open), "a block stayed closed on a wide screen");
 });
 
-// A fragment naming a folded caveat opens it, at load and on a later
-// fragment change, over the pinned caveats page: the canonical anchor on the
-// <details> itself, a section's own anchor for a caveat another section
-// states first, and the link inside an open one, which is not re-scrolled.
+// A fragment naming a folded caveat opens it, at load, on a later fragment
+// change and on a click of a link to the fragment already in the URL, over
+// the pinned caveats page: the canonical anchor on the <details> itself, a
+// section's own anchor for a caveat another section states first, and a
+// target inside a folded one. One already open is not re-scrolled.
 // Mutation: open only the element the fragment names and not the <details>
-// it is inside, and the inner-link arm goes red.
+// it is inside, and the inner arm goes red. Mutation: drop the click
+// listener and the closed-then-relinked arm goes red. Mutation: scroll
+// whether or not anything opened and the already-open arm goes red.
 test("wireTargets opens the folded caveat a fragment names", async () => {
   const { JSDOM } = await import("jsdom");
   const mod = await import(MODULE);
@@ -197,9 +200,16 @@ test("wireTargets opens the folded caveat a fragment names", async () => {
   const first = /** @type {HTMLDetailsElement} */ (doc.getElementById("caveat-transfer-legs-unpaired"));
   assert.ok(first && first.open, "the canonical anchor stayed folded at load");
   assert.equal(scrolled, 1);
-  const again = /** @type {HTMLDetailsElement} */ (doc.getElementById("caveats-on-flows--transfer-legs-unpaired"));
+  const again = /** @type {HTMLDetailsElement} */ (doc.getElementById("caveats-on-flows--caveat-transfer-legs-unpaired"));
   assert.ok(again && !again.open, "a second section's copy opened with the first");
-  window.location.hash = "#caveats-on-flows--transfer-legs-unpaired";
+  first.open = false;
+  const relink = /** @type {HTMLElement} */ (first.querySelector(".caveat-link a"));
+  relink.click();
+  assert.ok(first.open, "a link to the fragment already in the URL left its caveat folded");
+  const settled = scrolled;
+  window.dispatchEvent(new window.HashChangeEvent("hashchange"));
+  assert.equal(scrolled, settled, "a target already open was scrolled to again");
+  window.location.hash = "#caveats-on-flows--caveat-transfer-legs-unpaired";
   window.dispatchEvent(new window.HashChangeEvent("hashchange"));
   assert.ok(again.open, "a section's own anchor stayed folded on hashchange");
   // The inside of a folded caveat: its own link names the <details>, so

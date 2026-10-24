@@ -488,8 +488,9 @@ func TestEveryCaveatSummaryLinksToAnAnchorThatExists(t *testing.T) {
 
 	// TWO SPELLINGS. A page's caveats line links its own section as markup,
 	// href="caveats.html#caveats-on-...", and the FISC_CONFIG blob carries
-	// every year's caveats as JSON, "href":"caveats.html#caveat-...", each
-	// linking its own entry, which app.js reads on a year switch.
+	// every year's caveats as JSON, "href":"caveats.html#...", each linking
+	// its entry in this page's own section, which app.js reads on a year
+	// switch.
 	spellings := []*regexp.Regexp{
 		regexp.MustCompile(`href="caveats\.html#([^"]+)"`),
 		regexp.MustCompile(`"href":"caveats\.html#([^"]+)"`),

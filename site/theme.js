@@ -152,13 +152,20 @@ function openTarget(win) {
 }
 
 /**
- * Opens the fragment's target now (openTarget) and on every later change of
- * fragment, which is what following a link within the page does.
+ * Opens the fragment's target now (openTarget), on every later change of
+ * fragment, and on a click of a link to the fragment already in the URL,
+ * which changes nothing and so fires no hashchange: a reader who closed the
+ * caveat they arrived at and follows its link again would otherwise see
+ * nothing happen.
  * @param {Window} win
  */
 export function wireTargets(win) {
   openTarget(win);
   win.addEventListener("hashchange", () => openTarget(win));
+  win.document.addEventListener("click", (e) => {
+    const a = e.target instanceof win.Element ? e.target.closest("a[href^='#']") : null;
+    if (a && a.getAttribute("href") === win.location.hash) openTarget(win);
+  });
 }
 
 /**

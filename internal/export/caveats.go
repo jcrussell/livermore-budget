@@ -531,7 +531,7 @@ func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, 
 				s.anchors[e] = e.Anchor
 				continue
 			}
-			s.anchors[e] = s.Anchor + "--" + e.ID
+			s.anchors[e] = s.Anchor + "--" + e.Anchor
 			if err := claim(s.anchors[e], fmt.Sprintf("caveat %q in view %q's section", e.ID, s.Pages[0].Path)); err != nil {
 				return nil, err
 			}
@@ -564,11 +564,16 @@ func sameEntries(a, b []*caveatEntry) bool {
 // label is a document's fiscal year and basis as the caveats page names
 // it, or "" for a document stating neither.
 func (dc documentCaveats) label() string {
-	label := dc.Metadata.FiscalYearLabel
-	if label != "" && dc.Metadata.Basis != "" {
-		label += " " + dc.Metadata.Basis
+	return yearLabel(dc.Metadata.FiscalYearLabel, dc.Metadata.Basis)
+}
+
+// yearLabel is a fiscal year label and its basis as one phrase, "" with no
+// year.
+func yearLabel(year, basis string) string {
+	if year != "" && basis != "" {
+		return year + " " + basis
 	}
-	return label
+	return year
 }
 
 // href is where the view at path links one entry: its text in that view's
