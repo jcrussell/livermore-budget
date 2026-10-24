@@ -68,7 +68,8 @@ import (
 // that would notice a corruption in one. For every other file "unchanged since
 // extraction" is the whole of what is known. Re-extracting is what re-establishes
 // the rest, and reviewing the artifact diff by hand is the step that cannot be
-// automated away.
+// automated away. `fisc reanchor`, which the workflow below names, is not built
+// (fisc-mq4.6).
 //
 // manifest.json itself is not swept: it is not one of its own artifacts, it records
 // a hash for everything the extractor emitted and cannot record its own. Nor is it

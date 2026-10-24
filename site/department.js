@@ -15,7 +15,7 @@
  * and never computed here.
  */
 
-import { pagesCitedBy, sumReading } from "./core.js";
+import { locatorKeys, pagesCitedBy, sumReading } from "./core.js";
 import { rank } from "./glance.js";
 import { clone, configOf, sayRefusal, dollars, hashFields, hashValue, selectYear, share, tipper, wireYearSelect, yearKey } from "./format.js";
 import { LEDGER } from "./ledger.js";
@@ -103,7 +103,7 @@ function rowsBy(links, nodes, end, schedule) {
       by.set(i, at);
     }
     const r = at.row;
-    if (l.fact_ids.length && !(Array.isArray(l.locators) && pagesCitedBy([l]).length)) {
+    if (l.fact_ids.length && !locatorKeys(l.locators || []).length) {
       throw new Error(`${schedule} draws ${r.id} citing facts on no page`);
     }
     at.links.push(l);

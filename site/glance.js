@@ -36,7 +36,8 @@ export function readRows(table) {
       const label = head ? (head.textContent || "").trim() : "";
       const cell = tr.querySelector("td[data-cents]");
       const raw = cell ? cell.getAttribute("data-cents") : null;
-      const cents = raw === null ? NaN : Number(raw);
+      // Number() would read "0x10", "1e3" or " 12 " as a figure.
+      const cents = raw !== null && /^\d+$/.test(raw) ? Number(raw) : NaN;
       if (!group || !label || !Number.isSafeInteger(cents) || cents <= 0) {
         throw new Error(`a row of ${group || "no group"} (${label || "no label"}) carries ${raw} cents`);
       }

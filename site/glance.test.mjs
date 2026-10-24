@@ -184,7 +184,8 @@ test("the legend's shares are marked ours and sum to 100% within their rounding"
 
 // A cell the page cannot name is refused, not drawn as part of a bar.
 // Mutation: default a missing data-cents to 0 in readRows and the first
-// case draws a bar a cell short.
+// case draws a bar a cell short; read the cell with Number() and "0x10"
+// draws as 16 cents.
 test("readRows refuses a row with no cents, no group or no label", async () => {
   const { mod, doc } = await booted();
   const table = bars(doc)[0].section.querySelector("table");
@@ -201,6 +202,11 @@ test("readRows refuses a row with no cents, no group or no label", async () => {
   t = fresh();
   t.querySelector("tbody tr td[data-cents]").setAttribute("data-cents", "12.5");
   assert.throws(() => mod.readRows(t), /carries 12.5 cents/);
+  for (const raw of ["0x10", "1e3", " 12 ", ""]) {
+    t = fresh();
+    t.querySelector("tbody tr td[data-cents]").setAttribute("data-cents", raw);
+    assert.throws(() => mod.readRows(t), /carries .* cents/, JSON.stringify(raw));
+  }
   assert.equal(mod.readRows(fresh()).length, rowsOf(bars(doc)[0].section).length);
 });
 

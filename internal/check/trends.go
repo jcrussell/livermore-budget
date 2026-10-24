@@ -237,7 +237,7 @@ var incompleteSeries = map[string]string{}
 //     loses it together, Slices returns one column fewer, and every series is
 //     complete over what remains. An expected column list to compare against
 //     would be a constant nobody could justify off a page; the published
-//     floor is project.TrendsColumns, checked elsewhere.
+//     floor is project.TrendsColumns, which publishedProjectionBuilt holds.
 type trendSeriesAreComplete struct{}
 
 var _ Check = (*trendSeriesAreComplete)(nil)

@@ -626,9 +626,10 @@ func debtRequirementRows(facts []*fact.Fact) (DebtRequirements, error) {
 }
 
 // yearLabel is how pp.80-81 print a requirements row's years: "2026" for the
-// year ending June 30, 2026, "2031-2035" for a band. It is spelled here and
-// not read from internal/mapping, so the refusal that holds a published row
-// label to the page's convention does not share the function that wrote it.
+// year ending June 30, 2026, "2031-2035" for a band. It is spelled here rather
+// than shared with mapping.YearLabel, so this refusal and the mapping
+// validation that also holds the label are two independent readings of the
+// page's convention.
 func yearLabel(year, through int) string {
 	if through == 0 {
 		return strconv.Itoa(year)

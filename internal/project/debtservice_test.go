@@ -195,7 +195,8 @@ func TestTheDebtCaveatsSayWhatTheStoreSays(t *testing.T) {
 // tables to the facts in both directions.
 //
 // Mutation: drop the unknown-label refusal in debtIssueRows and the first
-// case builds a row under no activity.
+// case builds a row under no activity; spell yearLabel's band with an en dash
+// and every band row is refused, so the year-label case's message changes.
 func TestTheDebtDocumentRefusesARowItCannotPlace(t *testing.T) {
 	facts, o := debtStore(t)
 	edit := func(match func(*fact.Fact) bool, change func(*fact.Fact)) []fact.Fact {
@@ -226,6 +227,11 @@ func TestTheDebtDocumentRefusesARowItCannotPlace(t *testing.T) {
 				return f.Scope == structure.ScopeDebtServiceRequirements && f.FundGroup == "internal-service"
 			}, func(f *fact.Fact) { f.FundGroup = "general" }),
 			`which no requirements fund type names`},
+		{"a requirements row whose label is not its column's years",
+			edit(func(f *fact.Fact) bool {
+				return f.Scope == structure.ScopeDebtServiceRequirements && f.FiscalYearThrough == nil && f.RowLabel == "2027"
+			}, func(f *fact.Fact) { f.RowLabel = "2028" }),
+			`prints "2028" and is`},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			if _, err := (&DebtService{}).Document(tt.facts, o); err == nil || !strings.Contains(err.Error(), tt.want) {
