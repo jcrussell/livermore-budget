@@ -1259,8 +1259,9 @@ describe("an outward label fitted to its gutter", () => {
 // Each pair of two nodes' splits the pinned schedules declare is opened as
 // a reader opens it (core.reveal, then both split, and both still open),
 // shaped, filtered and laid out by the page's own calls, and held to a
-// layout d3 accepts with every laid node in its slot's column. Nothing is rendered: the page draws
-// whatever layOut hands it.
+// layout d3 accepts with every laid node in its slot's column. Nothing is
+// rendered, so what redraw does after the layout (the affordances, the
+// paint) is the rendered sequence's in render.test.mjs.
 //
 // Mutation: hand d3 the drawn links alone in layOutAt (drop scaffoldOf's
 // result) and pairs refuse with "belongs in column N and no ribbon drawn

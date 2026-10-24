@@ -325,7 +325,7 @@ async function drive(year) {
     if (entries.length) {
       await goTo(app, entries);
       const before = marksIn(chart);
-      const tail = before.filter((m) => app.isAggregate(m.__data__.id)).find((m) => app.expandable(m.__data__));
+      const tail = before.find((m) => app.expandable(m.__data__));
       if (tail) {
         const tier = tail.__data__.tier;
         const drawnBefore = before.map((m) => m.__data__.id);

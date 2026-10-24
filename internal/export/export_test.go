@@ -1876,6 +1876,10 @@ func TestAFragmentTargetLandsBelowTheStickyBanner(t *testing.T) {
 	if rule == nil || !regexp.MustCompile(`scroll-padding-top:\s*[0-9.]*[1-9]`).Match(rule[1]) {
 		t.Error("style.css gives html no scroll-padding-top, so a fragment lands under .wip-banner")
 	}
+	// One declaration, so no later rule or media query takes it back.
+	if n := strings.Count(string(b), "scroll-padding-top:"); n != 1 {
+		t.Errorf("style.css declares scroll-padding-top %d times, want the html rule's alone", n)
+	}
 }
 
 // TestTheStylesheetHasOneTextMeasure witnesses ONE DECLARATION, NOT ONE
