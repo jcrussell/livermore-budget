@@ -898,7 +898,7 @@ const EXPANSION_CLAIMED = {
  * was laid out on, and the laid graph, or the refusal d3-sankey's clamp
  * check threw. The slot and label pins below are measured on it.
  */
-function layOut(doc, column, chart, frontier, whole) {
+function layOutSlots(doc, column, chart, frontier, whole) {
   const index = new Map(doc.nodes.map((n) => [n.id, n]));
   const groups = column.fund_groups.map((g) => g.id);
   const drawn = sankey.markContra(sankey.expansionOf(doc, frontier, chart, whole));
@@ -993,7 +993,7 @@ describe("the expansion schedule laid out in slots, at the root, one group open 
       for (const f of expansionFrontiers(doc)) {
         // A layout d3 refuses is a measurement here, so the slots are still
         // read against their pin rather than lost to the hook.
-        const { drawn, slots, held, height, laid, refused } = layOut(doc, column, chart, f.frontier, f.whole);
+        const { drawn, slots, held, height, laid, refused } = layOutSlots(doc, column, chart, f.frontier, f.whole);
         const over = expansionLabels(doc, laid, slots, held.length).filter((l) => l.clearance < 0)
           .sort((a, b) => a.clearance - b.clearance);
         out[f.name] = {
@@ -1281,7 +1281,6 @@ describe("every pair of extend splits the schedule declares, laid out", () => {
           // Two splits of one node are alternatives: a node splits one way
           // at a time, so they are never open together.
           if (a.node === b.node) continue;
-          pairs++;
           const where = `${a.node} by ${a.key} with ${b.node} by ${b.key}`;
           let frontier;
           try {
@@ -1291,6 +1290,11 @@ describe("every pair of extend splits the schedule declares, laid out", () => {
             faults.push(`${where}: cannot be opened: ${e.message}`);
             continue;
           }
+          // Revealing b can split an ancestor of a's node another way, which
+          // takes a's node off the chart: those two are never on screen
+          // together. One still drawn and split another way is a fault.
+          if (!frontier.has(a.node)) continue;
+          pairs++;
           const open = [a, b].filter((sp) => app.openSplitOf(doc, frontier, sp.node) !== sp.key);
           if (open.length) {
             faults.push(`${where}: opening both leaves ${open.map((sp) => sp.node).join(", ")} split another way`);

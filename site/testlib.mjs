@@ -359,6 +359,7 @@ export async function revealed(app, id) {
  * re-engaging fold into a failure, not a hang.
  */
 export function expandAll(app) {
+  if (!app.expanding()) return 0;
   let entries = app.expansions.slice();
   for (let round = 0; ; round++) {
     if (round === 64) throw new Error("a chart still folds a tail after 64 rounds of drawing them out");

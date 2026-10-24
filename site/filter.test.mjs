@@ -219,6 +219,9 @@ describe("drawn plus hidden is the chart", () => {
       const shapeAt = (frontier, wholeSplits) =>
         app.formOnScreen().shape(app.fetched, { chart: CONFIG.overview, frontier, whole: wholeSplits });
       const visit = (where, doc) => {
+        // Laid out first, as a redraw lays it out: app.fundGroupOf, which
+        // samples and the ribbons' ends read, answers over the chart laid.
+        app.layOut(doc);
         for (const state of samples(app, doc)) {
           const named = where +
             ` [${[...state.groups, ...state.kinds, ...state.nodes].join(", ")}${state.only ? " only " + state.only : ""}` +

@@ -610,8 +610,8 @@ describe("the expansion's drawing", () => {
   // group's; one group-less end takes the other's; two groups, neither a
   // group node, are muted, since picking one would be a guess. Then one
   // chart where ribbons with a group-less end are drawn: every ribbon's
-  // stroke is linkColor's. Mutation: return "" for one group-less end and
-  // the arm and the drawn chart both go red.
+  // stroke is linkColor's, which holds the paint to the rule. Mutation:
+  // return "" for a group-less target and the arm table goes red.
   test("a ribbon with one group-less end wears the other end's hue, and one between two groups stays muted", async (t) => {
     const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem });
     const chart = document.getElementById("chart");
