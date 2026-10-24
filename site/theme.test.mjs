@@ -245,6 +245,9 @@ test("wireLede offers More only where the lede is cut, and a press shows it whol
     Object.defineProperty(lede, "scrollHeight", { value: scroll });
     Object.defineProperty(lede, "clientHeight", { value: client });
     mod.wireLede(window);
+    // Only a lede the script can unfold is clamped. Mutation: drop the
+    // data-clamp mark in wireLede.
+    assert.ok(lede.hasAttribute("data-clamp"), "wireLede did not mark the lede it can unfold");
     const more = window.document.querySelector(".lede-more");
     assert.equal(Boolean(more), want, `a lede ${scroll}px in ${client}px`);
     if (more) {

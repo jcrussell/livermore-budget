@@ -16,7 +16,7 @@
 {{template "topbar" .}}
 
 {{- /* ABOVE THE CHART ONLY WHAT OPERATES IT: the title, and in the card the
-       toolbar and the filter line; the year is the top bar's. The lede, the hairline and
+       toolbar and the filter line; the year is the year bar's, under the nav. The lede, the hairline and
        splits sentences and the description follow the chart, so the opening
        chart fits the window it is laid out to (app.js roomHeight). */}}
 <header class="page-head chart-head">
@@ -28,8 +28,8 @@
 {{- /* The card is what full screen shows: toolbar, rail, chart and drawer. */}}
 <div class="card" id="chart-card" role="region" aria-label="The flow">
   {{- /* ONE ROW ABOVE THE CHART: search and the view's own buttons. The year
-         stays in the page head: it swaps every figure on the page, not only
-         the chart. */}}
+         stays in the year bar under the nav: it swaps every figure on the
+         page, not only the chart. */}}
   <div class="chart-toolbar" id="chart-toolbar">
     {{- /* SHIPPED HIDDEN AND EMPTY, as the filters are: what the chart draws
            is the client's, so app.js unhides the box and lists the marks. A

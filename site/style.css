@@ -248,7 +248,8 @@ html {
 }
 
 /* The Flows page's lede follows the chart's card. */
-.card + .lede {
+.card + .lede,
+.card + .narrow-note + .lede {
   margin-top: 16px;
 }
 
@@ -1664,7 +1665,7 @@ noscript p {
 .site-nav #nav-toggle {
   display: none;
 }
-/* 1199px: below the frame's full 1180px the ten views and the toggle no
+/* 1199px: below the frame's full 1180px the views and the toggle no
    longer fit one row, and a nav of two rows is the wrap the menu exists to
    end. */
 @media (max-width: 1199px) {
@@ -2675,8 +2676,8 @@ noscript p {
 
 /* FLOWS ON A NARROW SCREEN: the note pointing to the bars shows and the
    chart's card folds, until the reader asks for the chart anyway (app.js
-   sets data-chart-anyway on the root). 700px is where the opening chart's
-   labels draw under 6px tall. */
+   sets data-chart-anyway on the root), on a page that carries the note.
+   Under 700px the opening chart's labels draw too small to read. */
 .narrow-note {
   display: none;
 }
@@ -2692,7 +2693,7 @@ noscript p {
   .narrow-note p {
     margin: 0 0 10px;
   }
-  html:not([data-chart-anyway]) #chart-card {
+  html:not([data-chart-anyway]) body:has(#narrow-note) #chart-card {
     display: none;
   }
 }
@@ -2715,14 +2716,17 @@ noscript p {
 }
 
 /* A TIGHTER PAGE HEAD ON A NARROW SCREEN: a smaller title, and the lede held
-   to three lines until the reader asks for the rest (theme.js wireLede adds
-   the "More" button only where the clamp cuts). */
+   to three lines until the reader asks for the rest. Only a lede theme.js
+   wireLede marks data-clamp is held, since only it can offer "More", and
+   only on screen, so no script and no printed copy loses the lede's end. */
 @media (max-width: 760px) {
   .page-head h1 {
     font-size: 1.55em;
     line-height: 1.2;
   }
-  .page-head .lede:not([data-full]) {
+}
+@media screen and (max-width: 760px) {
+  .page-head .lede[data-clamp]:not([data-full]) {
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 3;

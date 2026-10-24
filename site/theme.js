@@ -112,6 +112,7 @@ export function wireLede(win) {
   const tmpl = /** @type {HTMLTemplateElement | null} */ (doc.getElementById("lede-more"));
   const cloned = tmpl && tmpl.content.firstElementChild;
   if (!lede || !cloned) return;
+  lede.setAttribute("data-clamp", "");
   const more = /** @type {HTMLElement} */ (cloned.cloneNode(true));
   more.addEventListener("click", () => {
     lede.setAttribute("data-full", "");

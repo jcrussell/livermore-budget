@@ -463,7 +463,8 @@ export function hiddenEdges(el) {
 
 /**
  * Marks every SCROLL_CUED box with data-more naming the edges that hide more
- * (hiddenEdges), kept current as it scrolls and as the window resizes, so
+ * (hiddenEdges), kept current as it scrolls and as it or its content
+ * resizes (the window's resize where there is no ResizeObserver), so
  * style.css can fade that edge: a table or chart cut at the card's edge
  * otherwise reads as broken rather than as more to the side.
  * @param {Document} doc
@@ -471,6 +472,7 @@ export function hiddenEdges(el) {
 export function scrollCues(doc) {
   const win = doc.defaultView;
   const boxes = /** @type {HTMLElement[]} */ (Array.from(doc.querySelectorAll(SCROLL_CUED)));
+  const observes = Boolean(win && typeof win.ResizeObserver === "function");
   const mark = (/** @type {HTMLElement} */ el) => {
     const more = hiddenEdges(el);
     if (more) el.dataset.more = more;
@@ -479,9 +481,13 @@ export function scrollCues(doc) {
   for (const el of boxes) {
     mark(el);
     el.addEventListener("scroll", () => mark(el), { passive: true });
-    if (win && typeof win.ResizeObserver === "function") new win.ResizeObserver(() => mark(el)).observe(el);
+    if (observes) {
+      const ro = new win.ResizeObserver(() => mark(el));
+      ro.observe(el);
+      if (el.firstElementChild) ro.observe(el.firstElementChild);
+    }
   }
-  if (win) win.addEventListener("resize", () => boxes.forEach(mark));
+  if (win && !observes) win.addEventListener("resize", () => boxes.forEach(mark));
 }
 
 /**

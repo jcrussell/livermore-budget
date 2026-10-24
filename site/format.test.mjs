@@ -192,6 +192,31 @@ test("hiddenEdges and scrollCues mark the edges a scroller hides", async () => {
   assert.equal(window.document.querySelector(".other").dataset.more, undefined);
 });
 
+// The cue follows the content as well as the box: a table narrowed under a
+// box of the same size moves no edge of the box. Mutation: drop the
+// firstElementChild observe in scrollCues, and the table is not observed.
+test("scrollCues observes each scroller's content as well as the scroller", async () => {
+  const mod = await import(MODULE);
+  const { window } = new JSDOM('<div class="table-scroll"><table></table></div>');
+  const observed = [];
+  window.ResizeObserver = class { observe(el) { observed.push(el); } };
+  mod.scrollCues(window.document);
+  const box = window.document.querySelector(".table-scroll");
+  assert.ok(observed.includes(box) && observed.includes(box.querySelector("table")), observed.map((e) => e.tagName).join());
+});
+
+// A message's own closing period is not doubled by the sentence around it.
+// Mutation: drop the trailing-period replace in refuseFigure, and it reads
+// "data..".
+test("refuseFigure states a message ending in a period once", async () => {
+  const { refuseFigure } = await import(MODULE);
+  const { window } = new JSDOM("<section><h2>x</h2></section>");
+  const section = window.document.querySelector("section");
+  refuseFigure(section, new Error("no such data."));
+  assert.equal(section.querySelector("p.refusal").textContent,
+    "This figure could not be drawn: no such data. The table below is what the page carries.");
+});
+
 // One clone for every page module. Mutation: return the template itself
 // rather than a copy and the second clone is the first.
 test("clone copies a template's first element, and refuses a missing or empty template", async () => {

@@ -7,7 +7,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 
-import { bootedApp, loadApp, split, settle } from "./testlib.mjs";
+import { bootedApp, loadApp, split } from "./testlib.mjs";
 
 /** Every mark and ribbon element of the chart on screen, by id. */
 function elementsOf(app, document) {
@@ -103,8 +103,9 @@ describe("a redraw keeps the reader's place", () => {
       // Folded back, the marks it drew leave inert and shrink into the parent
       // drawn now: its members, and theirs where it opened straight through.
       const open = new Set(app.laidNodes.map((n) => n.id));
+      // Read before a timer runs, as the split's start is: under load a
+      // settle can outlast MOTION_MS and the leaving marks are already gone.
       app.collapseNode(opened);
-      await settle();
       const now = app.laidNodes.find((n) => n.id === opened);
       const gone = [...open].filter((id) => !app.laidNodes.some((n) => n.id === id)).sort();
       const leaving = [...document.querySelectorAll("#chart g.nodes > g[data-leaving]")];

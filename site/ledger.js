@@ -10,7 +10,7 @@
 
 import * as core from "./core.js";
 import { dollars } from "./format.js";
-import { boot as bootSides } from "./sides.js";
+import { boot as bootSides, shareTotal } from "./sides.js";
 
 /** How many roots wear a hue of their own before the rest wear the tail's gray. */
 export const RANKED = 5;
@@ -24,6 +24,18 @@ export const RANKED = 5;
 export function widthOf(size, scale) {
   const pct = 100 * size * scale;
   return pct <= 0 ? 0 : Math.max(pct, 0.25);
+}
+
+/**
+ * A side's list label: the count and sum sides.js shareTotal states in the
+ * side's visible total, so a printed reduction root is in neither, as it is
+ * in no share's total.
+ * @param {import("./sides.js").Side} side
+ */
+export function listLabel(side) {
+  const whole = shareTotal(side);
+  return `${side.heading}: ◇ ${whole.roots} bars by our count` +
+    (whole.reductions ? " that are not printed reductions" : "") + `, ${dollars(whole.cents)} in all by our sum`;
 }
 
 /**
@@ -60,7 +72,7 @@ export const LEDGER = Object.freeze({
     const figure = section.querySelector("figure.sides-figure");
     if (!figure) throw new Error("the side has no figure to draw into");
     const list = /** @type {HTMLElement} */ (ctx.clone("ledger-list"));
-    list.setAttribute("aria-label", `${side.heading}: ◇ ${side.tree.roots.length} bars by our count, ${dollars(side.tree.cents)} in all by our sum`);
+    list.setAttribute("aria-label", listLabel(side));
     const rankOf = new Map(side.tree.roots.map((r, i) => [r.id, i < RANKED ? i + 1 : 0]));
     /** @param {core.SideTile} tile @param {number} depth @param {string} root */
     const row = (tile, depth, root) => {

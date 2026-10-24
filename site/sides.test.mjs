@@ -72,7 +72,7 @@ test("the modules import with no page config, no d3 and no DOM, and run nothing"
   assert.ok(domless, "nothing installed a DOM before the import");
   assert.deepEqual(Object.keys(sides).sort(), ["KEY_MARK", "boot", "closing",
     "fillTip", "frontierOf", "hashOf", "opensAs", "outside", "parseHash", "readConfig", "render", "shareTotal", "tileShare"]);
-  assert.deepEqual(Object.keys(forms.ledger).sort(), ["LEDGER", "RANKED", "boot", "widthOf"]);
+  assert.deepEqual(Object.keys(forms.ledger).sort(), ["LEDGER", "RANKED", "boot", "listLabel", "widthOf"]);
 });
 
 // The ledger reads its own hints and refuses a chart that declares no sides.
@@ -196,7 +196,7 @@ describe("each form draws every tile once and its tip names its pages", () => {
         // drop the ◇ from ledger.js's aria-label.
         if (form === "ledger") {
           const label = section.querySelector("[aria-label]").getAttribute("aria-label");
-          assert.match(label, /: ◇ \d+ bars by our count, .* in all by our sum$/, label);
+          assert.match(label, /: ◇ \d+ bars by our count(?: that are not printed reductions)?, .* in all by our sum$/, label);
         }
         const ids = marks.map((m) => m.dataset.id).sort();
         assert.deepEqual(ids, sideTiles(tree.roots).map((x) => x.tile.id).sort());
@@ -329,6 +329,11 @@ test("a hash naming the other year and an opened node is restored, and a bad ent
   // side.tree.cents and this reads 62.5%.
   const side = { tree: { cents: 80, roots: [{ contra: "", cents: 100 }, { contra: "a reduction", cents: -20 }] } };
   assert.equal(sides.tileShare(/** @type {any} */ ({ contra: "", cents: 50 }), /** @type {any} */ (side)), "◇ 50.0%");
+  // And the list's label states the visible total's count and sum, not the
+  // tree's. Mutation: state side.tree.roots.length and side.tree.cents in
+  // ledger.js listLabel, and this reads "2 bars ... $0.80".
+  assert.equal(forms.ledger.listLabel(/** @type {any} */ ({ ...side, heading: "In" })),
+    "In: ◇ 1 bars by our count that are not printed reductions, $1 in all by our sum");
   const plain = document.querySelector('li.bar-row[data-id="revenue/taxes/property"]');
   assert.match(plain.querySelector(".bar-share").textContent, /^◇ \d+\.\d%$/);
   assert.deepEqual(sides.parseHash("#y=nope&o=a,b~k", browser.config),
