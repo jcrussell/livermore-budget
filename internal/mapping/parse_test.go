@@ -51,7 +51,7 @@ func TestLoadSpine(t *testing.T) {
 	// p67 borrows them and has eight columns, and every row is on both
 	// pages: p67 prints all ten rows. The spike measured 9*8=72 here and the
 	// rule declared "Licenses & Permits" absent from p67 to match, but the
-	// page was never short a row — our extractor was deleting one (fisc-c00).
+	// page was never short a row — our extractor was deleting one.
 	// 10*8=80 is both what a naive read expects and what the document
 	// actually prints.
 	if got := rev.labelledPart(&p67); got == nil || got.Page != 66 {

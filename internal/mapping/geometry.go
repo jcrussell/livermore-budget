@@ -655,7 +655,7 @@ func describeColumn(c Column) string {
 // figures apart -- a single-column part is the clearest case, since its one band
 // claims everything right of the gutter -- has nothing to say when two printed
 // rows are fused onto one line, which is a corruption the previous extractor
-// produced routinely (fisc-gxt). The count of lines does.
+// produced routinely. The count of lines does.
 //
 // There is deliberately no separate check that no two rows read the SAME line.
 // While positionalValues requires the value count to match exactly, a line that

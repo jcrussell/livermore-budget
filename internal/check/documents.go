@@ -81,17 +81,9 @@ func (*documentsAreChecked) Run(_ context.Context, s *Subject) (Result, error) {
 	}
 
 	// A REGISTERED PROJECTION THAT PRODUCED NOTHING IS NOT REPORTED HERE. The
-	// export command loops the slices each projection says it is of (fisc-neh),
-	// so a projection declaring none writes no file, and there is no document
-	// to be wrong.
-	//
-	// Reporting it would make every projection of a schedule a FIXTURE does
-	// not carry into a defect -- internal/check/fixture_test.go is
-	// spine-only, so the trends projection declares nothing there and 70-odd
-	// test call sites would report a corpus finding about a test's own scope.
-	// project.Projection.Slices' doc comment already settles what that state means: "an
-	// empty result means the store carries nothing this projection is of, which
-	// is a statement about the corpus and not an error".
+	// export command builds the slices each projection says it is of, so a
+	// projection declaring none writes no file and there is no document to be
+	// wrong; Projection.Slices calls that a statement about the corpus.
 	//
 	// WHAT IT LEAVES UNCOVERED IS REAL AND IS FILED. A document the site
 	// PUBLISHES that silently stops being built is still a defect, and only the
@@ -102,12 +94,9 @@ func (*documentsAreChecked) Run(_ context.Context, s *Subject) (Result, error) {
 	// than leaving it for whoever forgets: an entry naming a shape nothing
 	// builds is either a projection that was removed or a name that has drifted.
 	//
-	// THE FINDING NAMES THE SHAPE THE PROJECTION ACTUALLY CARRIES, and it used
-	// not to: it said "now carries a graph" whatever was built, in the check
-	// that was widened precisely so a document need not be a graph. A reader
-	// handed that about a trends document goes looking for a graph that does not
-	// exist. The shapes are collected per NAME rather than as a single bool,
-	// because two projections can share a name and build different documents.
+	// The finding names the shape the projection actually carries, collected
+	// per NAME because two projections can share a name and build different
+	// documents.
 	built := map[string]map[string]bool{}
 	for _, p := range s.Projections {
 		shape := documentShape(p)
@@ -154,19 +143,10 @@ func (*documentsAreChecked) Run(_ context.Context, s *Subject) (Result, error) {
 			describeShapes(shapes), describeUnchecked(s.UncheckedDocuments, declared))
 	}
 	return conclusion{
-		// COUNTED OVER WHAT WAS EXAMINED, which is narrower than what was built
-		// and narrower still than the registry.
-		//
-		// It counted the registry once, because this check also reported a
-		// registered projection that produced nothing and that projection had to
-		// be in its own denominator. That arm is gone (see above). It then
-		// counted len(s.Projections) -- everything BUILT -- and that was the
-		// defect fisc-rwo names: a projection declared in uncheckedDocuments is
-		// built and is NOT examined, so a run in which every projection was
-		// declared reported a PASS while the `nothing:` branch below sat
-		// unreachable. A pass over a denominator the check did not look at is
-		// the one thing this package exists to prevent, and this check was
-		// producing one.
+		// COUNTED OVER WHAT WAS EXAMINED, which is narrower than what was
+		// built: a projection declared in uncheckedDocuments is built and not
+		// examined, and counting it would pass a run in which every projection
+		// was declared.
 		//
 		// EXAMINED, NOT READ. `checked` is the projections that reached a shape
 		// some structural check reads; `unread` is the ones that reached none

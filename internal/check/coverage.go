@@ -24,7 +24,7 @@ import (
 //
 // The refusal it exists for today is internal/project's: netCells rejects a fact
 // carrying a department, because the citywide spine crosses category against
-// fund group and has no department tier (fisc-gxa.2). A correctly scoped
+// fund group and has no department tier. A correctly scoped
 // pp.167-170 fact never reaches it — selectFacts filters on scope first — so on
 // a healthy corpus this is vacuous, and what makes it reachable is a rule whose
 // `scope:` says all-funds-gross when it means expenditure-by-department.
@@ -45,13 +45,8 @@ func (*projectionsBuild) Description() string {
 // count of only the failures would read as "1 of 1" on a corpus where nine
 // slices built and one did not.
 //
-// THE UNIT IS SLICES AND SO IS THE COUNT, which took a fix (fisc-rwo). It
-// counted PROJECTIONS under that unit, and one projection stopped being one
-// slice when the first multi-column document landed: keysOf was added to this
-// file for exactly that reason -- its own doc comment says "anything keying a
-// map on a projection has to iterate this rather than call it once" -- and this
-// Run did not. Measured on the committed corpus, it reported "3 projection
-// slices built" over six: the two sankey columns plus revenue-trends' four.
+// THE UNIT IS SLICES AND SO IS THE COUNT: one projection may build several
+// slices, so the count iterates keysOf rather than counting projections.
 func (*projectionsBuild) Run(_ context.Context, s *Subject) (Result, error) {
 	findings := make([]Finding, 0, len(s.ProjectionFailures))
 	for _, f := range s.ProjectionFailures {
@@ -117,7 +112,7 @@ func keysOf(o project.Options) []sliceKey {
 // nil when the store carries no revenue-by-fund fact, projections-build counts
 // only what was asked for, and the trend checks go vacuous. Columns are checked
 // one at a time for the same reason: a trends document that lost FY2023-24
-// builds, and every series is complete over the columns that remain (fisc-7dt).
+// builds, and every series is complete over the columns that remain.
 type publishedProjectionBuilt struct{}
 
 var _ Check = (*publishedProjectionBuilt)(nil)
@@ -136,7 +131,7 @@ func (*publishedProjectionBuilt) Run(_ context.Context, s *Subject) (Result, err
 	// Every SLICE built, grouped by the projection and scope that built it. A
 	// published document must be covered by ONE of them, not their union: a
 	// four-column document is otherwise satisfied by four single-column
-	// slices while the file at its stem covers a quarter of it (fisc-b8o).
+	// slices while the file at its stem covers a quarter of it.
 	//
 	// It is keyed on the projection NAME, and that is not belt-and-braces.
 	// Since each projection is built over the slices it declares

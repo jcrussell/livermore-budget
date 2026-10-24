@@ -233,9 +233,8 @@ func TestDropExemptIDsRefusesADeclarationWhoseFileNoLongerCarriesIt(t *testing.T
 }
 
 func TestDropExemptIDsIsSilentWhenTheDeclaredFileWasNotRead(t *testing.T) {
-	// This is the case that made the first version wrong: it reported every
-	// exemption stale on any run narrower than the Makefile's path list, and
-	// following its advice would have broken the gate.
+	// A run narrower than the Makefile's path list must not report an
+	// exemption stale: following that advice would break the gate.
 	if _, err := dropExemptIDs(nil, map[string]bool{}); err != nil {
 		t.Errorf("dropExemptIDs(nothing read) = %v, want no error", err)
 	}
@@ -285,9 +284,8 @@ func TestDropExemptIDsKeepsEverythingItDoesNotDeclare(t *testing.T) {
 }
 
 func TestScannableCoversWhatTheSiteAndTheToolingAreWrittenIn(t *testing.T) {
-	// site/app.js and site/*.html.tmpl carry bead citations and are what
-	// AGENTS.md calls the least-defended files in the repo; tools/extract.py is
-	// the only Python. Every one was outside the first version of this filter.
+	// site/app.js and site/*.html.tmpl carry bead citations; tools/extract.py
+	// is the only Python.
 	for _, p := range []string{
 		"site/app.js", "site/flows.html.tmpl", "site/style.css", "tools/extract.py",
 		"AGENTS.md", "internal/x.go", "site/x.test.mjs", "data/funds.yaml", "ci.yml",
@@ -414,8 +412,7 @@ func TestAnIDExemptionMayNotAnchorItselfToTheDeclaration(t *testing.T) {
 		"fisc-selfanchored": {file: declarationFile, what: "a token declared to live in the declaration"},
 	}
 	// Every OTHER declaration has to be satisfied, or checkExemptions errors out
-	// of the file loop first and this passes on an unrelated message. That is
-	// how the first version of this test could not fail at all.
+	// of the file loop first and this passes on an unrelated message.
 	root := t.TempDir()
 	for file := range exempt {
 		touch(t, root, file)

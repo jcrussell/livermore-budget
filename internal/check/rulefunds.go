@@ -115,7 +115,7 @@ func (*ruleFundsMatchTheirHeadings) Run(_ context.Context, s *Subject) (Result, 
 	// spoken for. Both are per document: two documents may print the same
 	// heading and mean different funds.
 	pages := map[string]map[int]bool{}
-	// CLAIMED IS KEYED ON THE PAGE AS WELL AS THE DOCUMENT (fisc-lkx): the
+	// CLAIMED IS KEYED ON THE PAGE AS WELL AS THE DOCUMENT: the
 	// claim this check makes is per page -- "on the pages a schedule maps, the
 	// schedule maps all of it" -- so a total mapped on one page must not
 	// silence an identically-worded total on another.
@@ -135,7 +135,7 @@ func (*ruleFundsMatchTheirHeadings) Run(_ context.Context, s *Subject) (Result, 
 		for i := range f.Rules {
 			ru := &f.Rules[i]
 
-			// THE TOTAL IS CLAIMED BEFORE EITHER CONTINUE BELOW (fisc-948).
+			// THE TOTAL IS CLAIMED BEFORE EITHER CONTINUE BELOW.
 			// Claiming a total is the statement that SOME rule reads that
 			// printed heading, which is true whether or not the rule declares
 			// one fund: a rule declaring its fund per ROW, as p76's do, still
@@ -191,7 +191,7 @@ func (*ruleFundsMatchTheirHeadings) Run(_ context.Context, s *Subject) (Result, 
 			// setting `named` would make the variable lie -- and NOT setting
 			// something meant the !named arm fired too, producing a second
 			// finding that said the rule "is anchored to nothing on the page"
-			// while listing the total that anchors it (fisc-948).
+			// while listing the total that anchors it.
 			named, reported := false, false
 			for _, a := range anchors {
 				label, ok := fundNameIn(a)

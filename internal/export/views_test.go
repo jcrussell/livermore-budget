@@ -578,17 +578,12 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"}}, "not an .html file"},
 		{"a path in a subdirectory", []export.View{ok, {Path: "views/table.html",
 			Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"}}, "not at the site root"},
-		// THE SHADOWING MESSAGE, not "not an .html file". This case is named for
-		// the fixed-layout guard and used to assert the suffix check, which is to
-		// say it pinned the guard's UNREACHABILITY: every fixedPaths key is
-		// caught by the suffix check first, so the arm could never fire. The
-		// distinction is what the reader does next -- "not an .html file" invites
-		// renaming app.js to app.html, which shadows nothing and is still wrong.
+		// THE SHADOWING MESSAGE, not "not an .html file", which would invite
+		// renaming app.js to app.html: that shadows nothing and is still wrong.
 		{"a path that shadows an asset", []export.View{ok, {Path: "app.js",
 			Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"}},
 			"part of the fixed site layout"},
-		// And a genuine non-html path still gets the suffix message, so moving
-		// the arm has not swallowed the case it used to answer.
+		// And a genuine non-html path still gets the suffix message.
 		{"a path that shadows nothing and is not html", []export.View{ok,
 			{Path: "notes.txt", Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"}},
 			"not an .html file"},
@@ -901,7 +896,7 @@ func TestAShortSeriesDoesNotShiftItsNeighboursIntoTheWrongColumn(t *testing.T) {
 	// AND SAY SO IN THE DOCUMENT'S OWN COUNTS, which is not bookkeeping. A
 	// series short a column is a state this project supports; a document whose
 	// counts.points disagrees with the points it carries is a different thing
-	// and Write now refuses it (fisc-4j5). Leaving the count at 2 would make
+	// and Write now refuses it. Leaving the count at 2 would make
 	// this test assert the refusal instead of the layout it is named for.
 	meta := doc["metadata"].(map[string]any)
 	meta["counts"].(map[string]any)["points"] = 1
@@ -910,7 +905,7 @@ func TestAShortSeriesDoesNotShiftItsNeighboursIntoTheWrongColumn(t *testing.T) {
 	// facts as len(selected), so a series short a column is short a fact and a
 	// point alike -- the two diverge only in a document somebody edited. Write
 	// reconciles the rendered cells against BOTH now, since facts is the number
-	// the lede prints (fisc-5tu).
+	// the lede prints.
 	meta["counts"].(map[string]any)["facts"] = 1
 	short, err := json.Marshal(doc)
 	if err != nil {
@@ -1608,13 +1603,9 @@ func TestATemplateWithNoArmIsRefusedRatherThanRenderedAsASpine(t *testing.T) {
 	if err == nil {
 		t.Fatal("Write = nil, want a refusal naming the template with no builder")
 	}
-	// "has no builder for" IS THE DISPATCH'S OWN WORDING, and asserting it is
-	// the point rather than pedantry. This test used to check only that the
-	// error named the view and the template, which any refusal mentioning both
-	// satisfies -- and one did: an arm in View.validate began catching an
-	// unknown template first, so restoring the historical
-	// `default: buildSankeyPage` bug left this test GREEN. Pinning the message
-	// that only the dispatch produces is what makes it test its own name again.
+	// "has no builder for" IS THE DISPATCH'S OWN WORDING: any refusal naming the
+	// view and the template would satisfy a weaker assertion, including one
+	// from View.validate that fires before the dispatch is reached.
 	for _, want := range []string{"unclaimed.html", orphan, "has no builder for"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("got error %q, want it to name %q", err, want)
@@ -1622,15 +1613,10 @@ func TestATemplateWithNoArmIsRefusedRatherThanRenderedAsASpine(t *testing.T) {
 	}
 }
 
-// TestAProjectionWithNoViewStillShipsItsCitedPages is the guarantee every other
-// document already has, extended to the one shape that did not have it.
-//
-// buildSite collected citations by walking VIEWS, so a projection written to
-// data/<stem>.json but rendered on no page contributed none -- and the pages its
-// metadata.sources names were absent from dist/extracted/. That document is not
-// hypothetical: it is what a projection looks like between the commit that
-// builds it and the commit that gives it a page, which is exactly the state the
-// drill-down ships in (fisc-f75 owns the view).
+// TestAProjectionWithNoViewStillShipsItsCitedPages: a projection written to
+// data/<stem>.json but rendered on no page still ships the pages its
+// metadata.sources names under dist/extracted/, because buildSite collects
+// citations from the projections and not only from the views.
 //
 // The consequence is not a blank page. It is a published document whose
 // provenance links resolve to nothing -- 404s from the one part of this site
@@ -1898,7 +1884,7 @@ func TestOnlyTheProsePagesDrawAtTheMeasure(t *testing.T) {
 
 // TestTheSourcesPageStatesEveryInference: provenance.html lists every derived
 // node of every column with its rationale and source note, and every derived
-// flow with the cents its link carries, now that no chart page lists them.
+// flow with the cents its link carries; no chart page lists them.
 // Mutation: skip derived nodes in inferredColumns -- the node arm goes red;
 // skip derived links -- the flow arm goes red.
 func TestTheSourcesPageStatesEveryInference(t *testing.T) {
@@ -2159,12 +2145,10 @@ func TestAnAbsentRecordsBaseIsNotAnError(t *testing.T) {
 // in miniature, and the reason cited is seeded from PageIndex rather than from
 // a second mechanism.
 //
-// The shipped extraction used to be whatever the projections' own
-// metadata.sources named. The fact store covers a page the charts do not, so a
-// provenance link resolved to a shard beside a 404. Routing the index's pages
-// through the same cited set means withPageText's existing refusal covers them:
-// a published locator whose page text is not in the extraction tree is an
-// error, not a dangling link.
+// The fact store covers a page the charts do not, so the index's pages are
+// routed through the same cited set as the charts': withPageText's refusal
+// covers them, and a published locator whose page text is not in the
+// extraction tree is an error, not a dangling link.
 func TestTheProvenancePageShipsThePageTextOfEveryLocatorItPublishes(t *testing.T) {
 	// The page text carries 66 and 67 only; the index publishes 127 too.
 	_, err := provenanceSite(t, func(o *export.Options) { o.PageText = twoViewPageText(66, 67) })
@@ -2386,10 +2370,9 @@ func TestTheFooterSourcesFoldWithoutTakingTheDocumentOnScreenWithThem(t *testing
 		if !strings.Contains(folded, "Every data file the site publishes") {
 			t.Errorf("%s's summary counts data files that are not inside the panel", page)
 		}
-		// THE SUMMARY ALONE, and the first draft of this arm read the whole
-		// folded panel -- which contains the phrase "data file" in the list
-		// itself, so a summary that stopped mentioning files stayed green.
-		// Caught by the mutation, not by reading it.
+		// THE SUMMARY ALONE: the whole folded panel contains the phrase "data
+		// file" in the list itself, so reading it would stay green on a
+		// summary that stopped mentioning files.
 		head := foot[summary:summaryEnd]
 		if !strings.Contains(head, "data file") {
 			t.Errorf("%s's sources summary does not say the panel also holds the data "+

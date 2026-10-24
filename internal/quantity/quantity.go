@@ -1,6 +1,6 @@
 // Package quantity recognizes the cell grammars that are not money: the
 // percentage, per-unit-dollar and unitless-number cells the ACFR Statistical
-// Section prints beside its amounts (fisc-9tn4).
+// Section prints beside its amounts.
 //
 // It lives beside internal/amount, never inside it: amount stays strict about
 // money, and a cell these grammars recognize is read so its row stays whole

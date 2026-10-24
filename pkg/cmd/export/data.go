@@ -98,14 +98,9 @@ func buildProjectionsFrom(repoRoot string, facts []fact.Fact) (map[string][]byte
 	// verify` checks the same slices, and two copies would let it pass a graph
 	// this command does not publish.
 	//
-	// THE LOOP IS OVER PROJECTIONS, NOT OVER YEARS. It used to be the cartesian
-	// product of PublishedFiscalYears() and Registry(), which was right while
-	// every projection was one year of the citywide spine and hard-errors on the
-	// first projection that is not: a trends document is of one slice spanning
-	// four columns of a different schedule, and the old slicesContain refusal
-	// rejected it before a single file was written (fisc-neh). fisc-744 fixed
-	// this same shape in internal/check and left this copy behind, which is why
-	// the failure was still waiting here.
+	// THE LOOP IS OVER PROJECTIONS, NOT OVER YEARS: a trends document is of one
+	// slice spanning four columns of a different schedule, so each projection
+	// is built over the slices it declares.
 	version := build.Get().String()
 	out := map[string][]byte{}
 	builtAt := map[string]builtDoc{}
@@ -151,8 +146,8 @@ func buildProjectionsFrom(repoRoot string, facts []fact.Fact) (map[string][]byte
 	// It fails closed and names both sides, because the fix is never obvious
 	// from a missing file: either the projection wants slices this command
 	// cannot publish, or the published set moved and the projection was not
-	// told. What it no longer does is demand that EVERY projection be of the
-	// published spine slice, which is the part that refused a second schedule.
+	// told. It does not demand that every projection be of the published
+	// spine slice.
 	if err := assertPublishedBuilt(builtAt); err != nil {
 		return nil, err
 	}

@@ -77,10 +77,9 @@ describe("a split stands its members on the side it declares", () => {
     }
   });
 
-  // Mutation: default an undeclared side to after, as the slots once did
-  // for a split no link runs between, and the line is placed after its
-  // source with nothing saying so; drop the back refusal and the line's part
-  // stands in its source's slot.
+  // Mutation: default an undeclared side to after for a split no link runs
+  // between, and the line is placed after its source with nothing saying so;
+  // drop the back refusal and the line's part stands in its source's slot.
   test("a split declaring no side, or a member opening back toward its grandparent, is refused", async () => {
     const { app } = await bootedApp();
     for (const side of [undefined, "left"]) {

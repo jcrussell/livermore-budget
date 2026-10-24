@@ -214,7 +214,7 @@ func inlinePageDoc(t *testing.T, docID string, page int, text string) *corpus.Do
 
 // inlinePagesDoc is inlinePageDoc for a test that needs more than one page --
 // which is what it takes to show that a claim about one page does not reach
-// another (fisc-lkx).
+// another.
 func inlinePagesDoc(t *testing.T, docID string, pages map[int]string) *corpus.Doc {
 	t.Helper()
 	fsys := fstest.MapFS{}

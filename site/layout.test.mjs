@@ -844,7 +844,7 @@ describe("the focus indicator is painted as focus and not as text", () => {
   });
 });
 
-// THE EXPANSION, LAID OUT (fisc-yj4w.34.3): each pinned column's expansion
+// THE EXPANSION, LAID OUT: each pinned column's expansion
 // schedule folded to a frontier by core.foldDocument, capped per split and
 // stamped with its slots by sankey.js's expansionOf, and laid out by the
 // form's own layOutAt on the canvas the index overview's sankey.grow sizes.
@@ -998,7 +998,7 @@ describe("the expansion schedule laid out in slots, at the root, one group open 
           unplaced: drawn.nodes.filter((n) => !slots.has(n.id)).map((n) => n.id),
           general: ["fund-group/general", "fund/100"].map((id) => `${id} ${slots.has(id) ? "in " + slots.get(id) : "not drawn"}`).join(", "),
         };
-        // THE GENERAL FUND'S DIVISION-BY-OBJECT CELLS (fisc-yj4w.32): every
+        // THE GENERAL FUND'S DIVISION-BY-OBJECT CELLS: every
         // link from one of fund/100's divisions to an object category, which
         // its row's hub leg repeats, each a ribbon of its own at its cents
         // and facts.

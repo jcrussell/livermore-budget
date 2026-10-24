@@ -71,7 +71,7 @@ type Vocabulary interface {
 	// FundGroup reports whether name is a fund type data/funds.yaml uses.
 	FundGroup(name string) bool
 	// Fund is the registry entry for a fund number, which is the join key a
-	// fact carries once a single-fund schedule is mapped (fisc-5gk.1).
+	// fact carries once a single-fund schedule is mapped.
 	Fund(number int) (registry.Fund, bool)
 	// Division is the data/departments.yaml entry for the slug a fact's
 	// `department` field holds.
@@ -197,22 +197,14 @@ func (p projection) slice(facts []fact.Fact) ([]fact.Fact, error) {
 // refusal.
 //
 // It is RECORDED rather than returned because a projection that will not build
-// is a claim about the corpus, and verify's whole job is to report those. Before
-// this, internal/project's refusal of a department-bearing fact reached the
-// operator as `exit 1` with no report at all — every other finding in the run
-// lost, and the reason buried in a wrapped error — which is strictly worse than
-// a red check saying the same thing.
+// is a claim about the corpus, and verify reports it as a red check with every
+// other finding of the run beside it.
 //
 // EXACTLY ONE THING STAYS A HARD ERROR: a fact store with no slice in the
-// published scope. It is not a verdict about the corpus and there is no
-// projection there that failed — there is nothing to project, so recording it
-// would leave every graph check vacuous at once and the run exiting 0, which is
-// the state this whole mechanism exists to avoid.
-//
-// A projection that exposes no graph is NOT that error, though it used to be,
-// and that was the defect: see buildProjections, which records it with a nil
-// document, and documentsAreChecked, which reports it with a report around it
-// rather than by killing the run.
+// published scope. There is nothing to project, so recording it would leave
+// every graph check vacuous at once and the run exiting 0. A projection that
+// exposes no graph is not that error: buildProjections records it with a nil
+// document and documentsAreChecked reports it.
 type projectionFailure struct {
 	Name    string
 	Options project.Options
@@ -229,7 +221,7 @@ func (f projectionFailure) String() string {
 //
 // It is loaded once because several checks read the same fact store and the same
 // projection, and because resolving a mapping part twice is how a build ends up
-// corroborating a different read from the one it published (fisc-uv6). The
+// corroborating a different read from the one it published. The
 // resolvers below are the memoized ones for that reason.
 type Subject struct {
 	// Root is the repository root every path is relative to.
@@ -274,8 +266,8 @@ type Subject struct {
 	// was nothing to hash.
 	SourcePDFs map[string]sourcePDF
 	// Resolvers is one memoized resolver per rule file, keyed by the file's
-	// path. They are shared because the totals reconciliation (fisc-1wr.2), the
-	// structural sweep (fisc-1wr.5) and fact-offset-is-not-a-stated-total all
+	// path. They are shared because the totals reconciliation, the
+	// structural sweep and fact-offset-is-not-a-stated-total all
 	// resolve rules, and building them anywhere else would mean several runs of
 	// the same read in one command.
 	//
@@ -793,16 +785,9 @@ func buildProjections(ps []project.Projection, facts []fact.Fact, version string
 	[]projection, []projectionFailure, error,
 ) {
 	slices := factSlices(facts, version)
-	// Zero slices means zero projections, and a report over zero projections is
-	// the failure mode this refusal exists to stop: ten of the checks below read
-	// nothing but the graph, so they all go vacuous at once and the run exits 0.
-	// Changing every fact's scope to a mistyped value did exactly that.
-	//
-	// This one stays a HARD ERROR and does not become a recorded failure. There
-	// is no projection here that failed — there is nothing to project, which is
-	// a statement about the fact store rather than a verdict a check could
-	// reach, and recording it would put the run back in the state where every
-	// graph check is vacuous and the exit code is 0.
+	// Zero slices means zero projections: every graph check would go vacuous
+	// at once and the run exit 0, as a mistyped scope on every fact does. So
+	// this stays a hard error rather than a recorded failure.
 	if len(slices) == 0 {
 		return nil, nil, hint.Withf(
 			fmt.Errorf("no fact is in scope %q, so there is nothing to project and nothing "+
@@ -814,26 +799,15 @@ func buildProjections(ps []project.Projection, facts []fact.Fact, version string
 	out := make([]projection, 0, len(ps))
 	var failed []projectionFailure
 	for _, p := range ps {
-		// Each projection is built over the slices IT says it is of, not over
-		// the cartesian product of every projection and every slice. The
-		// product was correct while the Sankey was the only projection and is
-		// wrong for the first one of a different schedule, which would be
-		// handed a slice containing none of its facts and would refuse to
-		// build -- a red check reporting a scheduling mistake as a corpus
-		// defect.
+		// Each projection is built over the slices it says it is of: a
+		// schedule other than the spine's is never handed a slice holding none
+		// of its facts.
 		want := p.Slices(facts, version)
 
-		// A projection that is not a graph is RECORDED WITH A NIL GRAPH, not
-		// refused. Refusing was the old behaviour and it was the wrong failure
-		// mode: it returned an error out of Load, so `fisc verify` exited
-		// non-zero having printed no report at all, losing every finding in the
-		// run to a projection that was merely of a different shape. A trends
-		// document is a set of series with no nodes and no links, and it is not
-		// defective for that.
-		//
-		// What must not happen instead is a document nothing checks shipping
-		// quietly. That is documentsAreChecked's job, and it is a red check
-		// with a report around it rather than a dead run.
+		// A projection that is not a graph is recorded with a nil graph, not
+		// refused: a trends document has no nodes and no links and is not
+		// defective for that. documentsAreChecked is what fails a document
+		// nothing checks.
 		g, isGraph := p.(graphBuilder)
 		t, isTrends := p.(trendsBuilder)
 		d, isDebt := p.(debtBuilder)
@@ -858,8 +832,7 @@ func buildProjections(ps []project.Projection, facts []fact.Fact, version string
 			}
 			// A projection satisfying neither interface is appended with both
 			// document fields nil, which is not an error here and IS a finding
-			// in documentsAreChecked. Refusing it at this level was the old
-			// behaviour and it killed the whole run.
+			// in documentsAreChecked.
 			out = append(out, built)
 		}
 	}

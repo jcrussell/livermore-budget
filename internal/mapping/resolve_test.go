@@ -153,10 +153,10 @@ func (f fixtureCopy) extraction() string {
 // fixtureCopies is every fixture this package reads, as {document, artifact}
 // rows. It replaces a hard-coded list of page numbers against one document and
 // one substrate, which could express neither a second document nor the geometry
-// artifacts the column guard needs (fisc-28u). Adding a fixture means adding a
+// artifacts the column guard needs. Adding a fixture means adding a
 // row to fixturePages and nothing else — and TestEveryCommittedFixtureIsListed
 // is what makes that a rule rather than a habit, because three fixtures once
-// went in without one (fisc-9i1).
+// went in without one.
 func fixtureCopies() []fixtureCopy {
 	var out []fixtureCopy
 	for _, doc := range []fixtureDoc{budgetFixtures, cipFixtures, acfrFixtures} {
@@ -188,7 +188,7 @@ var fixturePages = map[string][]int{
 // them, so they can drift from the extraction silently — and when they do, the
 // tests reading them stay green against a substrate that no longer exists. That
 // is not hypothetical: it is exactly what the xberg → poppler migration
-// produced (fisc-yqv.5), and the tests went on passing throughout.
+// produced, and the tests went on passing throughout.
 func TestFixturesAreVerbatimCopies(t *testing.T) {
 	copies := fixtureCopies()
 	if len(copies) == 0 {
@@ -222,7 +222,7 @@ func TestFixturesAreVerbatimCopies(t *testing.T) {
 // 169 and 170 — six files — and did not add the rows, so the p168 two-level
 // rounding chain the whole Rollup design rests on and p170's tie to the citywide
 // spine were being proved against files nothing said were real. None had drifted
-// when this was found (fisc-9i1), which is the reason to close it now rather
+// when this was found, which is the reason to close it now rather
 // than after one does.
 //
 // fixtureCopies' own doc comment says "Adding a fixture means adding a row here
@@ -353,7 +353,7 @@ func TestSpineTiesToTheDocumentsOwnTotals(t *testing.T) {
 	// 40 on p66 revenues + 16 on p66 expenditures + 80 on p67. The spike also
 	// reported 136, but 8 of its were invented zeros standing in for a row it
 	// believed p67 omits. The page prints that row; our extractor was dropping
-	// it (fisc-c00). Every one of these 136 is a cell the city printed.
+	// it. Every one of these 136 is a cell the city printed.
 	if want := 136; readValues != want {
 		t.Errorf("read %d values, want %d", readValues, want)
 	}
@@ -382,12 +382,8 @@ func TestSpineTiesToTheDocumentsOwnTotals(t *testing.T) {
 // carries after its category: "page: 1" places it on the labelled page alone,
 // and "" places it on both.
 //
-// It is synthetic on purpose. The spine used to serve as this fixture, on the
-// belief that Budget Book p67 omits its all-zero "Licenses & Permits" row; the
-// page prints all ten rows and our own extractor was deleting one (fisc-c00).
-// No page in the corpus is currently known to omit a row, so exercising the
-// declaration against a real one would mean waiting for a case that may not
-// exist — while the machinery still has to work the day one turns up.
+// It is synthetic on purpose: no page in the corpus is known to omit a row,
+// and the machinery has to work the day one turns up.
 //
 // The placed row is deliberately in the MIDDLE. A trailing one makes a
 // Value's RowIndex and the part's position agree by accident, which is exactly
@@ -546,9 +542,8 @@ func TestExtractionDropOutIsNotAnOmission(t *testing.T) {
 		t.Errorf("got %d omissions on p67, want 0: the page prints every row", len(omitted))
 	}
 
-	// The three trailing rows are the ones the extractor used to collapse.
-	// They are zero in all four of this page's fund groups, which is why the
-	// loss was invisible to every check except the row count.
+	// The three trailing rows are zero in all four of this page's fund groups,
+	// so losing one is invisible to every check except the row count.
 	for _, label := range []string{"Sales Taxes", "Fines & Forfeitures", "Licenses & Permits"} {
 		n := 0
 		for _, v := range values {

@@ -47,13 +47,11 @@ var Get = sync.OnceValue(func() Info {
 // get is Get with the metadata source injected, so a test can supply settings
 // the running binary does not have.
 //
-// THE BUILD METADATA IS READ EVEN WHEN THE LINKER SUPPLIED EVERYTHING, and that
-// is the whole point of this function. An earlier version returned early once
-// Commit and Date were both set, which made the vcs.modified arm below
-// unreachable in every binary the Makefile produces -- so the dirty marker
-// worked only for `go build` and not for the build that ships. The Makefile's
-// `git describe --dirty` does not cover the gap: measured, it reports a clean
-// hash for a tree carrying an UNTRACKED file, where vcs.modified reports true.
+// THE BUILD METADATA IS READ EVEN WHEN THE LINKER SUPPLIED EVERYTHING, so the
+// dirty marker holds for the binary the Makefile ships and not only for `go
+// build`. The Makefile's `git describe --dirty` does not cover it: measured,
+// it reports a clean hash for a tree carrying an UNTRACKED file, where
+// vcs.modified reports true.
 // Nothing here overrides a linker-supplied field; fromSettings fills only what
 // is empty.
 func get(i Info, read func() (*debug.BuildInfo, bool)) Info {

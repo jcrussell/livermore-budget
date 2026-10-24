@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-// ACFR pp.167-169, the first published batch of the Statistical Section
-// (fisc-oakx.3). Every test reads the pages THROUGH the published rules, the
+// ACFR pp.167-169, the first published batch of the Statistical Section.
+// Every test reads the pages THROUGH the published rules, the
 // same discipline as acfr_p177_test.go, so this file and the mapping cannot
 // become two readings of one page.
 

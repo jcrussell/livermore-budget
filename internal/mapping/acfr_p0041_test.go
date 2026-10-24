@@ -17,13 +17,9 @@ import (
 // expenditure block rather than a block.
 //
 // The page is read here with strings.Fields and amount.Parse rather than through
-// the resolver, and the reason has CHANGED since this comment was written. It
-// used to be that two of the page's four blocks could not be resolved at all, so
-// reading by hand was the only way to carry evidence about them. Both can be
-// resolved now (fisc-hcus and fisc-h96o), and the reason is the one
-// acfr_p177_test.go gives instead: these claims are about what the DOCUMENT
-// says, and a hand read states them without depending on the rules that were
-// written FROM them.
+// the resolver, for the reason acfr_p177_test.go gives: these claims are about
+// what the DOCUMENT says, and a hand read states them without depending on the
+// rules that were written FROM them.
 //
 // Units are millions printed to two decimals, so the least significant printed
 // digit is 0.01 million = $10,000, and one cent of amount.Cents is one cent.
@@ -45,7 +41,7 @@ var (
 //
 // The marks are not a blocker: dropCurrencyMarks reads a lone mark in the
 // labelled path, and the revenue block is mapped, the orphan "0.0" carrying an
-// honest declaration (fisc-hcus). The assertion that settles it is
+// honest declaration. The assertion that settles it is
 // TestACFRp0041RevenueBlockNeedsItsOrphanDeclared, where running the rule does.
 func acfrRow(t *testing.T, want string) []amount.Cents {
 	t.Helper()
@@ -156,11 +152,8 @@ func TestACFRp0041FundBalancesSatisfyTheIdentity(t *testing.T) {
 	}
 }
 
-// TestACFRp0041ExpendituresTieUnderTheTopLevelReading carries the finding that
-// decided this lane. It used to end "and it is the reason no document-derived
-// tolerance landed with it"; one landed on this page, on the strength of the
-// arithmetic below, so what it is now is the reason the tolerance sits on the
-// SUBTOTAL and not on Total Expenditures.
+// TestACFRp0041ExpendituresTieUnderTheTopLevelReading is the arithmetic that
+// puts this page's tolerance on the SUBTOTAL and not on Total Expenditures.
 //
 // The page prints a "General Government:" subtotal AND its five constituent
 // rows. Read at the top level -- the subtotal and the nine rows beside it -- the
@@ -345,26 +338,10 @@ rules:
 // revenue block WITHOUT the unmapped_text declaration the production rule
 // carries, and asserts the resolver refuses it, naming the orphan.
 //
-// It is written as a real read rather than as assertions about the page's text
-// because the first draft of this test was assertions about the text, and one of
-// them was WRONG. It claimed a second blocker -- the first revenue row prints a
-// standalone "$" before each figure, which is the shape fisc-yun is about -- and
-// fisc-yun is CLOSED: dropCurrencyMarks handles a lone currency mark in the
-// labelled read, and all ten rows here read through it without complaint. The
-// claim came from a bead title instead of from the tree. Running the rule cannot
-// make that mistake: whatever refuses, refuses.
-//
-// WHAT IT ASSERTS CHANGED WHEN fisc-hcus LANDED AND THE NAME CHANGED WITH IT.
-// It used to be called ...CannotBeResolved and its comment ended "if it acquires
-// an honest declaration, this test goes red by succeeding". It did not, and
-// would not have: this probe rule declares no unmapped_text, so it stays refused
-// whatever the production rule does, and a test still named for a page that
-// cannot be read would have gone on passing beside a mapping file that reads it.
-// The assertion is now the useful half of the same read -- that the declaration
-// is LOAD-BEARING, and removing it puts the block back out of reach.
-//
-// Its sibling TestACFRp0041RevenueBlockResolvesWithTheOrphanDeclared is the
-// other half, and neither is worth much alone.
+// It is a real read rather than assertions about the page's text, so a claim
+// about what blocks the block cannot come from anywhere but the resolver:
+// whatever refuses, refuses. The declaration is LOAD-BEARING, and removing it
+// puts the block back out of reach.
 func TestACFRp0041RevenueBlockNeedsItsOrphanDeclared(t *testing.T) {
 	const yaml = acfrRevenueProbe
 	f, err := parse(strings.NewReader(yaml), "probe.yaml")
@@ -383,10 +360,8 @@ func TestACFRp0041RevenueBlockNeedsItsOrphanDeclared(t *testing.T) {
 			"declaration in mappings/livermore-acfr-fy2025.yaml is doing nothing, " +
 			"and the orphan is being admitted by something else")
 	}
-	// The refusal must be ABOUT THE ORPHAN. A test satisfied by any error would
-	// pass on a mistyped anchor, which is how the first draft of this file's
-	// sibling test passed on a leading-gap error that had nothing to do with the
-	// row it was named for (fisc-i0d9 is the same shape).
+	// The refusal must be ABOUT THE ORPHAN: a test satisfied by any error would
+	// pass on a mistyped anchor.
 	if got := err.Error(); !strings.Contains(got, `"0.0" follows the last mapped row`) {
 		t.Errorf("the read was refused by something other than the orphan: %v", got)
 	}
@@ -452,10 +427,10 @@ func TestACFRp0041RevenueBlockResolvesWithTheOrphanDeclared(t *testing.T) {
 
 // TestACFRp0041GeneralGovernmentTiesOnlyWithinThePageDerivedTolerance is the
 // arithmetic behind acfr-p0041-gf-general-government, and it is the ONLY
-// consumer of a document-derived tolerance in this corpus (fisc-1wr.2).
+// consumer of a document-derived tolerance in this corpus.
 //
-// The five divisions print 18.44 against a subtotal of 18.45 printed ABOVE them
-// (fisc-h96o). The page is captioned "(in Millions)" and prints two decimals, so
+// The five divisions print 18.44 against a subtotal of 18.45 printed ABOVE them.
+// The page is captioned "(in Millions)" and prints two decimals, so
 // the unit is $10,000 and the bound is half a unit per row: $25,000 over five
 // terms, against a $10,000 error. Read the CAPTION instead of the printed digits
 // and the same sum would carry $2,500,000, which is a hundredfold wider and is
@@ -543,7 +518,7 @@ func acfrLine(t *testing.T, want string) string {
 
 // TestACFRp0041HasNoGeometryColumnGuard pins the claim that
 // mappings/livermore-acfr-fy2025.yaml and data/taxonomy.yaml's neighbourhood
-// both make in prose: the twenty figures this lane publishes are read with NO
+// both make in prose: the twenty figures this page publishes are read with NO
 // column-position guard over them.
 //
 // docs/extraction-substrate.md calls that guard "the designed answer" for a

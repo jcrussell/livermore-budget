@@ -66,10 +66,9 @@ func TestNoCommittedFactCitesAStatedTotal(t *testing.T) {
 	//
 	// What is NOT implied is how many lines the check found, and that is the
 	// number a silent regression would move: the whole check degrades quietly if
-	// TotalRowSpan starts refusing lines it used to resolve. The count itself is
+	// TotalRowSpan starts refusing lines it resolves today. The count itself is
 	// deliberately not pinned -- it moves with every page that gets mapped -- so
-	// what is asserted is that both KINDS of total are represented, which is the
-	// durable claim and the one this file's own history says goes wrong.
+	// what is asserted is that both KINDS of total are represented.
 	if res.Subjects != len(s.Facts) {
 		t.Errorf("examined %d facts, want the whole store's %d", res.Subjects, len(s.Facts))
 	}
@@ -466,7 +465,7 @@ func TestNoTotalLurksAtAnUndeclaredLabelLessTerminator(t *testing.T) {
 }
 
 // TestALabelLessPartWithATotalRowNamesItsRealAnchor is the SECOND half of the
-// LabelsFrom-before-TotalRow trap, and the first fix landed without it.
+// LabelsFrom-before-TotalRow trap.
 //
 // Two committed parts are label-less AND declare a total_row: spine-revenues and
 // spine-expenditures on p67. totalAnchor tests LabelsFrom first, so their anchor

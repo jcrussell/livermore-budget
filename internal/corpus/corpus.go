@@ -8,7 +8,7 @@
 //
 // Reads deliberately do not hash. The manifest records a sha256 for every
 // artifact, and this package exposes those records, but checking them is a
-// sweep that belongs to `fisc verify` (fisc-1wr.5): a reader that hard-failed
+// sweep that belongs to `fisc verify`: a reader that hard-failed
 // on the first mismatch could report "something drifted" but never "these
 // eleven files drifted", which is the useful answer.
 package corpus

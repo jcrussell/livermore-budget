@@ -138,21 +138,13 @@ func TestTheCommittedCorpusIsStrictClean(t *testing.T) {
 	}
 }
 
-// TestADeclarationSurvivesACheckThatReachedNoVerdict is the arm that a cancelled
-// run walked into.
+// TestADeclarationSurvivesACheckThatReachedNoVerdict: stale is a claim that the
+// work landed, and only PASS and FAIL are verdicts. A check that ERRORED or was
+// SKIPPED did not look, so the run establishes nothing about the declaration.
 //
-// Stale is a claim that the work landed, and only PASS and FAIL are verdicts. A
-// check that ERRORED or was SKIPPED did not find its subject -- it did not look
-// -- so the run establishes nothing about the declaration in either direction.
-//
-// ERROR IS THE REACHABLE ONE AND IT WAS LIVE. run1 turns ctx.Err() into
-// errored(...), so under the old rule -- anything but vacuous is stale -- a
-// Ctrl-C on `fisc verify` reported all three declarations stale and exited 3
-// saying "<bead> landed, so remove the declaration", about work that had not
-// landed. SKIPPED is not reachable today (sourcePDFsMatchBothRecords is the only
-// Full() check in the tree and nobody would declare it vacuous) and is asserted
-// anyway, because ci.yml's --strict step passes no --full and the next --full
-// check inherits the hole.
+// ERROR IS THE REACHABLE ONE: run1 turns ctx.Err() into errored(...), so a
+// Ctrl-C on `fisc verify` must not report a declaration stale. SKIPPED is
+// asserted too, because ci.yml's --strict step passes no --full.
 //
 // A genuine error still fails the run. That is Counts.Error's job in Failed(),
 // and it says the checker could not tell rather than claiming a bead landed.

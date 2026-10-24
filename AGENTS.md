@@ -449,8 +449,10 @@ Breaking one is a defect even when tests pass.
   `bd prime` delivers them whether or not anyone opens the file they are about,
   so a memory's erratum arrives in every session unasked.
 - **Do not insert code between a doc comment and its declaration.**
-- **Drop narration in the file you were already editing, never in a sweep** — and
-  *drop* it rather than rewriting the comment around it.
+- **A comment says what the code does now, at a high level.** Narration — what
+  it used to do, what a review or a first version got wrong, how it got here —
+  is dropped, not rewritten around. Where the context it carried is already in
+  the code, the doc comment or git, the narration goes whole.
 - A frozen output **contract** is neither a rule nor evidence. **Its SHAPE lives
   in `schema/`**, as a JSON Schema something can check the bytes against; `docs/`
   keeps the ARGUMENT for it, which is what a schema cannot say. A contract with

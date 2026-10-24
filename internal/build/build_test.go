@@ -7,9 +7,9 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-// TestFromSettingsReadsTheDirtyMarker is the guard for fisc-qz2w: a binary built
-// from a working tree with uncommitted changes used to report the last commit's
-// hash as though it were the source of the running code.
+// TestFromSettingsReadsTheDirtyMarker: a binary built from a working tree with
+// uncommitted changes says so, rather than reporting the last commit's hash as
+// though it were the source of the running code.
 //
 // That hash is not decoration here. It reaches published output through
 // check.Report.GeneratedBy and export's document GeneratedBy, so a dirty build
@@ -87,10 +87,9 @@ func TestFromSettingsReadsTheDirtyMarker(t *testing.T) {
 	}
 }
 
-// TestTheBuildMetadataIsReadEvenWhenTheLinkerSuppliedEverything is the guard
-// for the defect the first version of this fix shipped: Get returned early once
-// Commit and Date were both set from ldflags, which made the whole vcs.modified
-// arm unreachable in every binary `make build` produces -- the build that ships.
+// TestTheBuildMetadataIsReadEvenWhenTheLinkerSuppliedEverything: the
+// vcs.modified arm is reached when Commit and Date are both set from ldflags,
+// as in every binary `make build` produces.
 //
 // THE PRE-EXISTING `git describe --dirty` DOES NOT COVER THAT GAP, which is why
 // this is not merely redundant plumbing. Measured on this repository: with an

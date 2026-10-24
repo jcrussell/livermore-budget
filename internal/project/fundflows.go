@@ -73,7 +73,7 @@ const ConstraintTierCaveatID = "constraint-tier-is-our-reading"
 // and, for the General Fund, what it is spent on.
 //
 // IT PUBLISHES NO HEADLINE: it holds the same money at more than one grain, so
-// "the total" is ambiguous (fisc-xau). sankey.json stays the only document
+// "the total" is ambiguous. sankey.json stays the only document
 // with a headline; cuts-tie-along-the-lattice reconciles the two per cell.
 //
 // # The shape
@@ -95,7 +95,7 @@ const ConstraintTierCaveatID = "constraint-tier-is-our-reading"
 //	          netted (fund, category) cell of pp.173-183, from the fund itself
 //
 // MIXED GRAIN IS UNAVOIDABLE: pp.167-170 are General Fund only, so every other
-// fund reaches its object categories with no division between (fisc-gkv).
+// fund reaches its object categories with no division between.
 //
 // The (3,4), (1,0) and (2,3) links are emitted rather than left to the client
 // to fold: without them a view drawing those tiers finds nothing flowing into

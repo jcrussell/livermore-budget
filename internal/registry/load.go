@@ -577,8 +577,8 @@ func validateCategory(c Category, catf errFunc) error {
 	if len(c.Kinds) == 0 {
 		return catf(c.Slug, "kinds", "is required")
 	}
-	// AND A MEMBER MUST BE A REAL KIND. Until this landed, `kinds: [banana]` loaded
-	// clean and left `fisc verify` fully green, because fact-kind-matches-category
+	// AND A MEMBER MUST BE A REAL KIND. Otherwise `kinds: [banana]` loads clean and
+	// leaves `fisc verify` fully green, because fact-kind-matches-category
 	// compares a fact's kind against this list and a category no fact has reached is
 	// never consulted. Some are in that state today, including an assignable one, so
 	// the typo would surface years later as a mass failure instead of now as a

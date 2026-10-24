@@ -98,7 +98,7 @@ const (
 // building and passing every graph check since the two-year budget book was
 // mapped. What it never was, is exported: this list is what closes that gap,
 // and until it existed the site published one of the two documents that already
-// passed (fisc-kwq).
+// passed.
 func PublishedFiscalYears() []int {
 	return []int{2026, 2027}
 }

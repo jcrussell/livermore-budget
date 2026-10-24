@@ -208,8 +208,7 @@ func declaresKind(c registry.Category, k vocab.Kind) bool {
 // Benefits", two orthogonal axes, and folding one into the other would make
 // department rows and category rows sum into one total — and that they belong in
 // a registry of their own. data/departments.yaml is that registry, and this check
-// is what reads it. Four claims, and the first is the one the other three used to
-// stand in for:
+// is what reads it. Four claims:
 //
 //   - the slug names a division OR a department data/departments.yaml lists, so
 //     a fact whose `department` joins to nothing cannot be published;
@@ -228,7 +227,7 @@ func declaresKind(c registry.Category, k vocab.Kind) bool {
 // than against that one implementation, and an assertion that is currently
 // implied by a loader is not the same thing as one nobody makes.
 //
-// Until this bead (fisc-o15) the check ERRORED as soon as any fact carried a
+// Until this bead the check ERRORED as soon as any fact carried a
 // department, because "resolves" could not be established against a file that did
 // not exist. That was the honest interim, and it was deliberately loud: an error
 // makes Report.Failed() true without --strict, so the registry had to land in the

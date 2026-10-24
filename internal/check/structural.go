@@ -68,8 +68,7 @@ import (
 // that would notice a corruption in one. For every other file "unchanged since
 // extraction" is the whole of what is known. Re-extracting is what re-establishes
 // the rest, and reviewing the artifact diff by hand is the step that cannot be
-// automated away (`fisc reanchor`,
-// which would make that reviewable in one commit, is fisc-mq4.6 and not built).
+// automated away.
 //
 // manifest.json itself is not swept: it is not one of its own artifacts, it records
 // a hash for everything the extractor emitted and cannot record its own. Nor is it
@@ -382,7 +381,7 @@ func capped(items []string, n int) []string {
 // fifty pages wrote a manifest naming all fifty failures, emitted fifty fewer
 // artifacts, exited 1 — and `fisc verify` said PASS, because the missing pages were
 // missing from the manifest too and corpus.Doc documents an unlisted page as the
-// NORMAL "no such page" case (fisc-6r5).
+// NORMAL "no such page" case.
 //
 // It is a second, independent witness to the same event
 // extraction-emitted-every-page catches, and neither subsumes the other. This one is

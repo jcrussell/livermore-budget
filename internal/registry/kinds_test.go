@@ -75,7 +75,7 @@ func TestLoadAcceptsEveryKindVocabDefines(t *testing.T) {
 //
 // "transfer" is not an arbitrary bad string: it is the exact value all four
 // transfer categories carried until 6216eda, and it was reported as a pass for
-// as long as it was there (fisc-ttq).
+// as long as it was there.
 func TestLoadRefusesAKindVocabDoesNotDefine(t *testing.T) {
 	for _, bad := range []string{"transfer", "banana", "Revenue", "transfers_in"} {
 		t.Run(bad, func(t *testing.T) {

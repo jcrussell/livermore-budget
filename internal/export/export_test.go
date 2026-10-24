@@ -1209,7 +1209,7 @@ func TestPageCitesThePDFPageAndTheTextTheSiteShips(t *testing.T) {
 	// No forge, anywhere: not in the rendered citations and not in the config
 	// the client composes its own links from. A citation that needs github.com
 	// to be up, reachable and still hosting this repository is the defect this
-	// change removes (fisc-ze7).
+	// change removes.
 	// The footer's repository link is not a citation.
 	if strings.Contains(strings.ReplaceAll(page, `href="`+export.RepositoryURL+`"`, ""), "github.com") {
 		t.Error("the page still cites github.com; the shipped page text should have replaced it")
@@ -1523,12 +1523,10 @@ func TestConfigCannotCloseItsScriptElement(t *testing.T) {
 			"fiscal_year_label": "FY 2025-26",
 			"basis":             "adopted",
 			"headline":          map[string]any{"all_funds_gross_expenditure_cents": 25409541200},
-			// BOTH FIELDS CARRY THE MARKUP, because both now reach a page and
-			// they reach it by different routes: text is rendered into the
-			// caveat list by html/template, and summary rides in the
-			// FISC_CONFIG blob as JSON inside a <script>. A fixture that
-			// attacked only the field it used to have would leave the new one
-			// untested while looking like it covered the case.
+			// BOTH FIELDS CARRY THE MARKUP, because both reach a page by
+			// different routes: text is rendered into the caveat list by
+			// html/template, and summary rides in the FISC_CONFIG blob as JSON
+			// inside a <script>.
 			"caveats": []map[string]any{{
 				"id":      `</script><script>alert("pwned")</script>`,
 				"summary": `</script><script>alert("pwned")</script>`, "theme": "left-out",

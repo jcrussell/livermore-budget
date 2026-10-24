@@ -17,7 +17,7 @@ import (
 // transfer residual roughly doubling -- with headline-transfer-residual and
 // link-values-tie-to-facts both still GREEN, because they tie the graph to the
 // facts it was built from rather than to the document. That is fisc-u2v's
-// mechanism one schedule over (fisc-aes).
+// mechanism one schedule over.
 //
 // The one check that would see it is exempt exactly there:
 // cuts-tie-along-the-lattice reads structure.BudgetBookExceptions, which pins

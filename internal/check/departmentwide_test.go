@@ -34,9 +34,8 @@ var departmentwidePages = []int{85, 89, 93, 97, 101, 105, 108, 111, 115, 119, 12
 // makes this match p101. A long division label runs right up to the object
 // column: p101:11 prints "Community Development Wages & Benefits" with a SINGLE
 // space, where every other page leaves a wide run. A two-space rule reads that
-// line as no match at all and silently drops the whole division -- the first
-// draft of this test did exactly that and lost Community Development Admin's
-// four figures out of a sum it then reported as short.
+// line as no match at all and silently drops Community Development Admin's four
+// figures out of a sum it then reports as short.
 //
 // The figures are still separated by \s{2,}, which is what keeps the object name
 // from swallowing the first column.
@@ -113,12 +112,9 @@ func TestThePrintedDepartmentwideRowsSumToTheSpineByObjectCategory(t *testing.T)
 				// dollar, every one in the FY2023-24 Actual column, and those
 				// five are declared as stated_total_deltas in the rule file.
 				//
-				// THE TOLERATED CELLS ARE COUNTED, NOT WAIVED. An earlier draft
-				// allowed a $1 difference in column 0 of every division and said
-				// in its comment that "a sixth goes red". It did not: a sixth
-				// rounding division would have passed silently in the lane's one
-				// independent witness. The count is asserted against the five
-				// declarations below.
+				// THE TOLERATED CELLS ARE COUNTED, NOT WAIVED: a blanket $1
+				// allowance would let a sixth rounding division pass silently.
+				// The count is asserted against the five declarations below.
 				for c := 0; c < 4; c++ {
 					d := v[c] - running[c]
 					if d == 0 {

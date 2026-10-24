@@ -362,7 +362,7 @@ func validateNettedSign(r *Rule, row Row, publishes []vocab.Kind, errf errFunc) 
 // rowNames.index: a two-anchor row's identity carries a \x1f, so a total_row --
 // which is a plain string the author types and the resolver finds in the
 // page text -- can never equal one, and testing the index silently
-// disabled this check for every row carrying a label_tail (fisc-gtv). The
+// disabled this check for every row carrying a label_tail. The
 // printed form is tested too, because that is the other spelling an author
 // might reach for.
 func validateTotalRowNotARow(r *Rule, errf errFunc) error {
@@ -433,7 +433,7 @@ func validatePartGaps(r *Rule, p *Part, errf errFunc) error {
 	// this repository must not have. Every other one fails when it stops
 	// being true: a stated_total_delta that now ties exactly, a placed
 	// row's count that no longer matches, a wrapped label the page stopped
-	// wrapping. Measured on the production mapping (fisc-ekj): adding a
+	// wrapping. Measured on the production mapping: adding a
 	// fragment that appears nowhere on p67 built cleanly with byte-identical
 	// facts.
 	//
@@ -447,7 +447,7 @@ func validatePartGaps(r *Rule, p *Part, errf errFunc) error {
 	// block parses, resolves all ten rows and ties to the printed total
 	// exactly, publishing the page's orphan figure under a declaration that
 	// the page wrapped a label onto its own line, which it did not.
-	// unmapped_text (fisc-hcus) is that figure's honest home, and is worth
+	// unmapped_text is that figure's honest home, and is worth
 	// nothing while the dishonest one still works.
 	//
 	// Every entry the committed rules declare is refused by amount.Parse,

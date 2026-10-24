@@ -10,7 +10,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
-// detailScope is the scope Budget Book pp.167-170 are mapped at (fisc-brx).
+// detailScope is the scope Budget Book pp.167-170 are mapped at.
 const detailScope = "expenditure-by-department"
 
 // generalFundWages is what p66 prints for General Fund Wages & Benefits in

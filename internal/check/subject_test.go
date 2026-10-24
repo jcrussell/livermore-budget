@@ -124,8 +124,8 @@ func copyRepoFile(t *testing.T, src, dst, rel string) {
 // tree the input-mutation tests below rewrite, which is the only way to make a
 // check fail from something a repository could actually contain.
 //
-// It copies every artifact rather than only the pages the facts cite, and that
-// changed when the structural checks landed: artifacts-match-manifest hashes every
+// It copies every artifact rather than only the pages the facts cite:
+// artifacts-match-manifest hashes every
 // file the manifest lists AND reports every file the manifest does not list, so a
 // tree holding five of 1,572 pages is not a repository verify passes over — it is
 // 1,567 findings. The set copied here is exactly the set verify reads, which is
@@ -910,11 +910,10 @@ func TestARetargetedScopeUnbuildsThePublishedTrendsDocument(t *testing.T) {
 			res.Status, res.Summary, moved)
 	}
 	// EVERY DOCUMENT OF THE RETARGETED SCHEDULE, and the spine is not one of
-	// them. It used to be exactly one finding; the drill-down draws the same
-	// schedule, so retargeting it unbuilds those four documents too and five
-	// findings is the correct answer. Asserting a COUNT here would have to be
-	// re-edited by every future document of pp.127-140, and would go quiet on
-	// the case that matters -- a finding naming the spine.
+	// them: the drill-down draws the same schedule, so retargeting it unbuilds
+	// those documents too. No count is asserted, so a future document of
+	// pp.127-140 needs no edit here; what is asserted is that no finding names
+	// the spine.
 	var named []string
 	for _, f := range res.Findings {
 		named = append(named, f.Subject)
@@ -948,29 +947,12 @@ func TestARetargetedScopeUnbuildsThePublishedTrendsDocument(t *testing.T) {
 	}
 }
 
-// TestASliceNoDocumentClaimsIsReported is fisc-b8o, from the input side.
-//
-// THE CORPUS IT BUILDS IS THE ONE THE BEAD NAMES: the spine carrying two BASES
-// for one fiscal year, an FY2026 revised column beside the adopted one. That is
-// not a hypothetical shape -- pp.66-67 print no revised column today, and the
-// day they are mapped Sankey.Slices declares a third slice, because it derives
-// its years from the facts rather than from a list.
-//
-// WHAT USED TO HAPPEN. publishedProjectionBuilt unioned every slice of a
-// projection before comparing, so the three slices unioned to {2026 adopted,
-// 2026 revised, 2027 adopted} and satisfied every published document. verify
-// green -- and `fisc export` refused the very same corpus, ENTIRELY, because
-// the stem was a function of the fiscal year alone and the two FY2026 slices
-// computed one. A check that greens what the next command rejects is worse than
-// no check, because it is the one a reader trusts to have looked.
-//
-// THE COLLISION HALF IS GONE, AND THE TEST SAYS SO RATHER THAN BEING DELETED
-// WITH IT. fisc-rmx made the stem a function of the whole column list, so this
-// corpus now exports cleanly as sankey and sankey-2026-revised. What survives is
-// the claim that outlives the collision: a slice nobody publishes is a file the
-// site would serve and never declared, and it is reported by name and by the
-// stem it would take. The two beads landed in that order on purpose -- b8o's
-// test is what proved rmx's fix reached this far.
+// TestASliceNoDocumentClaimsIsReported builds the spine carrying two BASES for
+// one fiscal year, an FY2026 revised column beside the adopted one: the day
+// pp.66-67's revised column is mapped, Sankey.Slices declares a third slice,
+// because it derives its years from the facts. Each slice is compared on its
+// own, so a slice nobody publishes -- a file the site would serve and never
+// declared -- is reported by name and by the stem it would take.
 func TestASliceNoDocumentClaimsIsReported(t *testing.T) {
 	t.Parallel()
 	root := repoWithoutPDFs(t)
@@ -1029,8 +1011,8 @@ func TestASliceNoDocumentClaimsIsReported(t *testing.T) {
 // number against anything.
 //
 // project.TrendsColumns is the declared floor that closes it: it states what the
-// SITE PUBLISHES, which is not a claim about what the corpus used to hold, and a
-// corpus that no longer covers it goes red here naming the column.
+// SITE PUBLISHES, not what the corpus holds, and a corpus that does not cover
+// it goes red here naming the column.
 func TestAPublishedDocumentShortAColumnIsReported(t *testing.T) {
 	t.Parallel()
 	dropped := project.TrendsColumns()[0]
@@ -1093,7 +1075,7 @@ func TestAPublishedDocumentShortAColumnIsReported(t *testing.T) {
 }
 
 // TestContestedTotalsAreStillContested is the arm that stops a contested-total
-// declaration going dead unnoticed (fisc-av0w).
+// declaration going dead unnoticed.
 //
 // internal/project's caveat is conditional: it is printed only when the graph
 // actually draws the figure the entry declares, which is what makes it retire
@@ -1103,7 +1085,7 @@ func TestAPublishedDocumentShortAColumnIsReported(t *testing.T) {
 // half: over the COMMITTED corpus, every declared entry must still describe a
 // column that is published and a figure that is drawn.
 //
-// The corpus publishes p0067's figure for the contested total (fisc-av0w), so
+// The corpus publishes p0067's figure for the contested total, so
 // the entry stands: the book prints two figures for this total, and the
 // caveat and its exception apply. This holds that every entry still says so of the
 // committed corpus -- its column is published, the graph draws the figure it

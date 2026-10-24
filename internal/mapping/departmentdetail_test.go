@@ -104,7 +104,7 @@ func TestPublishedDepartmentDetailResolves(t *testing.T) {
 
 	// The twelve printed totals that cover more than one line of rules: eleven
 	// <DEPARTMENT> TOTAL rows and the schedule's own closing total. Six of the
-	// eleven cover a SINGLE division, which the parser refused until this lane.
+	// eleven cover a SINGLE division.
 	rollups, single := 0, 0
 	for i := range f.Rollups {
 		ro := &f.Rollups[i]

@@ -375,8 +375,8 @@ func TestAPointInAnUndeclaredColumnIsCaught(t *testing.T) {
 		}
 	}
 
-	// AND THE OTHER TWO STAY GREEN, which is the measurement the bead asked for:
-	// this corruption is caught HERE and by nothing else.
+	// AND THE OTHER TWO STAY GREEN: this corruption is caught HERE and by
+	// nothing else.
 	complete, err := (&trendSeriesAreComplete{}).Run(t.Context(), s)
 	if err != nil {
 		t.Fatalf("Run: %v", err)

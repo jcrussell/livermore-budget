@@ -10,7 +10,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
-// revenueScope is the scope Budget Book pp.127-140 are mapped at (fisc-u2v).
+// revenueScope is the scope Budget Book pp.127-140 are mapped at.
 // Spelled here rather than imported: internal/check declares it unexported and
 // this package is below it.
 const revenueScope = "revenue-by-fund"
@@ -49,7 +49,7 @@ var p127PropertyTaxes = []struct {
 // revenueDetailFacts renders p127's property-tax block at a chosen scope.
 //
 // Every fact carries a FUND, which is what the schedule's columns are, and it is
-// the reason this lane has no second guard: netCells refuses a fact carrying a
+// the reason there is no second guard: netCells refuses a fact carrying a
 // DEPARTMENT and has no such refusal for a fund, so these flow straight into the
 // spine's own cells if the scope lets them.
 func revenueDetailFacts(t *testing.T, scope string) []fact.Fact {

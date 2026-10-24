@@ -1105,9 +1105,8 @@ func (*constraintTierVocabulary) Run(_ context.Context, s *Subject) (Result, err
 		// Every graph carries the same metadata block, so the document that
 		// tiers a node is the document whose caveats are read.
 		caveats := p.Graph.Metadata.Caveats
-		// TWO FINDINGS, NOT ONE, now that a caveat has an id as well as a
-		// sentence. A caveat is looked up by ID and then its TEXT is compared,
-		// and the pair is the whole point:
+		// TWO FINDINGS, NOT ONE: a caveat is looked up by ID and then its TEXT
+		// is compared, and the pair is the whole point:
 		//
 		// Matching on the id alone would go green over a document whose
 		// disclosure had been reworded into something weaker -- a new fail-open
@@ -1115,9 +1114,8 @@ func (*constraintTierVocabulary) Run(_ context.Context, s *Subject) (Result, err
 		// quieter one, because the anchor would still resolve and the page
 		// would still render a paragraph under the right heading.
 		//
-		// Matching on the text alone works, and was the previous behaviour, but
-		// then the finding cannot tell "discloses nothing" from "discloses
-		// something else" -- and those have different fixes. The id is free.
+		// Matching on the text alone could not tell "discloses nothing" from
+		// "discloses something else", and those have different fixes.
 		i := slices.IndexFunc(caveats, func(c project.Caveat) bool {
 			return c.ID == project.ConstraintTierCaveatID
 		})

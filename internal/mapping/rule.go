@@ -41,7 +41,7 @@ const SchemaVersion = 1
 // Quantity is the grammar a cell must satisfy, and it is not Kind: a Kind
 // classifies a published fact in the flow model, a Quantity says what a CELL
 // is before any fact exists. Every quantity but the amount default is read so
-// the row stays whole, and publishes nothing (fisc-9tn4).
+// the row stays whole, and publishes nothing.
 type Quantity string
 
 // The quantities a cell can be. QuantityAmount is the default and the only
@@ -152,7 +152,7 @@ type Rollup struct {
 	//
 	// It exists because silence is the one unacceptable answer. p140's
 	// "Total Sources" exceeds the pages it closes by ~$57M, differently per
-	// column (fisc-wev), so it cannot be asserted by this or any other
+	// column, so it cannot be asserted by this or any other
 	// mechanism here -- and mapping those ten pages while declining to mention
 	// that the page's own closing total does not reconcile would be publishing
 	// the gap as though it were not there. reasonNoTotalRow cannot say this:
@@ -170,7 +170,7 @@ type Rollup struct {
 	//
 	// WHY MIXED IS NOT SIMPLY REFUSED. p140 prints "Total Sources", which is
 	// literally revenue plus transfers in — a real printed line over two kinds,
-	// declared Unassertable today for an unrelated reason (fisc-wev). Refusing
+	// declared Unassertable today for an unrelated reason. Refusing
 	// mixed kinds outright would choose a rule the corpus has not asked for, and
 	// would have to be unpicked the first time such a total became assertable.
 	// Scope is the opposite case and IS refused: see validateRollups.
@@ -282,7 +282,7 @@ type Rule struct {
 	//     zero consumers in this corpus, and the discrepancies it would appear
 	//     to cover are not rounding: p127's Total Property Taxes is $1 over 13
 	//     rows and pp.168-170 carry six more, all of which are the city's own
-	//     arithmetic and belong in stated_total_deltas by decision (fisc-2sd).
+	//     arithmetic and belong in stated_total_deltas by decision.
 	//   - It is refused on a rule that also declares a stated_total_delta. The
 	//     two mechanisms are disjoint by construction rather than by prose:
 	//     one names an exact figure and the other bounds an unnamed one, and a
@@ -489,8 +489,7 @@ type Part struct {
 	// the header line gives the page's column geometry, and every figure the
 	// part reads must fall in the band of the column the rule assigned it to.
 	//
-	// Absent, the part is read exactly as it was before geometry existed. The
-	// key is per-part rather than per-rule because a page can print more than
+	// Absent, the part is read by text alone. The key is per-part rather than per-rule because a page can print more than
 	// one schedule, and per-part rather than global because opting a part in
 	// is a claim about a specific page that someone has looked at.
 	//
@@ -591,7 +590,7 @@ type Part struct {
 	// property-tax rows gives $58,179,467 against a printed $58,179,468, and
 	// ten more blocks are off by <= $5 -- pp.111, 128, 129, 131, 135, 168, 172,
 	// 173, 181, 183, every one of them in the FY2023-24 Actual column. That is
-	// rounding in the city's own arithmetic, not in ours (fisc-2sd).
+	// rounding in the city's own arithmetic, not in ours.
 	//
 	// This is a DECLARATION, not a tolerance, and the difference is the whole
 	// point: an author writes down one column, one exact figure, and why.
@@ -600,13 +599,10 @@ type Part struct {
 	// declaration the document has stopped needing is a stale claim about the
 	// city's arithmetic and should surface rather than rot.
 	//
-	// THERE IS STILL NO GLOBAL EPSILON. What there now is, and what this
-	// comment used to deny, is a per-rule tolerance -- Rule.PrintedDecimals,
-	// which sizes itself from the page's own printed precision and the number
-	// of rows summed (fisc-1wr.2). The sentence here read "no global epsilon
-	// and no per-rule fuzz" until that landed; it is corrected rather than
-	// deleted because the distinction it was drawing is the one that keeps the
-	// two apart, and a reader needs it more now that both exist:
+	// THERE IS NO GLOBAL EPSILON. There is a per-rule tolerance,
+	// Rule.PrintedDecimals, which sizes itself from the page's own printed
+	// precision and the number of rows summed, and it is a different thing
+	// from a delta:
 	//
 	//   - A delta names the exact figure a document is out by. It fails when
 	//     the difference is anything else, including zero.
@@ -694,7 +690,7 @@ type unmappedText struct {
 // declared, because labelledValues truncates a row to len(Columns) and at four
 // the read stops before the marker, leaving checkGap to refuse "(10)" as
 // unexplained text between rows. So the column is real and skipped, and there
-// is no header anywhere on the page to name it with (fisc-wfi).
+// is no header anywhere on the page to name it with.
 //
 // The alternatives were both worse. Dropping the one-entry-per-column rule
 // gives up exactly what the rule buys -- a short list builds a grid one band
@@ -921,7 +917,7 @@ type Row struct {
 	// sections are the fund groups RECEIVING money, so a row's own end fits
 	// the column fine -- but the fund PAYING varies row by row inside a
 	// section. Measured: three of the five sections are mixed, Enterprise
-	// running general, enterprise x5 (fisc-aes). Without a per-row fund the
+	// running general, enterprise x5. Without a per-row fund the
 	// only way to express that is one rule per contiguous run of same-group
 	// rows, which makes rule boundaries depend on the city's row ORDER, so
 	// inserting a row re-partitions the rules.
@@ -948,7 +944,7 @@ type Row struct {
 	// p76 prints "Transfer From Low Income Hsng  to General Fund  257,012".
 	// That single figure is 257,012 leaving fund 200 and 257,012 arriving at
 	// fund 100. fact.Fact carries one fund field, so one fact cannot hold the
-	// pair (fisc-4rh); two facts can, and they cite the SAME doc_id, page,
+	// pair; two facts can, and they cite the SAME doc_id, page,
 	// offset and token, because one printed figure is the provenance for both
 	// directions of one movement. That is not duplicated evidence.
 	//

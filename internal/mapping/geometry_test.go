@@ -427,7 +427,7 @@ func TestASparseRowIsRefusedRatherThanMisfiled(t *testing.T) {
 // gutter and the placement check has nothing to say. The value count is right:
 // two rows, one column, two figures. What is wrong is that the page printed them
 // on one line rather than two, which is precisely the corruption the previous
-// extractor produced (fisc-gxt) and which mismaps every row below it.
+// extractor produced and which mismaps every row below it.
 func TestFusedRowsAreCaughtByLineAccounting(t *testing.T) {
 	labels := "LABELS:\nAlpha       1\nBeta        2\nEND\n"
 	fused := "          FY 2024\n       10       20\nEND\n"
@@ -722,25 +722,22 @@ func TestCIPp29SplitFigureFailsClosed(t *testing.T) {
 // NAMING THE ROW rather than filing the second 550,000 under a year the city
 // never put it in.
 //
-// IT NOW ACTUALLY REACHES THE ROW READ, which is fisc-i0d9. It used to anchor
-// the section on "PROJECT NAME" -- the column-header line's own label -- so the
-// block began at the headers, and checkGap's LEADING-GAP arm refused before any
-// row was read: "figures appear before the first row". The single assertion was
-// Contains("PB200654"), and that message quotes the first row's ANCHOR NAME, so
-// it passed on an error with nothing to do with the sparse row. The test was
-// cited as evidence for row-read behaviour it never executed.
+// IT REACHES THE ROW READ. An anchor on "PROJECT NAME", the column-header
+// line's own label, would start the block at the headers, and checkGap's
+// LEADING-GAP arm would refuse before any row was read with a message that
+// also quotes PB200654.
 //
-// The anchor now starts the block past the header line -- on its trailing
+// The anchor starts the block past the header line -- on its trailing
 // "TOTAL", ordinal 1, since "TOTAL - PARKS & BEAUTIFICATION" below is the second
 // -- and the rule declares the two rows above PB200654 so their figures are
 // consumed rather than sitting in the leading gap. PB200654's wrapped label
 // needs a wrapped_labels entry, which is the third thing this page demands
 // before a read gets through at all.
 //
-// AND THE GUARD THAT FIRES IS NOT THE ONE THE BEAD EXPECTED. fisc-i0d9 predicted
-// that reverting the geometry column guard would change the outcome. It does
-// not: the value count refuses first, because the row yields 2 tokens against 8
-// columns, and geometry never gets a chance to place them. Measured both ways --
+// THE GUARD THAT FIRES IS THE VALUE COUNT, not the geometry column guard:
+// reverting the column guard changes nothing. The value count refuses first,
+// because the row yields 2 tokens against 8 columns, and geometry never gets a
+// chance to place them. Measured both ways --
 // with column_headers declared and without, the error is identical. So on THIS
 // row the value count is the whole defence, and it is load-bearing in a way
 // worth stating: neutering it does not produce a wrong read, it panics on the

@@ -8,8 +8,8 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/amount"
 )
 
-// The guards on a document-derived tolerance (fisc-1wr.2) and on a total the
-// page prints above its own rows (fisc-h96o).
+// The guards on a document-derived tolerance and on a total the
+// page prints above its own rows.
 //
 // EVERY TEST HERE IS A MUTATION OF ONE WORKING RULE, and that is deliberate.
 // Both mechanisms open a guard that stood for a reason, so the question worth
@@ -198,7 +198,7 @@ rules:
 // existing at all. It would have no consumer here, and the dollar-level
 // discrepancies it looks like it would cover -- p127's $1 over thirteen rows,
 // six more on pp.168-170 -- are the city's own arithmetic, declared exactly
-// with stated_total_deltas (fisc-2sd) rather than bounded.
+// with stated_total_deltas rather than bounded.
 func TestPrintedDecimalsIsRefusedOnDollarTables(t *testing.T) {
 	_, err := parse(strings.NewReader(strings.NewReplacer(
 		"units: millions", "units: dollars",
@@ -350,7 +350,7 @@ func TestUnmappedTextRefusesAStaleDeclaration(t *testing.T) {
 }
 
 // TestUnmappedTextIsRefusedOnALabellessPart is the same refusal wrapped_labels
-// already carries (fisc-ekj): a positional part reads no gaps, so the
+// already carries: a positional part reads no gaps, so the
 // declaration would be accepted and never looked at.
 func TestUnmappedTextIsRefusedOnALabellessPart(t *testing.T) {
 	const yaml = `schema_version: 1
@@ -670,10 +670,8 @@ func TestPrintedDecimalsParseRefusals(t *testing.T) {
 			if !strings.Contains(err.Error(), tc.want) {
 				t.Errorf("refused for some other reason: %v", err)
 			}
-			// The FIELD, not just the sentence. Two validators in this file
-			// refuse a missing total_row in the same words, and the first draft
-			// of the case below asserted only the sentence and passed on the
-			// wrong one.
+			// The FIELD, not just the sentence: two validators in this file
+			// refuse a missing total_row in the same words.
 			if !strings.Contains(err.Error(), "printed_decimals:") {
 				t.Errorf("refused by some other validator: %v", err)
 			}
@@ -861,12 +859,10 @@ func TestTotalRowAboveAllowsAWrappedLabelAfterTheTotalsLine(t *testing.T) {
 
 // TestWithinToleranceRefusesRatherThanWrapping covers a fail-OPEN bound.
 //
-// The bound used to be an inline `abs(diff)*2 <= unit*terms`. amount.Parse
-// admits a millions token up to roughly 9.2e18 cents, and doubling a diff that
-// size wraps NEGATIVE, which compares <= any bound and ties; a diff at exactly
-// math.MinInt64 doubles to 0 and also ties. Either would have let a column miss
-// the total the document prints for it by an arbitrary amount, silently, in the
-// one arm that decides whether it may.
+// amount.Parse admits a millions token up to roughly 9.2e18 cents, so an
+// inline `abs(diff)*2 <= unit*terms` wraps NEGATIVE on a diff that size and
+// ties; a diff at exactly math.MinInt64 doubles to 0 and ties too. Either
+// would let a column miss its printed total by an arbitrary amount.
 //
 // Every case here is refused, which is the fail-closed direction: a discrepancy
 // too large to compare against a bound built from a printed unit is not within

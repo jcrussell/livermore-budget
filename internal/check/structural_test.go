@@ -39,15 +39,12 @@ import (
 // difference between Subject.Extractions and Subject.Docs; a test that wants a
 // mutation the fact checks cannot see uses the second.
 //
-// docWithout WAS THE ACFR AND IS NOW THE CIP, because the ACFR stopped being a
-// document nothing maps: mappings/livermore-acfr-fy2025.yaml landed and the
-// twenty-odd tests below started failing on "read manifest: no such file", which
-// says nothing about what they assert. A rule file demands its document's
-// extraction, so deleting or skewing that extraction is no longer an invisible
-// mutation -- it is a load error before any check runs.
+// docWithout MUST BE A DOCUMENT NO RULE FILE MAPS: a rule file demands its
+// document's extraction, so deleting or skewing a mapped one is a load error
+// before any check runs, not an invisible mutation.
 //
 // TestDocWithoutIsMappedByNothing turns that from a convention into a check, so
-// the next lane to map a document gets told which constant to move rather than
+// the next change to map a document gets told which constant to move rather than
 // re-deriving it from a manifest error.
 const (
 	docWithFacts = testDoc
@@ -55,12 +52,8 @@ const (
 )
 
 // pagesOfDocWithout is docWithout's page count, read off data/sources.yaml rather
-// than written down here.
-//
-// It used to be the literal 195 in five assertions, which is what made moving
-// docWithout from the ACFR to the CIP fail in five places with the right
-// behaviour and the wrong number. A page count is a property of whichever
-// document the constant names, so it is derived from the constant.
+// than written down here: it is a property of whichever document the constant
+// names.
 func pagesOfDocWithout(t *testing.T) int {
 	t.Helper()
 	sources, err := registry.LoadSources(os.DirFS("../../data"))

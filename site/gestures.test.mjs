@@ -9,7 +9,7 @@
 // Every gesture is a dispatched event with a planted timeStamp, because the
 // node's and the glyph's activation guard compares a click's stamp against
 // the key that may have synthesised it. Every assertion is over ids, counts and booleans: a
-// failing assertion over a laid mark formats the whole graph (fisc-yj4w.33).
+// failing assertion over a laid mark formats the whole graph.
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";

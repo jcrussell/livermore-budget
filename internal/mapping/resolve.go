@@ -458,7 +458,7 @@ func (r *Resolver) readPart(rule *Rule, p *Part) ([]Value, []Omission, error) {
 	}
 
 	// Built once per part. A part that declares no column_headers gets a nil
-	// guard and is read exactly as it was before geometry existed.
+	// guard and is read by text alone.
 	guard, err := r.guard(rule, p)
 	if err != nil {
 		return nil, nil, err
@@ -485,8 +485,7 @@ func Omissions(rule *Rule, p *Part) []Omission {
 		return nil
 	}
 	// Keyed on Identity(), the key the rule's rows are unique on. Matching
-	// the bare Label here would report a blank on every row sharing it
-	// (fisc-gtv).
+	// the bare Label here would report a blank on every row sharing it.
 	var out []Omission
 	for i, row := range rule.Rows {
 		for c := range p.ColumnHeaders {
@@ -1187,7 +1186,7 @@ func (r *Resolver) RollupTotalSpan(ro *Rollup) (lo, hi int, err error) {
 // glues the two onto one line: Budget Book p67 runs the eight TOTAL
 // EXPENDITURES figures straight into the eight TRANSFER OUT figures, so the
 // maximal run there is sixteen and the totals are unreadable without the
-// distinction the page itself draws (fisc-gxt).
+// distinction the page itself draws.
 //
 // The maximal run is computed and preferred first, so the prefix is only ever
 // consulted where a run is the wrong width. A page that marks only some of its
@@ -1247,14 +1246,14 @@ type totalsResult struct {
 	Columns int
 
 	// Declared is how many of those columns tied only because the rule
-	// declared a discrepancy (fisc-2sd). It is reported separately so a part
+	// declared a discrepancy. It is reported separately so a part
 	// that ties on the document's own rounding cannot read as one that ties
 	// exactly -- the caller says so, rather than the number quietly counting
 	// as clean coverage.
 	Declared int
 
 	// Tolerated is how many columns tied only inside the tolerance the rule's
-	// printed_decimals derives from the page (fisc-1wr.2), and Slack is what
+	// printed_decimals derives from the page, and Slack is what
 	// each of those columns was actually out by, in the order they were
 	// compared.
 	//
@@ -1929,8 +1928,7 @@ func (w *decimalsWitness) settle(rule *Rule) error {
 	// row or column, so the witness never sees those
 	// tokens -- and a rule whose compared column prints integers while its
 	// SKIPPED column prints "16.00" would otherwise be told, falsely, that no
-	// token it reads prints two decimals. Rule.PrintedDecimals draws exactly
-	// this distinction and the message used to ignore it.
+	// token it reads prints two decimals.
 	return fmt.Errorf("declares %d printed decimal place(s), but no token summed into a "+
 		"compared column prints that many", *rule.PrintedDecimals)
 }
@@ -2145,20 +2143,9 @@ func isCurrencyMark(s string) bool { return s == "$" }
 // changes what a figure in that position MEANS, so there is no subset worth
 // exempting.
 //
-// THE SECOND RETURN IS WHY THIS SIGNATURE CHANGED (fisc-oz4). The length branch
-// used to return min(len(a), len(b)), and the only caller indexes BOTH slices at
-// the returned value to build its message -- so a=3 columns against b=5 returned
-// 3 and panicked on a[3]. A branch added to make the helper safe for its next
-// caller crashed instead.
-//
-// The bead preferred returning -1 there and leaving the width to the caller.
-// That is NOT what this does, and the reason is the comment the branch replaced:
-// -1 means "no differing column", which is the FALSE AGREEMENT the branch
-// existed to prevent -- a run that is a prefix of a longer one would report
-// agreement. Choosing between crashing and lying is not the choice; a caller
-// that cannot express "these are not comparable" is the defect. So the state is
-// returned instead of encoded in a sentinel, and a caller must handle it before
-// it can index anything.
+// RUNS OF DIFFERENT LENGTHS ARE NOT COMPARABLE, and say so in the second
+// return rather than in a sentinel index: min(len) would have the caller index
+// past the shorter run, and -1 would report a prefix as agreement.
 func firstDifferingColumn(a, b []Column) (idx int, comparable bool) {
 	if len(a) != len(b) {
 		return 0, false

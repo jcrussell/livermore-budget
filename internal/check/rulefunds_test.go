@@ -172,8 +172,8 @@ func TestPrintedTotalLabelSplitsOnTheColumnGrid(t *testing.T) {
 // entirely unmapped fund section on a swept page went invisible, which is the
 // hole clause 2 exists to close.
 //
-// The corpus had no collision when the bead was filed and still has none, so
-// this cannot be shown against committed pages: it is shown against two inline
+// The corpus has no collision, so this cannot be shown against committed
+// pages: it is shown against two inline
 // pages printing the same line, one of them claimed.
 func TestAClaimOnOnePageDoesNotSilenceAnotherPage(t *testing.T) {
 	t.Parallel()

@@ -38,15 +38,15 @@ type report struct {
 	ColumnsTied  int `json:"columns_tied_to_a_stated_total"`
 
 	// ColumnsTiedByDeclaration is how many of ColumnsTied tied only because
-	// the rule declared a discrepancy in the document's own arithmetic
-	// (fisc-2sd). Reported separately and printed whenever it is non-zero,
+	// the rule declared a discrepancy in the document's own arithmetic.
+	// Reported separately and printed whenever it is non-zero,
 	// because "24 columns tie" and "23 tie exactly and one ties to a declared
 	// $1 of the city's rounding" are different claims, and a build that stated
 	// the first while meaning the second would be overstating its evidence.
 	ColumnsTiedByDeclaration int `json:"columns_tied_by_declaration"`
 
 	// ColumnsTiedByTolerance is how many of ColumnsTied tied only inside the
-	// tolerance a rule's printed_decimals derives from its page (fisc-1wr.2),
+	// tolerance a rule's printed_decimals derives from its page,
 	// and ToleranceSlack what those columns were out by.
 	//
 	// SAME REASON AS ColumnsTiedByDeclaration, and it is the second half of the
@@ -137,8 +137,7 @@ type declaredOmission struct {
 // check against, the second a rule that has been given one but has not said
 // where on a label-less page the totals begin.
 //
-// Neither says the DOCUMENT prints no total, and the second used to. That is a
-// claim about the source, and only a human reading the page can make it —
+// Neither says the DOCUMENT prints no total. That is a claim about the source, and only a human reading the page can make it —
 // ErrNoStatedTotals reaches here solely from a label-less part with no stop_at,
 // which is a gap in the rule.
 const (

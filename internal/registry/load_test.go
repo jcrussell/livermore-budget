@@ -207,8 +207,8 @@ categories:
 `,
 			want: `taxonomy.yaml: category "taxes/property": parent: is "transfers", but the slug's head noun is "taxes"`,
 		}, {
-			// The defect this whole arm exists for. Before it landed this
-			// file loaded clean and `fisc verify` was fully green.
+			// Without this arm the file loads clean and `fisc verify` is
+			// fully green.
 			name: "category kind that vocab.Kind has never defined",
 			taxonomy: `
 schema_version: 1
@@ -321,9 +321,8 @@ categories:
 `,
 			want: `taxonomy.yaml: category "taxes": contra_rows[1]: repeats "ERAF" on page 127`,
 		}, {
-			// The arm that checks a contra row is checked AGAINST `pages`, so a
-			// category declaring contra rows and no pages used to skip it
-			// entirely -- fail-open, and green.
+			// A contra row is checked AGAINST `pages`, so a category declaring
+			// contra rows and no pages must still be refused, not skipped.
 			name: "contra row on a category with no pages to check it against",
 			taxonomy: `
 schema_version: 1

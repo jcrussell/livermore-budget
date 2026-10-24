@@ -135,7 +135,7 @@ func readSpine(t *testing.T) spineRead {
 			// pp.66-67 print every row of every block. A row placed on one
 			// page would be a claim about what the city printed, and the one
 			// time this project made it, it was laundering an extractor
-			// defect (fisc-c00).
+			// defect.
 			for _, row := range ru.Rows {
 				if row.Page != 0 {
 					t.Errorf("rule %s places %q on page %d, want every row on both: "+
@@ -344,7 +344,7 @@ func TestPublishedPartsDeclareColumnHeaders(t *testing.T) {
 	// their rows or their printed total is on the far side of a page break;
 	// 5 transfer parts on p76, one per printed section -- the first parts in
 	// this file to declare a column the page prints no header over, which they
-	// spell as a trailing null (fisc-wfi); and 14 funding-source parts over
+	// spell as a trailing null; and 14 funding-source parts over
 	// pp.85-125, one per page, of which three departments declare two because
 	// their fund rows and their printed total straddle a page break; and 29
 	// departmentwide parts, one per division block, on the ELEVEN of those same

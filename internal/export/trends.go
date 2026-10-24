@@ -158,7 +158,7 @@ type trendsBody struct {
 }
 
 // reconcileSeriesCounts refuses a series document whose own counts disagree
-// with the cells the page just laid out (fisc-4j5).
+// with the cells the page just laid out.
 //
 // `fisc export` runs no checks by design and this is the one thing it insists
 // on. A series legitimately SHORT A COLUMN still reconciles: internal/check
@@ -170,7 +170,7 @@ type trendsBody struct {
 // off the projection's selection, points off the series actually built. A
 // document that dropped a series publishes points below facts, and reconciling
 // only points once shipped a lede claiming 924 figures over a table carrying
-// 920 (fisc-5tu).
+// 920.
 func reconcileSeriesCounts(projection string, rendered, series int, counts trendCountsMeta) error {
 	if rendered != counts.Points {
 		return fmt.Errorf(
@@ -194,30 +194,18 @@ func reconcileSeriesCounts(projection string, rendered, series int, counts trend
 
 // buildCells lays one series' points out against the document's COLUMNS.
 //
-// POSITIONAL WAS WRONG AND THE FAILURE IS THE ONE THIS PROJECT EXISTS TO
-// PREVENT. An earlier version emitted one cell per point, in the order the
-// document listed them, against headers built from metadata.columns. Those two
-// lists agree only while every series is complete -- and a series short a column
-// is a state the project explicitly supports: internal/check declares it through
-// incompleteSeries, and `fisc export` runs no checks, so a document with a gap
-// can be packaged. Under the positional version every figure after the gap slid
-// one column left, printing FY2026's money under FY2025 with a citation link to
-// FY2026's page. A plausible wrong value, published, with provenance that
-// disagrees with it.
-//
-// So the cells are keyed on (fiscal_year, basis) -- the column identity the
-// document itself publishes -- and a column with no point gets a rendered gap
-// rather than a shifted neighbour. A gap a reader can see is the honest form of
-// something the document does not say.
+// KEYED, NOT POSITIONAL. A series short a column is a state the project
+// supports (internal/check's incompleteSeries), and `fisc export` runs no
+// checks, so a document with a gap can be packaged. Laid out by position,
+// every figure after the gap would slide one column left, under another
+// year's header with its own year's citation. So the cells are keyed on
+// (fiscal_year, basis), the column identity the document publishes, and a
+// column with no point gets a rendered gap.
 //
 // A point in NO published column cannot occur through internal/project, which
 // filters facts on the same column set. If one ever arrives it is dropped here,
 // so this reports how many points it actually PLACED and the caller reconciles
-// that against the document's own counts.points. That reconciliation used to be
-// promised by this comment and performed by nobody: counts.points was decoded
-// and read nowhere, so a 1-column document carrying a 2-point series exported
-// successfully, rendered one cell, lost the other figure silently, and printed
-// a lede saying "2 figures in all" (fisc-4j5).
+// that against the document's own counts.points.
 func buildCells(points []trendPoint, columns []columnRef, meta []trendColumnMeta, cite *cellCites,
 ) ([]cellRef, int, error) {
 	type key struct {

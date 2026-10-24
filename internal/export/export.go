@@ -247,7 +247,7 @@ type Options struct {
 	// (docs/sankey-contract.md) — so anything else the site has to carry needs
 	// a channel of its own. There are two such things already: the cited pages'
 	// extracted text, which Write puts through this same path (see writeFiles),
-	// and the fact store the provenance browser downloads (fisc-4ua.8). Built
+	// and the fact store the provenance browser downloads. Built
 	// once, used twice; a page-text-shaped option would have to be built again
 	// for the second caller.
 	//

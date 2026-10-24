@@ -74,7 +74,7 @@ var rowAnchorPrefixes = []rowAnchorPrefix{
 //
 //   - NO ANCHOR ON THE LINE. p76 prints three continuation rows whose "Transfer
 //     From" carries over from the row above, so their declared payer has no
-//     printed anchor of its own to be checked against (fisc-30j). The other end
+//     printed anchor of its own to be checked against. The other end
 //     of the same row IS anchored, which is how these are told apart.
 //
 //   - NO VERB PHRASE, AND NO DECLARATION. A row labelled with a bare fund name
@@ -86,7 +86,7 @@ var rowAnchorPrefixes = []rowAnchorPrefix{
 //     it runs FIRST, ahead of the prefix arm, and the ordering matters because
 //     each reads the same string for a different purpose. Where the rule does
 //     not declare it, this check still makes no claim and the summary says so
-//     per rule. pp.85-125's 78 rows all declare it (fisc-90fp).
+//     per rule. pp.85-125's 78 rows all declare it.
 //
 //     THE DIRECTION HALF IS NOT RECOVERED BY THAT DECLARATION and must not be.
 //     A bare fund name says which fund, never which end, so the bare-label arm
@@ -135,16 +135,10 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 				// rows other pages print and not skipped ones, so without this
 				// they arrive here.
 				//
-				// IT SITS AT THE TOP OF THE LOOP AND NOT INSIDE ONE ARM, which
-				// is the second attempt. The first put `!row.Skip` on the
-				// bare-label arm alone, which excluded such a row from being
-				// CHECKED and left it in the omission counters -- so the summary
-				// then said "no row_labels_name_funds declaration covers that
-				// end" about a rule that declares it. That is the same false
-				// sentence the counterpart refusal had just closed at the root,
-				// reintroduced one commit later by the fix for a different
-				// finding. Both passes found it; the second found it in the
-				// first's fix.
+				// IT SITS AT THE TOP OF THE LOOP AND NOT INSIDE ONE ARM: on the
+				// bare-label arm alone a skipped row would stay in the omission
+				// counters, and the summary would say "no row_labels_name_funds
+				// declaration covers that end" about a rule that declares it.
 				if row.Skip {
 					continue
 				}
@@ -410,10 +404,9 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 	// false statement -- and under --strict it would surface as an undeclared
 	// vacancy carrying a misleading reason, which is worse than no reason.
 	//
-	// BOTH COUNTERS GUARD IT, and testing only the first was a defect this check
-	// shipped with for one commit: over a corpus of nothing but pp.85-125 every
-	// declared fund is unphrased rather than unanchored, so the check reported
-	// vacuous while announcing that no row declares a fund and 78 did.
+	// BOTH COUNTERS GUARD IT: over a corpus of nothing but pp.85-125 every
+	// declared fund is unphrased rather than unanchored, and the check must not
+	// report vacuous while announcing that no row declares a fund.
 	nothing := "no row declares a fund: every mapped schedule takes its fund from a " +
 		"column, where rule-funds-match-their-headings checks it"
 	if unanchored > 0 || unphrased > 0 {

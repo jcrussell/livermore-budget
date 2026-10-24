@@ -168,11 +168,9 @@ func TestFundBalanceIdentityIsNotVacuousOverTheCommittedCorpus(t *testing.T) {
 // difference between a defect in the STORE and a failure of the harness.
 //
 // Two facts of one category on one balance leave the identity with no single
-// value to check. The first version of this check returned an error for that,
-// which gives the whole check StatusError -- so ONE duplicated line anywhere in
-// the corpus would have left all thirteen balances unexamined and reported a
-// corpus defect as a broken checker. The report tells those two apart on purpose
-// and a check must not conflate them.
+// value to check. That is a finding, not an error: an error gives the whole
+// check StatusError, so one duplicated line would leave every balance
+// unexamined and report a corpus defect as a broken checker.
 //
 // The shape is not hypothetical: fisc-2x7y is exactly this, measured on ACFR
 // p41, where two rules over one page section can publish one printed figure
@@ -191,10 +189,7 @@ func TestFundBalanceIdentityReportsADuplicateWithoutAbandoningTheRest(t *testing
 
 	res := fundBalanceResult(t, cells)
 	// want fail and specifically NOT error: the store is wrong, the checker is
-	// not, and the report distinguishes them. Asserted as one comparison because
-	// a separate `if res.Status == StatusError` after this line is unreachable,
-	// which is what the first version of this test shipped -- dead code reading
-	// as the guard that carries the test's whole point.
+	// not, and the report distinguishes them.
 	if res.Status != StatusFail {
 		t.Fatalf("status = %s (%s), want fail; StatusError would mean a duplicated "+
 			"line in the store had been reported as a broken checker", res.Status, res.Summary)
@@ -228,22 +223,12 @@ func TestFundBalanceIdentityReportsADuplicateWithoutAbandoningTheRest(t *testing
 }
 
 // TestFundBalanceFindingsAlwaysNameASubject covers BOTH arms that emit a
-// finding, and it is table-driven because its first version did not.
-//
-// That version built one balance with no beginning line AND a duplicated ending
-// line, and asserted no finding had an empty subject. It looked like it covered
-// both arms. It covered one: the duplicate arm runs first and `continue`s, so
-// the missing-lines arm was never reached. MEASURED -- reverting that arm to
-// finding(b.ids[project.CategoryFundBalanceBeginning], ...), left the whole
-// internal/check suite GREEN.
-// A test named for a property, passing on the bug it was written for.
-//
-// So the two shapes are separate cases now, and each is reachable only through
-// the arm it is named for.
+// finding, one case each: the duplicate arm runs first and `continue`s, so a
+// balance with both defects would reach only it.
 func TestFundBalanceFindingsAlwaysNameASubject(t *testing.T) {
 	t.Parallel()
-	// Both cases drop general's BEGINNING line, which is the id both arms used
-	// to reach for; a balance that still has one cannot show the defect.
+	// Both cases drop general's BEGINNING line, the id a subject-less finding
+	// would reach for; a balance that still has one cannot show the defect.
 	withoutBeginning := func() []testCell {
 		var out []testCell
 		for _, c := range fixtureCells {

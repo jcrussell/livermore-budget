@@ -135,8 +135,8 @@ func fundingCents(t *testing.T, tok string) amount.Cents {
 	return c
 }
 
-// TestThePrintedFundingSourcesSumToTheSpineByFundGroup is this lane's whole
-// argument, done from the pages.
+// TestThePrintedFundingSourcesSumToTheSpineByFundGroup ties pp.85-125's funding
+// rows to the spine, done from the pages.
 //
 // Every one of the 78 printed rows is resolved to a fund through
 // data/funds.yaml, bucketed by that fund's TYPE, and summed. The result must be

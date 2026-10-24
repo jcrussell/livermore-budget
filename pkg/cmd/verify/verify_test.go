@@ -559,11 +559,7 @@ func sortedKeys[V any](m map[string]V) []string {
 //
 // The exit code IS this command's contract -- ci.yml's --strict step is what a
 // contributor's commit meets -- and the help is where that contract is stated
-// in words. When 40943db added declarations, three sites went on promising the
-// old rule: the package doc, the Long text and the flag's own description all
-// said --strict fails on ANY vacuous check, while the committed corpus reported
-// three vacuous and exited 0. A reader predicting CI from the help would have
-// been wrong, and nothing went red.
+// in words, so a reader predicting CI from the help must not be wrong.
 //
 // So this asserts the two halves that are easy to state and easy to get wrong,
 // and deliberately does not assert the wording around them.

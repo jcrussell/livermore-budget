@@ -187,7 +187,7 @@ func (f fixtureCopy) extraction() string {
 }
 
 // fixtureCopies is every fixture this package reads. Adding one means adding a
-// row here and nothing else (fisc-28u).
+// row here and nothing else.
 func fixtureCopies() []fixtureCopy {
 	var out []fixtureCopy
 	for _, n := range []int{66, 67} {
@@ -213,7 +213,7 @@ func pageFixture(t *testing.T, n int) string {
 // honest. These pages are a second copy of testdata/pages/, which is itself a
 // copy of data/extracted/, and nothing regenerates either: a build that passes
 // here only tells you about the committed corpus for as long as the copies
-// still match it. They silently stopped matching once already (fisc-yqv.5).
+// still match it. They silently stopped matching once already.
 func TestFixturesAreVerbatimCopies(t *testing.T) {
 	copies := fixtureCopies()
 	if len(copies) == 0 {

@@ -682,7 +682,7 @@ func TestTransferCaveatWhenLegsMatch(t *testing.T) {
 }
 
 // TestTransferCaveatNamesThePrintedColumn asserts the caveat promises no
-// work that has landed, points at transfers-by-fund, and names p222's
+// future work, points at transfers-by-fund, and names p222's
 // transfers to the CIP, which it does only when the store carries p222's legs
 // in this column and they sum to this document's residual.
 func TestTransferCaveatNamesThePrintedColumn(t *testing.T) {
@@ -829,7 +829,7 @@ func sortedStrings(s []string) bool {
 	return true
 }
 
-// The contested-total caveat (fisc-av0w).
+// The contested-total caveat.
 //
 // WHAT IT IS FOR. Budget Book p0067 prints an Internal Service Funds Services &
 // Supplies figure $250,000 higher than six other schedules of the same document,

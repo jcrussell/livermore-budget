@@ -243,8 +243,8 @@ func TestTheTrendsMetadataKeyOrderMatchesTheContract(t *testing.T) {
 	}
 }
 
-// TestEncodeLeavesHTMLAlone is the one extraction the byte test genuinely earns
-// (fisc-2u4): a second projection that built its own encoder would ship with
+// TestEncodeLeavesHTMLAlone is the one extraction the byte test genuinely earns:
+// a second projection that built its own encoder would ship with
 // escaping ON, because that is json.Marshal's default, and nothing would say so
 // until a reader saw an ampersand entity on the page.
 func TestEncodeLeavesHTMLAlone(t *testing.T) {

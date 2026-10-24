@@ -34,8 +34,8 @@ import (
 // only to its own fact, and the reverse sweep filters the facts on those same
 // columns, so the fact behind it is never looked at. internal/export then drops
 // such a point when it lays the table out, because there is no column to put it
-// in, and the figure leaves the published page with nothing saying so
-// (fisc-4j5). internal/export refuses that document too; this arm is what names
+// in, and the figure leaves the published page with nothing saying so.
+// internal/export refuses that document too; this arm is what names
 // which point, and it is reached first because `fisc verify` runs before
 // `fisc export`.
 //
@@ -81,8 +81,8 @@ func (*trendPointsTieToFacts) Run(_ context.Context, s *Subject) (Result, error)
 				//
 				// It matters because internal/export DROPS such a point when it
 				// lays the table out -- there is no column to put it in -- so the
-				// figure leaves the published page without anything saying so
-				// (fisc-4j5). The packager now refuses that document too; this is
+				// figure leaves the published page without anything saying so.
+				// The packager now refuses that document too; this is
 				// the half that names WHICH point, and which is reached first
 				// because `fisc verify` runs before `fisc export`.
 				if col := (project.Column{FiscalYear: pt.FiscalYear, Basis: vocab.Basis(pt.Basis)}); !declared[col] {
@@ -224,7 +224,7 @@ var incompleteSeries = map[string]string{}
 // on.
 //
 // WHAT IT CATCHES AND WHAT IT DOES NOT, because the difference is easy to
-// overstate and a first draft of this comment did. The columns compared against
+// overstate. The columns compared against
 // are the ones the projection was BUILT over -- Options.Columns -- and
 // Trends.Slices derives those from the facts that survive, so they and the
 // document's published columns are the same list by construction. That means:
@@ -235,10 +235,9 @@ var incompleteSeries = map[string]string{}
 //     actually arrives when a city reprints a schedule.
 //   - A WHOLE COLUMN vanishing from the corpus is NOT caught here. Every series
 //     loses it together, Slices returns one column fewer, and every series is
-//     complete over what remains. Nothing in this check compares the corpus
-//     against what the corpus used to hold, and inventing an expected column
-//     list to compare against would be a constant nobody could justify off a
-//     page. Filed as fisc-7dt.
+//     complete over what remains. An expected column list to compare against
+//     would be a constant nobody could justify off a page; the published
+//     floor is project.TrendsColumns, checked elsewhere.
 type trendSeriesAreComplete struct{}
 
 var _ Check = (*trendSeriesAreComplete)(nil)

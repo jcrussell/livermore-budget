@@ -30,14 +30,12 @@ const TrendsProjection = "revenue-trends"
 // FY2023-24 entirely would build a three-column document that every check passes
 // over. trend-series-are-complete compares each series against the columns its
 // document was BUILT over, so all 231 series would be complete over three and
-// the check goes green while counts.facts falls from 924 to 693 (fisc-7dt).
+// the check goes green while counts.facts falls from 924 to 693.
 //
 // This list is the declared floor that closes that hole from the publishing
 // side: it says what the SITE PROMISES, which a corpus cannot contradict without
-// something going red. It is not a claim about what the corpus used to hold --
-// the class of constant this project refuses, because no page states it -- and
-// it is the same species of declaration as [PublishedFiscalYears], which is also
-// stated, also author-chosen, and also load-bearing for exactly this reason.
+// something going red. It is not a claim about what the corpus holds, which no
+// page states; it is the same species of declaration as [PublishedFiscalYears].
 //
 // The bases are the ones the schedule prints and are NOT one measurement: an
 // actual, a mid-year re-forecast, and two years of one adopted two-year budget.

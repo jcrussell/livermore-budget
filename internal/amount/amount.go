@@ -135,8 +135,8 @@ func DigitCents(u Units, decimals int) (Cents, bool) {
 // parentheses) so the two cannot disagree about what a token is, and it reports
 // false for a fraction longer than u can represent exactly, which is the one
 // numeric rule Parse enforces that a decimal COUNT could otherwise contradict:
-// Decimals("1.234", Dollars) returning (3, true) beside a Parse that rejects the
-// same token was a real contradiction of the sentence above, caught by review.
+// Decimals("1.234", Dollars) does not return (3, true) beside a Parse that
+// rejects the same token.
 //
 // It does NOT otherwise re-validate the number -- a misplaced thousands
 // separator, a leading minus, split digits -- because a caller has already
@@ -150,10 +150,7 @@ func Decimals(s string, u Units) (int, bool) {
 	if strings.HasPrefix(t, "(") && strings.HasSuffix(t, ")") {
 		t = stripCurrency(strings.TrimSuffix(strings.TrimPrefix(t, "("), ")"))
 	}
-	// NO zeroTokens TEST, ALTHOUGH Parse RUNS TWO. The first draft here copied
-	// Parse's shape and carried both, and BOTH could be deleted with every test
-	// still green -- found by asking what a mutation would break rather than
-	// whether the suite passed. The reason is that Parse has to tell a dash
+	// NO zeroTokens TEST, ALTHOUGH Parse RUNS TWO: Parse has to tell a dash
 	// (zero, a real value) from a digit-free token (an error), and this function
 	// does not: both mean "says nothing about precision", so the one arm below
 	// answers for both. "-" and "--" contain no digit, so it catches them.

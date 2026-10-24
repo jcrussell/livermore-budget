@@ -568,7 +568,7 @@ export let groupIndex = new Map();
  * stated, so the gap the chart cannot show stays visible.
  *
  * A document with no metadata.counts is counted by its ribbons alone rather
- * than dereferenced: a throw here, mid-repaint, splits the page (fisc-bsg).
+ * than dereferenced: a throw here, mid-repaint, splits the page.
  */
 export function paintCounts() {
   const counts = maybeEl("counts-line");
@@ -4453,7 +4453,7 @@ export async function loadColumn(path, superseded) {
   if (!isDocument(doc, path)) return null;
   // The one check Go cannot make: which COPY the browser holds. The site has
   // no cache-busting, and the stamp names the commit, so a column from any
-  // other deploy fails here, before any repaint (fisc-bsg).
+  // other deploy fails here, before any repaint.
   if (doc.generated_by !== CONFIG.exported_by) {
     fail("This page will not draw " + path + ": the page was packaged by " +
       CONFIG.exported_by + " and this file by " + (doc.generated_by || "an unstated build") +
@@ -4752,7 +4752,7 @@ export async function main() {
   wireRoom();
   wireZoom();
 
-  // Wired before the first fetch (fisc-8cg): a superseded or failed opening
+  // Wired before the first fetch: a superseded or failed opening
   // year can still be followed by one that draws, and it needs these.
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {

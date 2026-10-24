@@ -336,7 +336,7 @@ func TestNormalizeUnifiesDashes(t *testing.T) {
 	}
 }
 
-// The three helpers a document-derived tolerance is built from (fisc-1wr.2).
+// The three helpers a document-derived tolerance is built from.
 //
 // THEY ARE TESTED HERE AND NOT ONLY THROUGH internal/mapping, because review
 // found them at 0.0% coverage from this package: every assertion about them was

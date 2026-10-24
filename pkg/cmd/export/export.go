@@ -65,12 +65,12 @@ type result struct {
 // the projection name (a column of its own, or data/<stem>.json where it
 // states no column), and any other assets the site ships.
 //
-// This is the seam onto internal/project (fisc-gxa.1). It is a function type
+// This is the seam onto internal/project. It is a function type
 // rather than that package's Projection interface on purpose: internal/export
 // must not know how a projection is built, and this command must not fall
 // over because the projection package is mid-flight.
 //
-// IT RETURNS ASSETS AS WELL AS PROJECTIONS (fisc-xgr) because the asset channel
+// IT RETURNS ASSETS AS WELL AS PROJECTIONS because the asset channel
 // was reachable only from inside internal/export. export.Options.Files existed
 // and this command never set it, so the one thing that travelled it was the
 // page text Write ships on its own behalf; nothing a Builder produced could get

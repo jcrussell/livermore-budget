@@ -66,7 +66,7 @@ const (
 // The Lease/Purchase Loan under Internal Service Fund is Banc of America's
 // equipment lease: p80 prints the lender on the line above it, with a dash in
 // every column, and the business-type block prints the same lender's lease
-// on one line (fisc-ovun). The label is ours; the row_label is the page's.
+// on one line. The label is ours; the row_label is the page's.
 var debtIssues = []debtIssue{
 	{"2020A Certificates of Participation", "2020A Certificates of Participation", activityGovernmental, "", fundTypeGovernmental},
 	{"2020B Certificates of Participation", "2020B Certificates of Participation", activityGovernmental, "", fundTypeGovernmental},

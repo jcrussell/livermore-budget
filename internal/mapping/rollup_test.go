@@ -284,10 +284,9 @@ func councilResolver(t *testing.T, anchor, page string) (*File, *Resolver) {
 //
 // City Council, City Attorney, Library, Innovation, General Services and Fire
 // each have exactly one division, and each prints a <DEPARTMENT> TOTAL that is a
-// SECOND LINE with its own figures. The parser used to refuse this on the
-// reasoning that such a total "is that rule's total_row", which is true of the
-// number and false of the line, and it left six printed totals asserted by
-// nothing.
+// SECOND LINE with its own figures. Such a total is that rule's total_row as a
+// number but not as a line, so the parser accepts it and the six printed
+// totals are each asserted.
 //
 // The second case is what makes the first a real assertion rather than a
 // tautology: change what the department line prints and the rollup fails.
@@ -712,7 +711,7 @@ func TestARollupCoveringNothingErrorsRatherThanPanicking(t *testing.T) {
 }
 
 // TestFirstDifferingColumnRefusesRunsOfDifferentWidth calls the helper directly,
-// which is the only way to reach the branch this test is about (fisc-oz4).
+// which is the only way to reach the branch this test is about.
 //
 // CheckRollup's own width guard runs before it, so no rule file can produce a
 // length mismatch here. That is exactly why the branch was wrong for so long: it

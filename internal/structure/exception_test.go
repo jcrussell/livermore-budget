@@ -187,7 +187,7 @@ func TestTheDeclaredExceptionsAreTheWholeResidual(t *testing.T) {
 
 // TestTheAgreementAtTheMeetReproducesTheTwoAxisReconciliations: pp.85-125 by
 // object and pp.171-176 by fund each agree with the spine everywhere but the
-// one cell p0067 prints wrong, by the same 250,000 (fisc-av0w).
+// one cell p0067 prints wrong, by the same 250,000.
 func TestTheAgreementAtTheMeetReproducesTheTwoAxisReconciliations(t *testing.T) {
 	facts := committedFacts(t)
 	for _, c := range []struct {

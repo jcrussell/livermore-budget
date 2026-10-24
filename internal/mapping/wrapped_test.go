@@ -115,7 +115,7 @@ func TestUnrelatedTextIsNotAdmittedByADeclaration(t *testing.T) {
 // TestStaleWrappedLabelIsAnError keeps the declaration honest in the direction
 // nothing else would catch: if the page stops wrapping there, the claim has
 // become false and must be removed rather than pass silently. Same direction as
-// a stated_total_delta that now ties exactly (fisc-2sd).
+// a stated_total_delta that now ties exactly.
 func TestStaleWrappedLabelIsAnError(t *testing.T) {
 	_, err := innovationValues(t, `        wrapped_labels: ["Devel", "Administration"]`)
 	if err == nil {
@@ -129,16 +129,10 @@ func TestStaleWrappedLabelIsAnError(t *testing.T) {
 	}
 }
 
-// TestAWrappedLabelBeforeTheFirstRowIsDeclarable is fisc-2jk, and it is the one
-// shape a fragment used to be invisible in EITHER direction.
-//
-// checkGap's i == 0 branch admitted the text before the first mapped row
-// without consulting WrappedLabels and without marking anything used. So a
-// label wrapping there could not be declared -- declaring it failed as a stale
-// declaration, "is declared but does not appear between this part's rows",
-// because only the between-rows and after-last-row paths marked a fragment
-// used -- and not declaring it passed silently. Neither answer states what the
-// page does.
+// TestAWrappedLabelBeforeTheFirstRowIsDeclarable: a label wrapping before the
+// first mapped row is declared through WrappedLabels like any other, and an
+// undeclared one is refused, so checkGap's leading-gap branch states what the
+// page does in both directions.
 //
 // The page is the same real block as the tests above, anchored one word
 // earlier. pp.167-170 as mapped do not reach this: every wrapping division

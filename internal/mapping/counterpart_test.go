@@ -217,7 +217,7 @@ func TestTheIdenticalLegsArmFiresOnTheShapeEveryPublishedRuleUses(t *testing.T) 
 // counterpart cannot BREAK a schedule's tie to its document, which is what
 // makes the seam safe. It is also why a schedule that uses one owes a
 // reconciliation against something OUTSIDE its own page -- for p76 that is
-// pp.66-67's TRANSFER OUT row (fisc-aes), and without it the payer side would
+// pp.66-67's TRANSFER OUT row, and without it the payer side would
 // be a hand-typed claim no arithmetic touches.
 func TestTheDocumentCannotCheckACounterpart(t *testing.T) {
 	read := func(t *testing.T, withCounterparts bool) ([]Value, amount.Cents) {

@@ -259,7 +259,7 @@ type Result struct {
 	// functions over identical input in one process -- the distinction this
 	// package's own doc comment draws -- so it would add availability and not
 	// independence, and CI already rebuilds facts.jsonl and diffs it byte for
-	// byte (fisc-1wr.6). The slack a tolerance allowed is reported by `fisc
+	// byte. The slack a tolerance allowed is reported by `fisc
 	// build` as columns_tied_by_tolerance and tolerance_slack.
 }
 

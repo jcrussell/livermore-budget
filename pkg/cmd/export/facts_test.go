@@ -409,18 +409,14 @@ func TestTheCSVRefusesALineMissingAKey(t *testing.T) {
 // io.EOF invites, and it is worse than it sounds.
 //
 // json.Decoder.Token() returns io.EOF at the end of the stream AND at MOST
-// points inside a cut-off object. Measured, because the first version of this
-// test got it wrong: a cut after a key, after a colon, mid-number, or straight
-// after the opening brace all return bare io.EOF; only a cut inside a string
-// literal returns io.ErrUnexpectedEOF. So a transcoder that treats io.EOF as
-// "done" writes a CSV silently missing its tail, which parses perfectly and
-// carries no sign of what it lost.
+// points inside a cut-off object. Measured: a cut after a key, after a colon,
+// mid-number, or straight after the opening brace all return bare io.EOF; only
+// a cut inside a string literal returns io.ErrUnexpectedEOF. So a transcoder
+// that treats io.EOF as "done" writes a CSV silently missing its tail, which
+// parses perfectly and carries no sign of what it lost.
 //
-// EVERY CUT POSITION IN THE FINAL RECORD, not one. The first version cut at a
-// fixed offset, landed inside a string, and passed through the one shape the
-// rename is not needed for -- so it stayed green with the guard removed. A
-// test that proves a guard by accident is the thing this repository keeps
-// finding in its own history.
+// EVERY CUT POSITION IN THE FINAL RECORD, not one: a single fixed offset can
+// land inside a string, the one shape that needs no guard.
 func TestTheCSVRefusesATruncatedStore(t *testing.T) {
 	raw, _ := committedStore(t)
 	// TWO RECORDS, NOT 1,448. The property is about one cut-off object, and
@@ -493,32 +489,17 @@ func TestTheFactIndexEnumeratesEveryShardAndIsNotOnTheResolutionPath(t *testing.
 	}
 }
 
-// TestEveryShardedPageHasItsExtractedText is the p76 case, found before it
-// shipped: at the time the store covered 21 pages and the site was shipping the
-// text of 20, because p76 is cited by no projection's metadata.sources. A
-// provenance link that resolves to a shard whose page text 404s is provenance
-// the site does not actually ship. Both counts have moved since -- do not read
-// 21 as current. What this test asserts is one direction only: every page the
-// store shards has its extracted text committed. The equality the p76 case was
-// really about is kept by pageIndex() seeding buildSite's cited set.
+// TestEveryShardedPageHasItsExtractedText: every page the store shards has its
+// extracted text committed, so a provenance link never resolves to a shard
+// whose page text 404s. p76 is cited by no projection's metadata.sources;
+// pageIndex() seeding buildSite's cited set is what ships its text.
 //
-// NOTE WHAT THAT LEAVES, AND NOTE THAT A SECOND DOCUMENT DID NOT CHANGE IT. This
-// arm still cannot go red. The store now spans two documents -- the Budget Book
-// topping out at p170 and ACFR p41 -- and BOTH are extracted contiguously and in
-// full, p0001..p0268 and p0001..p0195, so every page the store can shard has its
-// text by construction exactly as before. fisc-73cq was filed on the premise
-// that a second document would make this falsifiable; that premise was wrong,
-// measured at 0448a5b. The bead is CLOSED -- on the guard below, not on the
-// falsifiability -- and its close reason records the correction.
-// What would make it live is a PARTIALLY extracted document, not another one.
+// THIS ARM CANNOT GO RED TODAY: every document the store shards is extracted
+// contiguously and in full, so every page has its text by construction. What
+// would make it live is a PARTIALLY extracted document;
 // fact-offset-points-at-token forecloses the underlying case from the other
-// side in the meantime.
-//
-// The empty-store guard below is the half of fisc-73cq that was always worth
-// having, and it is a different failure: without it this test passes on a store
-// with no pages at all, which is the vacuity internal/check/vacuity.go exists
-// for, one package over and undeclared. Same shape as the guard in
-// TestTheSiteLinksEveryShardItShips.
+// side. The empty-store guard below is the half that can fail: without it this
+// test passes on a store with no pages at all.
 func TestEveryShardedPageHasItsExtractedText(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {

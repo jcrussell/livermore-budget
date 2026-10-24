@@ -56,7 +56,7 @@ var transferKinds = []vocab.Kind{vocab.KindTransferIn, vocab.KindTransferOut}
 //	tier 5  transfer-to/<fund>        parent ""
 //
 // ONE PRINTED FIGURE IS TWO LINKS. The store carries a receiving and a paying
-// leg per figure at the same doc_id/page/offset (fisc-4rh); one ribbon citing
+// leg per figure at the same doc_id/page/offset; one ribbon citing
 // both would publish twice the printed value, so each leg is its own link and
 // the two share a [Link.TransferID].
 //

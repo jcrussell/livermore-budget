@@ -919,12 +919,9 @@ func TestExportRunRefusesAnUnreachableDocumentBeforeTouchingTheSite(t *testing.T
 	// no entry. The stub builds only the spine, and the check skips documents
 	// that were not built (that is assertPublishedBuilt's finding), so the
 	// builder has to produce this one for the state to be reachable at all.
-	// A DECLARED STEM, READ OUT OF THE MAP RATHER THAN NAMED. This was
-	// project.FundFlowsProjection until drilldown.html started rendering it, at
-	// which point the entry was correctly deleted and this test went red naming
-	// its own remedy. Taking whichever stem is declared means the next page to
-	// land does not send it red again -- and if the map ever empties, the
-	// Fatalf below still says so rather than the test quietly asserting nothing.
+	// A DECLARED STEM, READ OUT OF THE MAP RATHER THAN NAMED, so a page that
+	// starts rendering one does not send this red; if the map ever empties,
+	// the Fatalf below says so rather than the test asserting nothing.
 	stem := ""
 	for k := range unviewedDocuments {
 		if stem == "" || k < stem {
@@ -1499,8 +1496,8 @@ func keys(m map[string][]byte) []string {
 	return out
 }
 
-// TestTheCommittedStemsAreUnchanged pins the document stems as typed literals
-// (fisc-rmx): a list derived from the naming rule would agree with a rename.
+// TestTheCommittedStemsAreUnchanged pins the document stems as typed literals:
+// a list derived from the naming rule would agree with a rename.
 // A stem is the schedule key and a year's name in window.FISC_CONFIG, so a
 // rename moves both silently. Published paths are
 // TestTheSitePublishesOneFilePerColumnAndNothingTwice's.
@@ -1671,11 +1668,10 @@ func TestStemAsksHowManyDocumentsNotHowManyColumns(t *testing.T) {
 		// The regression: ONE slice of ONE column is still one document, so it
 		// keeps the bare stem even though the year is not the opening one.
 		{"one document of one column is not a year of anything", year(2024), 1, "sankey"},
-		// fisc-rmx. Two BASES for one fiscal year is the shape that used to
-		// compute one stem twice and take the whole export down; the basis is
-		// spelled out because a year alone cannot tell them apart. Not a
-		// hypothetical: Sankey.Slices derives its slices from (year, basis), so
-		// mapping pp.66-67's revised column produces exactly this.
+		// Two BASES for one fiscal year: the basis is spelled out because a year
+		// alone cannot tell them apart, and Sankey.Slices derives its slices
+		// from (year, basis), so mapping pp.66-67's revised column produces
+		// exactly this.
 		{"a second basis for one year is not the same document",
 			project.Options{Columns: []project.Column{
 				{FiscalYear: project.PublishedFiscalYear, Basis: "revised"},

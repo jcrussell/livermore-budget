@@ -26,7 +26,7 @@ import (
 // NOTHING, because a total's figure is consumed as a total and cited by no fact,
 // so there is no second fact at the address and nothing to compare.
 //
-// MEASURED on ACFR p41 (fisc-eaic). acfr-p0041-gf-fund-balances declares three
+// MEASURED on ACFR p41. acfr-p0041-gf-fund-balances declares three
 // rows skip: true. Two of them -- "Transfers in" and "Transfers (out)" -- are
 // rows the sibling rule PUBLISHES, so un-skipping one puts two facts at one
 // address and fact-citations-are-declared refuses it. The third, "Total Other

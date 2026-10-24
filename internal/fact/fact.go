@@ -202,7 +202,7 @@ func SameFund(a, b *int) bool {
 // one: "Transfer From Wastewater", "Transfer From Wastewater to Stormwater",
 // and the same pair joined by "\x1f". Hashing Row.Label collided the two rows
 // Budget Book p76 prints as "Transfer From Wastewater to Stormwater" and
-// "Transfer From Wastewater to LAVWMA / Wastewater" (fisc-28h), so the real
+// "Transfer From Wastewater to LAVWMA / Wastewater", so the real
 // choice was between the published label and the resolver's identity. Two
 // reasons settle it for the published one:
 //

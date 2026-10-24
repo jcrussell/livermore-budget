@@ -52,7 +52,7 @@ type p76Read struct {
 	byGroupYear map[groupYear]amount.Cents
 	// bySourceYear sums the fund named after "Transfer From", per fiscal year.
 	// The fact model cannot carry this -- fact.Fact has one `fund` field and a
-	// transfer has two ends (fisc-4rh) -- so the label is split here to show
+	// transfer has two ends -- so the label is split here to show
 	// what the missing field would have to hold.
 	bySourceYear map[sourceYear]amount.Cents
 	// byColumn sums each of the four printed columns across all 22 rows.
@@ -136,12 +136,8 @@ func readP76(t *testing.T) p76Read {
 // label, and false for the three rows that omit it.
 // transferSource reads the paying fund off a row's FIRST anchor.
 //
-// It used to cut the label on a run of two spaces, because the label was the
-// whole printed line and the two fields were separated by the page's own
-// kerning. That made this helper a second copy of the defect fisc-ffy was
-// filed for -- it would have broken on a re-layout exactly as the rule file
-// would. With Row.LabelTail the source IS Row.Label and the destination is
-// Row.LabelTail, so there is nothing left to split.
+// With Row.LabelTail the source IS Row.Label and the destination is
+// Row.LabelTail, so nothing is split on the page's kerning.
 func transferSource(row Row) (string, bool) {
 	const prefix = "Transfer From "
 	if !strings.HasPrefix(row.Label, prefix) || row.LabelTail == "" {
@@ -152,7 +148,7 @@ func transferSource(row Row) (string, bool) {
 
 // TestP76IsAnOrdinaryLabelledRead is the claim that retired this page's
 // "unextractable, hand-transcribe it" bead. The premise was xberg-era: the
-// poppler migration (fisc-yqv) turned four disjoint blocks with mismatched
+// poppler migration turned four disjoint blocks with mismatched
 // cardinalities into 22 printed lines, and nobody went back to re-read it.
 //
 // 22 rows x 4 columns, no omissions and no positional guessing.
@@ -175,7 +171,7 @@ func TestP76IsAnOrdinaryLabelledRead(t *testing.T) {
 //
 // Both BUDGET columns tie exactly. Both HISTORICAL columns miss by millions --
 // one of them by exactly $5,000,000 -- which is nothing like the <= $5 rounding
-// declared through stated_total_deltas for p127 (fisc-2sd). Whatever those two
+// declared through stated_total_deltas for p127. Whatever those two
 // columns are, they are not the city's rounding, and declaring them away would
 // be a false claim about the document. The reconciliation therefore stands on
 // the budget years, which are the only years this project publishes.
@@ -208,7 +204,7 @@ func TestP76ColumnsAgainstItsPrintedTotal(t *testing.T) {
 // total equals the matching TRANSFER IN cell on pp.66-67 EXACTLY. p76 detail
 // and the spine are the same money, so a rule that published these rows at
 // scope all-funds-gross would double the city's transfers with every check
-// still green -- fisc-u2v's mechanism, one lane over (fisc-5gk.3.1).
+// still green -- fisc-u2v's mechanism, one lane over.
 func TestP76TiesToTheSpinePerFundGroup(t *testing.T) {
 	p76 := readP76(t)
 	spine := readSpineTransfers(t)
@@ -235,12 +231,10 @@ func TestP76TiesToTheSpinePerFundGroup(t *testing.T) {
 	}
 }
 
-// TestP76AccountsForTheInSideAndNoneOfTheResidual is why the caveat on the
-// shipped page had to change. It used to read "the p76 transfer schedule is not
-// yet mapped, SO transfers out exceed transfers in", which tells a reader the
-// gap is this project's backlog. It is not: p76's grand total IS the
+// TestP76AccountsForTheInSideAndNoneOfTheResidual: p76's grand total IS the
 // transfers-in side, so the city itemises every transfer received and none of
-// the difference.
+// the difference between the two sides. The gap is the city's, not a mapping
+// backlog, and the caveat says so.
 func TestP76AccountsForTheInSideAndNoneOfTheResidual(t *testing.T) {
 	p76 := readP76(t)
 	spine := readSpineTransfers(t)
@@ -288,7 +282,7 @@ func TestP76AccountsForTheInSideAndNoneOfTheResidual(t *testing.T) {
 
 // TestP76NamesThePayerThatTheFactModelCannot reads the source side, which is
 // the half of a transfer that has nowhere to live: fact.Fact carries one `fund`
-// field and every one of these rows has two ends (fisc-4rh). The General Fund's
+// field and every one of these rows has two ends. The General Fund's
 // out-flows tie to the spine exactly, so the pairing this page publishes is
 // real and checkable -- it just cannot be expressed as facts yet.
 func TestP76NamesThePayerThatTheFactModelCannot(t *testing.T) {
@@ -391,12 +385,10 @@ func readSpineTransfers(t *testing.T) spineTransfers {
 // Both rows were wrong and every published figure still added up to
 // 38,086,737, because the error moved money between two rows of the same total.
 //
-// WHAT MAKES THIS EXPRESSIBLE NOW. Attributing a payment to a fund GROUP needs
-// payer-name -> fund -> type, and fisc-8dz landed the alias channel that does
-// the first hop: p76 prints "Low Income Hsng" and FundByLabel resolves it to
-// fund 200 exactly, refusing rather than guessing between the operating fund
-// and its CIP twin. Before that this test could not have been written, which
-// is the honest reason it did not exist rather than an oversight.
+// Attributing a payment to a fund GROUP needs payer-name -> fund -> type, and
+// the alias channel does the first hop: p76 prints "Low Income Hsng" and
+// FundByLabel resolves it to fund 200 exactly, refusing rather than guessing
+// between the operating fund and its CIP twin.
 //
 // THE IDENTITY. For every fund group, the spine's TRANSFER OUT is what p76
 // shows that group paying plus what the city routes to CIP:

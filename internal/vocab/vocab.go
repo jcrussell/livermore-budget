@@ -102,7 +102,7 @@ const (
 	// sums to a net Other Financing Sources (Uses), while Budget Book p66 prints
 	// TRANSFER OUT as a positive magnitude in a uses column. Both are the money
 	// leaving, both are published exactly as printed, and summing the two
-	// together cancels rather than accumulates (fisc-fdxx).
+	// together cancels rather than accumulates.
 	//
 	// IT IS STILL NOT AN INSTRUCTION TO NEGATE. AmountCents remains the figure
 	// as the document printed it; this says which way the document was facing.

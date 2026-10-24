@@ -38,15 +38,9 @@ func spineFacts() []fact.Fact {
 	return []fact.Fact{{FiscalYear: 2026, Basis: "adopted", Scope: spineScope}}
 }
 
-// TestANonGraphProjectionDoesNotKillTheRun is the regression this whole change
-// exists for.
-//
-// buildProjections used to type-assert graphBuilder and RETURN AN ERROR when it
-// failed, so registering the first projection whose document is not a graph made
-// `fisc verify` exit non-zero having printed no report at all — every finding in
-// the run lost to a document that was merely of a different shape. That is the
-// failure ProjectionFailure's doc comment says was fixed once already for a
-// refusing projection, wearing a second face.
+// TestANonGraphProjectionDoesNotKillTheRun: a projection whose document is not
+// a graph is built and recorded, not refused, so `fisc verify` still reports
+// every finding of the run.
 func TestANonGraphProjectionDoesNotKillTheRun(t *testing.T) {
 	t.Parallel()
 	built, failed, err := buildProjections(
@@ -133,10 +127,8 @@ func TestAnUncheckedDocumentIsReported(t *testing.T) {
 	}
 }
 
-// TestEachProjectionIsBuiltOverItsOwnSlices pins the other half of the split:
-// buildProjections used to build the cartesian product of every projection and
-// every slice, so a projection of a different schedule was handed slices
-// containing none of its facts.
+// TestEachProjectionIsBuiltOverItsOwnSlices: a projection of a different
+// schedule is built over the slices it declares, never over the spine's.
 func TestEachProjectionIsBuiltOverItsOwnSlices(t *testing.T) {
 	t.Parallel()
 	built, _, err := buildProjections(
@@ -164,30 +156,12 @@ func (*silent) Build(_ []fact.Fact, _ project.Options) ([]byte, error) {
 }
 func (*silent) Slices(_ []fact.Fact, _ string) []project.Options { return nil }
 
-// TestAProjectionThatProducesNothingIsNotADefect records a reversal, and the
-// measurement behind it.
-//
-// This used to assert the opposite. documentsAreChecked carried an arm reporting
-// a registered projection that declared no slices, on the stated grounds that
-// "`fisc export` publishes its document regardless" -- true of the export
-// command's old build loop, which ran the cartesian product of the published
-// years and the registry and called Build whatever the projection said it was
-// of. fisc-neh inverted that loop: the command now iterates the slices each
-// projection declares, so a projection declaring none writes no file and there
-// is no document to be wrong about.
-//
-// Keeping the arm would have turned every projection of a schedule a FIXTURE
-// does not carry into a corpus defect: internal/check/fixture_test.go is a
-// miniature of the spine, the trends projection is of nothing there, and ~70
-// runChecks call sites would have gone red reporting on a test's own scope.
-// project.Projection.Slices' doc comment already settles what the state means -- "an empty
-// result means the store carries nothing this projection is of, which is a
-// statement about the corpus and not an error".
-//
-// WHAT THE ARM DID COVER, AND WHERE IT WENT: a document the site PUBLISHES that
-// silently stops being built. Only the spine is guarded against that today, by
-// publishedProjectionBuilt, which compares against one projection name. That is
-// filed as fisc-w7d rather than left implied by a test that no longer exists.
+// TestAProjectionThatProducesNothingIsNotADefect: the export command builds the
+// slices each projection declares, so a projection declaring none writes no
+// file and there is no document to be wrong about. A fixture of the spine
+// alone, such as internal/check/fixture_test.go's, declares no trends slice,
+// and that is not a corpus finding. A published document that silently stops
+// being built is fisc-w7d.
 func TestAProjectionThatProducesNothingIsNotADefect(t *testing.T) {
 	t.Parallel()
 	built, failed, err := buildProjections(
@@ -217,12 +191,9 @@ func TestAProjectionThatProducesNothingIsNotADefect(t *testing.T) {
 	}
 }
 
-// TestAPublishedYearNothingBuiltIsReported is the FY2027 case.
-//
-// published-projection-built used to pin ONE (year, basis, scope) triple, so a
-// second published year could ship to readers with no check having looked at it
-// — and the check would go on passing, over the first year, reporting a number
-// that looked like coverage. It iterates the published set now.
+// TestAPublishedYearNothingBuiltIsReported: published-projection-built iterates
+// every published year, so a second year that was not built is a finding
+// rather than a pass over the first.
 func TestAPublishedYearNothingBuiltIsReported(t *testing.T) {
 	t.Parallel()
 	s := &Subject{
@@ -286,14 +257,9 @@ func TestUncheckedDocumentsIsEmpty(t *testing.T) {
 	}
 }
 
-// TestADeclaredDocumentIsNotCountedAsExamined is the defect the missing test
-// let stand (fisc-rwo).
-//
-// The count was len(s.Projections), which counts the projections the declaration
-// EXEMPTS. So a run in which every projection is declared unchecked reported a
-// PASS -- over a denominator it had not looked at, which is the state this
-// check's own doc comment calls the one thing this package exists to prevent.
-// The `nothing:` branch was unreachable while any declaration was live.
+// TestADeclaredDocumentIsNotCountedAsExamined: the count is over what was
+// examined, so a run in which every projection is declared unchecked is
+// vacuous rather than a pass over projections it did not look at.
 func TestADeclaredDocumentIsNotCountedAsExamined(t *testing.T) {
 	t.Parallel()
 	s := &Subject{
@@ -372,11 +338,8 @@ func TestADeclaredDocumentDoesNotHideAnExaminedOne(t *testing.T) {
 	}
 }
 
-// TestAStaleUncheckedDocumentDeclarationIsCaught pins the expiry branch, and the
-// second subtest pins the wording fisc-rwo is about: the finding used to say
-// "now carries a graph" whatever the projection carried, in the check that was
-// widened precisely so a document need not be a graph. A reader would go looking
-// for a graph that does not exist.
+// TestAStaleUncheckedDocumentDeclarationIsCaught pins the expiry branch, and
+// the second subtest that the finding names the shape the projection carries.
 func TestAStaleUncheckedDocumentDeclarationIsCaught(t *testing.T) {
 	t.Parallel()
 	t.Run("no projection of that name", func(t *testing.T) {

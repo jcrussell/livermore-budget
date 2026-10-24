@@ -7,7 +7,7 @@
 // `fund_group:` are free strings, and a rule that writes `tax/property` where
 // the taxonomy says `taxes/property` produces a fact that is confidently
 // wrong and joins to nothing. This package is what makes those fields
-// checkable (fisc-1wr.1), and it is the only place any of them is parsed.
+// checkable, and it is the only place any of them is parsed.
 //
 // Loading validates. A registry that loaded is one whose invariants already
 // hold — no duplicate slug or fund number, every parent resolving, every

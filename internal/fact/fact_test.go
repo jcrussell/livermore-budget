@@ -155,10 +155,8 @@ func TestSpineFacts(t *testing.T) {
 
 	// p67 prints "Licenses & Permits" as a row of dashes in all four of its
 	// fund groups, so it must produce eight facts worth zero — not zero facts,
-	// and not facts with some other row's label. This assertion used to read
-	// the other way round, because the extractor was deleting the row and the
-	// rule declared it omitted to compensate (fisc-c00). Zero is a figure the
-	// city printed; absent is not zero, and neither is it a licence to guess.
+	// and not facts with some other row's label. Zero is a figure the city
+	// printed; absent is not zero, and neither is it a licence to guess.
 	n := 0
 	for _, f := range facts {
 		if f.RowLabel == "Licenses & Permits" && f.Page == 67 {
@@ -238,8 +236,7 @@ func propertyTaxRule(t *testing.T) (*mapping.File, *mapping.Rule) {
 				// requiring the line break is what makes this anchor unique and
 				// lets it resolve with no ordinal at all. There are no emphasis
 				// markers to anchor on: `pdftotext -layout` reproduces the
-				// printed page, and the "**" this rule used to carry was xberg's
-				// markdown, not the document's.
+				// printed page.
 				Section: "Property Taxes\n",
 				StopAt:  "Total Property Taxes",
 				// This schedule prints four years on three bases side by side.
@@ -741,7 +738,7 @@ func TestARowKindOverridesTheRulesKind(t *testing.T) {
 // Budget Book p76 prints "Transfer From Low Income Hsng  to General Fund
 // 257,012". That number is 257,012 leaving fund 200 and 257,012 arriving at
 // fund 100, and fact.Fact carries one fund field, so one fact cannot hold the
-// pair (fisc-4rh). What this pins is that the pair is expressible AND that the
+// pair. What this pins is that the pair is expressible AND that the
 // two legs are told apart on the components that carry the meaning of the
 // difference, rather than on a discriminator added to avoid a hash clash.
 func TestACounterpartPublishesTheFarLegFromTheSameFigure(t *testing.T) {

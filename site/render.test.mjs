@@ -765,7 +765,7 @@ describe("the expansion's drawing", () => {
       assert.equal(agg.label, `${count} smaller ${word}`);
       // At two or more: a tail of one printed fund labelled "1 smaller funds" is the defect.
       assert.ok(count >= 2, agg.label);
-      // Its note carries its figure, since the tail gets no inferred-list line (fisc-hrfd).
+      // Its note carries its figure, since the tail gets no inferred-list line.
       const value = app.layOut(app.projection).nodes.find((n) => n.id === agg.id).value;
       assert.ok(value > 0);
       assert.ok(agg.source_note.includes("together " + dollars(value)), `${agg.source_note} does not carry ${dollars(value)}`);
@@ -828,7 +828,7 @@ describe("the expansion's drawing", () => {
   }
 });
 
-// Arms the committed columns never reach (fisc-7477), driven over a clone of
+// Arms the committed columns never reach, driven over a clone of
 // a pinned column with one stated change, or a bare call.
 describe("arms no committed column reaches", () => {
   const newest = YEARS[YEARS.length - 1];
@@ -972,7 +972,7 @@ describe("arms no committed column reaches", () => {
 });
 
 // A class the client sets that no rule styles is a silent no-op, and a rule
-// no page wears is dead ink (fisc-a0fv). The other templates' classes are
+// no page wears is dead ink. The other templates' classes are
 // theirs, not the client's.
 describe("the classes the client sets and the rules the stylesheet carries", () => {
   /** Set by the client, styled by nothing, on purpose: hooks the tests and the gestures key on. */
@@ -1214,7 +1214,7 @@ describe("a count the client takes is marked as its own", () => {
   });
 });
 
-// TWO EXTEND SPLITS DRAWN TOGETHER (fisc-yj4w.34.13): each opens its members
+// TWO EXTEND SPLITS DRAWN TOGETHER: each opens its members
 // a slot beside its parent's, so two open together can declare a slot further
 // out than any drawn ribbon reaches. Every node is still drawn in its slot.
 describe("two extend splits open together", () => {

@@ -228,9 +228,8 @@ func TestUnsortedFactStoreFails(t *testing.T) {
 	if !strings.Contains(res.Findings[0].Detail, "out of order") {
 		t.Errorf("finding %q does not say the facts are out of order", res.Findings[0].Detail)
 	}
-	// A failing check must not borrow the sentence written for the passing case.
-	// "FAIL facts-sorted: 240 facts, in canonical order" is a contradiction, and
-	// it is what the report said before conclusion.unit existed.
+	// A failing check must not borrow the sentence written for the passing case:
+	// "FAIL facts-sorted: 240 facts, in canonical order" is a contradiction.
 	if want := "1 finding over 12 facts"; res.Summary != want {
 		t.Errorf("summary = %q, want %q", res.Summary, want)
 	}
@@ -525,8 +524,8 @@ func TestEveryKindIsWrongSomewhere(t *testing.T) {
 // vocab.Kind value.
 //
 // So both transfer errors are one literal comparison over the committed file:
-// a transfer counted as revenue (fisc-f0k) and a transfer pointing the wrong way
-// (fisc-ttq), the latter being what a declared `transfer` family could never see.
+// a transfer counted as revenue and a transfer pointing the wrong way,
+// the latter being what a declared `transfer` family could never see.
 func TestTheCommittedTaxonomyTellsTheTransferDirectionsApart(t *testing.T) {
 	t.Parallel()
 	reg, err := registry.Load(os.DirFS(filepath.Join(repoRoot(t), "data")))
@@ -662,10 +661,8 @@ func TestAMalformedDepartmentIsNotAlsoReportedAsUnlisted(t *testing.T) {
 // slug, one department spelled two ways across the store, and a string that is a
 // category on the other axis — the near miss data/taxonomy.yaml exists to prevent.
 //
-// The last two are belt and braces now that departments.yaml refuses both at load
-// time. They stay because this check is written against the Vocabulary interface
-// and not against that one implementation, and an assertion implied by a loader is
-// not the same thing as one nobody makes.
+// departments.yaml refuses the last two at load time too. They stay because this
+// check is written against the Vocabulary interface, not that one loader.
 func TestDepartmentsAreCheckedForWhatIsCheckable(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -1709,13 +1706,8 @@ func TestProjectionsBuildIsNeverVacuousWithARefusalRecorded(t *testing.T) {
 	}
 }
 
-// projections-build COUNTS SLICES, which is the unit it has always named.
-//
-// It counted PROJECTIONS under the unit "projection slices", and one projection
-// stopped being one slice when the first multi-column document landed. Measured
-// on the committed corpus before the fix: "3 projection slices built" over six.
-// A denominator that is not the thing the unit says is a denominator a reader
-// cannot use.
+// projections-build COUNTS SLICES, the unit it names: one projection may
+// build several.
 func TestProjectionsBuildCountsSlicesNotProjections(t *testing.T) {
 	t.Parallel()
 	s := &Subject{Projections: []projection{{
@@ -1777,8 +1769,8 @@ func fundRule(id string, fund int, group, totalRow string) mapping.Rule {
 	}
 }
 
-// TestRuleFundsMatchTheirHeadings covers the check fisc-u54 asks for, over the
-// hazard it was filed about: a fund mis-assigned WITHIN its own fund type, which
+// TestRuleFundsMatchTheirHeadings covers a fund mis-assigned WITHIN its own
+// fund type, which
 // changes no column sum and which every other check passes.
 func TestRuleFundsMatchTheirHeadings(t *testing.T) {
 	t.Parallel()
@@ -1850,7 +1842,7 @@ func TestRuleFundsMatchTheirHeadings(t *testing.T) {
 		}
 	})
 
-	// A MAPPED SECTION MUST NOT BE REPORTED AS UNCLAIMED (fisc-948).
+	// A MAPPED SECTION MUST NOT BE REPORTED AS UNCLAIMED.
 	//
 	// Claiming a printed total says SOME rule reads that heading, so a rule
 	// that maps a fund section without declaring one fund -- fund_group-only
@@ -1873,7 +1865,7 @@ func TestRuleFundsMatchTheirHeadings(t *testing.T) {
 		}
 	})
 
-	// A MISMATCH IS ONE FINDING, NOT TWO THAT CONTRADICT EACH OTHER (fisc-948).
+	// A MISMATCH IS ONE FINDING, NOT TWO THAT CONTRADICT EACH OTHER.
 	//
 	// The mismatch arm did not mark the rule as reported, so the "anchored to
 	// nothing on the page" arm fired as well -- while listing the very total

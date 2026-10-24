@@ -65,10 +65,6 @@ tidy: ## Tidy go.mod/go.sum
 # about the corpus and teach people to reword around it. What it catches is the
 # two forms that are never about the code's present.
 #
-# Pre-existing hits are the ones AGENTS.md says to drop in the file you were
-# editing anyway rather than in a sweep, so this target's failure is the moment
-# you touch such a file, which is exactly when the rule says to fix it.
-#
 # THE GO ARM JUDGES COMMENT BLOCKS, NOT LINES. A refused phrase wraps wherever
 # gofmt put the wrap, and a bare interior line of a /* */ block carries no
 # marker for a line pattern to hold on to, so tools/narration gathers each run

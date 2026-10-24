@@ -111,7 +111,7 @@ func TestTheCommittedCorpusRowAnchorsHold(t *testing.T) {
 	// THE THREE ROWS THE PAGE LEAVES UNANCHORED, named rather than counted.
 	// p76 prints three continuation rows whose "Transfer From" carries over
 	// from the row above, so their declared payer has no printed label on its
-	// own line (fisc-30j). Three of 22 rows are unguarded on the side where the
+	// own line. Three of 22 rows are unguarded on the side where the
 	// operating/CIP ambiguity lives, and the summary has to say so.
 	for _, want := range []string{
 		`"to Wastewater Replacement" (the fund that pays, 620)`,
@@ -126,12 +126,11 @@ func TestTheCommittedCorpusRowAnchorsHold(t *testing.T) {
 		t.Errorf("the summary does not count the unanchored declarations:\n%s", res.Summary)
 	}
 
-	// THE SEVENTY-EIGHT ROWS ARE NOW READ RATHER THAN COUNTED, which is the
-	// whole of fisc-90fp. pp.85-125's Department Funding Sources rows print a
-	// bare fund name -- which names a fund and no direction, so
-	// rowAnchorPrefixes matches nothing and this check used to say so and stop.
-	// Their rules declare row_labels_name_funds, so the label is resolved whole
-	// and the hand-typed number is checked against it.
+	// THE SEVENTY-EIGHT ROWS ARE READ RATHER THAN COUNTED. pp.85-125's
+	// Department Funding Sources rows print a bare fund name, which names a
+	// fund and no direction, so rowAnchorPrefixes matches nothing. Their rules
+	// declare row_labels_name_funds, so the label is resolved whole and the
+	// hand-typed number is checked against it.
 	//
 	// 834 IS THE NUMBER THAT SAYS SO: 40 printed anchors on p76 plus these 78,
 	// plus p222's 62 printed fund numbers -- 36 receiving ends and 26 paying --
@@ -171,11 +170,9 @@ func TestTheCommittedCorpusRowAnchorsHold(t *testing.T) {
 	// against roughly 450 bytes before. A count is the honest middle: a row
 	// that HOLDS is counted; only a row that fails is named.
 	//
-	// THE LENGTH BOUND IS WHAT ENFORCES THAT, not a search for one row's name.
-	// This used to assert the summary did not contain `funding-public-works
-	// "Water"`, which no code path can emit: a bare label never sets `phrased`,
-	// so it never reaches unanchoredRows, the only per-row list in the summary.
-	// The assertion was unfalsifiable and read as coverage.
+	// THE LENGTH BOUND IS WHAT ENFORCES THAT, not a search for one row's name:
+	// a bare label never sets `phrased`, so it never reaches unanchoredRows,
+	// the only per-row list in the summary.
 	if n := len(res.Summary); n > 2000 {
 		t.Errorf("the summary is %d bytes; it is printed on every fisc verify run", n)
 	}
@@ -315,11 +312,10 @@ func TestAVacuousRowFundsSummaryCannotDenyTheRowsItSaw(t *testing.T) {
 // TestABareFundLabelIsNotReportedAsAnUnprintedAnchor is the property the split
 // above exists for, stated so it can fail on its own.
 //
-// Before pp.85-125 landed, every declared fund with no resolved anchor was p76's
-// continuation-row case and the one sentence was true. Adding 78 rows whose
-// label IS printed made it false 78 times over, in a string fisc verify prints
-// verbatim. Reverting anchorHasVerbPhrase to a constant true collapses the two
-// lists back into one and makes this test red on the count.
+// pp.85-125's 78 rows print their label, so one sentence for both lists would
+// be false 78 times over, in a string fisc verify prints verbatim. Reverting
+// anchorHasVerbPhrase to a constant true collapses the two lists back into one
+// and makes this test red on the count.
 func TestABareFundLabelIsNotReportedAsAnUnprintedAnchor(t *testing.T) {
 	t.Parallel()
 	if anchorHasVerbPhrase("General Fund") {
@@ -401,13 +397,8 @@ func TestRowFundsCatchesASameGroupEndSwap(t *testing.T) {
 	}
 }
 
-// TestRowFundsCatchesABareLabelTwin is fisc-90fp's proof, and the mutation it
-// runs is the one the bead was filed for.
-//
-// TestEveryFundingSourceFactMatchesThePrintedRow resolves every funding-source
-// fact's RowLabel through FundByLabel inside `go test`. A guarantee that lives
-// only inside one lane's test is not one the fact store carries, and the
-// acceptance criterion on fisc-90fp is "makes fisc verify fail".
+// TestRowFundsCatchesABareLabelTwin: a bare-label row's hand-typed fund that
+// disagrees with its label makes fisc verify fail, not only a test.
 //
 // SO THIS ASSERTS ON THE Result AND NOT ON THE SUITE, deliberately. Running the
 // whole suite over this mutation goes red either way, and a proof that cannot
@@ -628,11 +619,7 @@ func TestABareLabelThatResolvesToNoFundIsAFinding(t *testing.T) {
 	for _, f := range res.Findings {
 		b.WriteString(f.Subject + ": " + f.Detail + "\n")
 	}
-	// ONE SPELLING, NOT TWO. This used to OR in "checked against\nnothing",
-	// which the single-line format string cannot emit -- a dead disjunct that
-	// read as tolerance and was really unfalsifiable coverage, the third
-	// instance of that class in this file. The finding is one line; assert the
-	// line.
+	// The finding is one line, so the assertion is the line.
 	for _, want := range []string{"No Such Fund", "checked against nothing"} {
 		if !strings.Contains(b.String(), want) {
 			t.Errorf("the finding does not contain %q:\n%s", want, b.String())
@@ -640,22 +627,16 @@ func TestABareLabelThatResolvesToNoFundIsAFinding(t *testing.T) {
 	}
 }
 
-// TestASkippedRowIsInvisibleToThisCheck makes the skip guard falsifiable, which
-// its first version was not.
+// TestASkippedRowIsInvisibleToThisCheck makes the skip guard falsifiable.
 //
 // A skipped row is never read from the page, so this check -- which is entirely
 // about what the page prints on a row's line -- has nothing to say about it. It
 // must not be a subject, and it must not be counted as a fund the page prints no
 // anchor for either.
 //
-// THE FIRST ATTEMPT AT THIS GUARD FAILED BOTH TESTS OF A GUARD. It sat on the
-// bare-label arm alone, so a skipped funded row was excluded from being CHECKED
-// and left in the omission counters -- and the PASS line then said "no
-// row_labels_name_funds declaration covers that end" about a rule that declares
-// it, which is the same false sentence the counterpart refusal had closed at the
-// root one commit earlier. And no test reached it: deleting `&& !row.Skip` left
-// `go test ./...` fully green, so the commit message claiming each fix reddened
-// its own test was wrong about that one.
+// A guard on the bare-label arm alone would leave a skipped funded row in the
+// omission counters, and the PASS line would say "no row_labels_name_funds
+// declaration covers that end" about a rule that declares it.
 //
 // The corpus cannot exercise it: all 29 skip: true rows carry no fund, measured.
 // So the row is built here.

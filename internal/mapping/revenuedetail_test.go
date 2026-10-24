@@ -9,7 +9,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
-// revenueDetailScope is the scope Budget Book pp.127-140 are mapped at (fisc-u2v).
+// revenueDetailScope is the scope Budget Book pp.127-140 are mapped at.
 const revenueDetailScope = "revenue-by-fund"
 
 // revenueDetailPages is the schedule: pp.127-130 are the General Fund and
@@ -295,7 +295,7 @@ func TestPermanentFundsHaveNoSpineColumn(t *testing.T) {
 // TWO MECHANISMS CATCH IT AND THEY COVER DIFFERENT RULES, which is the thing
 // worth stating: the ten General Fund rules are named by p130's rollup and go
 // missing at PARSE time, while the sixty-nine fund rules are covered by no
-// rollup at all — p140's Total Sources is unassertable (fisc-wev) — so nothing
+// rollup at all — p140's Total Sources is unassertable — so nothing
 // but the arithmetic notices them.
 func TestDroppingARevenueRuleFails(t *testing.T) {
 	src, err := os.ReadFile(publishedSpine)

@@ -128,25 +128,13 @@ func TestP127NeedsItsDeltaDeclared(t *testing.T) {
 	})
 }
 
-// TestTheUndeclaredFailureStatesTheDeltaToPasteIn is fisc-7a6, and p127 is the
-// fixture that shows why the sign is not cosmetic.
-//
-// compareTotals computes `diff := stated - mapped` under a comment saying the
-// direction is chosen so a failure can be pasted into a stated_total_deltas
-// declaration -- and then printed `mapped - stated`, the negation of what it
-// had just computed. Its own next branch printed `diff`, so ONE FUNCTION
-// REPORTED THE SAME QUANTITY IN TWO DIRECTIONS three lines apart.
-//
-// The consequence is not a cosmetic slip, it is a loop. p127 column 1 maps
-// 58,179,467 against a printed 58,179,468. An author reading the old message
-// declared delta_cents: -100, and got back "declared delta -$1.00 but the
-// difference is $1.00" -- the second branch, correctly signed, contradicting
-// the first. The number in the failure was the one number that could not be
-// pasted in.
-//
-// So this test pins the two branches AGAINST EACH OTHER rather than against a
-// literal. A future edit that re-inverts either one has to make them disagree
-// to pass, and that is the defect itself.
+// TestTheUndeclaredFailureStatesTheDeltaToPasteIn: compareTotals' undeclared
+// and declared branches both report `stated - mapped`, so the figure an
+// undeclared failure names is the one a stated_total_deltas declaration
+// accepts. p127 column 1 maps 58,179,467 against a printed 58,179,468; were the
+// branches to disagree in sign, the pasted delta would fail as the wrong one.
+// The test pins the two branches AGAINST EACH OTHER rather than against a
+// literal.
 func TestTheUndeclaredFailureStatesTheDeltaToPasteIn(t *testing.T) {
 	r, ru := p127Resolver(t, "")
 	_, err := r.CheckTotals(ru, &ru.Parts[0])
