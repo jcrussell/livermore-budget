@@ -80,7 +80,7 @@
     </p>
     {{- end}}
     {{- if .Caveats}}
-    <p>Carries {{.Caveats}} caveat{{if ne .Caveats 1}}s{{end}} in its metadata
+    <p>Carries {{.Caveats}} caveat{{if ne .Caveats 1}}s{{end}}
       {{- if .CaveatsPath}}; each is stated in full on <a href="{{.CaveatsPath}}">the caveats page</a>{{end}}.</p>
     {{- end}}
     <p><a class="download" href="{{.Path}}" download>Download {{.Path}}</a></p>

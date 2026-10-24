@@ -2485,22 +2485,28 @@ func TestTheSankeyPageNamesItsSourcesForEveryYear(t *testing.T) {
 }
 
 // shownClosed is whether byte i of page is in the <summary> of an outermost
-// <details>, which a reader sees with every disclosure closed.
+// <details class="file">, which names a file a reader sees with every
+// disclosure closed. An apparatus panel's summary is not one: it is a
+// heading, and the text the fold test wants open is never a heading.
 func shownClosed(page string, i int) bool {
 	return detailsDepth(page, i) == 1 &&
 		strings.LastIndex(page[:i], "<summary") > strings.LastIndex(page[:i], "</summary>") &&
-		strings.LastIndex(page[:i], "<summary") > strings.LastIndex(page[:i], "<details")
+		strings.LastIndex(page[:i], "<summary") > strings.LastIndex(page[:i], "<details") &&
+		strings.LastIndex(page[:i], `<details class="file">`) == strings.LastIndex(page[:i], "<details")
 }
 
-// TestShownClosedIsAnOutermostSummaryOnly: a name in an outermost summary is
-// on screen with every disclosure closed; one in the summary of a disclosure
-// inside a closed one, or in a disclosure's body, is not.
+// TestShownClosedIsAnOutermostSummaryOnly: a name in an outermost file's
+// summary is on screen with every disclosure closed; one in the summary of a
+// disclosure inside a closed one, in a disclosure's body, or in an apparatus
+// panel's heading is not.
 //
 // Mutation: drop the depth arm and the nested summary counts as shown.
+// Mutation: drop the file arm and the panel's heading counts as shown.
 func TestShownClosedIsAnOutermostSummaryOnly(t *testing.T) {
-	page := `<details><summary>OUTER</summary><p>BODY</p>` +
-		`<details class="file"><summary>NESTED</summary></details></details>`
-	for word, want := range map[string]bool{"OUTER": true, "BODY": false, "NESTED": false} {
+	page := `<details class="file"><summary>OUTER</summary><p>BODY</p>` +
+		`<details class="file"><summary>NESTED</summary></details></details>` +
+		`<details class="apparatus"><summary>PANEL</summary></details>`
+	for word, want := range map[string]bool{"OUTER": true, "BODY": false, "NESTED": false, "PANEL": false} {
 		if got := shownClosed(page, strings.Index(page, word)); got != want {
 			t.Errorf("shownClosed(%s) = %v, want %v", word, got, want)
 		}
@@ -2573,8 +2579,9 @@ func TestEveryFileOpensToWhatItIsBeforeItDownloads(t *testing.T) {
 	if year := meta.Metadata.FiscalYearLabel + " " + meta.Metadata.Basis; !strings.Contains(data[1], "— "+year) {
 		t.Errorf("the data file's summary %q does not name its year, %q", data[1], year)
 	}
-	if want := fmt.Sprintf("Carries %d caveats in its metadata", len(ids)); len(ids) < 2 || !strings.Contains(data[2], want) {
-		t.Errorf("the data file does not say %q:\n%s", want, data[2])
+	said := regexp.MustCompile(`Carries (\d+) caveats`).FindStringSubmatch(data[2])
+	if len(ids) < 2 || said == nil || said[1] != strconv.Itoa(len(ids)) {
+		t.Errorf("the data file says %v, want it to carry %d caveats:\n%s", said, len(ids), data[2])
 	}
 	if !strings.Contains(data[2], `Drawn on <a href="index.html">Budget flows</a>.`) {
 		t.Errorf("the data file %q does not say the page that draws it:\n%s", data[1], data[2])

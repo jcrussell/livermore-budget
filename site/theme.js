@@ -164,7 +164,7 @@ export function wireTargets(win) {
   win.addEventListener("hashchange", () => openTarget(win));
   win.document.addEventListener("click", (e) => {
     const a = e.target instanceof win.Element ? e.target.closest("a[href^='#']") : null;
-    if (a && a.getAttribute("href") === win.location.hash) openTarget(win);
+    if (a && /** @type {HTMLAnchorElement} */ (a).hash === win.location.hash) openTarget(win);
   });
 }
 

@@ -89,10 +89,10 @@ It carries an **`id`**, a one-line **`summary`**, the **`text`** of the caveat
 itself, a **`theme`** naming which of `project.CaveatThemes` it is, and
 **`applies_to`**: the node ids the caveat is about.
 
-The id goes into a **published URL fragment**, `caveats.html#caveat-<id>`, one
-per id across the site, so it survives an edit to any sentence. A page whose
-own section of caveats.html is not the first to state the id links that
-section's copy instead, `caveats.html#caveats-on-<view>--caveat-<id>`. A document
+The id goes into **published URL fragments**, so they survive an edit to any
+sentence: `caveats.html#caveat-<id>` on the first copy of the caveat the page
+writes, and `caveats.html#caveats-on-<view>--caveat-<id>` on each later one, in
+the section of a view stating it. A page links the copy in its own section. A document
 repeating an id is refused at build time by `project.ValidateCaveats`.
 
 **caveats.html states each id in full in every section that lists it**,

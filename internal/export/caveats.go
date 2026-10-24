@@ -84,6 +84,9 @@ type caveatIndex struct {
 	// dataFiles are the entries of project.ThemeDataFiles, which no view
 	// states: they are about adding up a downloaded file.
 	dataFiles []*caveatEntry
+	// sections are the caveats page's by-page sections, in the order it
+	// renders them, which is the order the canonical anchors are placed in.
+	sections []*caveatSection
 	// unviewed are the entries no view states and of no data-files theme,
 	// which has its own list: every document carrying one is one no view
 	// states caveats for, either drawn by no view or only stitched into an
@@ -537,6 +540,7 @@ func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, 
 			}
 		}
 	}
+	cx.sections = sections
 	for _, e := range cx.entries {
 		switch {
 		case e.Theme == project.ThemeDataFiles:
@@ -660,12 +664,6 @@ func buildCaveatsPage(o *Options, v View, nav []navItem, cx *caveatIndex, ix Col
 			"view %q renders the caveats index and no published document carries a caveat, "+
 				"so the site would ship a nav entry to a page with nothing on it", v.Path)
 	}
-	var sections []*caveatSection
-	for _, cv := range cx.views {
-		if cv.Section != nil && !slices.Contains(sections, cv.Section) {
-			sections = append(sections, cv.Section)
-		}
-	}
 	carrying := map[string]bool{}
 	for _, e := range cx.entries {
 		for _, va := range e.Variants {
@@ -691,7 +689,7 @@ func buildCaveatsPage(o *Options, v View, nav []navItem, cx *caveatIndex, ix Col
 			// draws no projection.
 		},
 		Themes:    cx.themes,
-		Sections:  sections,
+		Sections:  cx.sections,
 		DataFiles: cx.dataFiles,
 		Unviewed:  cx.unviewed,
 		Entries:   cx.entries,
