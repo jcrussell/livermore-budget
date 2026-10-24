@@ -96,7 +96,7 @@ export function hashFields(hash, names) {
 
 /**
  * A column's key, the same on every page: its file name less .json. It is
- * the top bar's option value and a page's `#y=`.
+ * the year select's option value and a page's `#y=`.
  * @param {string} path
  */
 export function yearKey(path) {

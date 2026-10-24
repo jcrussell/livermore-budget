@@ -196,7 +196,7 @@ describe("each form draws every tile once and its tip names its pages", () => {
         // drop the ◇ from ledger.js's aria-label.
         if (form === "ledger") {
           const label = section.querySelector("[aria-label]").getAttribute("aria-label");
-          assert.match(label, /: ◇ \d+ bars by our count(?: that are not printed reductions)?, .* in all by our sum$/, label);
+          assert.match(label, /: ◇ \d+ bars? by our count(?: that (?:are not printed reductions|is not a printed reduction))?, .* in all by our sum$/, label);
         }
         const ids = marks.map((m) => m.dataset.id).sort();
         assert.deepEqual(ids, sideTiles(tree.roots).map((x) => x.tile.id).sort());
@@ -333,7 +333,10 @@ test("a hash naming the other year and an opened node is restored, and a bad ent
   // tree's. Mutation: state side.tree.roots.length and side.tree.cents in
   // ledger.js listLabel, and this reads "2 bars ... $0.80".
   assert.equal(forms.ledger.listLabel(/** @type {any} */ ({ ...side, heading: "In" })),
-    "In: ◇ 1 bars by our count that are not printed reductions, $1 in all by our sum");
+    "In: ◇ 1 bar by our count that is not a printed reduction, $1 in all by our sum");
+  const two = { heading: "In", tree: { cents: 130, roots: [...side.tree.roots, { contra: "", cents: 50 }] } };
+  assert.equal(forms.ledger.listLabel(/** @type {any} */ (two)),
+    "In: ◇ 2 bars by our count that are not printed reductions, $1.50 in all by our sum");
   const plain = document.querySelector('li.bar-row[data-id="revenue/taxes/property"]');
   assert.match(plain.querySelector(".bar-share").textContent, /^◇ \d+\.\d%$/);
   assert.deepEqual(sides.parseHash("#y=nope&o=a,b~k", browser.config),

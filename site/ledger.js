@@ -34,8 +34,10 @@ export function widthOf(size, scale) {
  */
 export function listLabel(side) {
   const whole = shareTotal(side);
-  return `${side.heading}: ◇ ${whole.roots} bars by our count` +
-    (whole.reductions ? " that are not printed reductions" : "") + `, ${dollars(whole.cents)} in all by our sum`;
+  const one = whole.roots === 1;
+  return `${side.heading}: ◇ ${whole.roots} ${one ? "bar" : "bars"} by our count` +
+    (whole.reductions ? (one ? " that is not a printed reduction" : " that are not printed reductions") : "") +
+    `, ${dollars(whole.cents)} in all by our sum`;
 }
 
 /**

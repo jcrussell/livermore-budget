@@ -10,8 +10,8 @@
 # schedule splits into is internal/project's, never this file's.
 schema_version: 1
 views:
-  # The page the site opens on: the spine's money with no gesture, three "of
-  # every $100" bars per year, each a table of printed cells glance.js groups
+  # The page the site opens on: the spine's money with no gesture, three bars of
+  # percentage shares per year, each a table of printed cells glance.js groups
   # and sums, the spine's figure beside each. Reads department-funding beside
   # the spine for the third bar, and the export refuses rather than open on
   # no page when that is not built.

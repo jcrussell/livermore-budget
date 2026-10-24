@@ -2,7 +2,7 @@
 /**
  * fisc — the client module capital.html loads. The table is server-rendered
  * with every figure Go cited; this module filters its rows by fund and by
- * project name, narrows it to the year the top bar's select names, and sums
+ * project name, narrows it to the year the year select names, and sums
  * the rows left shown. The sum
  * is ours, not the listing's printed TOTAL, and the template's footer labels
  * it so. Importing it runs nothing; the template calls boot().

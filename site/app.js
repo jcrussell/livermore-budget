@@ -4072,7 +4072,7 @@ export let openingYear = null;
 let restoringView = false;
 
 /**
- * A year's name in the hash and the top bar: its column's key, unique per
+ * A year's name in the hash and the year select: its column's key, unique per
  * year because each year is one column file.
  * @param {FiscYear} year
  * @returns {string}
