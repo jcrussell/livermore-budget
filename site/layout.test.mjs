@@ -350,10 +350,12 @@ describe("the spine's layout", () => {
   // and places them down the node's face, whatever order they arrive in. On
   // a layout of its own, every node's stack is turned upside down (each end
   // takes the place of its mirror in the stack), and restacking puts the
-  // chart back. Mutation: return early from restackLinks and the inverted
-  // stacks keep their crossings.
+  // chart back, each end where the page placed it and no ribbon resized.
+  // Mutation: return early from restackLinks and the inverted stacks keep
+  // their crossings.
   test("restackLinks stacks scrambled ribbons back to the chart's", (t) => {
     const own = laidSpine(app);
+    const placed = own.links.map((l) => [l.y0, l.y1, l.width]);
     const invert = (links, y) => {
       const places = links.map((l) => l[y]);
       links.forEach((l, i) => { l[y] = places[places.length - 1 - i]; });
@@ -368,6 +370,8 @@ describe("the spine's layout", () => {
     t.diagnostic(`${scrambled} crossings with every stack inverted, ${got.crossings} after restacking`);
     assert.notEqual(scrambled, DRAWN.crossings, "inverting the stacks changed nothing, so restacking is not tested");
     assert.equal(got.crossings, DRAWN.crossings);
+    // Back where the page placed every end, and no ribbon resized.
+    assert.deepEqual(own.links.map((l) => [l.y0, l.y1, l.width]), placed);
   });
 
   test("the fund column is pinned to the order the column shipped", (t) => {

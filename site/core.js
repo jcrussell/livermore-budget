@@ -1174,9 +1174,9 @@ export function reveal(doc, frontier, id) {
 
 /**
  * Expand all from a frontier: every node it draws unsplit split by its
- * primary split, the one expand opens straight through and revealChain
- * reveals by, and every node that exposes, until none is left or 16 passes
- * have run. The splits in the order opened, and the frontier they reach.
+ * first declared split, the one a click on it opens, and every node that
+ * exposes, until none is left or 16 passes have run. The splits in the
+ * order opened, and the frontier they reach.
  * @param {FiscProjection} doc the expansion schedule
  * @param {Set<string>} frontier
  * @returns {{splits: {node: string, key: string}[], frontier: Set<string>}}
@@ -1185,11 +1185,11 @@ export function expandAllFrom(doc, frontier) {
   let open = frontier;
   const splits = [];
   for (let pass = 0; pass < 16; pass++) {
-    const shut = doc.nodes.filter((n) => open.has(n.id) && splitsOf(doc, n.id).some((sp) => !sp.alternative) &&
+    const shut = doc.nodes.filter((n) => open.has(n.id) && splitsOf(doc, n.id).length &&
       openSplitOf(doc, open, n.id) === "");
     if (!shut.length) break;
     for (const n of shut) {
-      const key = splitsOf(doc, n.id).find((sp) => !sp.alternative).key;
+      const key = splitsOf(doc, n.id)[0].key;
       splits.push({ node: n.id, key });
       open = expand(doc, open, n.id, key);
     }

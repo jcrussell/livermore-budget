@@ -342,9 +342,10 @@ describe("revealing a node opens each ancestor by the split the node below belon
 // PLANTED: on the pinned columns one pass of Expand all opens everything,
 // since each root's split exposes no node with a split of its own, and no
 // node declares an alternative first. Here P's split exposes M and N, M
-// splits again, and M declares its alternative before its primary split.
+// splits again, and M declares its alternative before its primary split,
+// so Expand all opens M as a click on it does, by "alt".
 // Mutation: stop expandAllFrom after one pass and M stays shut; open each
-// node by its first declared split and M opens by "alt".
+// node by its primary split and M opens by "rows".
 describe("Expand all opens what a split exposes, until nothing is left shut", () => {
   const node = (id, parent = "", alternative = "") => Object.assign({ id, tier: 0, parent, label: id, role: "r" }, alternative ? { alternative } : {});
   const split = (n, key, alternative = false) => ({ node: n, key, form: "extend", alternative });
@@ -355,10 +356,10 @@ describe("Expand all opens what a split exposes, until nothing is left shut", ()
     splits: [split("P", "one"), split("M", "alt", true), split("M", "rows")],
   };
 
-  test("a node a split exposes is split in turn, by its primary split", () => {
+  test("a node a split exposes is split in turn, by its first declared split", () => {
     const all = core.expandAllFrom(doc, core.rootFrontier(doc));
-    assert.deepEqual(all.splits, [{ node: "P", key: "one" }, { node: "M", key: "rows" }]);
-    assert.deepEqual(ids(all.frontier), ["A", "B", "M", "N", "P"]);
+    assert.deepEqual(all.splits, [{ node: "P", key: "one" }, { node: "M", key: "alt" }]);
+    assert.deepEqual(ids(all.frontier), ["C", "M", "N", "P"]);
   });
 });
 
