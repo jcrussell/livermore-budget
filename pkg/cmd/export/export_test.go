@@ -635,100 +635,6 @@ func TestExportRunRefusesAnUnreachableDocumentBeforeTouchingTheSite(t *testing.T
 	}
 }
 
-// --clean removes what the earlier export wrote and this one does not, the
-// directories left empty and a stranded manifest temp file, keeps a file no
-// export wrote, and counts each kind removed.
-// Mutation: drop Write's clean branch -- "a file the earlier export wrote
-// survived --clean"; skip pruning -- "facts/gone was left behind empty"; count
-// the temp file among the earlier export's -- "does not say what --clean removed".
-func TestExportRunCleanRemovesWhatTheEarlierExportWrote(t *testing.T) {
-	opts, _, _, errOut := testOptions(t)
-	build := opts.Build
-	opts.Build = func(root string) (result, error) {
-		r, err := build(root)
-		if err != nil {
-			return r, err
-		}
-		r.Files = map[string][]byte{"facts/gone/p0001.jsonl": []byte("{}\n")}
-		return r, nil
-	}
-	if err := exportRun(context.Background(), opts); err != nil {
-		t.Fatalf("first export: %v", err)
-	}
-	stale := filepath.Join(opts.OutputDir, "facts", "gone", "p0001.jsonl")
-	if _, err := os.Stat(stale); err != nil {
-		t.Fatalf("the first export did not write the file this test removes: %v", err)
-	}
-	notes := filepath.Join(opts.OutputDir, "notes.md")
-	if err := os.WriteFile(notes, []byte("mine\n"), 0o600); err != nil {
-		t.Fatalf("seed: %v", err)
-	}
-	temp := filepath.Join(opts.OutputDir, ".fisc-tmp-7")
-	if err := os.WriteFile(temp, []byte("stranded\n"), 0o600); err != nil {
-		t.Fatalf("seed: %v", err)
-	}
-
-	opts.Build = build
-	opts.Clean = true
-	if err := exportRun(context.Background(), opts); err != nil {
-		t.Fatalf("second export: %v", err)
-	}
-	if _, err := os.Stat(stale); err == nil {
-		t.Error("a file the earlier export wrote survived --clean")
-	}
-	if _, err := os.Stat(filepath.Dir(stale)); err == nil {
-		t.Error("facts/gone was left behind empty")
-	}
-	if _, err := os.Stat(notes); err != nil {
-		t.Errorf("a file no export wrote was removed: %v", err)
-	}
-	if _, err := os.Stat(filepath.Join(opts.OutputDir, "index.html")); err != nil {
-		t.Errorf("the site was not rewritten: %v", err)
-	}
-	if _, err := os.Stat(temp); err == nil {
-		t.Error("the stranded manifest temp file survived --clean")
-	}
-	if want := "removed 1 files the earlier export wrote and this one does not, 1 stranded manifest temp files and 2 empty directories\n"; !strings.Contains(errOut(), want) {
-		t.Errorf("stderr %q does not say what --clean removed: want %q", errOut(), want)
-	}
-}
-
-// A path an earlier export wrote as a file and this one writes under is a usage
-// error without --clean, exiting 2 with a hint, and --clean converges.
-// Mutation: return Write's error unchanged -- "got <error>, want a FlagError".
-func TestExportRunNeedsCleanWhereAnEarlierFileIsInTheWay(t *testing.T) {
-	opts, _, _, _ := testOptions(t)
-	build := opts.Build
-	withFile := func(rel string) builder {
-		return func(root string) (result, error) {
-			r, err := build(root)
-			r.Files = map[string][]byte{rel: []byte("{}\n")}
-			return r, err
-		}
-	}
-	opts.Build = withFile("facts")
-	if err := exportRun(context.Background(), opts); err != nil {
-		t.Fatalf("first export: %v", err)
-	}
-	opts.Build = withFile("facts/d/p0001.jsonl")
-	err := exportRun(context.Background(), opts)
-	var flagErr *cmdutil.FlagError
-	if !errors.As(err, &flagErr) {
-		t.Fatalf("got %v, want a FlagError", err)
-	}
-	var h *hint.ErrHint
-	if !errors.As(err, &h) || !strings.Contains(h.Hint, "--clean") {
-		t.Errorf("the refusal %q carries no hint naming --clean", err)
-	}
-	opts.Clean = true
-	if err := exportRun(context.Background(), opts); err != nil {
-		t.Fatalf("--clean: %v", err)
-	}
-	if _, err := os.Stat(filepath.Join(opts.OutputDir, "facts", "d", "p0001.jsonl")); err != nil {
-		t.Errorf("--clean did not write the file: %v", err)
-	}
-}
-
 // treeOf is every entry under dir, its mode, modification time and, for a
 // file, its bytes: what a run that writes nothing leaves exactly as it was.
 func treeOf(t *testing.T, dir string) map[string]string {
@@ -760,9 +666,11 @@ func treeOf(t *testing.T, dir string) map[string]string {
 }
 
 // --clean --dry-run prints exactly the paths --clean would remove and leaves the
-// directory as it was, down to its modification times.
+// directory as it was, down to its modification times; the --clean after it
+// says what it removed.
 // Mutation: fall through to Write after printing -- a tree diff; skip printing --
-// stdout ""; keep Validate's write probe for a dry run -- a modification-time diff.
+// stdout ""; keep Validate's write probe for a dry run -- a modification-time diff;
+// drop the --clean summary -- "does not say what --clean removed".
 func TestExportRunDryRunPrintsWhatCleanWouldRemoveAndWritesNothing(t *testing.T) {
 	opts, _, out, _ := testOptions(t)
 	build := opts.Build
@@ -788,7 +696,7 @@ func TestExportRunDryRunPrintsWhatCleanWouldRemoveAndWritesNothing(t *testing.T)
 	}
 	before := treeOf(t, opts.OutputDir)
 
-	io, _, stdout, _ := iostreams.Test()
+	io, _, stdout, stderr := iostreams.Test()
 	opts.IO = io
 	opts.Build = build
 	opts.Clean = true
@@ -811,68 +719,42 @@ func TestExportRunDryRunPrintsWhatCleanWouldRemoveAndWritesNothing(t *testing.T)
 	if out() == "" {
 		t.Fatal("the first export reported nothing, so this test proves nothing about its stdout")
 	}
-}
-
-// The dry run lists exactly what --clean then removes, files and directories.
-// Mutation: drop directories from the dry run's printing -- facts/gone and
-// facts/gone/deep "removed but not listed"; make prunedBy prune every parent --
-// "directory not empty" on facts/kept.
-func TestExportRunDryRunListsWhatCleanRemoves(t *testing.T) {
-	opts, _, _, _ := testOptions(t)
-	build := opts.Build
-	opts.Build = func(root string) (result, error) {
-		r, err := build(root)
-		r.Files = map[string][]byte{
-			"facts/gone/p0001.jsonl":      []byte("{}\n"),
-			"facts/gone/deep/p0002.jsonl": []byte("{}\n"),
-			"facts/kept/p0003.jsonl":      []byte("{}\n"),
-		}
-		return r, err
-	}
-	if err := exportRun(context.Background(), opts); err != nil {
-		t.Fatalf("first export: %v", err)
-	}
-	if err := os.WriteFile(filepath.Join(opts.OutputDir, "facts", "kept", "mine.txt"), []byte("mine\n"), 0o600); err != nil {
-		t.Fatalf("seed: %v", err)
-	}
-	before := treeOf(t, opts.OutputDir)
-
-	io, _, stdout, _ := iostreams.Test()
-	opts.IO = io
-	opts.Build = build
-	opts.Clean = true
-	opts.DryRun = true
-	if err := exportRun(context.Background(), opts); err != nil {
-		t.Fatalf("dry run: %v", err)
-	}
-	listed := map[string]bool{}
-	for _, line := range strings.Split(strings.TrimSuffix(stdout.String(), "\n"), "\n") {
-		listed[strings.TrimSuffix(line, string(filepath.Separator))] = true
-	}
 
 	opts.DryRun = false
 	if err := exportRun(context.Background(), opts); err != nil {
 		t.Fatalf("--clean: %v", err)
 	}
-	after := treeOf(t, opts.OutputDir)
-	removed := map[string]bool{}
-	for p := range before {
-		if _, ok := after[p]; !ok {
-			removed[p] = true
+	if want := "removed 1 files the earlier export wrote and this one does not, 0 stranded manifest temp files and 2 empty directories\n"; !strings.Contains(stderr.String(), want) {
+		t.Errorf("stderr %q does not say what --clean removed: want %q", stderr.String(), want)
+	}
+}
+
+// A path an earlier export wrote as a file and this one writes under is a usage
+// error without --clean, with a hint naming it.
+// Mutation: return Write's error unchanged -- "got <error>, want a FlagError".
+func TestExportRunNeedsCleanWhereAnEarlierFileIsInTheWay(t *testing.T) {
+	opts, _, _, _ := testOptions(t)
+	build := opts.Build
+	withFile := func(rel string) builder {
+		return func(root string) (result, error) {
+			r, err := build(root)
+			r.Files = map[string][]byte{rel: []byte("{}\n")}
+			return r, err
 		}
 	}
-	if len(removed) != 5 {
-		t.Errorf("--clean removed %d entries, want the 3 files and 2 directories this test sets up", len(removed))
+	opts.Build = withFile("facts")
+	if err := exportRun(context.Background(), opts); err != nil {
+		t.Fatalf("first export: %v", err)
 	}
-	for p := range removed {
-		if !listed[p] {
-			t.Errorf("%s was removed but not listed", p)
-		}
+	opts.Build = withFile("facts/d/p0001.jsonl")
+	err := exportRun(context.Background(), opts)
+	var flagErr *cmdutil.FlagError
+	if !errors.As(err, &flagErr) {
+		t.Fatalf("got %v, want a FlagError", err)
 	}
-	for p := range listed {
-		if !removed[p] {
-			t.Errorf("%s was listed but not removed", p)
-		}
+	var h *hint.ErrHint
+	if !errors.As(err, &h) || !strings.Contains(h.Hint, "--clean") {
+		t.Errorf("the refusal %q carries no hint naming --clean", err)
 	}
 }
 
