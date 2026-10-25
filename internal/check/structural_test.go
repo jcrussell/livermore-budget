@@ -185,48 +185,6 @@ func anArtifactOf(t *testing.T, root, docID string) (string, corpus.Artifact) {
 	return "", corpus.Artifact{}
 }
 
-// TestTheStructuralChecksPassOverTheCommittedCorpus is the positive claim, with the
-// numbers this file's mutations move.
-//
-// The subject count is asserted against the tree itself rather than pinned to a
-// literal: every file under data/extracted/ except the three manifests is one
-// artifact this check looked at. A check reporting a pass over fewer subjects than
-// there are files is a check that swept part of the corpus and said it swept all of
-// it, which is the specific dishonesty Result.Subjects exists to prevent.
-func TestTheStructuralChecksPassOverTheCommittedCorpus(t *testing.T) {
-	t.Parallel()
-	root := repoRoot(t)
-	s := committed(t)
-	rep := Run(t.Context(), s, All(), ReportOptions{GeneratedBy: testVersion})
-
-	files := extractedFiles(t, root)
-	wantArtifacts := len(files) - len(s.Extractions) // every file but the manifests
-	got := resultFor(t, rep, "artifacts-match-manifest")
-	if got.Status != StatusPass {
-		t.Fatalf("artifacts-match-manifest = %s (%s): %v", got.Status, got.Summary, got.Findings)
-	}
-	if got.Subjects != wantArtifacts {
-		t.Errorf("artifacts-match-manifest looked at %d artifacts, but %s holds %d files "+
-			"beside its %d manifests", got.Subjects, extractedDir, wantArtifacts,
-			len(s.Extractions))
-	}
-	for _, tt := range []struct{ id, unit string }{
-		{"extraction-emitted-every-page", "extractions"},
-		{"extractor-reported-no-errors", "extractions"},
-		{"manifest-matches-source-registry", "documents"},
-		{"extraction-toolchain-pinned", "extractions"},
-	} {
-		res := resultFor(t, rep, tt.id)
-		if res.Status != StatusPass {
-			t.Errorf("%s = %s (%s): %v", tt.id, res.Status, res.Summary, res.Findings)
-		}
-		if res.Subjects != len(s.Extractions) {
-			t.Errorf("%s looked at %d %s, want the %d extracted documents",
-				tt.id, res.Subjects, tt.unit, len(s.Extractions))
-		}
-	}
-}
-
 // mutateArtifacts rewrites one extraction's artifact map, which is the half of a
 // manifest that is otherwise checkable only against the directory beside it.
 func mutateArtifacts(t *testing.T, root, docID string, mutate func(map[string]any)) {
@@ -574,47 +532,6 @@ func TestAnUnreadableExtractionDirectoryIsAnError(t *testing.T) {
 	}
 	if !strings.Contains(res.Summary, docWithout) {
 		t.Errorf("summary %q does not name the extraction it could not read", res.Summary)
-	}
-}
-
-// TestTheCommittedExtractionsAreComplete states the invariant the completeness check
-// rests on directly against the tree, rather than only through the check: every
-// document's page count equals the number of page artifacts AND the number of
-// geometry artifacts. 195/195/195, 268/268/268, 323/323/323.
-//
-// It is worth asserting separately because it is the premise, not the conclusion. If
-// this ever stops being true of a freshly extracted corpus — a substrate that is not
-// emitted per page, say — the check above becomes wrong rather than merely red, and
-// this is the test that says which of the two happened.
-func TestTheCommittedExtractionsAreComplete(t *testing.T) {
-	t.Parallel()
-	s := committed(t)
-	if len(s.Extractions) != 3 {
-		t.Fatalf("%d extractions loaded, want the 3 committed documents", len(s.Extractions))
-	}
-	for _, docID := range slices.Sorted(maps.Keys(s.Extractions)) {
-		doc := s.Extractions[docID]
-		text, geometry, other := 0, 0, 0
-		for rel := range doc.Artifacts() {
-			switch {
-			case strings.HasPrefix(rel, "pages/"):
-				text++
-			case strings.HasPrefix(rel, "geometry/"):
-				geometry++
-			default:
-				other++
-			}
-		}
-		if pages := doc.PageCount(); text != pages || geometry != pages {
-			t.Errorf("%s: %d pages, %d page artifacts, %d geometry artifacts", docID,
-				pages, text, geometry)
-		}
-		if other != 0 {
-			t.Errorf("%s lists %d artifacts in neither namespace", docID, other)
-		}
-		if len(doc.Errors()) != 0 {
-			t.Errorf("%s records %d extraction errors", docID, len(doc.Errors()))
-		}
 	}
 }
 

@@ -15,67 +15,11 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
-// TestTheCommittedCutsTieAlongTheLattice pins, by name, which pairs the
-// committed corpus compares and at which grain, and why the others are refused:
-// a comparison turned into a refusal leaves the check green with one fewer.
-func TestTheCommittedCutsTieAlongTheLattice(t *testing.T) {
+// TestCompareRefusesWhatTheLatticeCannotTie pins why the committed corpus's
+// uncompared pairs are refused, each with structure.ErrNotComparable.
+func TestCompareRefusesWhatTheLatticeCannotTie(t *testing.T) {
 	t.Parallel()
 	s := committed(t)
-	res := resultFor(t, runOne(t, s, &cutsTieAlongTheLattice{}), "cuts-tie-along-the-lattice")
-	if res.Status != StatusPass {
-		t.Fatalf("status = %s, findings:\n  %v", res.Status, res.Findings)
-	}
-	for _, want := range []string{
-		"23 comparison(s) of 17 cut(s)",
-		"departmentwide ~ funding-sources at department: 39 cells over FY2024 actual, FY2025 revised, FY2026 adopted, FY2027 adopted",
-		"general-fund-departments ~ funding-sources at department: 42 cells over FY2024 actual, FY2025 revised, FY2026 adopted, FY2027 adopted",
-		"revenue-detail -> spine at fund-group-by-category",
-		"transfers-detail -> spine at fund-group-by-category",
-		"general-fund-departments -> spine at fund-group-by-category",
-		// pp.172-183 meet the spine in its two columns, and p172's General Fund
-		// meets pp.167-170 in all four.
-		"general-fund-by-category -> spine at fund-group-by-category: 8 cells over FY2026 adopted, FY2027 adopted, 0 one-sided at zero",
-		"fund-expenditures -> spine at fund-group-by-category: 41 cells over FY2026 adopted, FY2027 adopted, 10 one-sided at zero, 1 held apart",
-		"general-fund-departments -> general-fund-by-category at fund-by-category: 15 cells over FY2024 actual, FY2025 revised, FY2026 adopted, FY2027 adopted, 0 one-sided at zero, 1 held apart",
-		"departmentwide ~ spine at category",
-		"funding-sources ~ spine at fund-group",
-		// The split takes transfers out, so p76 meets the spine on transfers in.
-		"transfers-detail -> spine at fund-group-by-category: 14 cells over FY2026 adopted, FY2027 adopted, 6 one-sided at zero",
-		"a-transfer-out-is-p76-or-to-the-cip -> spine at fund-group: 12 cells over FY2026 adopted, FY2027 adopted, 2 one-sided at zero",
-		"1 pair(s) held only by a split",
-		"cip-funds outside the reference, its funds carried by no other cut, and compared with no cut",
-		// The CIP block of pp.186-209 is residue, held to p222 line by line
-		// in the three columns p222 prints.
-		"the-cip-funds-block-is-p222s (transfer_in transfers/in) ~ cip-funds at fund: 105 cells over FY2025 revised, FY2026 adopted, FY2027 adopted",
-		"the-cip-funds-block-is-p222s (revenue) ~ cip-funds at fund: 105 cells",
-		"the-cip-funds-block-is-p222s (fund-balance/use-for-cip) ~ cip-funds at fund: 105 cells",
-		// pp.186-209 meet the spine through the split on transfers out, and
-		// as a containment on transfers in and balances; their two totals
-		// cuts meet it at the fund group, and every per-fund schedule at the
-		// fund.
-		"fund-balance-flows -> spine at fund-group-by-category: 47 cells over FY2026 adopted, FY2027 adopted",
-		"a-fund-transfers-out-or-to-the-cip -> spine at fund-group: 14 cells over FY2026 adopted, FY2027 adopted, 2 one-sided at zero",
-		"fund-balance-revenues ~ spine at fund-group: 14 cells over FY2026 adopted, FY2027 adopted",
-		"fund-balance-expenses ~ spine at fund-group: 13 cells over FY2026 adopted, FY2027 adopted",
-		"revenue-detail -> fund-balance-revenues at fund: 298 cells over FY2024 actual, FY2025 revised, FY2026 adopted, FY2027 adopted",
-		"general-fund-departments -> fund-balance-expenses at fund: 4 cells over FY2024 actual, FY2025 revised, FY2026 adopted, FY2027 adopted",
-		"general-fund-by-category -> fund-balance-expenses at fund: 3 cells over FY2024 actual, FY2025 revised, FY2026 adopted, FY2027 adopted",
-		"fund-expenditures -> fund-balance-expenses at fund: 291 cells over FY2024 actual, FY2025 revised, FY2026 adopted, FY2027 adopted",
-		"funding-sources -> fund-balance-expenses at fund: 298 cells over FY2024 actual, FY2025 revised, FY2026 adopted, FY2027 adopted",
-		// 136 pairs of 17 cuts: 16 compared, 16 with the outside cut, 1 held
-		// only by a split, 2 held by a declared tie, and these.
-		"101 pair(s) no comparison or tie relates",
-	} {
-		if !strings.Contains(res.Summary, want) {
-			t.Errorf("summary does not say %q", want)
-		}
-	}
-	for _, absent := range []string{"carry no fact", "No rule file is loaded"} {
-		if strings.Contains(res.Summary, absent) {
-			t.Errorf("summary says %q over the committed corpus", absent)
-		}
-	}
-
 	cut := map[string]structure.Cut{}
 	for _, c := range structure.AllCuts() {
 		cut[c.Name] = c

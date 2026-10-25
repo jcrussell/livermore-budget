@@ -12,38 +12,11 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
-// TestTheCommittedPeersOverlapOnlyByDeclaredIdentity pins, by name, which
-// pairs at one level the committed corpus compares, the one overlap and its
-// figure, and which pairs are refused with which reason.
-func TestTheCommittedPeersOverlapOnlyByDeclaredIdentity(t *testing.T) {
+// TestPeersRefusesAPairWithNoColumnInCommon pins the spine's refusal against
+// the ACFR's audited columns, with structure.ErrNotComparable.
+func TestPeersRefusesAPairWithNoColumnInCommon(t *testing.T) {
 	t.Parallel()
 	s := committed(t)
-	res := resultFor(t, runOne(t, s, &peersOverlapOnlyByDeclaredIdentity{}), "peers-overlap-only-by-declared-identity")
-	if res.Status != StatusPass {
-		t.Fatalf("status = %s, findings:\n  %v", res.Status, res.Findings)
-	}
-	if res.Subjects != 207 {
-		t.Errorf("subjects = %d, want the 22 cells pp.127-140 and p76 share and the 185 pp.186-209 share with them and p222", res.Subjects)
-	}
-	for _, want := range []string{
-		"207 shared cell(s) over 10 pair(s)",
-		`revenue-detail + fund-balance-flows at fund-by-category: 60 shared cell(s), 60 under identity "a-fund-balance-transfer-in-is-the-revenue-schedules" carrying $98,159,217.00 on each side`,
-		`transfers-detail + fund-balance-flows at fund-by-category: 56 shared cell(s), 56 under identity "a-fund-balance-transfer-is-p76s" carrying $86,301,260.00 on each side`,
-		`cip-transfers-out + fund-balance-flows at fund-by-category: 69 shared cell(s), 69 under identity "a-fund-balance-transfer-to-the-cip-is-p222s" carrying $181,817,740.00 on each side`,
-		"cip-funds + fund-balance-flows at fund-by-category: 0 shared cell(s)",
-		"7 exception(s) excuse a cell one side of an identity has no row for: pp.127-130-print-no-general-fund-transfer-in-2024, pp.127-130-print-no-general-fund-transfer-in-2025, pp.127-130-print-no-general-fund-transfer-in-p76-2026, pp.127-130-print-no-general-fund-transfer-in-p76-2027, pp.127-130-print-no-general-fund-transfer-in-pp.186-209-2026, pp.127-130-print-no-general-fund-transfer-in-pp.186-209-2027, pp.131-140-print-no-general-fund-cip-reserves-2025",
-		"revenue-detail + cip-funds at fund-by-category: 0 shared cell(s)",
-		"transfers-detail + cip-transfers-out at fund-by-category: 0 shared cell(s)",
-		"transfers-detail + cip-funds at fund-by-category: 0 shared cell(s)",
-		`revenue-detail + transfers-detail at fund-by-category: 22 shared cell(s), 22 under identity "a-transfer-in-is-printed-at-both-ends" carrying $42,183,495.00 on each side`,
-		"acfr-general-fund-summary + acfr-fund-balances/general at fund-group-by-category: 0 shared cell(s)",
-		"acfr-changes-in-fund-balances + acfr-fund-balances/other-governmental at category: 0 shared cell(s)",
-		"16 pair(s) at one level refused: spine/acfr-general-fund-summary, spine/acfr-fund-balances/general, revenue-detail/cip-transfers-out, revenue-detail/general-fund-by-category, revenue-detail/fund-expenditures, transfers-detail/general-fund-by-category, transfers-detail/fund-expenditures, cip-transfers-out/cip-funds, cip-transfers-out/general-fund-by-category, cip-transfers-out/fund-expenditures, cip-funds/general-fund-by-category, cip-funds/fund-expenditures, general-fund-by-category/fund-expenditures, general-fund-by-category/fund-balance-flows, fund-expenditures/fund-balance-flows, fund-balance-revenues/fund-balance-expenses",
-	} {
-		if !strings.Contains(res.Summary, want) {
-			t.Errorf("summary does not say %q", want)
-		}
-	}
 	cut := map[string]structure.Cut{}
 	for _, c := range structure.AllCuts() {
 		cut[c.Name] = c

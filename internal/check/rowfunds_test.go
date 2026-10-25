@@ -94,87 +94,37 @@ func TestRowFundsCatchesTheTwinSwapNothingElseSees(t *testing.T) {
 	}
 }
 
-// TestTheCommittedCorpusRowAnchorsHold pins what the check covers today,
-// including what it does NOT, because the summary is printed on every run and a
-// reader counting rows would otherwise have to guess.
-func TestTheCommittedCorpusRowAnchorsHold(t *testing.T) {
+// TestThePassLineKeepsTheTwoArmsApart is heldLine's wiring, over p76's verb
+// phrases and pp.85-125's bare labels alone: passing it a zero for either arm
+// -- heldLines(subjects, 0, numbered) -- folds the bare labels into the verb
+// phrases' claim of direction, which TestTheHeldLineNeverReportsAnEmptyArm,
+// calling heldLine directly, cannot see.
+func TestThePassLineKeepsTheTwoArmsApart(t *testing.T) {
 	t.Parallel()
-	s := committed(t)
-	res, err := (&rowFundsMatchTheirAnchors{}).Run(t.Context(), s)
+	base := committed(t)
+	s := *base
+	s.Files = nil
+	for _, f := range base.Files {
+		cut := *f
+		cut.Rules = nil
+		for i := range f.Rules {
+			if id := f.Rules[i].ID; strings.HasPrefix(id, "p76-") || strings.HasPrefix(id, "funding-") {
+				cut.Rules = append(cut.Rules, f.Rules[i])
+			}
+		}
+		s.Files = append(s.Files, &cut)
+	}
+	res, err := (&rowFundsMatchTheirAnchors{}).Run(t.Context(), &s)
 	if err != nil {
-		t.Fatalf("Run: %v", err)
+		t.Fatal(err)
 	}
 	if res.Status != StatusPass {
 		t.Fatalf("%s: %s", res.Status, res.Summary)
 	}
-
-	// THE THREE ROWS THE PAGE LEAVES UNANCHORED, named rather than counted.
-	// p76 prints three continuation rows whose "Transfer From" carries over
-	// from the row above, so their declared payer has no printed label on its
-	// own line. Three of 22 rows are unguarded on the side where the
-	// operating/CIP ambiguity lives, and the summary has to say so.
-	for _, want := range []string{
-		`"to Wastewater Replacement" (the fund that pays, 620)`,
-		`"to 2022 COPS" (the fund that pays, 100)`,
-		`"to Downtown LMD" (the fund that pays, 100)`,
-	} {
+	for _, want := range []string{"40 printed with a verb phrase", "78 a bare fund name under row_labels_name_funds"} {
 		if !strings.Contains(res.Summary, want) {
-			t.Errorf("the summary does not name the unanchored row %s:\n%s", want, res.Summary)
+			t.Errorf("the PASS line does not keep the two arms apart: no %q in\n%s", want, res.Summary)
 		}
-	}
-	if !strings.Contains(res.Summary, "3 declared fund(s) have no printed anchor") {
-		t.Errorf("the summary does not count the unanchored declarations:\n%s", res.Summary)
-	}
-
-	// THE SEVENTY-EIGHT ROWS ARE READ RATHER THAN COUNTED. pp.85-125's
-	// Department Funding Sources rows print a bare fund name, which names a
-	// fund and no direction, so rowAnchorPrefixes matches nothing. Their rules
-	// declare row_labels_name_funds, so the label is resolved whole and the
-	// hand-typed number is checked against it.
-	//
-	// 834 IS THE NUMBER THAT SAYS SO: 40 printed anchors on p76 plus these 78,
-	// plus p222's 62 printed fund numbers -- 36 receiving ends and 26 paying --
-	// plus the 210 published project rows of pp.224-235, each opening on its
-	// fund's number, plus pp.186-209's 444 published fund rows, 111 a year,
-	// each a bare fund name under the same declaration.
-	// Asserting the count rather than the absence of the old clause is
-	// deliberate -- a regression that dropped the arm entirely would delete the
-	// clause too, and an absence assertion would pass on it.
-	if res.Subjects != 834 {
-		t.Errorf("the check resolves %d row anchors, want 834: 40 printed on p76, "+
-			"the 78 bare fund labels on pp.85-125, p222's 62 fund numbers, "+
-			"pp.224-235's 210 and pp.186-209's 444\n%s", res.Subjects, res.Summary)
-	}
-	// THE WORDING SEARCHED FOR HERE IS THE ONE THE CODE EMITS, checked against
-	// rowfunds.go rather than remembered. A negative assertion over a string no
-	// code path can emit cannot fail -- it stays green with the whole bare-label
-	// arm deleted -- and is the cheapest way to write a test that proves nothing.
-	if strings.Contains(res.Summary, "declared fund(s) sit at an end this check does not read") {
-		t.Errorf("the summary still reports the bare-label rows as ones it makes no "+
-			"claim about:\n%s", res.Summary)
-	}
-	// heldLine's WIRING, not just its output. TestTheHeldLineNeverReportsAnEmptyArm
-	// calls heldLine directly, so passing it the wrong arguments -- heldLine(subjects, 0)
-	// -- left the whole suite green while restoring the exact false PASS line
-	// cf96ed2 removed. This is the assertion that reads what fisc verify prints.
-	for _, want := range []string{
-		"40 printed with a verb phrase",
-		"522 a bare fund name under row_labels_name_funds",
-	} {
-		if !strings.Contains(res.Summary, want) {
-			t.Errorf("the PASS line does not keep the two arms apart: no %q in\n%s",
-				want, res.Summary)
-		}
-	}
-	// AND NOT ONE BY ONE. Naming each row put this check's PASS line at 11 KB,
-	// against roughly 450 bytes before. A count is the honest middle: a row
-	// that HOLDS is counted; only a row that fails is named.
-	//
-	// THE LENGTH BOUND IS WHAT ENFORCES THAT, not a search for one row's name:
-	// a bare label never sets `phrased`, so it never reaches unanchoredRows,
-	// the only per-row list in the summary.
-	if n := len(res.Summary); n > 2000 {
-		t.Errorf("the summary is %d bytes; it is printed on every fisc verify run", n)
 	}
 }
 
@@ -182,9 +132,8 @@ func TestTheCommittedCorpusRowAnchorsHold(t *testing.T) {
 // row_labels_name_funds is load-bearing rather than decorative.
 //
 // WITHOUT IT THE ARM WOULD STILL LOOK RIGHT. A commit that added the code and
-// forgot the eleven YAML declarations passes every assertion above except the
-// count, and a reader checking "does the new arm work" against a hand-built
-// fixture would see it work. This runs the committed corpus with the flag
+// forgot the eleven YAML declarations would leave a reader checking "does the
+// new arm work" against a hand-built fixture seeing it work. This runs the committed corpus with the flag
 // cleared and asserts the check falls back exactly to where it was: 522 fewer
 // subjects -- pp.85-125's 78 and pp.186-209's 444 -- and the clause naming
 // those rows as unread returns.

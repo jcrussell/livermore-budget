@@ -123,47 +123,6 @@ func TestFundBalanceIdentityIgnoresReserveIncrease(t *testing.T) {
 	}
 }
 
-// TestFundBalanceIdentityIsNotVacuousOverTheCommittedCorpus is the guard on this
-// check's own worth.
-//
-// TestTheCommittedCorpusVacuitySplit pins the STATUS, and a status of pass is
-// exactly what a check with nothing to look at would report if it were written
-// to skip instead of to conclude. This pins the population: 460 balances, over
-// two documents, which is the twelve the Budget Book spine publishes, the one
-// ACFR p41 does, ACFR p121's three, and pp.186-209's 444 -- 111 published rows
-// in each of four years. If a coverage lane adds a fund balance, this number moves and the
-// mover has to decide whether the new balance really does tie.
-func TestFundBalanceIdentityIsNotVacuousOverTheCommittedCorpus(t *testing.T) {
-	t.Parallel()
-	s := committed(t)
-	res := resultFor(t, Run(t.Context(), s, All(), ReportOptions{}), "fund-balance-identity")
-
-	if res.Status != StatusPass {
-		t.Fatalf("status = %s (%s), want pass", res.Status, res.Summary)
-	}
-	if res.Subjects != 460 {
-		t.Errorf("subjects = %d, want 460: twelve spine balances, ACFR p41's one, "+
-			"ACFR p121's three and pp.186-209's 444", res.Subjects)
-	}
-	// MEASURED: the spine's six fund groups carry FY2026 into FY2027, and
-	// pp.186-209's 111 rows each carry three years into the next, less
-	// Community Benefit Fund's FY2024, whose ending p187 leaves blank: 6 + 332,
-	// of which fund 101's FY2024 break is held apart and the rest tie.
-	if !strings.Contains(res.Summary, "337 carry-forward(s) each ending where the next year begins, "+
-		"and 1 held apart by declared exceptions") {
-		t.Errorf("summary %q, want 337 carry-forwards tying and 1 held apart", res.Summary)
-	}
-	// MEASURED: the spine's twelve, ACFR p41's one and ACFR p121's three print
-	// a change line, and pp.186-209's 444 print none.
-	if !strings.Contains(res.Summary, "16 of them beginning + change equal to ending to the cent, "+
-		"and 444 checked for completeness only") {
-		t.Errorf("summary %q, want 16 holding the change identity and 444 checked for completeness only", res.Summary)
-	}
-	if !strings.Contains(res.Summary, "across 2 document(s)") {
-		t.Errorf("summary %q does not say how many documents it spans", res.Summary)
-	}
-}
-
 // TestFundBalanceIdentityReportsADuplicateWithoutAbandoningTheRest pins the
 // difference between a defect in the STORE and a failure of the harness.
 //

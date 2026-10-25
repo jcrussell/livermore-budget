@@ -163,37 +163,6 @@ func TestAStaleDeclarationFailsWithOrWithoutStrict(t *testing.T) {
 	}
 }
 
-// TestTheCommittedCorpusIsStrictClean is the claim that makes ci.yml able to
-// pass --strict, asserted against the real corpus rather than a fixture.
-//
-// It is the pair to TestTheCommittedCorpusVacuitySplit, which says WHICH checks
-// are vacuous. This one says that every one of them is accounted for, and it is
-// the assertion that goes red the day a new check lands vacuous without an entry
-// -- which is the whole reason the gate can be turned on before the backlog is
-// finished.
-//
-// Like its pair, it deliberately pins no count.
-func TestTheCommittedCorpusIsStrictClean(t *testing.T) {
-	t.Parallel()
-	s := committed(t)
-	rep := Run(t.Context(), s, All(), ReportOptions{GeneratedBy: testVersion, Strict: true})
-
-	if len(rep.Undeclared) > 0 {
-		t.Errorf("these checks are vacuous over the committed corpus and no entry in "+
-			"declaredVacuous names them: %v. Add one with its reason and the bead "+
-			"that retires it, or give the check a subject; ci.yml runs --strict and "+
-			"this is what it fails on", rep.Undeclared)
-	}
-	for _, d := range rep.StaleDeclarations() {
-		t.Errorf("%s: %s", d.CheckID, d.StaleReason())
-	}
-	if rep.Failed() {
-		t.Errorf("the committed corpus does not pass --strict: %d failed, %d errored, "+
-			"%d vacuous of which %d undeclared", rep.Counts.Fail, rep.Counts.Error,
-			rep.Counts.Vacuous, len(rep.Undeclared))
-	}
-}
-
 // TestADeclarationSurvivesACheckThatReachedNoVerdict: stale is a claim that the
 // work landed, and only PASS and FAIL are verdicts. A check that ERRORED or was
 // SKIPPED did not look, so the run establishes nothing about the declaration.

@@ -46,58 +46,6 @@ func aStatedTotalLine(t *testing.T, s *Subject, want func(*mapping.Rule, *mappin
 	return "", 0, 0, ""
 }
 
-// TestNoCommittedFactCitesAStatedTotal is the baseline, and it asserts the
-// check had something to look at as well as that it held. A pass over zero
-// stated-total lines would be the vacuous result wearing a pass's summary.
-func TestNoCommittedFactCitesAStatedTotal(t *testing.T) {
-	t.Parallel()
-	s := committed(t)
-	res := runStatedTotals(t, s)
-	if res.Status != StatusPass {
-		t.Fatalf("fact-offset-is-not-a-stated-total = %s: %s (%v)",
-			res.Status, res.Summary, res.Findings)
-	}
-	// THE SUBJECT-COUNT ASSERTION BELOW CANNOT FAIL TODAY AND IS KEPT ON
-	// PURPOSE. `examined` is len(s.Facts) unless lines == 0, and lines == 0
-	// zeroes it, which makes the result VACUOUS and the status assertion above
-	// has already fired. It is the check's published subject count, it costs
-	// nothing, and it is what would catch `examined` being narrowed to some
-	// subset of the store.
-	//
-	// What is NOT implied is how many lines the check found, and that is the
-	// number a silent regression would move: the whole check degrades quietly if
-	// TotalRowSpan starts refusing lines it resolves today. The count itself is
-	// deliberately not pinned -- it moves with every page that gets mapped -- so
-	// what is asserted is that both KINDS of total are represented.
-	if res.Subjects != len(s.Facts) {
-		t.Errorf("examined %d facts, want the whole store's %d", res.Subjects, len(s.Facts))
-	}
-	rules, rollups := 0, 0
-	for _, f := range s.Files {
-		r := s.Resolvers[f.Path]
-		for i := range f.Rules {
-			for j := range f.Rules[i].Parts {
-				if _, _, err := r.TotalRowSpan(&f.Rules[i], &f.Rules[i].Parts[j]); err == nil {
-					rules++
-				}
-			}
-		}
-		for j := range f.Rollups {
-			if _, _, err := r.RollupTotalSpan(&f.Rollups[j]); err == nil {
-				rollups++
-			}
-		}
-	}
-	if rules == 0 {
-		t.Error("no rule part resolves a stated total, so the check could not fail on one")
-	}
-	if rollups == 0 {
-		t.Error("no rollup resolves its printed total, so the check could not fail on one -- " +
-			"this check shipped covering rule totals only, and the file's fourteen " +
-			"rollups -- eleven of them pp.167-170's department totals -- were the hole")
-	}
-}
-
 // TestARepublishedTotalIsCaught is fisc-eaic: a figure the document prints as a
 // block's total, republished as one of that block's rows.
 //

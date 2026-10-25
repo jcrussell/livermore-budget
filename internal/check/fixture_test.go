@@ -22,9 +22,8 @@ import (
 // sign so both inferred nodes exist.
 //
 // It is hand-made rather than read from the committed corpus so that these tests
-// state what each check should conclude over a shape a reader can count. The
-// committed corpus gets its own test (TestTheCommittedCorpusVacuitySplit), which
-// is where the claim "these checks are non-vacuous today" is pinned.
+// state what each check should conclude over a shape a reader can count. What
+// each check concludes over the committed corpus is `fisc verify --strict`'s.
 const (
 	testDoc     = "livermore-budget-fy2026-2027"
 	testScope   = "all-funds-gross"

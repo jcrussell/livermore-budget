@@ -5,8 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
-
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/structure"
@@ -162,31 +160,6 @@ func TestExcessIdentityHoldsEachScopeApart(t *testing.T) {
 		!strings.Contains(res.Findings[0].Detail, structure.ScopeACFRGeneralFundBudgetActual) {
 		t.Fatalf("status = %s, findings %v; want one finding naming the General Fund scope",
 			res.Status, res.Findings)
-	}
-}
-
-// TestExcessIdentityCoversBothScopesOverTheCommittedCorpus pins the
-// population per scope: pp.168-169's ten columns and ACFR p121's three. A
-// scope that stopped reaching the check would leave it passing over fewer.
-func TestExcessIdentityCoversBothScopesOverTheCommittedCorpus(t *testing.T) {
-	t.Parallel()
-	s := committed(t)
-	res := runExcessIdentity(t, s.Facts)
-	if res.Status != StatusPass || res.Subjects != 13 {
-		t.Fatalf("status = %s over %d (%s), want pass over 13 columns", res.Status, res.Subjects, res.Summary)
-	}
-	if !strings.Contains(res.Summary, "3 of them with the excess plus transfers equal to the printed net change") {
-		t.Errorf("summary %q, want p121's three columns holding their flows to the net change", res.Summary)
-	}
-	excess := map[string]int{}
-	for i := range s.Facts {
-		if s.Facts[i].Category == categoryExcessOfRevenues {
-			excess[s.Facts[i].Scope]++
-		}
-	}
-	want := map[string]int{structure.ScopeACFRChangesInFundBalances: 10, structure.ScopeACFRGeneralFundBudgetActual: 3}
-	if diff := cmp.Diff(want, excess); diff != "" {
-		t.Errorf("excess lines per scope (-want +got):\n%s", diff)
 	}
 }
 

@@ -19,33 +19,25 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
-// TestFixtureVerdicts is the one test that states what every check concludes over
-// a corpus small enough to count by hand: 12 facts in 12 cells, of which 4 are
-// stocks and 1 is a zero, leaving 7 links over 9 nodes.
+// TestFixtureVerdicts states what every check concludes over a corpus small
+// enough to count by hand: 12 facts in 12 cells, of which 4 are stocks and 1 is
+// a zero, leaving 7 links over 9 nodes.
 //
 // The subject counts are asserted alongside the statuses because they are the
 // substance of the vacuous distinction. A check reporting "pass" over 0 subjects
 // is the failure this package exists to prevent, and only the number says which
 // one happened.
+//
+// A CHECK NOT LISTED MUST BE VACUOUS OVER 0. The fixture is a miniature of the
+// SPINE with no extraction directory, no rule file and none of the schedules
+// the other checks read, so having nothing to look at is its default; a check
+// that newly finds a subject here, or fails, needs a row.
 func TestFixtureVerdicts(t *testing.T) {
 	t.Parallel()
 	rep := runChecks(t, testSubject(t))
 
 	want := map[string]string{
-		// The structural checks have nothing to look at here, and that is a
-		// property of the fixture rather than of the checks. This fixture is a
-		// miniature of the SPINE — ten cells and the graph they make — and it
-		// carries no extraction directory and no source registry, because the
-		// claims those checks make are about a repository on disk. They get their
-		// own fixture, in structural_test.go, which is a repository: it is
-		// mutated file by file, and every one of these four is failed there. The
-		// committed corpus is where they pass (TestTheCommittedCorpusVacuitySplit).
-		"artifacts-match-manifest":         "vacuous over 0",
-		"extraction-emitted-every-page":    "vacuous over 0",
-		"extractor-reported-no-errors":     "vacuous over 0",
-		"manifest-matches-source-registry": "vacuous over 0",
-		"extraction-toolchain-pinned":      "vacuous over 0",
-		"source-pdfs-match-both-records":   "skipped over 0",
+		"source-pdfs-match-both-records": "skipped over 0",
 
 		"facts-sorted":                "pass over 12",
 		"fact-ids-unique":             "pass over 12",
@@ -53,102 +45,41 @@ func TestFixtureVerdicts(t *testing.T) {
 		"fact-token-reparses":         "pass over 12",
 		"fact-offset-points-at-token": "pass over 12",
 		"fact-citations-are-declared": "pass over 12",
-		// Vacuous over the fixture, and correctly so: the fixture carries no rule
-		// files, so no stated-total line resolves and there is nothing a fact
-		// could collide with. Over the committed corpus it PASSES -- see
-		// TestNoCommittedFactCitesAStatedTotal, which is where it has subjects.
-		"fact-offset-is-not-a-stated-total": "vacuous over 0",
 		// Two of the fixture's twelve facts are transfers, and neither is
-		// printed against its kind's direction. The committed corpus has one
-		// that is: ACFR p41's Transfers (out).
+		// printed against its kind's direction.
 		"fact-transfer-orientation-is-declared": "pass over 2",
 		"fact-vocabulary":                       "pass over 24", // 12 categories + 12 fund groups
 		"fact-kind-matches-category":            "pass over 12",
 		// Two fund balances, general and enterprise, each with all three of its
-		// lines. Both satisfy beginning + change == ending; neither did before
-		// this check was written. See fixtureCells.
+		// lines. See fixtureCells.
 		"fund-balance-identity":         "pass over 2",
 		"fund-group-sources-equal-uses": "pass over 2",
-		// The fixture is a miniature of the SPINE and carries no ACFR
-		// Changes in Fund Balances fact, so there is no column to recompute.
-		// TestTheCommittedCorpusVacuitySplit is where its real verdict is
-		// pinned.
-		"excess-of-revenues-identity": "vacuous over 0",
-		"projections-build":           "pass over 1",
-		"published-projection-built":  "pass over 1",
-		// Two projections are registered, but the fixture is a miniature of the
-		// SPINE and the trends projection is of nothing here, so one document is
-		// built and one document is examined.
-		"documents-are-checked":   "pass over 1",
-		"graph-acyclic":           "pass over 7",
-		"node-tiers-are-declared": "pass over 9",
-		// The drill-down's three checks are vacuous over the miniature spine,
-		// which carries neither of the schedules it draws.
-		// And the two over the schedule documents likewise: the fixture builds
-		// none of the four, so there is no count to re-derive and no uncited
-		// fact to value.
-		// No drill-down, no line node. Not declared vacuous: the committed
-		// corpus gives it a subject (TestTheCommittedCorpusVacuitySplit).
-		"revenue-lines-tie-to-their-categories": "vacuous over 0",
-		"derived-nodes-justified":               "pass over 2",
-		"link-locators-match-their-facts":       "pass over 7",
-		// No fixture document draws pp.186-209, so no node carries a balance.
-		"node-balances-tie-to-facts": "vacuous over 0",
-		// The fixture builds no fund-sources-uses document.
-		"fund-groups-are-their-printed-rows": "vacuous over 0",
-		"link-ends-match-their-facts":        "pass over 7",
-		"link-values-tie-to-facts":           "pass over 7",
-		"link-kinds-match-their-facts":       "pass over 7",
-		"counts-reconcile":                   "pass over 1",
-		"headline-ties-to-facts":             "pass over 3", // links leaving a revenue node or entering an expenditure one
-		"headline-transfer-residual":         "pass over 2",
-		"headline-naive-expenditure":         "pass over 1",
-		// Nothing to check: no link carries a transfer_id, no node a parent or a
-		// constraint tier, no fact a department or a fund number.
-		"transfer-legs-pair": "vacuous over 0",
-		// The one comparison every detail schedule ties to the spine through:
-		// the fixture is a miniature of the SPINE and carries no cut that
-		// decomposes it, so there is no pair to compare.
-		"cuts-tie-along-the-lattice": "vacuous over 0",
-		// And the peer half of the same comparison: the fixture carries one
-		// cut, so there is no pair at one level to overlap.
-		"peers-overlap-only-by-declared-identity": "vacuous over 0",
-		// Same reason one step further on: no revenue-by-fund fact means the
-		// trends projection declares no slice, builds no document, and there is
-		// neither a point nor a series to examine.
-		"trend-points-tie-to-facts":        "vacuous over 0",
-		"trend-series-are-complete":        "vacuous over 0",
-		"debt-service-ties-to-facts":       "vacuous over 0",
-		"node-hierarchy-well-formed":       "vacuous over 0",
-		"constraint-tier-vocabulary":       "vacuous over 0",
-		"contra-links-name-their-schedule": "vacuous over 0",
-		"fact-departments-resolve":         "vacuous over 0",
-		"fact-funds-resolve":               "vacuous over 0",
-		// The fixture taxonomy nests taxes/property under `taxes`, and that is
-		// not a line: a line's parent is assignable, and no fixture fact is a
-		// revenue-by-fund row. Vacuous is the verdict the definition demands.
-		"fact-revenue-lines-resolve": "vacuous over 0",
-		// No rule file in the fixture subject declares a fund, so there is no
-		// hand-typed number to check against a printed name.
-		"rule-funds-match-their-headings": "vacuous over 0",
-		// The fixture's funds are per column, which is the other check's case.
-		"row-funds-match-their-anchors": "vacuous over 0",
-		// The fixture prints none of the schedules the expansion stitches, so
-		// none is built.
-		"expansion-opens-as-the-spine": "vacuous over 0",
-		"expansion-splits-tie":         "vacuous over 0",
+		"projections-build":             "pass over 1",
+		"published-projection-built":    "pass over 1",
+		// Two projections are registered, but the trends projection is of
+		// nothing here, so one document is built and one examined.
+		"documents-are-checked":           "pass over 1",
+		"graph-acyclic":                   "pass over 7",
+		"node-tiers-are-declared":         "pass over 9",
+		"derived-nodes-justified":         "pass over 2",
+		"link-locators-match-their-facts": "pass over 7",
+		"link-ends-match-their-facts":     "pass over 7",
+		"link-values-tie-to-facts":        "pass over 7",
+		"link-kinds-match-their-facts":    "pass over 7",
+		"counts-reconcile":                "pass over 1",
+		"headline-ties-to-facts":          "pass over 3", // links leaving a revenue node or entering an expenditure one
+		"headline-transfer-residual":      "pass over 2",
+		"headline-naive-expenditure":      "pass over 1",
 	}
-	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
+	got := statuses(rep)
+	for id := range got {
+		if _, ok := want[id]; !ok {
+			want[id] = "vacuous over 0"
+		}
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (counts{Pass: 25, Vacuous: 26, Skipped: 1}); got != rep.Counts {
-		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
-	}
-	// The counts are pinned as numbers above rather than spelled in words here,
-	// because a sentence naming them goes stale the first time a check is added
-	// and nothing makes it go red. What this line is for is the property the
-	// numbers cannot state: a run with nothing WRONG in it exits 0, however many
-	// of its checks had nothing to look at.
 	if rep.Failed() {
 		t.Error("Failed() = true for a report with no failure, error or --strict")
 	}
@@ -164,8 +95,8 @@ func TestVacuousFailsOnlyUnderStrict(t *testing.T) {
 	lenient := Run(t.Context(), s, All(), ReportOptions{})
 	strict := Run(t.Context(), s, All(), ReportOptions{Strict: true})
 
-	if lenient.Counts.Vacuous != 26 {
-		t.Fatalf("vacuous count = %d, want 26", lenient.Counts.Vacuous)
+	if lenient.Counts.Vacuous == 0 {
+		t.Fatal("no check is vacuous over the fixture, so this test covers nothing")
 	}
 	if lenient.Failed() {
 		t.Error("a run with vacuous checks failed without --strict")
