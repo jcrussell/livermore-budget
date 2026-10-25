@@ -12,11 +12,10 @@ node_modules/
 # that sweeps several megabytes into a commit.
 # One line per Go main under tools/, plus cmd/fisc. The client's tests are .mjs
 # and build nothing.
-/beadcheck
 /beadrefs
 /codehash
 /doccheck
-/memcheck
+/errata
 /narration
 /fisc
 

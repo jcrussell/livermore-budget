@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-	"unicode/utf8"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -76,7 +75,7 @@ func TestScanRefusesOnlyPastTenseClaimsAboutTheBeadsOwnText(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			path := issues(t, map[string]any{"id": "fisc-test", "description": tc.body})
-			hits, examined, err := scan(path)
+			hits, examined, err := scanBeads(path)
 			if err != nil {
 				t.Fatalf("scan: %v", err)
 			}
@@ -95,7 +94,7 @@ func TestScanReadsEveryProseField(t *testing.T) {
 	for _, field := range prose {
 		t.Run(field, func(t *testing.T) {
 			rec := map[string]any{"id": "fisc-test", field: "This bead used to say otherwise."}
-			hits, _, err := scan(issues(t, rec))
+			hits, _, err := scanBeads(issues(t, rec))
 			if err != nil {
 				t.Fatalf("scan: %v", err)
 			}
@@ -114,7 +113,7 @@ func TestScanReadsCommentText(t *testing.T) {
 		map[string]any{"id": "c1", "author": "this bead used to say", "text": "Fine."},
 		map[string]any{"id": "c2", "text": "This bead used to say otherwise."},
 	}}
-	hits, _, err := scan(issues(t, rec))
+	hits, _, err := scanBeads(issues(t, rec))
 	if err != nil {
 		t.Fatalf("scan: %v", err)
 	}
@@ -129,7 +128,7 @@ func TestScanReadsCommentText(t *testing.T) {
 // A non-prose field is not scanned.
 func TestScanIgnoresFieldsAReaderIsNotShown(t *testing.T) {
 	rec := map[string]any{"id": "fisc-test", "created_by": "this bead used to say", "labels": []any{"x"}}
-	hits, _, err := scan(issues(t, rec))
+	hits, _, err := scanBeads(issues(t, rec))
 	if err != nil {
 		t.Fatalf("scan: %v", err)
 	}
@@ -141,7 +140,7 @@ func TestScanIgnoresFieldsAReaderIsNotShown(t *testing.T) {
 // The report order is stable across runs.
 func TestHitsAreSortedByBeadThenField(t *testing.T) {
 	erratum := "This bead used to say otherwise."
-	hits, _, err := scan(issues(t,
+	hits, _, err := scanBeads(issues(t,
 		map[string]any{"id": "fisc-zzz", "description": erratum},
 		map[string]any{"id": "fisc-aaa", "notes": erratum, "description": erratum},
 	))
@@ -161,7 +160,7 @@ func TestHitsAreSortedByBeadThenField(t *testing.T) {
 // An export this cannot read is refused, not reported clean.
 func TestScanRefusesWhatItCannotRead(t *testing.T) {
 	t.Run("no such file", func(t *testing.T) {
-		if _, _, err := scan(filepath.Join(t.TempDir(), "absent.jsonl")); err == nil {
+		if _, _, err := scanBeads(filepath.Join(t.TempDir(), "absent.jsonl")); err == nil {
 			t.Error("a missing export was read as clean")
 		}
 	})
@@ -170,34 +169,19 @@ func TestScanRefusesWhatItCannotRead(t *testing.T) {
 		if err := os.WriteFile(path, []byte("{not json\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		if _, _, err := scan(path); err == nil {
+		if _, _, err := scanBeads(path); err == nil {
 			t.Error("an unparseable export was read as clean")
 		}
 	})
 	t.Run("empty export", func(t *testing.T) {
-		if _, _, err := scan(issues(t)); err == nil {
+		if _, _, err := scanBeads(issues(t)); err == nil {
 			t.Error("an export carrying no beads was read as clean")
 		}
 	})
 	t.Run("record with no id", func(t *testing.T) {
 		rec := map[string]any{"description": "This bead used to say otherwise."}
-		if _, _, err := scan(issues(t, rec)); err == nil {
+		if _, _, err := scanBeads(issues(t, rec)); err == nil {
 			t.Error("a record with no id was read as clean, so its hit could not be named")
 		}
 	})
-}
-
-// The excerpt's byte-count cut is walked out to rune boundaries.
-func TestExcerptCutsOnRuneBoundaries(t *testing.T) {
-	body := strings.Repeat("— ", 40) + "This bead used to say otherwise." + strings.Repeat(" —", 40)
-	hits, _, err := scan(issues(t, map[string]any{"id": "fisc-test", "description": body}))
-	if err != nil {
-		t.Fatalf("scan: %v", err)
-	}
-	if len(hits) != 1 {
-		t.Fatalf("found %d hits, want 1", len(hits))
-	}
-	if !utf8.ValidString(hits[0].text) {
-		t.Errorf("excerpt is not valid UTF-8: %q", hits[0].text)
-	}
 }

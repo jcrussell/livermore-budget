@@ -25,7 +25,7 @@ import (
 var exempt = map[string]string{
 	"tools/beadrefs/main_test.go":    "its fixtures are ids that must NOT resolve, so a test for this command cannot be written out of real ones",
 	"internal/beadid/beadid_test.go": "its fixtures are id shapes, most of which name no bead, so a test of the matcher cannot be written out of real ones",
-	"tools/beadcheck/main_test.go":   "its fixtures are synthetic bead records, and building them out of real ids would tie a prose check to whichever beads happen to exist",
+	"tools/errata/beads_test.go":     "its fixtures are synthetic bead records, and building them out of real ids would tie a prose check to whichever beads happen to exist",
 }
 
 // exemptIDs names tokens shaped like a bead id that are not one. Each names

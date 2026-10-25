@@ -60,18 +60,18 @@ tidy: ## Tidy go.mod/go.sum
 # cannot read.
 #
 # The bead arm reads the committed export and is a full gate; its phrase list is
-# its own (see tools/beadcheck). The memory arm reads bd's memories, fails when bd
+# its own (see tools/errata). The memory arm reads bd's memories, fails when bd
 # can answer and warns and continues when it cannot, so it is advisory and never
 # a CI gate.
 .PHONY: narration
 narration: ## Refuse review credits and errata in Go sources, beads and memories
 	@go run ./tools/narration ./cmd ./internal ./pkg ./schema ./site ./tools
-	@go run ./tools/beadcheck .beads/issues.jsonl
+	@go run ./tools/errata beads .beads/issues.jsonl
 	@command -v bd >/dev/null 2>&1 || { \
 		echo "warning: bd not on PATH, skipping the memory errata check" >&2; \
 		exit 0; \
 	}; \
-	err=$$(mktemp "$${TMPDIR:-/tmp}/memcheck-bd-err.XXXXXX") || { \
+	err=$$(mktemp "$${TMPDIR:-/tmp}/errata-bd-err.XXXXXX") || { \
 		echo "warning: mktemp failed, skipping the memory errata check" >&2; \
 		exit 0; \
 	}; \
@@ -82,7 +82,7 @@ narration: ## Refuse review credits and errata in Go sources, beads and memories
 		exit 0; \
 	}; \
 	rm -f "$$err"; \
-	printf '%s' "$$memories" | go run ./tools/memcheck
+	printf '%s' "$$memories" | go run ./tools/errata memories
 
 # beadrefs refuses a bead id that names no bead, fisc-* and byob-* alike. It
 # resolves against the committed .beads/issues.jsonl, so it is a real gate; where

@@ -52,12 +52,12 @@ func TestScanFindsOnlyPastTenseSelfReference(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			in := []byte(`{"k": ` + quote(tt.body) + `}`)
-			hits, _, err := scan(in)
+			hits, _, err := scanMemories(in)
 			if err != nil {
 				t.Fatalf("scan: %v", err)
 			}
 			if got := len(hits) > 0; got != tt.want {
-				t.Errorf("scan(%q) flagged = %v, want %v (hits: %v)", tt.body, got, tt.want, hits)
+				t.Errorf("scanMemories(%q) flagged = %v, want %v (hits: %v)", tt.body, got, tt.want, hits)
 			}
 		})
 	}
@@ -69,7 +69,7 @@ func TestScanSkipsNonStringValuesAndSortsByKey(t *testing.T) {
 	in := []byte(`{"schema_version": 1,
 		"zeta": "This memory used to say Z.",
 		"alpha": "This memory used to say A."}`)
-	hits, _, err := scan(in)
+	hits, _, err := scanMemories(in)
 	if err != nil {
 		t.Fatalf("scan: %v", err)
 	}
@@ -86,7 +86,7 @@ func TestScanReportsEveryHitInOneBody(t *testing.T) {
 	// A memory that carries three errata is three findings, not one: fixing the
 	// first and re-running must still go red.
 	in := []byte(`{"k": "This memory used to say A. CORRECTED 2026-08-29. This memory once said B."}`)
-	hits, _, err := scan(in)
+	hits, _, err := scanMemories(in)
 	if err != nil {
 		t.Fatalf("scan: %v", err)
 	}
@@ -97,16 +97,16 @@ func TestScanReportsEveryHitInOneBody(t *testing.T) {
 
 func TestScanRejectsMalformedInput(t *testing.T) {
 	// bd absent, or a truncated pipe, must not read as a clean memory set.
-	if _, _, err := scan([]byte("not json")); err == nil {
-		t.Error("scan(non-JSON) = nil error, want a parse error")
+	if _, _, err := scanMemories([]byte("not json")); err == nil {
+		t.Error("scanMemories(non-JSON) = nil error, want a parse error")
 	}
 }
 
 func TestScanRefusesJSONNull(t *testing.T) {
 	// null unmarshals into a nil map without an error, so it looks to the type
 	// system exactly like an empty memory set and is not one.
-	if _, _, err := scan([]byte(`null`)); err == nil {
-		t.Error("scan(null) = nil error, want a refusal")
+	if _, _, err := scanMemories([]byte(`null`)); err == nil {
+		t.Error("scanMemories(null) = nil error, want a refusal")
 	}
 }
 
@@ -116,12 +116,12 @@ func TestScanCountsWhatItExaminedRatherThanRefusingAnEmptySet(t *testing.T) {
 	// committing at all, so the count goes back to the caller, which warns.
 	for _, in := range []string{`{}`, `{"schema_version":1}`} {
 		t.Run(in, func(t *testing.T) {
-			_, examined, err := scan([]byte(in))
+			_, examined, err := scanMemories([]byte(in))
 			if err != nil {
-				t.Fatalf("scan(%s) = %v, want no error", in, err)
+				t.Fatalf("scanMemories(%s) = %v, want no error", in, err)
 			}
 			if examined != 0 {
-				t.Errorf("scan(%s) examined = %d, want 0", in, examined)
+				t.Errorf("scanMemories(%s) examined = %d, want 0", in, examined)
 			}
 		})
 	}
@@ -130,7 +130,7 @@ func TestScanCountsWhatItExaminedRatherThanRefusingAnEmptySet(t *testing.T) {
 func TestScanReportsHowManyBodiesItRead(t *testing.T) {
 	// The count is what tells "clean" apart from "read nothing", and main is the
 	// only place that distinction is acted on.
-	_, examined, err := scan([]byte(`{"schema_version":1,"a":"x","b":"y"}`))
+	_, examined, err := scanMemories([]byte(`{"schema_version":1,"a":"x","b":"y"}`))
 	if err != nil {
 		t.Fatalf("scan: %v", err)
 	}
@@ -150,8 +150,8 @@ func TestScanRefusesANestedShape(t *testing.T) {
 		`{"schema_version":1,"memories":{"k":"This memory used to say X."}}`,
 	} {
 		t.Run(in, func(t *testing.T) {
-			if _, _, err := scan([]byte(in)); err == nil {
-				t.Errorf("scan(%s) = nil error, want a refusal: the bodies are nested", in)
+			if _, _, err := scanMemories([]byte(in)); err == nil {
+				t.Errorf("scanMemories(%s) = nil error, want a refusal: the bodies are nested", in)
 			}
 		})
 	}
