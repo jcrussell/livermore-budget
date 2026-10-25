@@ -154,8 +154,6 @@ func (f projectionFailure) String() string {
 // Subject is everything the checks read, loaded once, so a mapping part is
 // resolved once and corroborated against the read that was published.
 type Subject struct {
-	// Root is the repository root every path is relative to.
-	Root string
 	// Full says whether the inputs only `--full` supplies are available; see
 	// Check.Full.
 	Full bool
@@ -339,7 +337,6 @@ func Load(o LoadOptions) (*Subject, error) {
 	}
 
 	s := &Subject{
-		Root:        o.Root,
 		Full:        o.Full,
 		Docs:        map[string]*corpus.Doc{},
 		Extractions: map[string]*corpus.Doc{},

@@ -342,7 +342,6 @@ func testSubject(t *testing.T, facts ...fact.Fact) *Subject {
 	// is vacuous here (its subjects are in statedtotals_test.go); Docs are not,
 	// because fact-offset-points-at-token reads page text.
 	return &Subject{
-		Root:               t.TempDir(),
 		Facts:              facts,
 		Vocabulary:         reg,
 		Docs:               testDocs(t, facts),
