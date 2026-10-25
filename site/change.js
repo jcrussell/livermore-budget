@@ -8,7 +8,7 @@
  * runs nothing; the template calls boot().
  */
 
-import { NAMED, TAIL_LABEL, clone, dollars, linkedPage, pageLinks, pinnable, plus, refuseFigure, rowCents, tipHint, tipper } from "./format.js";
+import { NAMED, TAIL_LABEL, clone, dollars, linkedPage, pageLinks, pinnable, plus, refuseFigure, rowCents, tipHead, tipHint, tipper } from "./format.js";
 
 /** How tall the tallest column's bands are drawn, in px, gaps aside. */
 export const HEIGHT = 240;
@@ -222,16 +222,8 @@ export function draw(section, tips = tipper(section.ownerDocument)) {
       const named = `${b.label}, ${head.label}${head.basis ? " " + head.basis : ""}`;
       seg.setAttribute("aria-label", `${named}: ${dollars(c)}`);
       pinnable(seg, tips, (tip, pinned) => {
-        const label = doc.createElement("div");
-        label.className = "tip-label";
-        label.textContent = named;
-        const value = doc.createElement("div");
-        value.className = "tip-value";
-        value.textContent = dollars(c);
-        const meta = doc.createElement("div");
-        meta.className = "tip-meta";
-        meta.textContent = "◇ our sum of its printed rows" + (b.rank ? "" : `: ${b.members.join(", ")}`);
-        tip.append(label, value, meta, pageLinks(doc, pagesOf(b, i)), tipHint(doc, pinned));
+        const meta = "◇ our sum of its printed rows" + (b.rank ? "" : `: ${b.members.join(", ")}`);
+        tip.append(...tipHead(doc, named, dollars(c), meta), pageLinks(doc, pagesOf(b, i)), tipHint(doc, pinned));
       });
       if (c < 0) {
         seg.classList.add("negative");

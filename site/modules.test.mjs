@@ -10,6 +10,20 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 describe("the shipped modules hold no state", () => {
+  // Mutation: read globalThis.FISC_CONFIG or document at the top of any one
+  // of these modules and its import throws here.
+  test("every page module imports with no page config, no d3 and no DOM, and exports no unfrozen object", async () => {
+    delete globalThis.FISC_CONFIG;
+    delete globalThis.d3;
+    assert.equal(typeof globalThis.document, "undefined", "nothing installed a DOM before the import");
+    for (const name of ["capital", "change", "department", "format", "glance", "ledger", "sides", "theme"]) {
+      const mod = await import(pathToFileURL(path.join(HERE, `${name}.js`)).href);
+      const loose = Object.entries(mod).filter(([, v]) => typeof v === "object" && !Object.isFrozen(v)).map(([k]) => k);
+      assert.deepEqual(loose, [], `${name}.js exports a binding every test would share`);
+      assert.equal(typeof mod.boot === "function", name !== "format", `${name}.js boot`);
+    }
+  });
+
   test("core.js imports with no page config and no d3 on the global, and reads the config at call time", async (t) => {
     delete globalThis.FISC_CONFIG;
     delete globalThis.d3;

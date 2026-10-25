@@ -57,14 +57,6 @@ function footer(doc) {
   return out;
 }
 
-test("capital.js imports with no page config, no d3 and no DOM, and runs nothing", async () => {
-  delete globalThis.FISC_CONFIG;
-  delete globalThis.d3;
-  assert.equal(typeof globalThis.document, "undefined", "nothing installed a DOM before the import");
-  const mod = await import(MODULE);
-  assert.deepEqual(Object.keys(mod).sort(), ["apply", "boot", "columnOf", "isShown", "readTable", "sumShown"]);
-});
-
 test("boot offers the controls and labels the footer as our sum, never as a Total", async () => {
   const { doc } = await booted();
   assert.equal(doc.getElementById("capital-filters").hidden, false);

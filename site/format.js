@@ -95,6 +95,53 @@ export function hashFields(hash, names) {
 }
 
 /**
+ * The column a hash's `y` names among the config's years, or the newest
+ * where it names none, with `refused` saying what it named that the config
+ * does not offer.
+ * @param {Map<string, string>} fields hashFields' answer
+ * @param {any} config
+ * @returns {{year: string, refused: string}}
+ */
+export function hashYear(fields, config) {
+  const years = config.years.map((/** @type {any} */ y) => y.path);
+  const y = fields.get("y");
+  if (y === undefined) return { year: years[years.length - 1], refused: "" };
+  const named = years.find((/** @type {string} */ p) => yearKey(p) === y);
+  return named ? { year: named, refused: "" }
+    : { year: years[years.length - 1], refused: `No budget column is called ${y}, so this shows the newest.` };
+}
+
+/**
+ * Fetches a page's columns, each once: a column is refused where it does not
+ * answer ok or was written by another export than the page, and a refused
+ * fetch is forgotten, so asking again fetches again.
+ * @param {any} win the window whose fetch is used
+ * @param {string} exportedBy the page config's exported_by
+ * @returns {(path: string) => Promise<any>}
+ */
+export function columnLoader(win, exportedBy) {
+  /** @type {Map<string, Promise<any>>} */
+  const columns = new Map();
+  return (path) => {
+    let c = columns.get(path);
+    if (!c) {
+      c = Promise.resolve(win.fetch(path)).then((/** @type {any} */ r) => {
+        if (!r.ok) throw new Error(`${path} answered ${r.status}`);
+        return r.json();
+      }).then((/** @type {any} */ col) => {
+        if (col.generated_by !== exportedBy) {
+          throw new Error(`${path} was written by ${col.generated_by} and this page by ${exportedBy}; reload the page`);
+        }
+        return col;
+      });
+      c.catch(() => columns.delete(path));
+      columns.set(path, c);
+    }
+    return c;
+  };
+}
+
+/**
  * A column's key, the same on every page: its file name less .json. It is
  * the year select's option value and a page's `#y=`.
  * @param {string} path
@@ -388,15 +435,36 @@ export function tipper(doc) {
 }
 
 /**
+ * One line of a tip: a div of `className` reading `text`.
+ * @param {Document} doc
+ * @param {string} className
+ * @param {string} text
+ */
+export function tipLine(doc, className, text) {
+  const el = doc.createElement("div");
+  el.className = className;
+  el.textContent = text;
+  return el;
+}
+
+/**
+ * A tip's first three lines: what it is of, its figure and what is said of it.
+ * @param {Document} doc
+ * @param {string} label
+ * @param {string} value
+ * @param {string} meta
+ */
+export function tipHead(doc, label, value, meta) {
+  return [tipLine(doc, "tip-label", label), tipLine(doc, "tip-value", value), tipLine(doc, "tip-meta", meta)];
+}
+
+/**
  * The tip's last line: how to keep it, or how to let it go.
  * @param {Document} doc
  * @param {boolean} pinned
  */
 export function tipHint(doc, pinned) {
-  const hint = doc.createElement("div");
-  hint.className = "tip-meta";
-  hint.textContent = pinned ? "Escape or a click elsewhere closes this." : "Click to keep this open and follow its pages.";
-  return hint;
+  return tipLine(doc, "tip-meta", pinned ? "Escape or a click elsewhere closes this." : "Click to keep this open and follow its pages.");
 }
 
 /**

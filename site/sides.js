@@ -13,7 +13,7 @@
  */
 
 import * as core from "./core.js";
-import { clone, configOf, sayRefusal, dollars, share, hashFields, hashValue, citedPages, pageLinks, selectYear, tipHint, tipper, wireYearSelect, yearKey } from "./format.js";
+import { clone, columnLoader, configOf, hashYear, sayRefusal, dollars, share, hashFields, hashValue, citedPages, pageLinks, selectYear, tipHead, tipHint, tipLine, tipper, wireYearSelect, yearKey } from "./format.js";
 
 /** The hash's fields: the column and the opened nodes, in order. */
 const HASH_FIELDS = ["y", "o"];
@@ -72,14 +72,7 @@ export function hashOf(st) {
  */
 export function parseHash(hash, config) {
   const fields = hashFields(hash, HASH_FIELDS);
-  const years = config.years.map((/** @type {any} */ y) => y.path);
-  const out = { year: years[years.length - 1], opened: /** @type {string[]} */ ([]), refused: "" };
-  const y = fields.get("y");
-  if (y !== undefined) {
-    const named = years.find((/** @type {string} */ p) => yearKey(p) === y);
-    if (named) out.year = named;
-    else out.refused = `No budget column is called ${y}, so this shows the newest.`;
-  }
+  const out = { ...hashYear(fields, config), opened: /** @type {string[]} */ ([]) };
   const o = fields.get("o");
   if (o) out.opened = o.split(",").filter(Boolean);
   return out;
@@ -232,29 +225,16 @@ function sidesAt(config, column, frontier, renderer) {
  * @param {boolean} pinned
  */
 export function fillTip(doc, tip, tile, side, docs, pinned) {
-  const label = doc.createElement("div");
-  label.className = "tip-label";
-  label.textContent = tile.label + (tile.derived ? " (inferred)" : "");
-  const value = doc.createElement("div");
-  value.className = "tip-value";
-  value.textContent = dollars(tile.cents);
-  const meta = doc.createElement("div");
-  meta.className = "tip-meta";
   const own = tileShare(tile, side);
   const parts = own ? [`${own} of ${side.heading.toLowerCase()}`] : [];
   if (tile.contra) parts.push(tile.contra);
   if (tile.splits.length) parts.push((tile.children ? "Opened; click to close. " : "Click to open: ") + opensAs(tile));
-  meta.textContent = parts.join(". ");
-  tip.append(label, value, meta, pageLinks(doc, citedPages(docs, tile.locators)));
+  tip.append(...tipHead(doc, tile.label + (tile.derived ? " (inferred)" : ""), dollars(tile.cents), parts.join(". ")),
+    pageLinks(doc, citedPages(docs, tile.locators)));
   // A tile that opens says so in its meta, and a click opens it, so its
   // figure or P keeps its tip.
-  if (pinned || !tile.splits.length) tip.append(tipHint(doc, pinned));
-  else {
-    const hint = doc.createElement("div");
-    hint.className = "tip-meta";
-    hint.textContent = "Click its figure, or press P, to keep this open and follow its pages.";
-    tip.append(hint);
-  }
+  tip.append(pinned || !tile.splits.length ? tipHint(doc, pinned)
+    : tipLine(doc, "tip-meta", "Click its figure, or press P, to keep this open and follow its pages."));
 }
 
 /**
@@ -338,25 +318,7 @@ export async function boot(win, renderer) {
     sayRefusal(doc, "sides", "This page could not read its config: " + String(e));
     return;
   }
-  /** @type {Map<string, Promise<any>>} */
-  const columns = new Map();
-  const column = (/** @type {string} */ path) => {
-    let c = columns.get(path);
-    if (!c) {
-      c = Promise.resolve(win.fetch(path)).then((/** @type {any} */ r) => {
-        if (!r.ok) throw new Error(`${path} answered ${r.status}`);
-        return r.json();
-      }).then((/** @type {any} */ col) => {
-        if (col.generated_by !== config.exported_by) {
-          throw new Error(`${path} was written by ${col.generated_by} and this page by ${config.exported_by}; reload the page`);
-        }
-        return col;
-      });
-      c.catch(() => columns.delete(path));
-      columns.set(path, c);
-    }
-    return c;
-  };
+  const column = columnLoader(win, config.exported_by);
 
   const tips = tipper(doc);
   /** The tile a toggle hands the focus back to once the view it asked for is drawn, and that view's ticket. */

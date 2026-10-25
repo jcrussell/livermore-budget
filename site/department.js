@@ -17,7 +17,7 @@
 
 import { locatorKeys, pagesCitedBy, sumReading } from "./core.js";
 import { rank } from "./glance.js";
-import { clone, configOf, sayRefusal, dollars, hashFields, hashValue, selectYear, share, tipper, wireYearSelect, yearKey } from "./format.js";
+import { clone, columnLoader, configOf, hashYear, sayRefusal, dollars, hashFields, hashValue, selectYear, share, tipLine, tipper, wireYearSelect, yearKey } from "./format.js";
 import { LEDGER } from "./ledger.js";
 import { countedBars, fillTip, shareTotal, tileShare } from "./sides.js";
 
@@ -65,15 +65,8 @@ export function hashOf(st) {
  */
 export function parseHash(hash, config) {
   const fields = hashFields(hash, HASH_FIELDS);
-  const years = config.years.map((/** @type {any} */ y) => y.path);
   const departments = config.departments.map((/** @type {any} */ d) => d.id);
-  const out = { year: years[years.length - 1], department: "", refused: "" };
-  const y = fields.get("y");
-  if (y !== undefined) {
-    const named = years.find((/** @type {string} */ p) => yearKey(p) === y);
-    if (named) out.year = named;
-    else out.refused = `No budget column is called ${y}, so this shows the newest.`;
-  }
+  const out = { ...hashYear(fields, config), department: "" };
   const d = fields.get("d");
   if (d !== undefined) {
     if (departments.includes(d)) out.department = d;
@@ -365,10 +358,7 @@ export function render(doc, config, column, st, groups = [], tips = tipper(doc))
     fillTip(doc, tip, tile, side, config.docs, pinned);
     const note = notes.get(tile.id);
     if (!note) return;
-    const el = doc.createElement("div");
-    el.className = "tip-meta";
-    el.textContent = note;
-    tip.insertBefore(el, tip.querySelector(".facts"));
+    tip.insertBefore(tipLine(doc, "tip-meta", note), tip.querySelector(".facts"));
   };
   const largest = Math.max(1, ...[sides.funding, sides.spending].flatMap((s) => s.tree.roots.map((r) => r.size)));
   /** @type {import("./sides.js").DrawContext} */
@@ -544,25 +534,7 @@ export async function boot(win = globalThis.window) {
     return;
   }
   const deptSelect = /** @type {HTMLSelectElement | null} */ (doc.getElementById("department-select"));
-  /** @type {Map<string, Promise<any>>} */
-  const columns = new Map();
-  const column = (/** @type {string} */ path) => {
-    let c = columns.get(path);
-    if (!c) {
-      c = Promise.resolve(win.fetch(path)).then((/** @type {any} */ r) => {
-        if (!r.ok) throw new Error(`${path} answered ${r.status}`);
-        return r.json();
-      }).then((/** @type {any} */ col) => {
-        if (col.generated_by !== config.exported_by) {
-          throw new Error(`${path} was written by ${col.generated_by} and this page by ${config.exported_by}; reload the page`);
-        }
-        return col;
-      });
-      c.catch(() => columns.delete(path));
-      columns.set(path, c);
-    }
-    return c;
-  };
+  const column = columnLoader(win, config.exported_by);
 
   // The page's one view: the year and the department the hash names, which
   // the selects and the open bar show. Closing the open bar hides its detail

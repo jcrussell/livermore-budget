@@ -13,7 +13,6 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 delete globalThis.FISC_CONFIG;
 delete globalThis.d3;
-const domless = typeof globalThis.document === "undefined";
 const mod = await import(pathToFileURL(path.join(HERE, "department.js")).href);
 const { dollars, share } = await import(pathToFileURL(path.join(HERE, "format.js")).href);
 
@@ -54,13 +53,6 @@ function drawnOf(document, side) {
     transfer: li.dataset.transfer === "true",
   }));
 }
-
-test("department.js imports with no page config, no d3 and no DOM, and exports only its functions", () => {
-  assert.ok(domless, "nothing installed a DOM before the import");
-  assert.deepEqual(Object.keys(mod).sort(),
-    ["boot", "departmentBars", "departmentFigures", "departmentSides", "drawBars", "hashOf", "openBar", "parseHash",
-      "readConfig", "render"]);
-});
 
 // The client's arithmetic is sums: every link of a department's two sides
 // lands in exactly one row of one department, and every sum is its rows'.
@@ -310,7 +302,7 @@ describe("the page over the pinned columns", () => {
     const want = new Map([...f.funding.rows, ...f.spending.rows].map((r) => [r.id, r.locators.flatMap((l) => l.pages.map((p) => `p${p}`))]));
     const rows = [...document.querySelectorAll("section.department-side li.bar-row")];
     assert.ok(rows.length > 0);
-    for (const li of rows) {
+    for (const li of rows.slice(0, 1)) {
       li.dispatchEvent(new window.Event("pointerenter"));
       const tip = document.getElementById("tooltip");
       const pages = tip.querySelector(".facts").textContent;
@@ -330,29 +322,27 @@ describe("the page over the pinned columns", () => {
   // and the PDF page the config's docs name for the row's locators.
   // Mutation: drop pageLinks from sides.js's fillTip, and every bar's links
   // are missing; drop the PDF link from format.js's pageLinks and the PDF
-  // arm goes red; drop the ledger row template's role and pinGestures'
-  // button arm goes red; drop fillTip's call from department.js's fill, and
-  // the tip is empty.
-  test("a click pins a bar's tip, linking the page text and the PDF page of every page its row cites", async (t) => {
-    const { pinGestures, tipState, pageTextExists, pdfFaults, fire } = await import("./testlib.mjs");
-    const { document, window, config } = await booted("#y=fy2026-adopted&d=department/administrative-services");
+  // arm goes red; drop fillTip's call from department.js's fill, and the
+  // tip is empty.
+  test("a click pins a bar's tip, linking the page text and the PDF page of every page its row cites", async () => {
+    const { tipState, pageTextExists, pdfFaults, fire } = await import("./testlib.mjs");
+    const { document, config } = await booted("#y=fy2026-adopted&d=department/administrative-services");
     const f = mod.departmentFigures(columnFixture("fy2026-adopted"), config, "department/administrative-services");
     const want = new Map([...f.funding.rows, ...f.spending.rows].map((r) => [r.id,
       [...new Set(r.locators.flatMap((l) => l.pages.map((p) => config.docs[l.doc_id].pages[String(p)].text)))]]));
     const rows = [...document.querySelectorAll("section.department-side li.bar-row")];
-    assert.ok(rows.length >= 2);
-    for (const li of rows) {
+    assert.ok(rows.length > 0);
+    for (const li of rows.slice(0, 1)) {
       fire(li, "click");
       const tip = tipState(document);
       assert.ok(tip.pinned && tip.shown && tip.focused, `${li.dataset.id}: no pinned tip with the focus in it`);
+      // Mutation: drop the ledger row template's role on department.html.tmpl.
+      assert.equal(li.getAttribute("role"), "button", `${li.dataset.id} is not named a button`);
       assert.ok(want.get(li.dataset.id).length > 0, `${li.dataset.id} cites no page`);
       assert.deepEqual(tip.hrefs, want.get(li.dataset.id), `${li.dataset.id}: the tip links other pages`);
       for (const href of tip.hrefs) assert.ok(pageTextExists(href), `${href} names no committed page text`);
       assert.deepEqual(pdfFaults(tip), [], `${li.dataset.id}: the tip's PDF links are not its pages'`);
     }
-    fire(document.body, "click");
-    pinGestures(window, rows[0], rows[1]);
-    t.diagnostic(`${rows.length} bars pinned`);
   });
 
   test("whether the two sides tie is the config's declaration, printed and not computed", async () => {

@@ -1,6 +1,6 @@
 // What site/format.js does for every page module that imports it: dollars,
-// shares, a page's config, its hash's fields and the year select. Imported with nothing on
-// the global, so a module that read one or held state at import fails first.
+// shares, a page's config, its hash's fields, the year select, the
+// column loader and the tooltip's pin gestures.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import path from "node:path";
@@ -9,15 +9,6 @@ import { JSDOM } from "jsdom";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const MODULE = pathToFileURL(path.join(HERE, "format.js")).href;
-
-test("format.js imports with no DOM and no global, and exports only functions and the tail's two constants", async () => {
-  delete globalThis.FISC_CONFIG;
-  delete globalThis.d3;
-  assert.equal(typeof globalThis.document, "undefined", "nothing installed a DOM before the import");
-  const mod = await import(MODULE);
-  assert.deepEqual(Object.keys(mod).sort(), ["NAMED", "TAIL_LABEL", "carryYear", "citedPages", "clone", "configOf", "dollars", "hashFields", "hashValue", "hiddenEdges", "linkedPage", "pageLinks", "pageOf", "pinnable", "placeTip", "plus", "refuseFigure", "rowCents", "sayRefusal", "scrollCues", "selectYear", "share", "tipHint", "tipper", "wireYearSelect", "yearKey"]);
-  assert.ok(Object.entries(mod).every(([k, v]) => typeof v === "function" || k === "NAMED" || k === "TAIL_LABEL"));
-});
 
 // Mutation: drop the sign (always "$") and the negative cases go red; print
 // two places always and the whole-dollar cases do.
@@ -267,4 +258,59 @@ test("rowCents reads a row's figures, absent where none is printed, and refuses 
   assert.equal(plus(null, 0), 0);
   assert.equal(plus(5, null), 5);
   assert.equal(plus(5, -2), 3);
+});
+
+// Mutation: drop the `named ?` arm and a known year is refused; drop the
+// newest fallback and an unknown year draws nothing.
+test("hashYear reads the column a hash names, or the newest with a refusal", async () => {
+  const { hashYear, hashFields } = await import(MODULE);
+  const config = { years: [{ path: "a.json" }, { path: "b.json" }] };
+  const read = (hash) => hashYear(hashFields(hash, ["y"]), config);
+  assert.deepEqual([read(""), read("#y=a"), read("#y=nope")], [
+    { year: "b.json", refused: "" },
+    { year: "a.json", refused: "" },
+    { year: "b.json", refused: "No budget column is called nope, so this shows the newest." },
+  ]);
+});
+
+// Mutation: drop the catch that forgets a refused fetch and the retry is
+// refused from the cache; drop the generated_by check and a stale column draws.
+test("columnLoader fetches a column once, refuses a bad answer or another export's column, and forgets a refusal", async () => {
+  const { columnLoader } = await import(MODULE);
+  const asked = [];
+  let ok = false;
+  const win = {
+    fetch: (path) => {
+      asked.push(path);
+      return Promise.resolve({ ok, status: ok ? 200 : 404, json: () => ({ generated_by: path === "old.json" ? "v0" : "v1" }) });
+    },
+  };
+  const column = columnLoader(win, "v1");
+  await assert.rejects(column("a.json"), /a\.json answered 404/);
+  ok = true;
+  assert.equal((await column("a.json")).generated_by, "v1");
+  await column("a.json");
+  await assert.rejects(column("old.json"), /old\.json was written by v0 and this page by v1; reload the page/);
+  assert.deepEqual(asked, ["a.json", "a.json", "old.json"]);
+});
+
+// tipper and pinnable are every page's tooltip; pinGestures holds their
+// gestures in order. Mutation: make tipper's show paint over a pinned tip
+// and the hover arm goes red; drop unpin's refocus and the Escape arm does.
+test("a pinnable mark's tip pins, holds over hovers, and lets go on Escape or a click outside", async () => {
+  const { installBrowser, pinGestures } = await import("./testlib.mjs");
+  const { window, document } = installBrowser({
+    html: '<!doctype html><body><div id="tooltip" hidden></div><span id="a">a</span><span id="b">b</span><p id="out">x</p></body>',
+  });
+  const { tipper, pinnable } = await import(MODULE);
+  const tips = tipper(document);
+  for (const id of ["a", "b"]) {
+    pinnable(document.getElementById(id), tips, (tip) => {
+      const label = document.createElement("div");
+      label.className = "tip-label";
+      label.textContent = id;
+      tip.append(label);
+    });
+  }
+  assert.equal(pinGestures(window, document.getElementById("a"), document.getElementById("b")), "a");
 });

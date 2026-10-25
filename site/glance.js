@@ -9,7 +9,7 @@
  */
 
 import {
-  NAMED, TAIL_LABEL, clone, dollars, hashFields, hashValue, linkedPage, pageLinks, pinnable, refuseFigure, selectYear, share, tipHint, tipper,
+  NAMED, TAIL_LABEL, clone, dollars, hashFields, hashValue, linkedPage, pageLinks, pinnable, refuseFigure, selectYear, share, tipHead, tipHint, tipper,
   wireYearSelect,
 } from "./format.js";
 
@@ -132,17 +132,8 @@ export function draw(section, tips = tipper(section.ownerDocument)) {
     seg.style.flexGrow = String(s.cents);
     seg.setAttribute("aria-label", `${s.label}: ${dollars(s.cents)}, ◇ ${share(s.cents, whole)}, our share`);
     pinnable(seg, tips, (tip, pinned) => {
-      const label = doc.createElement("div");
-      label.className = "tip-label";
-      label.textContent = s.label;
-      const value = doc.createElement("div");
-      value.className = "tip-value";
-      value.textContent = dollars(s.cents);
-      const meta = doc.createElement("div");
-      meta.className = "tip-meta";
-      meta.textContent = `◇ ${share(s.cents, whole)} of ${title}, our share` +
-        (s.id ? "" : `: ${s.members.join(", ")}`);
-      tip.append(label, value, meta, pageLinks(doc, pagesOf(s)), tipHint(doc, pinned));
+      const meta = `◇ ${share(s.cents, whole)} of ${title}, our share` + (s.id ? "" : `: ${s.members.join(", ")}`);
+      tip.append(...tipHead(doc, s.label, dollars(s.cents), meta), pageLinks(doc, pagesOf(s)), tipHint(doc, pinned));
     });
     track.appendChild(seg);
 
