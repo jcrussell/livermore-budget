@@ -44,7 +44,8 @@ const (
 	// PinnedExtractorVersion is tools/extract.py's EXTRACTOR_VERSION.
 	PinnedExtractorVersion = 3
 	// PinnedPopplerVersion is the `pdftotext -v` version that produced the
-	// committed artifacts; see requirements.txt for the re-extraction workflow.
+	// committed artifacts. Expect a different poppler to change extracted bytes;
+	// see README.md for the re-extraction workflow.
 	PinnedPopplerVersion = "24.02.0"
 )
 

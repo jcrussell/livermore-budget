@@ -445,7 +445,7 @@ func (*extractionToolchainPinned) Run(_ context.Context, s *Subject) (Result, er
 		if len(says) > 0 {
 			findings = append(findings, finding(docID,
 				"%s: this extraction was not produced by the pinned toolchain, so its "+
-					"artifacts are not the ones that were reviewed (see requirements.txt for "+
+					"artifacts are not the ones that were reviewed (see README.md for "+
 					"the re-extraction workflow)", strings.Join(says, ", ")))
 		}
 	}

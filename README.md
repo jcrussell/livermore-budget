@@ -88,11 +88,18 @@ column) rather than inlining them, so it needs a server.
 `fisc export` reads the committed facts and never re-runs the mapping engine, so
 building the site cannot change a published figure.
 
-To re-extract from the PDFs you also need `poppler-utils` and `git lfs pull`:
+To re-extract from the PDFs you also need `git lfs pull` and poppler, a system
+package (`tools/extract.py` is standard library only):
 
 ```bash
+apt-get install -y poppler-utils   # or: brew install poppler
 make extract          # or: make extract DOC=livermore-budget-fy2026-2027
 ```
+
+The committed artifacts were produced by `pdftotext` 24.02.0, and `fisc verify`
+fails on a manifest recording another version (`corpus.PinnedPopplerVersion`).
+A different poppler is expected to change extracted bytes: review the artifact
+diff, and move the pin in the same commit as the re-extraction.
 
 ## How it fits together
 

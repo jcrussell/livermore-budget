@@ -4,7 +4,7 @@ OUT        := bin/$(BIN)
 PREFIX     ?= /usr/local
 # Prefer a repo-local venv, then one on PATH. Override with PYTHON=... for a
 # venv elsewhere. Any Python 3 will do -- tools/extract.py is standard library
-# only. The extractor itself is poppler-utils on PATH; see requirements.txt.
+# only. The extractor itself is poppler-utils on PATH; see README.md.
 PYTHON     ?= $(shell test -x .venv/bin/python && echo .venv/bin/python || echo python3)
 
 VERSION    := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
@@ -91,7 +91,7 @@ narration: ## Refuse review credits and errata in Go sources, beads and memories
 .PHONY: beadrefs
 beadrefs: ## Refuse bead ids that name no bead, in prose and in comments
 	@go run ./tools/beadrefs .beads/issues.jsonl \
-		AGENTS.md CLAUDE.md README.md Makefile requirements.txt \
+		AGENTS.md CLAUDE.md README.md Makefile \
 		.github docs cmd internal pkg tools site schema mappings data testdata
 
 # doccheck refuses a citation naming no section (or bold lead phrase) of
@@ -102,7 +102,7 @@ beadrefs: ## Refuse bead ids that name no bead, in prose and in comments
 .PHONY: doccheck
 doccheck: ## Refuse dead citations, malformed citations, and dead docs/ and source paths
 	@go run ./tools/doccheck AGENTS.md \
-		AGENTS.md CLAUDE.md README.md Makefile requirements.txt \
+		AGENTS.md CLAUDE.md README.md Makefile \
 		.github docs cmd internal pkg tools site schema mappings data testdata
 
 # lint-if-available warns and continues when golangci-lint is absent, so it is
