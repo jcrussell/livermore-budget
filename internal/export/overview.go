@@ -40,7 +40,7 @@ func (v View) validateOverview(built map[string][]byte, ix ColumnIndex) error {
 	case v.Draws != "" && v.Overview.Form == "":
 		return fmt.Errorf(
 			"view %q draws schedule %q and declares no chart to draw it in", v.Path, v.Draws)
-	case v.Description != "" && !templateDrawsAChart(v.Template):
+	case v.Description != "" && templates[v.Template].form == "":
 		return fmt.Errorf(
 			"view %q describes its chart and renders template %q, which draws none; "+
 				"the sentence would be dropped in silence", v.Path, v.Template)

@@ -1,6 +1,7 @@
 package export
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -59,10 +60,9 @@ type capitalBody struct {
 // buildHistoryPage's rules apply: every figure is read out of the document and
 // the counts must reconcile. A zero renders as the token the page printed, a
 // dash, rather than as "$0", which the city did not print.
-func buildCapitalPage(o *Options, v View, nav []navItem, byID map[string]Doc,
-	ix ColumnIndex, pageTextBase func(string) string, cx *caveatIndex,
-) (capitalPageData, error) {
-	cite := newCellCites(byID, pageTextBase)
+func buildCapitalPage(p pageCtx) (capitalPageData, error) {
+	o, v, ix := p.o, p.v, p.ix
+	cite := newCellCites(p.byID, p.pageTextBase)
 	raw := o.Projections[v.Projection]
 	doc, err := decodeDocument(v.Projection, raw)
 	if err != nil {
@@ -149,28 +149,17 @@ func buildCapitalPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		return capitalPageData{}, err
 	}
 
-	sources, sourcesPath, _, serr := citedSources(o, v.Path, meta.Sources, cite, byID, pageTextBase)
-	if serr != nil {
-		return capitalPageData{}, serr
-	}
-	title := v.Title
-	if title == "" {
-		title = "Livermore's capital projects"
+	ch, _, err := p.chrome(chrome{
+		Title:      cmp.Or(v.Title, "Livermore's capital projects"),
+		DataPath:   ix.PublishedPath(v.Projection),
+		Scope:      meta.Scope,
+		YearSelect: sel,
+	}, meta.Sources, cite)
+	if err != nil {
+		return capitalPageData{}, err
 	}
 	return capitalPageData{
-		chrome: chrome{
-			Title:       title,
-			Lede:        v.Lede,
-			Nav:         nav,
-			Sources:     sources,
-			SourcesPath: sourcesPath,
-			ExportedBy:  o.GeneratedBy,
-			Projections: projectionRefs(o, ix),
-			DataPath:    ix.PublishedPath(v.Projection),
-			Scope:       meta.Scope,
-			CaveatsHere: cx.here(v.Path),
-			YearSelect:  sel,
-		},
+		chrome:  ch,
 		Columns: columns,
 		Funds:   funds,
 		Rows:    rows,

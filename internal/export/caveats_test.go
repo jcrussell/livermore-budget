@@ -191,7 +191,7 @@ func TestADataFilesCaveatIsStatedOnNoPageAndACheckIsNoLimit(t *testing.T) {
 		t.Errorf("themes (-want +got):\n%s", diff)
 	}
 
-	data, err := buildCaveatsPage(o, o.Views[2], nav, cx, ColumnIndex{})
+	data, err := buildCaveatsPage(pageCtx{o: o, v: o.Views[2], nav: nav, cx: cx})
 	if err != nil {
 		t.Fatalf("buildCaveatsPage: %v", err)
 	}

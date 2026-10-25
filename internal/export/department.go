@@ -1,6 +1,7 @@
 package export
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -148,9 +149,8 @@ func decodeDepartmentDocument(stem, want string, raw []byte) (departmentDocument
 // a department with nothing on either side, a division of the membership the
 // spending side draws nothing for, a paying fund under no fund group, and a
 // label the two disagree on.
-func buildDepartmentPage(o *Options, v View, nav []navItem, byID map[string]Doc,
-	ix ColumnIndex, pageTextBase func(string) string, cx *caveatIndex,
-) (departmentPageData, error) {
+func buildDepartmentPage(p pageCtx) (departmentPageData, error) {
+	o, v, ix := p.o, p.v, p.ix
 	if !slices.Equal(v.Reads, []string{project.DepartmentSpendingProjection}) {
 		return departmentPageData{}, fmt.Errorf("view %q renders the department page and reads %v "+
 			"beside its own document; the page reads %s and nothing else",
@@ -245,7 +245,13 @@ func buildDepartmentPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		}
 	}
 
-	sources, sourcesPath, docs, err := citedSources(o, v.Path, cited, nil, byID, pageTextBase)
+	open := years[len(years)-1]
+	ch, docs, err := p.chrome(chrome{
+		Title:      cmp.Or(v.Title, "Where Livermore's money goes, department by department"),
+		DataPath:   open.Path,
+		Scope:      scope,
+		YearSelect: sel,
+	}, cited, nil)
 	if err != nil {
 		return departmentPageData{}, err
 	}
@@ -262,25 +268,8 @@ func buildDepartmentPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	if err != nil {
 		return departmentPageData{}, err
 	}
-	open := years[len(years)-1]
-	title := v.Title
-	if title == "" {
-		title = "Where Livermore's money goes, department by department"
-	}
 	return departmentPageData{
-		chrome: chrome{
-			Title:       title,
-			Lede:        v.Lede,
-			Nav:         nav,
-			Sources:     sources,
-			SourcesPath: sourcesPath,
-			ExportedBy:  o.GeneratedBy,
-			Projections: projectionRefs(o, ix),
-			DataPath:    open.Path,
-			Scope:       scope,
-			CaveatsHere: cx.here(v.Path),
-			YearSelect:  sel,
-		},
+		chrome:      ch,
 		Years:       years,
 		Departments: entries,
 		// #nosec G203 -- blob is encoding/json's output, which escapes <, >

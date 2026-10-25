@@ -1,6 +1,7 @@
 package export
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -67,9 +68,8 @@ func encodeSidesConfig(cfg sidesConfig) ([]byte, error) {
 // control, the drawn schedule's declared sides as sections the client fills,
 // and the config the client folds by. The chart's figures are the
 // drawn schedule's; the year control is the spine's.
-func buildSidesPage(o *Options, v View, nav []navItem, byID map[string]Doc,
-	ix ColumnIndex, pageTextBase func(string) string, cx *caveatIndex,
-) (sidesPageData, error) {
+func buildSidesPage(p pageCtx) (sidesPageData, error) {
+	o, v, ix := p.o, p.v, p.ix
 	hints := v.Overview.sides()
 	if hints == nil {
 		return sidesPageData{}, fmt.Errorf("view %q renders template %q with no %s hints", v.Path, v.Template, v.Overview.Form)
@@ -116,7 +116,13 @@ func buildSidesPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	if len(years) == 0 {
 		return sidesPageData{}, fmt.Errorf("view %q opens no year", v.Path)
 	}
-	sources, sourcesPath, docs, err := citedSources(o, v.Path, cited, nil, byID, pageTextBase)
+	open := years[len(years)-1]
+	ch, docs, err := p.chrome(chrome{
+		Title:      cmp.Or(v.Title, "Livermore's budget, side by side"),
+		DataPath:   open.Path,
+		Scope:      meta.Scope(),
+		YearSelect: sel,
+	}, cited, nil)
 	if err != nil {
 		return sidesPageData{}, err
 	}
@@ -131,11 +137,6 @@ func buildSidesPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	if err != nil {
 		return sidesPageData{}, err
 	}
-	open := years[len(years)-1]
-	title := v.Title
-	if title == "" {
-		title = "Livermore's budget, side by side"
-	}
 	headings := make([]string, 0, len(hints.Sides))
 	for _, s := range hints.Sides {
 		headings = append(headings, strings.ToLower(s.Heading))
@@ -146,19 +147,7 @@ func buildSidesPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			", each opening in place into the parts the budget prints, every figure a sum of cells the city printed."
 	}
 	return sidesPageData{
-		chrome: chrome{
-			Title:       title,
-			Lede:        v.Lede,
-			Nav:         nav,
-			Sources:     sources,
-			SourcesPath: sourcesPath,
-			ExportedBy:  o.GeneratedBy,
-			Projections: projectionRefs(o, ix),
-			DataPath:    open.Path,
-			Scope:       meta.Scope(),
-			CaveatsHere: cx.here(v.Path),
-			YearSelect:  sel,
-		},
+		chrome:      ch,
 		Description: description,
 		Years:       years,
 		Sides:       slices.Clone(hints.Sides),

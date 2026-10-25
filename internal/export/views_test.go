@@ -1368,7 +1368,7 @@ func twoYearSankey(t *testing.T, view export.View, edit func(meta map[string]any
 }
 
 // TestBothChartTemplatesAcceptYearStems pins the OTHER half of
-// templateRendersAYearControl.
+// templateSpec.years.
 //
 // A refusal test alone pins only that the set is non-empty. A guard spelled
 // as one template's name, `v.Template == SankeyTemplate`, goes stale in

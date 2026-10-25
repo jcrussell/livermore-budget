@@ -1,6 +1,7 @@
 package export
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"slices"
@@ -200,9 +201,8 @@ func glanceTies(bar glanceBar, whole int64, residuals []ApartFromSpine) error {
 // buildGlancePage renders the glance view: per published year, newest first,
 // three bars of printed cells with the cited figure each sums to, and the
 // declaration where one does not.
-func buildGlancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
-	ix ColumnIndex, pageTextBase func(string) string, cx *caveatIndex,
-) (glancePageData, error) {
+func buildGlancePage(p pageCtx) (glancePageData, error) {
+	o, v, ix := p.o, p.v, p.ix
 	if !slices.Equal(v.Reads, []string{project.DepartmentFundingProjection}) {
 		return glancePageData{}, fmt.Errorf("view %q renders the glance page and reads %v "+
 			"beside its own document; the page reads %s and nothing else",
@@ -212,7 +212,7 @@ func buildGlancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	if err != nil {
 		return glancePageData{}, err
 	}
-	cite := newCellCites(byID, pageTextBase)
+	cite := newCellCites(p.byID, p.pageTextBase)
 	var (
 		years []glanceYear
 		cited []sourceMeta
@@ -343,27 +343,13 @@ func buildGlancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		// Newest first: the stems are oldest first.
 		years = append([]glanceYear{year}, years...)
 	}
-	sources, sourcesPath, _, serr := citedSources(o, v.Path, cited, cite, byID, pageTextBase)
-	if serr != nil {
-		return glancePageData{}, serr
+	ch, _, err := p.chrome(chrome{
+		Title:      cmp.Or(v.Title, "Livermore's budget at a glance"),
+		Scope:      meta.Scope(),
+		YearSelect: sel,
+	}, cited, cite)
+	if err != nil {
+		return glancePageData{}, err
 	}
-	title := v.Title
-	if title == "" {
-		title = "Livermore's budget at a glance"
-	}
-	return glancePageData{
-		chrome: chrome{
-			Title:       title,
-			Lede:        v.Lede,
-			Nav:         nav,
-			Sources:     sources,
-			SourcesPath: sourcesPath,
-			ExportedBy:  o.GeneratedBy,
-			Projections: projectionRefs(o, ix),
-			Scope:       meta.Scope(),
-			CaveatsHere: cx.here(v.Path),
-			YearSelect:  sel,
-		},
-		Years: years,
-	}, nil
+	return glancePageData{chrome: ch, Years: years}, nil
 }

@@ -277,9 +277,8 @@ func drawnDocument(v View, year, builtBy string, projections map[string][]byte, 
 	return out, nil
 }
 
-func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
-	ix ColumnIndex, pageTextBase func(string) string, cx *caveatIndex,
-) (pageData, error) {
+func buildSankeyPage(p pageCtx) (pageData, error) {
+	o, v, nav, ix, cx := p.o, p.v, p.nav, p.ix, p.cx
 	_, meta, err := decodeSankey(v.Projection, o.Projections[v.Projection])
 	if err != nil {
 		return pageData{}, err
@@ -362,7 +361,12 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	// per-year the page renders statically comes from this entry.
 	open := years[len(years)-1]
 
-	sources, sourcesPath, clientDocs, err := citedSources(o, v.Path, cited, nil, byID, pageTextBase)
+	ch, clientDocs, err := p.chrome(chrome{
+		Title:      open.Title,
+		DataPath:   open.Path,
+		Scope:      meta.Scope(),
+		YearSelect: sel,
+	}, cited, nil)
 	if err != nil {
 		return pageData{}, err
 	}
@@ -386,19 +390,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	}
 
 	return pageData{
-		chrome: chrome{
-			Title:       open.Title,
-			Lede:        v.Lede,
-			Nav:         nav,
-			Sources:     sources,
-			SourcesPath: sourcesPath,
-			ExportedBy:  o.GeneratedBy,
-			Projections: projectionRefs(o, ix),
-			DataPath:    open.Path,
-			Scope:       meta.Scope(),
-			CaveatsHere: cx.here(v.Path),
-			YearSelect:  sel,
-		},
+		chrome:      ch,
 		Lede:        open.Lede,
 		Basis:       open.Basis,
 		Wording:     defaultWording(),

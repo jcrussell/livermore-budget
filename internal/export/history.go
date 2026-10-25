@@ -1,6 +1,7 @@
 package export
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"maps"
@@ -40,10 +41,9 @@ type historySection struct {
 // telling a reader something the document does not say. A section that closes
 // itself with [Section.Rows] adds the refusal the key match cannot make: a
 // series its key claims but its rows do not name.
-func buildHistoryPage(o *Options, v View, nav []navItem, byID map[string]Doc,
-	ix ColumnIndex, pageTextBase func(string) string, cx *caveatIndex,
-) (historyPageData, error) {
-	cite := newCellCites(byID, pageTextBase)
+func buildHistoryPage(p pageCtx) (historyPageData, error) {
+	o, v, ix := p.o, p.v, p.ix
+	cite := newCellCites(p.byID, p.pageTextBase)
 	raw := o.Projections[v.Projection]
 	doc, err := decodeDocument(v.Projection, raw)
 	if err != nil {
@@ -167,28 +167,16 @@ func buildHistoryPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		}
 	}
 
-	sources, sourcesPath, _, serr := citedSources(o, v.Path, meta.Sources, cite, byID, pageTextBase)
-	if serr != nil {
-		return historyPageData{}, serr
-	}
-	refs := projectionRefs(o, ix)
-	title := v.Title
-	if title == "" {
-		title = "City of Livermore ten-year history"
+	ch, _, err := p.chrome(chrome{
+		Title:    cmp.Or(v.Title, "City of Livermore ten-year history"),
+		DataPath: ix.PublishedPath(v.Projection),
+		Scope:    meta.Scope,
+	}, meta.Sources, cite)
+	if err != nil {
+		return historyPageData{}, err
 	}
 	return historyPageData{
-		chrome: chrome{
-			Title:       title,
-			Lede:        v.Lede,
-			Nav:         nav,
-			Sources:     sources,
-			SourcesPath: sourcesPath,
-			ExportedBy:  o.GeneratedBy,
-			Projections: refs,
-			DataPath:    ix.PublishedPath(v.Projection),
-			Scope:       meta.Scope,
-			CaveatsHere: cx.here(v.Path),
-		},
+		chrome:   ch,
 		Columns:  columns,
 		Sections: sections,
 		HeadSpan: 3 + len(columns),

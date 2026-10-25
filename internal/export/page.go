@@ -265,39 +265,16 @@ func buildSite(o *Options, ix ColumnIndex, pageTextBase func(docID string) strin
 		copy(here, nav)
 		here[i].Current = true
 
-		var (
-			data any
-			err  error
-		)
-		// Every template is an explicit arm and the unknown one is refused: a
+		// Every template has a builder and the unknown one is refused: a
 		// template handed data it does not read renders blanks in silence.
-		switch v.Template {
-		case HistoryTemplate:
-			data, err = buildHistoryPage(o, v, here, byID, ix, pageTextBase, cx)
-		case SankeyTemplate:
-			data, err = buildSankeyPage(o, v, here, byID, ix, pageTextBase, cx)
-		case ProvenanceTemplate:
-			data, err = buildProvenancePage(o, v, here, byID, ix, pageTextBase)
-		case CaveatsTemplate:
-			data, err = buildCaveatsPage(o, v, here, cx, ix)
-		case DepartmentTemplate:
-			data, err = buildDepartmentPage(o, v, here, byID, ix, pageTextBase, cx)
-		case CapitalTemplate:
-			data, err = buildCapitalPage(o, v, here, byID, ix, pageTextBase, cx)
-		case DebtTemplate:
-			data, err = buildDebtPage(o, v, here, byID, ix, pageTextBase, cx)
-		case GlanceTemplate:
-			data, err = buildGlancePage(o, v, here, byID, ix, pageTextBase, cx)
-		case LedgerTemplate:
-			data, err = buildSidesPage(o, v, here, byID, ix, pageTextBase, cx)
-		case ChangeTemplate:
-			data, err = buildChangePage(o, v, here, byID, ix, pageTextBase, cx)
-		default:
+		spec, ok := templates[v.Template]
+		if !ok {
 			return nil, nil, hint.With(
 				fmt.Errorf("view %q renders template %q, which this package has no builder for",
 					v.Path, v.Template),
-				"every template needs an arm in buildSite naming the page data it is built from")
+				"every template needs an entry in templates naming the page data it is built from")
 		}
+		data, err := spec.build(pageCtx{o: o, v: v, nav: here, byID: byID, ix: ix, pageTextBase: pageTextBase, cx: cx})
 		if err != nil {
 			return nil, nil, err
 		}
@@ -362,6 +339,38 @@ type chrome struct {
 	// YearSelect is the year control under the top bar, drawn where it offers more
 	// than one option; empty on a page that draws every year at once.
 	YearSelect yearSelect
+}
+
+// pageCtx is what every page builder reads: the export, the view it builds,
+// that view's nav, the documents by id, the column index, the page text's
+// base and the caveat index.
+type pageCtx struct {
+	o            *Options
+	v            View
+	nav          []navItem
+	byID         map[string]Doc
+	ix           ColumnIndex
+	pageTextBase func(string) string
+	cx           *caveatIndex
+}
+
+// chrome fills c, which carries the page's title, data path, scope and year
+// select, with what every page citing figures renders alike: the view's
+// lede and nav, the sources it cites (citedSources), the published documents
+// and its caveats line. It returns the documents the page's client reads.
+func (p pageCtx) chrome(c chrome, cited []sourceMeta, cells *cellCites) (chrome, map[string]clientDoc, error) {
+	sources, sourcesPath, docs, err := citedSources(p.o, p.v.Path, cited, cells, p.byID, p.pageTextBase)
+	if err != nil {
+		return chrome{}, nil, err
+	}
+	c.Lede = p.v.Lede
+	c.Nav = p.nav
+	c.Sources = sources
+	c.SourcesPath = sourcesPath
+	c.ExportedBy = p.o.GeneratedBy
+	c.Projections = projectionRefs(p.o, p.ix)
+	c.CaveatsHere = p.cx.here(p.v.Path)
+	return c, docs, nil
 }
 
 // chromed is every page's data, whose top bar is the embedded chrome's.

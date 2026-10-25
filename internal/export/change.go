@@ -1,6 +1,7 @@
 package export
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 
@@ -117,10 +118,9 @@ func changeRows(d changeDocument, kind string, cite *cellCites) ([]changeRow, in
 // of one over the other, and the Budget Book's four columns of revenue by
 // category. The view's own document is the ten-year schedule; the budget
 // columns are read from the revenue-trends document, which must be built.
-func buildChangePage(o *Options, v View, nav []navItem, byID map[string]Doc,
-	ix ColumnIndex, pageTextBase func(string) string, cx *caveatIndex,
-) (changePageData, error) {
-	cite := newCellCites(byID, pageTextBase)
+func buildChangePage(p pageCtx) (changePageData, error) {
+	o, v, ix := p.o, p.v, p.ix
+	cite := newCellCites(p.byID, p.pageTextBase)
 	if v.Projection != project.ChangesProjection {
 		return changePageData{}, fmt.Errorf("view %q renders the change page over %q; the page's own document is %s",
 			v.Path, v.Projection, project.ChangesProjection)
@@ -202,27 +202,13 @@ func buildChangePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	}
 
 	cited := append(append([]sourceMeta{}, audited.meta.Sources...), budget.meta.Sources...)
-	sources, sourcesPath, _, serr := citedSources(o, v.Path, cited, cite, byID, pageTextBase)
-	if serr != nil {
-		return changePageData{}, serr
+	ch, _, err := p.chrome(chrome{
+		Title:    cmp.Or(v.Title, "Livermore's budget over time"),
+		DataPath: ix.PublishedPath(v.Projection),
+		Scope:    audited.meta.Scope + ", " + budget.meta.Scope,
+	}, cited, cite)
+	if err != nil {
+		return changePageData{}, err
 	}
-	title := v.Title
-	if title == "" {
-		title = "Livermore's budget over time"
-	}
-	return changePageData{
-		chrome: chrome{
-			Title:       title,
-			Lede:        v.Lede,
-			Nav:         nav,
-			Sources:     sources,
-			SourcesPath: sourcesPath,
-			ExportedBy:  o.GeneratedBy,
-			Projections: projectionRefs(o, ix),
-			DataPath:    ix.PublishedPath(v.Projection),
-			Scope:       audited.meta.Scope + ", " + budget.meta.Scope,
-			CaveatsHere: cx.here(v.Path),
-		},
-		Figures: figures,
-	}, nil
+	return changePageData{chrome: ch, Figures: figures}, nil
 }

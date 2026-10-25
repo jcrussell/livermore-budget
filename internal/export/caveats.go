@@ -1,6 +1,7 @@
 package export
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"maps"
@@ -658,7 +659,8 @@ type caveatsPageData struct {
 // of views stating the same caveats, and the rest in the data files' list and
 // the list no page states. It names no projection: it is an index across
 // documents. It refuses an empty page; buildCaveatIndex refuses the rest.
-func buildCaveatsPage(o *Options, v View, nav []navItem, cx *caveatIndex, ix ColumnIndex) (caveatsPageData, error) {
+func buildCaveatsPage(p pageCtx) (caveatsPageData, error) {
+	o, v, cx := p.o, p.v, p.cx
 	if len(cx.entries) == 0 {
 		return caveatsPageData{}, fmt.Errorf(
 			"view %q renders the caveats index and no published document carries a caveat, "+
@@ -672,17 +674,13 @@ func buildCaveatsPage(o *Options, v View, nav []navItem, cx *caveatIndex, ix Col
 			}
 		}
 	}
-	title := v.Title
-	if title == "" {
-		title = "What this site's figures do not say"
-	}
 	return caveatsPageData{
 		chrome: chrome{
-			Title:       title,
+			Title:       cmp.Or(v.Title, "What this site's figures do not say"),
 			Lede:        v.Lede,
-			Nav:         nav,
+			Nav:         p.nav,
 			ExportedBy:  o.GeneratedBy,
-			Projections: projectionRefs(o, ix),
+			Projections: projectionRefs(o, p.ix),
 			SourcesPath: templatePathOf(o, ProvenanceTemplate),
 			// NO Sources: this page shows no figure, so it cites no page.
 			// NO DataPath either, for buildProvenancePage's reason: this page

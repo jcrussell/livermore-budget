@@ -670,8 +670,8 @@ type downloadRef struct {
 // to, which Options.validate has already checked against the files being
 // written. This package does not know how that path is built and must not
 // learn -- the locator-to-URL rule belongs to whoever produced the records.
-func buildProvenancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
-	ix ColumnIndex, pageTextBase func(docID string) string) (provenancePageData, error) {
+func buildProvenancePage(p pageCtx) (provenancePageData, error) {
+	o, v, nav, byID, ix, pageTextBase := p.o, p.v, p.nav, p.byID, p.ix, p.pageTextBase
 	if len(o.PageIndex) == 0 {
 		// A page listing nothing is not an empty state, it is a page that
 		// should not have been asked for: views() adds this one only when
@@ -742,13 +742,9 @@ func buildProvenancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		return provenancePageData{}, err
 	}
 
-	title := v.Title
-	if title == "" {
-		title = "City of Livermore budget: every published figure"
-	}
 	return provenancePageData{
 		chrome: chrome{
-			Title: title,
+			Title: cmp.Or(v.Title, "City of Livermore budget: every published figure"),
 			Lede:  v.Lede,
 			Nav:   nav,
 			// The index is its own sources page: its rows list every page.

@@ -180,7 +180,7 @@ type View struct {
 	// Reads are schedules other than Projection's that the page reads out of
 	// each year's column, by projection name. Each year's column must carry
 	// every one, and a reader reaches each as it reaches the years. Only a
-	// template that reads a second schedule (templateReadsBeside) takes any.
+	// template that reads a second schedule (templateSpec.reads) takes any.
 	Reads []string
 }
 
@@ -668,6 +668,7 @@ func (o *Options) reservedPaths() map[string]bool {
 // validate refuses a view that could not be rendered, or that would land on a
 // path the site owns.
 func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
+	spec, known := templates[v.Template]
 	switch {
 	case v.Path == "":
 		return errors.New("a view has no output path")
@@ -684,40 +685,40 @@ func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
 		return fmt.Errorf("view %q names no template", v.Path)
 	// A template that renders no document (the provenance index) names no
 	// projection; one that does must name one.
-	case v.Projection == "" && templateRendersADocument(v.Template):
+	case v.Projection == "" && spec.document:
 		return fmt.Errorf("view %q names no projection", v.Path)
-	case v.Projection != "" && templateIsKnown(v.Template) && !templateRendersADocument(v.Template):
+	case v.Projection != "" && known && !spec.document:
 		return fmt.Errorf(
 			"view %q names projection %q and renders template %q, which renders no "+
 				"document; the projection would be ignored", v.Path, v.Projection, v.Template)
-	case v.Lede != "" && !templateRendersLede(v.Template):
+	case v.Lede != "" && !spec.lede:
 		return fmt.Errorf(
 			"view %q sets a lede and renders template %q, which has no {{.Lede}}; "+
 				"the sentence would be dropped in silence", v.Path, v.Template)
-	case len(v.YearStems) > 0 && !templateRendersAYearControl(v.Template):
+	case len(v.YearStems) > 0 && !spec.years:
 		return fmt.Errorf(
 			"view %q lists %d year stems and renders template %q, which has no year "+
 				"control; the years would be dropped in silence",
 			v.Path, len(v.YearStems), v.Template)
-	case len(v.Reads) > 0 && !templateReadsBeside(v.Template):
+	case len(v.Reads) > 0 && !spec.reads:
 		return fmt.Errorf(
 			"view %q reads %v beside its own document and renders template %q, which "+
 				"reads no second schedule; the schedules would be dropped in silence",
 			v.Path, v.Reads, v.Template)
-	case len(v.Sections) > 0 && !templateRendersSections(v.Template):
+	case len(v.Sections) > 0 && !spec.sections:
 		return fmt.Errorf(
 			"view %q declares %d sections and renders template %q, which groups nothing; "+
 				"the headings would be dropped in silence",
 			v.Path, len(v.Sections), v.Template)
-	case len(v.Sections) == 0 && templateRendersSections(v.Template):
+	case len(v.Sections) == 0 && spec.sections:
 		return fmt.Errorf(
 			"view %q renders template %q and declares no sections, so every row would "+
 				"land under no printed heading", v.Path, v.Template)
-	case v.Overview.Form != "" && !templateDrawsAChart(v.Template):
+	case v.Overview.Form != "" && spec.form == "":
 		return fmt.Errorf(
 			"view %q declares a %q chart and renders template %q, which draws none; "+
 				"the form would be dropped in silence", v.Path, v.Overview.Form, v.Template)
-	case v.Overview.Form == "" && templateDrawsAChart(v.Template):
+	case v.Overview.Form == "" && spec.form != "":
 		return fmt.Errorf(
 			"view %q renders template %q, which draws a chart, and declares no form for "+
 				"it; the client would have no renderer to hand the document to",
@@ -726,10 +727,10 @@ func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
 		return fmt.Errorf(
 			"view %q declares chart form %q, which is not one of %v",
 			v.Path, v.Overview.Form, ChartForms())
-	case v.Overview.Form != "" && formOfTemplate(v.Template) != v.Overview.Form:
+	case v.Overview.Form != "" && spec.form != v.Overview.Form:
 		return fmt.Errorf(
 			"view %q declares a %q chart and renders template %q, whose module draws a %q; "+
-				"the page would refuse itself at boot", v.Path, v.Overview.Form, v.Template, formOfTemplate(v.Template))
+				"the page would refuse itself at boot", v.Path, v.Overview.Form, v.Template, spec.form)
 	case v.Overview.foreignHints() != "":
 		return fmt.Errorf(
 			"view %q carries %s hints and declares a %q chart; the hints "+
@@ -776,91 +777,60 @@ func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
 	return v.validateOverviewTiersCarried(drawn, ix)
 }
 
-// templateRendersLede answers whether a template has a {{.Lede}} to render.
-// An allow-list: a template absent from it is refused a lede.
-func templateRendersLede(name string) bool {
-	switch name {
-	case HistoryTemplate, ProvenanceTemplate, CaveatsTemplate,
-		DepartmentTemplate, CapitalTemplate, DebtTemplate, GlanceTemplate,
-		LedgerTemplate, ChangeTemplate:
-		return true
-	default:
-		return false
+// templateSpec is what this package knows of one page template: the builder
+// of its page data and what of a [View] it renders. A field left false is a
+// refusal: View.validate refuses a view setting what its template drops.
+type templateSpec struct {
+	build func(pageCtx) (any, error)
+	// document is whether the template renders a projection document, as
+	// opposed to being built from Options directly.
+	document bool
+	// lede is whether the template has a {{.Lede}} to render.
+	lede bool
+	// years is whether the template renders [View.YearStems], as the year
+	// select under the top bar, which on GlanceTemplate shows one of its
+	// sections per year.
+	years bool
+	// reads is whether the template reads [View.Reads], a schedule beside
+	// its own out of each year's column.
+	reads bool
+	// sections is whether the template groups its rows under
+	// [View.Sections] headings.
+	sections bool
+	// form is the one chart form the template's module draws, or "" for a
+	// template that ships no module and with it no [View.Overview]. Each
+	// module refuses a page declaring another form at boot, after the write;
+	// this is the write's own refusal of it.
+	form string
+}
+
+// templates is every page template this package has a builder for. Filled
+// in init, because builders reach templateRendersADocument, which reads it.
+var templates map[string]templateSpec
+
+func init() {
+	templates = map[string]templateSpec{
+		SankeyTemplate:     {build: page(buildSankeyPage), document: true, years: true, form: SankeyForm},
+		LedgerTemplate:     {build: page(buildSidesPage), document: true, lede: true, years: true, form: LedgerForm},
+		HistoryTemplate:    {build: page(buildHistoryPage), document: true, lede: true, sections: true},
+		ProvenanceTemplate: {build: page(buildProvenancePage), lede: true},
+		CaveatsTemplate:    {build: page(buildCaveatsPage), lede: true},
+		DepartmentTemplate: {build: page(buildDepartmentPage), document: true, lede: true, years: true, reads: true},
+		CapitalTemplate:    {build: page(buildCapitalPage), document: true, lede: true},
+		DebtTemplate:       {build: page(buildDebtPage), document: true, lede: true},
+		GlanceTemplate:     {build: page(buildGlancePage), document: true, lede: true, years: true, reads: true},
+		ChangeTemplate:     {build: page(buildChangePage), document: true, lede: true},
 	}
 }
 
-// templateRendersAYearControl answers whether a template renders
-// [View.YearStems]: as the year select under the top bar, which on
-// GlanceTemplate shows one of its sections per year. Its own switch rather
-// than templateDrawsAChart: the two guard different failures.
-func templateRendersAYearControl(name string) bool {
-	switch name {
-	case SankeyTemplate, LedgerTemplate,
-		DepartmentTemplate, GlanceTemplate:
-		return true
-	default:
-		return false
-	}
-}
-
-// templateDrawsAChart answers whether a template ships a client module and a
-// figure for it to draw into, and with it [View.Overview]. Not the same
-// as rendering a document: balances.html renders one as a server-side table
-// with no module.
-func templateDrawsAChart(name string) bool {
-	return formOfTemplate(name) != ""
-}
-
-// formOfTemplate is the one chart form a template's module draws, or "" for
-// a template that draws none. Each module refuses a page declaring another
-// form at boot, after the write; this is the write's own refusal of it.
-func formOfTemplate(name string) string {
-	switch name {
-	case SankeyTemplate:
-		return SankeyForm
-	case LedgerTemplate:
-		return LedgerForm
-	default:
-		return ""
-	}
+// page is a builder as templates holds it.
+func page[T any](build func(pageCtx) (T, error)) func(pageCtx) (any, error) {
+	return func(p pageCtx) (any, error) { return build(p) }
 }
 
 // templateRendersADocument answers whether a template renders a projection
-// document, as opposed to being built from Options directly. An allow-list,
-// because the negated form fails open for a new document-less template.
-func templateRendersADocument(name string) bool {
-	switch name {
-	case SankeyTemplate, HistoryTemplate,
-		CapitalTemplate,
-		DebtTemplate,
-		DepartmentTemplate, GlanceTemplate, LedgerTemplate, ChangeTemplate:
-		return true
-	default:
-		return false
-	}
-}
-
-// templateIsKnown answers whether this package has a builder for a template.
-// It keeps buildSite's dispatch refusal reachable: without it, validate's
-// ignored-projection arm refuses an unknown template first, with advice that
-// leads past validate. Drift against buildSite's switch is benign both ways.
-func templateIsKnown(name string) bool {
-	return templateRendersADocument(name) ||
-		name == ProvenanceTemplate || name == CaveatsTemplate ||
-		name == DepartmentTemplate || name == CapitalTemplate || name == DebtTemplate
-}
-
-// templateReadsBeside answers whether a template reads [View.Reads], a
-// schedule beside its own out of each year's column.
-func templateReadsBeside(name string) bool {
-	return name == DepartmentTemplate || name == GlanceTemplate
-}
-
-// templateRendersSections answers whether a template groups its rows under
-// [View.Sections] headings.
-func templateRendersSections(name string) bool {
-	return name == HistoryTemplate
-}
+// document; an unknown template renders none.
+func templateRendersADocument(name string) bool { return templates[name].document }
 
 // assetPath screens one [Options.Files] key. The output tree is a web root
 // somebody will unpack, serve, or rsync, so a path that escapes it is a defect

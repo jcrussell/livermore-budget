@@ -120,9 +120,8 @@ type debtFigure struct {
 // document whose figures do not reconcile with its own count, and a row whose
 // cells do not match its table's width, because either would drop a figure
 // from the page in silence.
-func buildDebtPage(o *Options, v View, nav []navItem, byID map[string]Doc,
-	ix ColumnIndex, pageTextBase func(string) string, cx *caveatIndex,
-) (debtPageData, error) {
+func buildDebtPage(p pageCtx) (debtPageData, error) {
+	o, v, ix := p.o, p.v, p.ix
 	raw := o.Projections[v.Projection]
 	if _, err := decodeDocument(v.Projection, raw); err != nil {
 		return debtPageData{}, err
@@ -133,7 +132,7 @@ func buildDebtPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	}
 
 	shown := 0
-	cite := newCellCites(byID, pageTextBase)
+	cite := newCellCites(p.byID, p.pageTextBase)
 	var citeErr error
 	fig := func(f *debtFigure) debtFigRef {
 		if f == nil {
@@ -215,26 +214,15 @@ func buildDebtPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		}
 	}
 
-	sources, sourcesPath, _, serr := citedSources(o, v.Path, d.Metadata.Sources, cite, byID, pageTextBase)
-	if serr != nil {
-		return debtPageData{}, serr
-	}
-	title := v.Title
-	if title == "" {
-		title = "What Livermore owes"
+	ch, _, err := p.chrome(chrome{
+		Title:    cmp.Or(v.Title, "What Livermore owes"),
+		DataPath: ix.PublishedPath(v.Projection),
+	}, d.Metadata.Sources, cite)
+	if err != nil {
+		return debtPageData{}, err
 	}
 	return debtPageData{
-		chrome: chrome{
-			Title:       title,
-			Lede:        v.Lede,
-			Nav:         nav,
-			Sources:     sources,
-			SourcesPath: sourcesPath,
-			ExportedBy:  o.GeneratedBy,
-			Projections: projectionRefs(o, ix),
-			DataPath:    ix.PublishedPath(v.Projection),
-			CaveatsHere: cx.here(v.Path),
-		},
+		chrome:     ch,
 		Columns:    columns,
 		HeadSpan:   1 + 2*len(columns),
 		Activities: activities,
