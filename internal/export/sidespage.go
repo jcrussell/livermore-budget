@@ -51,17 +51,7 @@ type sidesPageData struct {
 // the published schema.
 func encodeSidesConfig(cfg sidesConfig) ([]byte, error) {
 	blob, err := json.Marshal(cfg)
-	if err != nil {
-		return nil, fmt.Errorf("encode sides config: %w", err)
-	}
-	var v any
-	if err := json.Unmarshal(blob, &v); err != nil {
-		return nil, fmt.Errorf("re-read sides config: %w", err)
-	}
-	if err := schema.Validate(schema.Sides, v); err != nil {
-		return nil, fmt.Errorf("the sides config this build produced does not match %s: %w", schema.Sides, err)
-	}
-	return blob, nil
+	return schemaChecked(blob, err, schema.Sides, "sides config")
 }
 
 // buildSidesPage renders a ledger view: the spine's years as the year

@@ -162,20 +162,21 @@ type clientConfig struct {
 // would blank only what a reader gets after a year switch; this catches it.
 func encodeConfig(cfg clientConfig) ([]byte, error) {
 	blob, err := json.Marshal(cfg)
+	return schemaChecked(blob, err, schema.Page, fmt.Sprintf("page config for %q", cfg.Primary))
+}
+
+// schemaChecked holds blob, the encoding of what, to the named schema, so
+// nothing this build writes leaves it unchecked; err is the encoder's.
+func schemaChecked(blob []byte, err error, name, what string) ([]byte, error) {
 	if err != nil {
-		return nil, fmt.Errorf("encode page config: %w", err)
-	}
-	resolved, err := schema.Load(schema.Page)
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("encode %s: %w", what, err)
 	}
 	var v any
 	if err := json.Unmarshal(blob, &v); err != nil {
-		return nil, fmt.Errorf("re-read page config: %w", err)
+		return nil, fmt.Errorf("re-read %s: %w", what, err)
 	}
-	if err := resolved.Validate(v); err != nil {
-		return nil, fmt.Errorf("the page config this build produced for %q does not match %s: %w",
-			cfg.Primary, schema.Page, err)
+	if err := schema.Validate(name, v); err != nil {
+		return nil, fmt.Errorf("the %s this build produced does not match %s: %w", what, name, err)
 	}
 	return blob, nil
 }

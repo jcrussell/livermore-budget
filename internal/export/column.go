@@ -447,24 +447,12 @@ func fundGroupsOf(nodes []ColumnNode) ([]ColumnFundGroup, error) {
 // published schema, which states that a derived node carries its words.
 func encodeColumn(doc ColumnDoc) ([]byte, error) {
 	b, err := json.MarshalIndent(doc, "", " ")
-	if err != nil {
-		return nil, fmt.Errorf("encode column: %w", err)
-	}
-	b = append(b, '\n')
-
-	resolved, err := schema.Load(schema.Column)
+	b, err = schemaChecked(b, err, schema.Column,
+		"column for "+fact.ColumnLabel(doc.Column.FiscalYear, doc.Column.Basis))
 	if err != nil {
 		return nil, err
 	}
-	var v any
-	if err := json.Unmarshal(b, &v); err != nil {
-		return nil, fmt.Errorf("re-read column: %w", err)
-	}
-	if err := resolved.Validate(v); err != nil {
-		return nil, fmt.Errorf("the column this build produced for %s does not match %s: %w",
-			fact.ColumnLabel(doc.Column.FiscalYear, doc.Column.Basis), schema.Column, err)
-	}
-	return b, nil
+	return append(b, '\n'), nil
 }
 
 // ReachedStems is every document a reader of this view can reach, once each:

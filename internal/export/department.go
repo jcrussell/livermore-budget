@@ -423,15 +423,5 @@ func vetDepartmentColumn(entries []departmentEntry, ofDivision map[string]string
 // match schema/department.schema.json.
 func encodeDepartmentConfig(cfg departmentConfig) ([]byte, error) {
 	blob, err := json.Marshal(cfg)
-	if err != nil {
-		return nil, fmt.Errorf("encode the department config: %w", err)
-	}
-	var v any
-	if err := json.Unmarshal(blob, &v); err != nil {
-		return nil, fmt.Errorf("re-read the department config: %w", err)
-	}
-	if err := schema.Validate(schema.Department, v); err != nil {
-		return nil, fmt.Errorf("the department config does not match %s: %w", schema.Department, err)
-	}
-	return blob, nil
+	return schemaChecked(blob, err, schema.Department, "department config")
 }
