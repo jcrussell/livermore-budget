@@ -441,8 +441,8 @@ rules:
         section: "General Government:"
         # "Fire" is the next top-level function the page prints, once after
         # the anchor. Block resolves stop_at with a plain first-match search
-        # and no uniqueness guard of its own (fisc-km5n), so a re-extraction
-        # that moved it would show in the facts rebuild's cmp.
+        # and no uniqueness guard of its own (fisc-km5n): an early stop is
+        # refused by fisc build's row-label and stated-total checks.
         stop_at: "Fire"
         columns:
           - {fund_group: general, fiscal_year: 2025}

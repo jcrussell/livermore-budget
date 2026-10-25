@@ -1516,8 +1516,9 @@ export const SANKEY = Object.freeze({
     const value = (d) => "  " + fmtShortSigned(ctx.figure(d));
     /** @type {Map<string, {qualifier: string, label: string, noun: string, cut: boolean}>} */
     const fitted = new Map();
-    // Fitted at ADVANCE_EM, not read off the browser: the words drawn are the
-    // words site/layout.test.mjs measures against their room.
+    // Fitted at ADVANCE_EM, not read off the browser: labelWords is what
+    // site/layout.test.mjs measures against the room, and site/render.test.mjs
+    // holds the drawn words to it.
     /** @param {LaidNode} d */
     const words = (d) => {
       let w = fitted.get(d.id);

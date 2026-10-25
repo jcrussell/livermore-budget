@@ -81,9 +81,10 @@ What follows about the shape is not obvious and is load-bearing.
 leaves a tier-1 node, so `revenue/taxes/property` is the source of nothing; it is
 emitted because the hierarchy needs it, the way the fund groups are. A client
 folding the lines to a coarser tier finds the box to put them in, and that fold
-reproduces the category-grain links — same values, same fact ids, same locators,
-same order. `revenue-lines-tie-to-their-categories` holds each line to the
-category it is parented to.
+reproduces the category-grain links' values. `revenue-lines-tie-to-their-categories`
+holds each line to the category it is parented to and each category's cells to
+the sum of its lines'; nothing holds the folded fact ids, locators or order
+against the category links (`fisc-pf7f.3`).
 
 **A line is rolled back up into its category, once per kind.** The rollup is a
 `(1,0)` link whose value is the sum of that printed row's own cells and whose

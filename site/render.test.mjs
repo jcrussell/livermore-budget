@@ -71,16 +71,18 @@ function worstOf(app) {
 }
 
 /**
- * What render() put in the SVG on the root and on the widest fund split of
- * one column, held against the chart the client laid: the ids of the marks
+ * What render() put in the SVG on the root, on the widest fund split and
+ * after Expand all of one column, held against the chart the client laid: the ids of the marks
  * and ribbons drawn, and the refusal banners drawn instead.
  */
 async function drive(year) {
   const { app, document } = await bootedApp({ checkedStem: year.stem });
   const chart = document.getElementById("chart");
   const states = [];
-  for (const entries of [[], [worstOf(app)]]) {
-    if (!app.redraw(entries)) throw new Error(`the chart at ${keyOf(entries)} did not draw`);
+  for (const entries of [[], [worstOf(app)], null]) {
+    if (entries === null) {
+      if (!app.expandAll()) throw new Error("Expand all split nothing");
+    } else if (!app.redraw(entries)) throw new Error(`the chart at ${keyOf(entries)} did not draw`);
     await settle();
     const ribbons = ribbonsIn(chart).map((p) => {
       const ends = `${p.__data__.source.id} -> ${p.__data__.target.id}`;
@@ -88,13 +90,20 @@ async function drive(year) {
       return drawn ? ends : `${ends} (drawn without a d, a width or a name)`;
     });
     states.push({
-      where: keyOf(entries),
+      where: entries === null ? "Expand all" : keyOf(entries),
       marks: marksIn(chart).map((m) => m.__data__.id),
       laid: app.projection.nodes.map((n) => n.id),
       ribbons,
       laidLinks: app.projection.links.map((l) => `${l.source.id || l.source} -> ${l.target.id || l.target}`),
       tails: app.projection.nodes.filter((n) => app.isAggregate(n.id)).length,
       banners: refusals(document).map((b) => b.textContent),
+      labels: marksIn(chart).map((m) => ({
+        id: m.__data__.id,
+        whole: m.__data__.label,
+        drawn: tspansOf(m)[1] || "",
+        title: [...m.children].find((c) => c.tagName === "title")?.textContent || "",
+        button: m.getAttribute("role") === "button",
+      })),
     });
   }
   app.collapseAll();
@@ -120,6 +129,22 @@ for (const year of YEARS) {
 
     test(`${year.label}: every state drew a chart rather than a refusal`, () => {
       for (const s of states) assert.deepEqual(s.banners, [], s.where);
+    });
+
+    // A label's words are drawn whole, or cut with the full words in a
+    // title, and every mark is a button. Mutation: draw d.label in place of
+    // the fitted words, and no drawn label is cut; drop the cut label's
+    // title, and a cut one has none; drop role="button" from the marks, and
+    // the last arm goes red.
+    test(`${year.label}: a label is drawn whole, or cut with its words in a title, on a mark that is a button`, (t) => {
+      const labels = states.flatMap((s) => s.labels.map((l) => ({ ...l, where: s.where })));
+      const titled = labels.filter((l) => l.title);
+      const cut = titled.filter((l) => l.drawn !== l.whole);
+      t.diagnostic(`${titled.length} of ${labels.length} drawn labels are cut, ${cut.length} of them in the label itself`);
+      assert.ok(cut.length > 0, "no drawn label is cut in its label words, so the cut arm asserts nothing");
+      const wrong = labels.filter((l) => (!l.title && l.drawn !== l.whole) || (l.title && !l.title.includes(l.whole)));
+      assert.deepEqual(wrong.map((l) => `${l.where}: ${l.id}`), []);
+      assert.deepEqual(labels.filter((l) => !l.button).map((l) => l.id), []);
     });
   });
 }

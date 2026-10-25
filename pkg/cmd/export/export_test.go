@@ -2464,3 +2464,70 @@ func seedExport(t *testing.T, dir string, files ...string) {
 		t.Fatalf("seed manifest: %v", err)
 	}
 }
+
+// TestAPageThatDisclaimsAuditAssuranceDoesNotClaimItInItsProse couples the two
+// statements of one claim that print on one page: the caveat and the lede.
+//
+// The two ACFR ten-year tables draw the section the ACFR itself labels
+// (Unaudited), and each of their documents ships the
+// statistical-section-unaudited caveat, whose text quotes the auditor: "we do
+// not express an opinion or any form of assurance thereon." The Title and Lede
+// are composed here, out of any document's sight -- nothing else stops them
+// asserting the assurance the caveat, further down the same page, disclaims.
+//
+// A PIN RATHER THAN A BANNED-WORD LIST: what a sentence claims cannot be
+// checked mechanically, so the pin makes drift fail. The scan is conditional on the document's own declaration: a view whose
+// document ships no such caveat may say "audited" freely, and "unaudited" is
+// the caveat's own word, so it is lifted out before the scan. The anchor half
+// fails first if the caveat itself disappears, so the scan cannot rot into a
+// vacuous pass.
+func TestAPageThatDisclaimsAuditAssuranceDoesNotClaimItInItsProse(t *testing.T) {
+	built := builtStemsForTest(t)
+
+	const disclaimer = project.UnauditedCaveatID
+	shipping := map[string]bool{}
+	for _, v := range mustViews(t, result{Projections: built}) {
+		if v.Projection == "" {
+			continue
+		}
+		doc, ok := built[v.Projection]
+		if !ok {
+			continue
+		}
+		// Every builder in internal/project nests its caveats in its metadata
+		// struct, so this one shape reads them all.
+		var d struct {
+			Metadata struct {
+				Caveats []struct {
+					ID string `json:"id"`
+				} `json:"caveats"`
+			} `json:"metadata"`
+		}
+		if err := json.Unmarshal(doc, &d); err != nil {
+			t.Fatalf("unmarshal %s's document %s: %v", v.Path, v.Projection, err)
+		}
+		for _, c := range d.Metadata.Caveats {
+			if c.ID != disclaimer {
+				continue
+			}
+			shipping[v.Path] = true
+			prose := strings.ToLower(v.Title + " " + v.Lede)
+			prose = strings.ReplaceAll(prose, "unaudited", "")
+			if strings.Contains(prose, "audit") {
+				t.Errorf("%s heads itself with an audit claim (title %q, lede %q) while "+
+					"its document ships the %s caveat: the auditor's opinion does not "+
+					"cover these schedules, and the page would disclaim its own headline",
+					v.Path, v.Title, v.Lede, disclaimer)
+			}
+		}
+	}
+	// The anchor: the ACFR pages' documents still declare themselves
+	// unaudited. If this half fails, the scan above has lost its subject --
+	// decide whether the prose may now claim assurance before deleting it.
+	for _, path := range []string{"change.html", "balances.html"} {
+		if !shipping[path] {
+			t.Errorf("%s's document no longer ships the %s caveat; the prose scan above "+
+				"is checking nothing on the page it was written for", path, disclaimer)
+		}
+	}
+}

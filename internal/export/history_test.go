@@ -332,11 +332,14 @@ func TestAnUnauditedDocumentsColumnsAreLabelledUnaudited(t *testing.T) {
 
 	for name, page := range pages {
 		chips := chip.FindAllStringSubmatch(page, -1)
-		if len(chips) == 0 {
-			t.Errorf("%s renders no basis chip, so this asserts nothing of it", name)
+		tips := tooltip.FindAllStringSubmatch(page, -1)
+		// change.js draws change.html's marks, so only the history page
+		// renders a mark's tooltip.
+		if len(chips) == 0 || (name != "change.html" && len(tips) == 0) {
+			t.Errorf("%s renders %d basis chips and %d mark tooltips, so this asserts nothing of one", name, len(chips), len(tips))
 		}
-		for _, m := range append(chips, tooltip.FindAllStringSubmatch(page, -1)...) {
-			if strings.Contains(strings.ReplaceAll(m[1], "unaudited", ""), "audited") {
+		for _, m := range append(chips, tips...) {
+			if strings.Contains(strings.ReplaceAll(strings.ToLower(m[1]), "unaudited", ""), "audited") {
 				t.Errorf("%s labels a column %q under the %s caveat", name, m[1], project.UnauditedCaveatID)
 			}
 		}
