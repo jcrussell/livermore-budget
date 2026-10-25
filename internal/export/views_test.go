@@ -459,6 +459,21 @@ func TestTheCaveatsPagePromisesAChartFlagOnlyWhereThereIsAChart(t *testing.T) {
 	}
 	page := readFile(t, dir, "caveats.html")
 
+	// A text about no node says where it ships once, flagged stem or not.
+	// Mutation: split About on Flagged for an empty applies_to and the
+	// golden's node-free caveats say it twice, once per stem.
+	shipped := 0
+	for _, va := range strings.Split(page, `<div class="caveat-variant">`)[1:] {
+		va, _, _ = strings.Cut(va, "</div>")
+		if n := strings.Count(va, "Shipped inside"); n > 1 {
+			t.Errorf("caveats.html says where one text ships %d times: %s", n, va)
+		}
+		shipped += strings.Count(va, "Shipped inside")
+	}
+	if shipped == 0 {
+		t.Fatal("caveats.html says no text ships inside a file, so the Shipped arm asserts nothing")
+	}
+
 	const promise = "the chart flags these marks"
 	// Each "About ... in <files>" line, keyed by the stems it names.
 	lines := map[string][]string{}

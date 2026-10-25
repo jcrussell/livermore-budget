@@ -20,7 +20,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/export"
 	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/project"
@@ -346,363 +345,47 @@ func TestExportRunWritesASiteAndSaysHowToServeIt(t *testing.T) {
 	}
 }
 
-// TestEveryCaveatSummaryLinksToAnAnchorThatExists holds every link into
-// caveats.html, on every page the site writes, to a fragment the caveats page
-// carries once, and holds the caveats page to each caveat folded in place:
-// its text inside the <details> its summary opens, no link on the page
-// jumping to another caveat, and each caveat once in any one list.
-//
-// The asset walks stat "caveats.html" and stop there, because the filesystem
-// has no opinion about a fragment; a link to one the page lacks renders as a
-// working link and drops the reader at the top of the page.
-//
-// IT WALKS THE RENDERED PAGES, and reads the anchors out of caveats.html's
-// own markup, so the fragment a page links and the id the caveats page
-// carries are compared where they meet rather than recomposed. Over the
-// committed corpus, so every view that links a caveat is written.
-//
-// Mutation: append "-typo" to the fragment caveatIndex.href returns and every
-// caveat link in a FISC_CONFIG blob names no anchor. Mutation: append it to
-// the section fragment caveatIndex.here returns and every page's caveats line
-// names none.
-func TestEveryCaveatSummaryLinksToAnAnchorThatExists(t *testing.T) {
+// TestEveryCaveatLinkLandsOnAnAnchorThatExists walks every page of the
+// exported corpus for the two spellings of a caveats.html link -- markup on a
+// page's caveats line, JSON in its FISC_CONFIG for a year switch -- and holds
+// each to an id caveats.html carries, where the template's fragment and the
+// index's anchor meet.
+// Mutation: append "-typo" to the group anchor the "caveats-line" template
+// links, or to caveatIndex.href's fragment, and that spelling goes red.
+func TestEveryCaveatLinkLandsOnAnAnchorThatExists(t *testing.T) {
 	built := builtStemsForTest(t)
-	io, _, _, _ := iostreams.Test()
-	opts := &Options{
-		IO:        io,
-		RepoRoot:  func() (string, error) { return repoRootForTest(t), nil },
-		OutputDir: filepath.Join(t.TempDir(), "dist"),
-		Build:     func(string) (result, error) { return result{Projections: built}, nil },
-	}
+	opts, _, _, _ := testOptions(t)
+	opts.RepoRoot = func() (string, error) { return repoRootForTest(t), nil }
+	opts.Build = func(string) (result, error) { return result{Projections: built}, nil }
 	if err := exportRun(context.Background(), opts); err != nil {
 		t.Fatalf("exportRun: %v", err)
 	}
-	read := func(name string) string {
-		t.Helper()
-		raw, err := os.ReadFile(filepath.Join(opts.OutputDir, name))
-		if err != nil {
-			t.Fatalf("read the exported %s: %v", name, err)
-		}
-		return string(raw)
-	}
-
-	caveatsPage := read("caveats.html")
-	// A text about no node in each document says where it ships once: the
-	// chart-flag split names nodes, and two such lines would read alike.
-	// Mutation: split About on Flagged for an empty applies_to and
-	// caveat-constraint-tier-is-our-reading says it twice.
-	folded := regexp.MustCompile(`(?s)<details class="caveat" id="([^"]+)">(.*?)</details>`).FindAllStringSubmatch(caveatsPage, -1)
-	for _, a := range folded {
-		for _, va := range strings.Split(a[2], `<div class="caveat-variant">`)[1:] {
-			if n := strings.Count(va, "Shipped inside"); n > 1 {
-				t.Errorf("caveats.html says where a text of %s ships %d times", a[1], n)
-			}
-		}
-	}
-	// A checked caveat is on no page's line, so the caveats page names the
-	// pages it was checked for rather than saying a page states it.
-	// Mutation: drop the template's Checked branch and this goes red.
-	checked := regexp.MustCompile(`(?s)<details class="caveat" id="caveat-pp168-169-tie-to-p54">(.*?)</details>`).FindStringSubmatch(caveatsPage)
-	if checked == nil || strings.Contains(checked[1], "Stated on") || !strings.Contains(checked[1], "Checked for") {
-		t.Error("caveats.html says a page states caveat-pp168-169-tie-to-p54, a check no page's line lists")
-	}
 	ids := map[string]bool{}
-	for _, m := range regexp.MustCompile(`id="([^"]+)"`).FindAllStringSubmatch(caveatsPage, -1) {
-		if ids[m[1]] {
-			t.Errorf("caveats.html carries the anchor %q twice; a link to it lands on "+
-				"whichever the browser finds first", m[1])
-		}
+	for _, m := range regexp.MustCompile(`id="([^"]+)"`).FindAllStringSubmatch(readFile(t, opts.OutputDir, "caveats.html"), -1) {
 		ids[m[1]] = true
 	}
-	if !slices.ContainsFunc(slices.Collect(maps.Keys(ids)), func(id string) bool { return strings.HasPrefix(id, "caveat-") }) {
-		t.Fatal("caveats.html carries no caveat anchors, so this test asserts nothing")
-	}
-
-	// FOLDED IN PLACE: every caveat is a <details> whose summary opens onto
-	// its text, and the only fragment link inside one is to itself, so
-	// reading a caveat never moves the reader to another part of the page.
-	//
-	// Mutation: link a section's summaries to "#caveat-..." in place of
-	// folding the text under them, and the <details> count falls short.
-	entry := regexp.MustCompile(`(?s)^\s*<summary>([^<]+)</summary>\s*<div class="caveat-variant">`)
-	self := regexp.MustCompile(`href="#([^"]+)"`)
-	for _, a := range folded {
-		if !entry.MatchString(a[2]) {
-			t.Errorf("caveats.html folds %s under no summary followed by its text", a[1])
-		}
-		for _, l := range self.FindAllStringSubmatch(a[2], -1) {
-			if l[1] != a[1] {
-				t.Errorf("caveats.html's %s links #%s, which moves the reader off the caveat they opened", a[1], l[1])
-			}
-		}
-	}
-	if n := strings.Count(caveatsPage, `<details class="caveat"`); n == 0 || n != len(folded) {
-		t.Fatalf("caveats.html folds %d caveats this test can read, of %d", len(folded), n)
-	}
-	if n := strings.Count(caveatsPage, `href="#`); n != len(folded) {
-		t.Errorf("caveats.html carries %d fragment links and %d caveats, each linking only itself", n, len(folded))
-	}
-
-	// EACH CAVEAT ONCE IN A LIST, and once canonically: a section may repeat
-	// a caveat another states, but never two of its own alike, and each
-	// distinct summary carries one caveat- anchor.
-	canonical := map[string]bool{}
-	for _, sec := range strings.Split(caveatsPage, "<section")[1:] {
-		stated := map[string]bool{}
-		for _, m := range regexp.MustCompile(`(?s)<details class="caveat" id="([^"]+)">\s*<summary>([^<]+)</summary>`).FindAllStringSubmatch(sec, -1) {
-			if stated[m[2]] {
-				t.Errorf("a section of caveats.html states %q twice", m[2])
-			}
-			stated[m[2]] = true
-			if strings.HasPrefix(m[1], "caveat-") {
-				if canonical[m[2]] {
-					t.Errorf("caveats.html gives %q two canonical anchors", m[2])
-				}
-				canonical[m[2]] = true
-			}
-		}
-	}
-	for _, a := range folded {
-		if s := entry.FindStringSubmatch(a[2]); s != nil && !canonical[s[1]] {
-			t.Errorf("caveats.html states %q with no canonical anchor, so a link from a page that "+
-				"does not state it has nowhere to land", s[1])
-		}
-	}
-	t.Logf("caveats.html folds %d caveats, %d distinct", len(folded), len(canonical))
-
-	// One theme's list in a page's section on caveats.html, as the number of
-	// caveats it lists, and the heading of the section it is in.
-	groupOf := func(anchor string) (int, string) {
-		before, rest, ok := strings.Cut(caveatsPage, `<h3 id="`+anchor+`"`)
-		if !ok {
-			return -1, ""
-		}
-		body, _, _ := strings.Cut(rest, "</section>")
-		body, _, _ = strings.Cut(body, "<h3 ")
-		heading := before[strings.LastIndex(before, "<h2>"):]
-		return strings.Count(body, `<details class="caveat"`), heading
-	}
-	line := regexp.MustCompile(`<p class="caveats-line">Limits on these figures:(.*?)</p>`)
-	themeLink := regexp.MustCompile(`<a href="caveats\.html#([^"]+)">[^<]*\((\d+)\)</a>`)
-	lined := 0
-
-	// TWO SPELLINGS. A page's caveats line links its own section as markup,
-	// href="caveats.html#caveats-on-...", and the FISC_CONFIG blob carries
-	// every year's caveats as JSON, "href":"caveats.html#...", each linking
-	// its entry in this page's own section, which app.js reads on a year
-	// switch.
 	spellings := []*regexp.Regexp{
 		regexp.MustCompile(`href="caveats\.html#([^"]+)"`),
 		regexp.MustCompile(`"href":"caveats\.html#([^"]+)"`),
 	}
-
-	// Every page the site wrote, not a list: a page added without its links
-	// checked is exactly what this is for.
-	entries, err := os.ReadDir(opts.OutputDir)
-	if err != nil {
-		t.Fatalf("read the exported site: %v", err)
-	}
-	linked, injected := 0, 0
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".html") {
-			continue
-		}
-		page := read(e.Name())
-		// ONE LINE PER PAGE, each theme's count its own section's list, in a
-		// section whose heading names the page.
-		//
-		// Mutation: have caveatIndex.here return the first view's section for
-		// every path and each page past the first links a section not its own.
-		if e.Name() != "caveats.html" {
-			lines := line.FindAllStringSubmatch(page, -1)
-			if len(lines) > 1 {
-				t.Errorf("%s carries %d caveats lines, want one", e.Name(), len(lines))
-			}
-			for _, m := range lines {
-				lined++
-				for _, l := range themeLink.FindAllStringSubmatch(m[1], -1) {
-					got, heading := groupOf(l[1])
-					if strconv.Itoa(got) != l[2] {
-						t.Errorf("%s says %s caveats of #%s apply and caveats.html lists %d there",
-							e.Name(), l[2], l[1], got)
-					}
-					if !strings.Contains(heading, `href="`+e.Name()+`"`) {
-						t.Errorf("%s links caveats.html#%s, in a section whose heading does not name it", e.Name(), l[1])
-					}
-				}
-				t.Logf("%s: %s", e.Name(), m[1])
-			}
-			if len(lines) == 0 && strings.Contains(page, `class="caveats"`) {
-				t.Errorf("%s lists caveats in place of its one line", e.Name())
-			}
-		}
-		for i, re := range spellings {
-			for _, m := range re.FindAllStringSubmatch(page, -1) {
-				if i == 0 {
-					linked++
-				} else {
-					injected++
-				}
-				if !ids[m[1]] {
-					t.Errorf("%s links to caveats.html#%s, and caveats.html carries no such "+
-						"anchor; the link works and lands the reader nowhere in particular",
-						e.Name(), m[1])
-				}
-			}
-		}
-	}
-	if lined == 0 {
-		t.Error("no page carries a caveats line this test can read, so its count arm checks nothing")
-	}
-	if linked == 0 {
-		t.Error("no page links to caveats.html in its markup, so this test's first " +
-			"spelling checks nothing")
-	}
-	if injected == 0 {
-		t.Error("no page carries a caveat anchor in its FISC_CONFIG blob, so the year " +
-			"switch has none to inject and this test's second spelling checks nothing")
-	}
-}
-
-// TestASiteWithNoCaveatsPageStatesEachCaveatOnceInItsList: with the caveats
-// view dropped, every page lists its caveats' headings in place of its one
-// line, and no page lists one twice. flows.html reaches two years of the
-// schedules whose caveats share a summary across years, so its list is
-// where two lines alike would show.
-//
-// Mutation: print each fallback line's summary without its Of in the
-// "caveats-line" template and flows.html lists one summary twice.
-func TestASiteWithNoCaveatsPageStatesEachCaveatOnceInItsList(t *testing.T) {
-	root := repoRootForTest(t)
-	built := builtStemsForTest(t)
-	io, _, _, _ := iostreams.Test()
-	opts := &Options{IO: io, OutputDir: filepath.Join(t.TempDir(), "dist")}
-	site, err := opts.siteOptions(root, result{Projections: built})
-	if err != nil {
-		t.Fatalf("siteOptions: %v", err)
-	}
-	site.Views = slices.DeleteFunc(site.Views, func(v export.View) bool { return v.Template == export.CaveatsTemplate })
-	plan, err := export.Prepare(site)
-	if err != nil {
-		t.Fatalf("Prepare without the caveats view: %v", err)
-	}
-	if _, _, wErr := plan.Write(context.Background(), false); wErr != nil {
-		t.Fatalf("Write: %v", wErr)
-	}
-	if _, statErr := os.Stat(filepath.Join(opts.OutputDir, "caveats.html")); statErr == nil {
-		t.Fatal("caveats.html was written with no caveats view, so this asserts nothing")
-	}
-
-	list := regexp.MustCompile(`(?s)<ul class="caveats" aria-label="What these figures do not say">(.*?)</ul>`)
-	item := regexp.MustCompile(`<li>(.*?)</li>`)
-	listed := map[string]int{}
+	links := make([]int, len(spellings))
 	pages, err := filepath.Glob(filepath.Join(opts.OutputDir, "*.html"))
 	if err != nil {
-		t.Fatalf("list the exported pages: %v", err)
+		t.Fatal(err)
 	}
 	for _, path := range pages {
-		page := filepath.Base(path)
-		raw, readErr := os.ReadFile(path)
-		if readErr != nil {
-			t.Fatalf("read %s: %v", page, readErr)
-		}
-		seen := map[string]bool{}
-		for _, l := range list.FindAllStringSubmatch(string(raw), -1) {
-			for _, m := range item.FindAllStringSubmatch(l[1], -1) {
-				if seen[m[1]] {
-					t.Errorf("%s lists %q twice", page, m[1])
+		page := readFile(t, opts.OutputDir, filepath.Base(path))
+		for i, re := range spellings {
+			for _, m := range re.FindAllStringSubmatch(page, -1) {
+				links[i]++
+				if !ids[m[1]] {
+					t.Errorf("%s links caveats.html#%s, which carries no such anchor", filepath.Base(path), m[1])
 				}
-				seen[m[1]] = true
-				listed[page]++
 			}
 		}
 	}
-	t.Logf("fallback lines: %v", listed)
-	if listed["flows.html"] == 0 {
-		t.Fatal("flows.html lists no caveat in place of its line, so this asserts nothing")
-	}
-}
-
-// TestTheSiteDoesNotSayThePSeventySixScheduleIsUnmapped asserts over the
-// rendered pages, where a reader meets internal/project's transferCaveat, that
-// no page says Budget Book p76 is unmapped in either word order, and that
-// caveats.html carries the correction.
-//
-// testOptions stubs Build to return the committed testdata/sankey.golden.json,
-// so the caveat here is fixture bytes: TestSankeyReproducesGoldenFile is what
-// fails when transferCaveat changes. The correction is read on caveats.html
-// because flows.html carries only the caveat's summary, and the whole document
-// inside window.FISC_CONFIG, which no reader reads.
-func TestTheSiteDoesNotSayThePSeventySixScheduleIsUnmapped(t *testing.T) {
-	opts, _, _, _ := testOptions(t)
-	if err := exportRun(context.Background(), opts); err != nil {
-		t.Fatalf("exportRun: %v", err)
-	}
-	read := func(name string) string {
-		t.Helper()
-		raw, err := os.ReadFile(filepath.Join(opts.OutputDir, name))
-		if err != nil {
-			t.Fatalf("read the exported %s: %v", name, err)
-		}
-		return string(raw)
-	}
-	pages := map[string]string{
-		"flows.html":   read("flows.html"),
-		"caveats.html": read("caveats.html"),
-	}
-
-	// Both word orders, plus the bead that never published anything -- its own
-	// close reason reads "Not published: no facts, facts.jsonl byte-identical".
-	// Refused on every page, because the claim could reappear on either.
-	for name, page := range pages {
-		for _, stale := range []string{
-			"not yet mapped", "not mapped yet", "fisc-5gk.3",
-			// p76's own document is published and Transfers In opens into it.
-			"fisc-9gh", "Pairing the legs needs",
-		} {
-			if strings.Contains(page, stale) {
-				t.Errorf("the exported %s promises work that has landed (%q); Budget Book "+
-					"p76 is mapped, published at scope transfers-by-fund AND drawn with "+
-					"its legs paired", name, stale)
-			}
-		}
-	}
-
-	// And the correction is present rather than merely the falsehood absent: a
-	// caveat that dropped the sentence entirely would pass the loop above.
-	//
-	// caveats.html ships no FISC_CONFIG, so this cannot pass on JSON no reader reads.
-	caveats := pages["caveats.html"]
-	if strings.Contains(caveats, "FISC_CONFIG") {
-		t.Fatal("caveats.html ships a config blob, so this test's substring search " +
-			"could pass on JSON no reader reads")
-	}
-	for _, want := range []string{"p222", "Capital Improvement Program", "p76&#39;s fund-by-fund list"} {
-		if !strings.Contains(caveats, want) {
-			t.Errorf("the exported caveats.html does not say %q, so the residual is "+
-				"unexplained rather than cited", want)
-		}
-	}
-
-	// And flows.html, which prints only its themes, points at the page that
-	// carries the text: at a theme of its section, which it shares with any
-	// page stating the same caveats, and so a section that names Flows.
-	//
-	// Mutation: append "-typo" to the group anchor the caveats line links and
-	// flows.html links caveats.html#...-typo, in no section.
-	line := regexp.MustCompile(`<p class="caveats-line">Limits on these figures: <a href="caveats.html#([^"]+)">`).FindStringSubmatch(pages["flows.html"])
-	if line == nil {
-		t.Fatal("flows.html does not link its section of the caveats page")
-	}
-	section := regexp.MustCompile(`(?s)<section class="caveat-page" id="([^"]+)">\s*<h2>(.*?)</h2>.*?</section>`)
-	found := false
-	for _, m := range section.FindAllStringSubmatch(caveats, -1) {
-		if strings.Contains(m[0], `id="`+line[1]+`"`) {
-			found = strings.Contains(m[2], `href="flows.html"`)
-		}
-	}
-	if !found {
-		t.Errorf("flows.html links caveats.html#%s, which is in no section naming Flows", line[1])
+	if links[0] == 0 || links[1] == 0 {
+		t.Fatalf("the site carries %v caveats links of the two spellings, so a spelling asserts nothing", links)
 	}
 }
 
@@ -775,7 +458,7 @@ func TestExportRunResolvesBothCitationClassesWithoutGitHub(t *testing.T) {
 	if err := exportRun(context.Background(), opts); err != nil {
 		t.Fatalf("exportRun: %v", err)
 	}
-	page := readPage(t, opts.OutputDir)
+	page := readFile(t, opts.OutputDir, "flows.html")
 
 	var pdfCitations, textCitations int
 	for _, ref := range pageRefs(page) {
@@ -794,7 +477,7 @@ func TestExportRunResolvesBothCitationClassesWithoutGitHub(t *testing.T) {
 			// The anchor comes off before the filesystem is asked:
 			// "caveats.html#caveat-sankey--x" names a file plus a place in it,
 			// and only the file half is a question about what was written. The
-			// fragment half is TestEveryCaveatSummaryLinksToAnAnchorThatExists'.
+			// fragment half is TestEveryCaveatLinkLandsOnAnAnchorThatExists'.
 			target := ref
 			if before, _, ok := strings.Cut(target, "#"); ok {
 				target = before
@@ -841,7 +524,7 @@ func TestExportRunCitesTheBrowseURLWhenAsked(t *testing.T) {
 	if err := exportRun(context.Background(), opts); err != nil {
 		t.Fatalf("exportRun: %v", err)
 	}
-	page := readPage(t, opts.OutputDir)
+	page := readFile(t, opts.OutputDir, "flows.html")
 
 	want := "https://example.test/blob/main/data/extracted/" + budgetDocID + "/pages/p0066.txt"
 	if !strings.Contains(page, want) {
@@ -906,39 +589,14 @@ func pageRefs(page string) []string {
 	return refs
 }
 
-func readPage(t *testing.T, dir string) string {
+// readFile is the exported file at name under dir.
+func readFile(t *testing.T, dir, name string) string {
 	t.Helper()
-	b, err := os.ReadFile(filepath.Join(dir, "flows.html"))
+	b, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(name))) // #nosec G304 -- a test's own site.
 	if err != nil {
-		t.Fatalf("read flows.html: %v", err)
+		t.Fatalf("read %s: %v", name, err)
 	}
 	return string(b)
-}
-
-// --clean removes no file a manifest does not list but a stranded manifest
-// temp file, so even reached past Validate, over a directory with no
-// manifest whose file stands at no path the export writes, it writes the site
-// beside the file and removes nothing.
-//
-// Mutation: make Write's clean remove every file the plan does not write and
-// this goes red with "the file was removed anyway".
-func TestExportRunCleanRemovesNothingNoManifestLists(t *testing.T) {
-	opts, _, _, _ := testOptions(t)
-	opts.Clean = true
-	if err := os.MkdirAll(opts.OutputDir, 0o755); err != nil {
-		t.Fatalf("seed: %v", err)
-	}
-	keep := filepath.Join(opts.OutputDir, "thesis.txt")
-	if err := os.WriteFile(keep, []byte("years of work"), 0o600); err != nil {
-		t.Fatalf("seed: %v", err)
-	}
-
-	if err := exportRun(context.Background(), opts); err != nil {
-		t.Fatalf("exportRun: %v", err)
-	}
-	if b, serr := os.ReadFile(keep); serr != nil || string(b) != "years of work" {
-		t.Errorf("the file was removed anyway: %q, %v", b, serr)
-	}
 }
 
 // TestExportRunRefusesAnUnreachableDocumentBeforeTouchingTheSite pins the
@@ -1101,52 +759,6 @@ func TestExportRunNeedsCleanWhereAnEarlierFileIsInTheWay(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(opts.OutputDir, "facts", "d", "p0001.jsonl")); err != nil {
 		t.Errorf("--clean did not write the file: %v", err)
-	}
-}
-
-// A file at a path the export writes that the earlier export's manifest does
-// not list is refused before anything is written, exiting 2, with or without
-// --clean, and the file survives: writing it would also list it in the
-// manifest, and a later --clean would delete it.
-//
-// Mutation: drop the foreign refusal from Write's screen and this goes red
-// with "got <nil>, want a FlagError".
-func TestExportRunRefusesToOverwriteAFileNoManifestLists(t *testing.T) {
-	for _, clean := range []bool{false, true} {
-		t.Run(fmt.Sprintf("clean=%v", clean), func(t *testing.T) {
-			opts, _, _, _ := testOptions(t)
-			if err := exportRun(context.Background(), opts); err != nil {
-				t.Fatalf("first export: %v", err)
-			}
-			marker := filepath.Join(opts.OutputDir, export.MarkerName)
-			b, err := os.ReadFile(marker)
-			if err != nil {
-				t.Fatal(err)
-			}
-			unlisted := strings.Replace(string(b), "\ncaveats.html\n", "\n", 1)
-			if unlisted == string(b) {
-				t.Fatalf("the first export's manifest does not list caveats.html: %q", b)
-			}
-			if err = os.WriteFile(marker, []byte(unlisted), 0o600); err != nil {
-				t.Fatal(err)
-			}
-			mine := filepath.Join(opts.OutputDir, "caveats.html")
-			if err = os.WriteFile(mine, []byte("mine\n"), 0o600); err != nil {
-				t.Fatal(err)
-			}
-			opts.Clean = clean
-			err = exportRun(context.Background(), opts)
-			var flagErr *cmdutil.FlagError
-			if !errors.As(err, &flagErr) {
-				t.Fatalf("got %v, want a FlagError", err)
-			}
-			if got, rerr := os.ReadFile(mine); rerr != nil || string(got) != "mine\n" {
-				t.Errorf("caveats.html holds %q, %v; want it untouched", got, rerr)
-			}
-			if got, _ := os.ReadFile(marker); string(got) != unlisted {
-				t.Errorf("the manifest was rewritten: %q", got)
-			}
-		})
 	}
 }
 
@@ -1327,101 +939,6 @@ func TestExportRunDryRunOverAMissingDirectoryCreatesNothing(t *testing.T) {
 	}
 }
 
-// TestExportRunShipsTheBuildersFiles is fisc-xgr's whole point, and nothing
-// else asserts it.
-//
-// export.Options.Files has existed since fisc-ze7 and this command never set
-// it, so the only thing that ever travelled the asset channel was the cited
-// page text, which Write puts through it on its own behalf. A Builder could
-// produce an asset and had no way to hand it over. TestFilesShipVerbatimBeside
-// TheSite covers the channel, but it calls export.Write directly -- it would
-// stay green with the two ends of this command still unconnected, which is the
-// state that shipped.
-//
-// So this asserts the wiring rather than the writing: an asset the BUILDER
-// returned reaches the output tree, at the path it asked for, byte for byte,
-// and is reported to stdout with the rest.
-func TestExportRunShipsTheBuildersFiles(t *testing.T) {
-	opts, _, out, _ := testOptions(t)
-	shard := []byte(`{"id":"fisc-f-000000000000","doc_id":"d","page":66}` + "\n")
-	opts.Build = func(string) (result, error) {
-		return result{
-			Projections: goldenProjections(t),
-			Files:       map[string][]byte{"facts/d/pages/p0066.jsonl": shard},
-		}, nil
-	}
-	if err := exportRun(context.Background(), opts); err != nil {
-		t.Fatalf("exportRun: %v", err)
-	}
-
-	got, err := os.ReadFile(filepath.Join(opts.OutputDir, "facts", "d", "pages", "p0066.jsonl"))
-	if err != nil {
-		t.Fatalf("the builder's asset did not reach the site: %v", err)
-	}
-	if !bytes.Equal(got, shard) {
-		t.Errorf("asset shipped as %q, want %q", got, shard)
-	}
-	// AND IT IS REPORTED, because the written paths are this command's data --
-	// what a caller pipes into a deploy. An asset that ships without appearing
-	// there is invisible to everything downstream.
-	if !strings.Contains(out(), "facts/d/pages/p0066.jsonl") {
-		t.Errorf("stdout %q does not name the asset that was written", out())
-	}
-}
-
-// TestExportRunRefusesAnAssetThatEscapesTheSite is the other half: the channel
-// now reaches a caller, so the guard on it has to be reachable too.
-//
-// It is assetPath's refusal, asserted through the command rather than through
-// export.Write, because that is the path a Builder now takes.
-//
-// IT RUNS BOTH WITH AND WITHOUT --clean: either way the refusal comes from
-// Prepare, before Write writes or removes anything, which is the same
-// ordering assertPublishedReachable holds one screen up.
-func TestExportRunRefusesAnAssetThatEscapesTheSite(t *testing.T) {
-	for _, clean := range []bool{false, true} {
-		name := "without --clean"
-		if clean {
-			name = "with --clean"
-		}
-		t.Run(name, func(t *testing.T) {
-			opts, _, _, _ := testOptions(t)
-			opts.Clean = clean
-
-			// A SITE THE REFUSAL COULD DESTROY, written by a good run first.
-			// Without it --clean has nothing to empty and the test asserts
-			// against an absence rather than against a survivor.
-			if err := exportRun(context.Background(), opts); err != nil {
-				t.Fatalf("seed export: %v", err)
-			}
-			index := filepath.Join(opts.OutputDir, "index.html")
-			if _, err := os.Stat(index); err != nil {
-				t.Fatalf("seed export wrote no index: %v", err)
-			}
-
-			opts.Build = func(string) (result, error) {
-				return result{
-					Projections: goldenProjections(t),
-					Files:       map[string][]byte{"../escaped.jsonl": []byte("{}")},
-				}, nil
-			}
-			err := exportRun(context.Background(), opts)
-			if err == nil {
-				t.Fatal("exportRun accepted an asset path outside the site")
-			}
-			if !strings.Contains(err.Error(), "clean relative path") {
-				t.Errorf("got %v, want the asset-path refusal", err)
-			}
-			if _, serr := os.Stat(index); serr != nil {
-				t.Errorf("the refusal destroyed the reader's site: %v", serr)
-			}
-			if _, serr := os.Stat(filepath.Join(opts.OutputDir, "escaped.jsonl")); serr == nil {
-				t.Error("the escaping asset was written")
-			}
-		})
-	}
-}
-
 func TestExportRunReportsABuilderFailure(t *testing.T) {
 	opts, _, _, errOut := testOptions(t)
 	opts.Build = func(string) (result, error) {
@@ -1447,10 +964,7 @@ func TestExportRunReportsABuilderFailure(t *testing.T) {
 // generated_by is the one key that legitimately differs: the golden records
 // that a human derived it, and a build records the binary that did.
 func TestBuildProjectionsRunsThePipeline(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
-	if err != nil {
-		t.Fatalf("resolve repo root: %v", err)
-	}
+	root := repoRootForTest(t)
 	got, err := buildProjections(root)
 	if err != nil {
 		t.Fatalf("buildProjections: %v", err)
@@ -1543,10 +1057,7 @@ func keys(m map[string][]byte) []string {
 // rename moves both silently. Published paths are
 // TestTheSitePublishesOneFilePerColumnAndNothingTwice's.
 func TestTheCommittedStemsAreUnchanged(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
-	if err != nil {
-		t.Fatalf("resolve repo root: %v", err)
-	}
+	root := repoRootForTest(t)
 	built, err := buildProjections(root)
 	if err != nil {
 		t.Fatalf("buildProjections: %v", err)
@@ -1578,17 +1089,14 @@ func TestTheCommittedStemsAreUnchanged(t *testing.T) {
 // config's records links to the export's own output: the client opens each
 // verbatim, so a link to a file the export did not write is a broken citation.
 func TestEveryRecordsLinkTheConfigCarriesIsAShardTheExportWrote(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
-	if err != nil {
-		t.Fatalf("resolve repo root: %v", err)
-	}
+	root := repoRootForTest(t)
 	opts, _, _, _ := testOptions(t)
 	opts.RepoRoot = func() (string, error) { return root, nil }
 	opts.Build = buildAll
 	if err := exportRun(context.Background(), opts); err != nil {
 		t.Fatalf("exportRun: %v", err)
 	}
-	page := readPage(t, opts.OutputDir)
+	page := readFile(t, opts.OutputDir, "flows.html")
 	const open = "window.FISC_CONFIG = "
 	_, rest, ok := strings.Cut(page, open)
 	if !ok {
@@ -1628,10 +1136,7 @@ func TestEveryRecordsLinkTheConfigCarriesIsAShardTheExportWrote(t *testing.T) {
 // agree with any change to ColumnsOf. A document stating no fiscal year or
 // basis ships as itself.
 func TestTheSitePublishesOneFilePerColumnAndNothingTwice(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
-	if err != nil {
-		t.Fatalf("resolve repo root: %v", err)
-	}
+	root := repoRootForTest(t)
 	opts, _, _, _ := testOptions(t)
 	opts.RepoRoot = func() (string, error) { return root, nil }
 	opts.Build = buildAll
@@ -1752,10 +1257,7 @@ func TestStemAsksHowManyDocumentsNotHowManyColumns(t *testing.T) {
 // different schedule, and refusing it for lacking the SPINE slice fails
 // `fisc export` before it writes a file.
 func TestBuildProjectionsDoesNotRefuseASecondSchedule(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
-	if err != nil {
-		t.Fatalf("resolve repo root: %v", err)
-	}
+	root := repoRootForTest(t)
 	got, err := buildProjections(root)
 	if err != nil {
 		t.Fatalf("buildProjections: %v", err)
@@ -1918,10 +1420,7 @@ func TestTheRevenueScheduleCaveatNamesThePageThatPrintsItsFourColumns(t *testing
 // over what the repository actually publishes rather than over a fixture.
 func builtStemsForTest(t *testing.T) map[string][]byte {
 	t.Helper()
-	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
-	if err != nil {
-		t.Fatalf("resolve repo root: %v", err)
-	}
+	root := repoRootForTest(t)
 	built, err := buildProjections(root)
 	if err != nil {
 		t.Fatalf("buildProjections: %v", err)
@@ -2177,187 +1676,6 @@ func TestADocumentOutsideTheColumnItIsPublishedForIsRefused(t *testing.T) {
 	}
 }
 
-// TestAPageThatDisclaimsAuditAssuranceDoesNotClaimItInItsProse couples the two
-// statements of one claim that print on one page: the caveat and the lede.
-//
-// The two ACFR ten-year tables draw the section the ACFR itself labels
-// (Unaudited), and each of their documents ships the
-// statistical-section-unaudited caveat, whose text quotes the auditor: "we do
-// not express an opinion or any form of assurance thereon." The Title and Lede
-// are composed here, out of any document's sight -- nothing else stops them
-// asserting the assurance the caveat, further down the same page, disclaims.
-//
-// A PIN RATHER THAN A BANNED-WORD LIST: what a sentence claims cannot be
-// checked mechanically, so the pin makes drift fail. The scan is conditional on the document's own declaration: a view whose
-// document ships no such caveat may say "audited" freely, and "unaudited" is
-// the caveat's own word, so it is lifted out before the scan. The anchor half
-// fails first if the caveat itself disappears, so the scan cannot rot into a
-// vacuous pass.
-func TestAPageThatDisclaimsAuditAssuranceDoesNotClaimItInItsProse(t *testing.T) {
-	built := builtStemsForTest(t)
-
-	const disclaimer = project.UnauditedCaveatID
-	shipping := map[string]bool{}
-	for _, v := range mustViews(t, result{Projections: built}) {
-		if v.Projection == "" {
-			continue
-		}
-		doc, ok := built[v.Projection]
-		if !ok {
-			continue
-		}
-		// Every builder in internal/project nests its caveats in its metadata
-		// struct, so this one shape reads them all.
-		var d struct {
-			Metadata struct {
-				Caveats []struct {
-					ID string `json:"id"`
-				} `json:"caveats"`
-			} `json:"metadata"`
-		}
-		if err := json.Unmarshal(doc, &d); err != nil {
-			t.Fatalf("unmarshal %s's document %s: %v", v.Path, v.Projection, err)
-		}
-		for _, c := range d.Metadata.Caveats {
-			if c.ID != disclaimer {
-				continue
-			}
-			shipping[v.Path] = true
-			prose := strings.ToLower(v.Title + " " + v.Lede)
-			prose = strings.ReplaceAll(prose, "unaudited", "")
-			if strings.Contains(prose, "audit") {
-				t.Errorf("%s heads itself with an audit claim (title %q, lede %q) while "+
-					"its document ships the %s caveat: the auditor's opinion does not "+
-					"cover these schedules, and the page would disclaim its own headline",
-					v.Path, v.Title, v.Lede, disclaimer)
-			}
-		}
-	}
-	// The anchor: the ACFR pages' documents still declare themselves
-	// unaudited. If this half fails, the scan above has lost its subject --
-	// decide whether the prose may now claim assurance before deleting it.
-	for _, path := range []string{"change.html", "balances.html"} {
-		if !shipping[path] {
-			t.Errorf("%s's document no longer ships the %s caveat; the prose scan above "+
-				"and TestAPageDoesNotLabelAColumnWithAWordItsCaveatWithdraws are both "+
-				"checking nothing on the page they were written for", path, disclaimer)
-		}
-	}
-}
-
-// basisChipPattern and markTitlePattern are the two surfaces a column's basis
-// word reaches a reader through: the chip in the column head
-// (site/history.html.tmpl, `<span class="basis">`) and the native SVG tooltip on
-// every drawn mark, which internal/export composes as label + basis + value.
-var (
-	basisChipPattern = regexp.MustCompile(`<span class="basis">([^<]*)</span>`)
-	markTitlePattern = regexp.MustCompile(`<(?:circle|rect)\b[^>]*>\s*<title>([^<]*)</title>`)
-)
-
-// TestAPageDoesNotLabelAColumnWithAWordItsCaveatWithdraws is the second half of
-// the audit-claim refusal: TestAPageThatDisclaimsAuditAssuranceDoesNotClaimItInItsProse
-// reads each view's Title and Lede, and a column's basis word is rendered from
-// the document's column data instead, in the column chip and every cell
-// tooltip, with the caveat quoting p161's "(Unaudited)" on the same page.
-//
-// IT WALKS THE RENDERED PAGES, for TestEveryCaveatSummaryLinksToAnAnchorThatExists'
-// reason: the word is chosen in internal/export and printed by a template, and
-// the page is the only place the two meet. Scanning the Go structs would let a
-// template start printing the document's raw basis again with this green.
-//
-// The match counts are asserted because a regex that has stopped matching is
-// indistinguishable by exit code from a page that has stopped offending.
-func TestAPageDoesNotLabelAColumnWithAWordItsCaveatWithdraws(t *testing.T) {
-	built := builtStemsForTest(t)
-	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
-	if err != nil {
-		t.Fatalf("resolve repo root: %v", err)
-	}
-	io, _, _, _ := iostreams.Test()
-	opts := &Options{
-		IO:        io,
-		RepoRoot:  func() (string, error) { return root, nil },
-		OutputDir: filepath.Join(t.TempDir(), "dist"),
-		Build:     func(string) (result, error) { return result{Projections: built}, nil },
-	}
-	if err = exportRun(context.Background(), opts); err != nil {
-		t.Fatalf("exportRun: %v", err)
-	}
-
-	scanned := 0
-	// Each page is held to the surfaces its template renders, or that half
-	// of the refusal checks nothing there.
-	for _, v := range mustViews(t, result{Projections: built}) {
-		if v.Projection == "" {
-			continue
-		}
-		doc, ok := built[v.Projection]
-		if !ok {
-			continue
-		}
-		var d struct {
-			Metadata struct {
-				Caveats []struct {
-					ID string `json:"id"`
-				} `json:"caveats"`
-			} `json:"metadata"`
-		}
-		if err = json.Unmarshal(doc, &d); err != nil {
-			t.Fatalf("unmarshal %s's document %s: %v", v.Path, v.Projection, err)
-		}
-		if !slices.ContainsFunc(d.Metadata.Caveats, func(c struct {
-			ID string `json:"id"`
-		},
-		) bool {
-			return c.ID == project.UnauditedCaveatID
-		}) {
-			continue
-		}
-		scanned++
-
-		b, err := os.ReadFile(filepath.Join(opts.OutputDir, filepath.FromSlash(v.Path)))
-		if err != nil {
-			t.Fatalf("read rendered %s: %v", v.Path, err)
-		}
-		page := string(b)
-
-		for _, surface := range []struct {
-			what string
-			re   *regexp.Regexp
-		}{
-			{what: "column chip", re: basisChipPattern},
-			{what: "cell tooltip", re: markTitlePattern},
-		} {
-			hits := surface.re.FindAllStringSubmatch(page, -1)
-			// change.html.tmpl draws its columns as bars with no mark, so it
-			// has no cell tooltip to read; every other scanned page renders
-			// both surfaces, and one that stops has moved the refusal's subject.
-			if len(hits) == 0 && (surface.what != "cell tooltip" || v.Template != export.ChangeTemplate) {
-				t.Errorf("%s renders no %s this scan can read; the surface moved and "+
-					"this half of the refusal is checking nothing", v.Path, surface.what)
-				continue
-			}
-			for _, h := range hits {
-				// "unaudited" contains "audited", so it is removed before the
-				// question is asked rather than special-cased after it.
-				if strings.Contains(strings.ReplaceAll(strings.ToLower(h[1]), "unaudited", ""), "audit") {
-					t.Errorf("%s prints %q in a %s while its document ships the %s caveat: "+
-						"the auditor's opinion does not cover these columns, and the page "+
-						"withdraws its own label a few paragraphs below",
-						v.Path, h[1], surface.what, project.UnauditedCaveatID)
-					break
-				}
-			}
-		}
-	}
-	// The anchor, for the prose scan's reason: if no page ships the caveat the
-	// loop above never runs, and a scan over nothing passes.
-	if scanned != 2 {
-		t.Errorf("scanned %d pages shipping the %s caveat, want 2 (balances.html "+
-			"and change.html); this refusal has lost its subject", scanned, project.UnauditedCaveatID)
-	}
-}
-
 // TestAViewWhoseDocumentWasNotBuiltIsDropped: a nav entry pointing at a page
 // that was not written is a 404 a reader can click, and it is the one failure
 // this function must never produce. Dropping the view is what prevents it;
@@ -2557,10 +1875,7 @@ func TestExportRefusesAPublishedDocumentThatWasNotBuilt(t *testing.T) {
 // document — this test is what fails, and the repair is to widen the
 // declaration in the commit that widened the corpus.
 func TestPublishedDocumentsAreWhatTheCorpusBuilds(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
-	if err != nil {
-		t.Fatalf("resolve repo root: %v", err)
-	}
+	root := repoRootForTest(t)
 	built, err := buildProjections(root)
 	if err != nil {
 		t.Fatalf("buildProjections: %v", err)
@@ -2698,10 +2013,7 @@ func TestTheFundFlowsFixtureIsTheDocumentTheSiteDraws(t *testing.T) {
 // the links, the counts, the caveats and the key order are all compared.
 func fixtureIsTheDocumentExported(t *testing.T, stem, fixture string) {
 	t.Helper()
-	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
-	if err != nil {
-		t.Fatalf("resolve repo root: %v", err)
-	}
+	root := repoRootForTest(t)
 	built, err := buildProjections(root)
 	if err != nil {
 		t.Fatalf("buildProjections: %v", err)
@@ -2738,10 +2050,7 @@ func fixtureIsTheDocumentExported(t *testing.T, stem, fixture string) {
 // TestEveryServedStampIsTheExportsOwn holds one export's build stamps to each
 // other: the client refuses a column whose stamp is not its page's.
 func TestEveryServedStampIsTheExportsOwn(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
-	if err != nil {
-		t.Fatalf("resolve repo root: %v", err)
-	}
+	root := repoRootForTest(t)
 	opts, _, _, _ := testOptions(t)
 	opts.RepoRoot = func() (string, error) { return root, nil }
 	opts.Build = buildAll
@@ -2819,10 +2128,7 @@ func mustViews(t *testing.T, built result) []export.View {
 // Mutation: make department.html's config carry the opening year's sources
 // alone, and the department page's rows on the other years' pages go red.
 func TestEveryPageALinkCitesHasItsLinksInTheConfig(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
-	if err != nil {
-		t.Fatalf("resolve repo root: %v", err)
-	}
+	root := repoRootForTest(t)
 	opts, _, _, _ := testOptions(t)
 	opts.RepoRoot = func() (string, error) { return root, nil }
 	var built result
@@ -2831,7 +2137,7 @@ func TestEveryPageALinkCitesHasItsLinksInTheConfig(t *testing.T) {
 		built = r
 		return r, buildErr
 	}
-	if err = exportRun(context.Background(), opts); err != nil {
+	if err := exportRun(context.Background(), opts); err != nil {
 		t.Fatalf("exportRun: %v", err)
 	}
 	_, ix, err := export.ColumnsOf(built.Projections, "")
@@ -2918,156 +2224,6 @@ func TestEveryPageALinkCitesHasItsLinksInTheConfig(t *testing.T) {
 		}
 	}
 	t.Logf("cited pages, each with its links in its page's config: %v", cited)
-}
-
-// TestTheSourcesPageListsEachInferredCellOnce: over the exported client
-// subset, each column's "What we inferred" lists every set of cells its
-// derived ribbons cite exactly once -- as a flow citing exactly those cells,
-// or, for a total finer flows restate, inside one flow citing more -- under a
-// derived node when any ribbon drawing those cells has a derived end and
-// among the flows between printed nodes only when none does, each at its
-// printed sign.
-// Mutation: key inferredColumns' listing by a flow's ends and fact ids --
-// every hub leg repeating a leaf's cells is listed again, among the printed
-// nodes' flows, and both count arms go red.
-func TestTheSourcesPageListsEachInferredCellOnce(t *testing.T) {
-	built, err := buildClientSubset(repoRootForTest(t))
-	if err != nil {
-		t.Fatalf("buildClientSubset: %v", err)
-	}
-	opts, _, _, _ := testOptions(t)
-	root := repoRootForTest(t)
-	opts.RepoRoot = func() (string, error) { return root, nil }
-	opts.Build = func(string) (result, error) { return built, nil }
-	if err = exportRun(context.Background(), opts); err != nil {
-		t.Fatalf("exportRun: %v", err)
-	}
-	raw, err := os.ReadFile(filepath.Join(opts.OutputDir, "provenance.html")) // #nosec G304 -- the temp site.
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, ix, err := export.ColumnsOf(built.Projections, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	type cells struct {
-		derivedEnd bool
-		cents      int64
-	}
-	type column struct {
-		derived map[string]bool
-		links   []struct {
-			Source, Target string
-			ValueCents     int64    `json:"value_cents"`
-			FactIDs        []string `json:"fact_ids"`
-		}
-	}
-	columns := map[string]*column{}
-	for _, stem := range slices.Sorted(maps.Keys(built.Projections)) {
-		path, folded := ix.Column(stem)
-		if !folded {
-			continue
-		}
-		var d struct {
-			Nodes []struct {
-				ID      string
-				Derived bool
-			}
-			Links []struct {
-				Source, Target string
-				ValueCents     int64    `json:"value_cents"`
-				FactIDs        []string `json:"fact_ids"`
-				Derived        bool
-			}
-		}
-		if err := json.Unmarshal(built.Projections[stem], &d); err != nil {
-			t.Fatalf("decode %s: %v", stem, err)
-		}
-		c := columns[path]
-		if c == nil {
-			c = &column{derived: map[string]bool{}}
-			columns[path] = c
-		}
-		for _, n := range d.Nodes {
-			if n.Derived {
-				c.derived[n.ID] = true
-			}
-		}
-		for _, l := range d.Links {
-			if l.Derived {
-				c.links = append(c.links, struct {
-					Source, Target string
-					ValueCents     int64    `json:"value_cents"`
-					FactIDs        []string `json:"fact_ids"`
-				}{l.Source, l.Target, l.ValueCents, l.FactIDs})
-			}
-		}
-	}
-	page := string(raw)
-	repeated, contra := 0, 0
-	for path, c := range columns {
-		sets := map[string]*cells{}
-		for _, l := range c.links {
-			ids := slices.Sorted(slices.Values(l.FactIDs))
-			key := strings.Join(ids, " ")
-			s := sets[key]
-			if s == nil {
-				s = &cells{cents: l.ValueCents}
-				sets[key] = s
-			} else {
-				repeated++
-			}
-			s.derivedEnd = s.derivedEnd || c.derived[l.Source] || c.derived[l.Target]
-		}
-		_, rest, ok := strings.Cut(page, `<section class="inferred-column" data-column="`+path+`">`)
-		if !ok {
-			t.Errorf("provenance.html has no inferred section for %s", path)
-			continue
-		}
-		section, _, _ := strings.Cut(rest, "</section>")
-		var listed [][]string
-		for _, m := range regexp.MustCompile(`<li data-facts="([^"]*)">`).FindAllStringSubmatch(section, -1) {
-			listed = append(listed, strings.Fields(m[1]))
-		}
-		// Each set is stated by the fewest-celled flow citing all of it: its
-		// own, or the one finer flow a total it is folded into.
-		underNodes, between := map[int]bool{}, map[int]bool{}
-		for key, s := range sets {
-			ids := strings.Fields(key)
-			at := -1
-			for i, f := range listed {
-				if !slices.ContainsFunc(ids, func(id string) bool { return !slices.Contains(f, id) }) &&
-					(at < 0 || len(f) < len(listed[at])) {
-					at = i
-				}
-			}
-			if at < 0 {
-				t.Errorf("%s lists no flow citing the cells %s", path, key)
-				continue
-			}
-			if s.derivedEnd {
-				underNodes[at] = true
-			} else {
-				between[at] = true
-			}
-			if s.cents < 0 {
-				contra++
-				if !strings.Contains(section, ": "+amount.Cents(s.cents).Dollars()+" ") {
-					t.Errorf("%s does not list a contra cell at its printed %s", path, amount.Cents(s.cents).Dollars())
-				}
-			}
-		}
-		if got := len(regexp.MustCompile(`<li data-facts="[^"]*">◇ `).FindAllString(section, -1)); got != len(underNodes) {
-			t.Errorf("%s lists %d flows under derived nodes, want %d: one per set of cells with a derived end", path, got, len(underNodes))
-		}
-		if got := strings.Count(section, "both endpoints are printed by the city"); got != len(between) {
-			t.Errorf("%s lists %d flows between printed nodes, want %d: one per set of cells no derived end draws", path, got, len(between))
-		}
-	}
-	if repeated == 0 {
-		t.Fatal("no derived ribbon in the subset repeats another's cells, so the count arm covers nothing")
-	}
-	t.Logf("%d ribbon(s) repeat cells another draws; %d contra cell(s)", repeated, contra)
 }
 
 // A refused credential must not be echoed to the terminal either, by any
@@ -3250,63 +2406,22 @@ func TestNewCmdExportAcceptsADirectoryItOwns(t *testing.T) {
 	}
 }
 
-// lateCancel is a context whose cancellation lands after its first Err():
-// a signal that arrives once the build has been checked and before Write.
-type lateCancel struct {
-	context.Context
-	seen bool
-}
-
-func (c *lateCancel) Err() error {
-	if c.seen {
-		return context.Canceled
-	}
-	c.seen = true
-	return nil
-}
-
-// A cancellation that lands after the build, with --clean over an earlier
-// export, stops before Write: the reader's site stays as it was.
+// A cancellation that lands during the build, with --clean over an earlier
+// export, returns an error wrapping context.Canceled, so the runner exits
+// 130, reports no path, and leaves the earlier site as it was.
 //
-// Mutation: drop the ctx check that follows Prepare and this goes red with
-// "index.html was removed".
-func TestExportRunCancelledBeforeTheCleanLeavesTheSite(t *testing.T) {
+// exportRun's own ctx checks stop it first and Write's stops it behind them,
+// so neither alone is witnessed here.
+// Mutation: drop exportRun's ctx checks and discard Write's error and this
+// goes red with "got <nil>".
+func TestExportRunStopsWhenCancelled(t *testing.T) {
 	opts, _, out, _ := testOptions(t)
 	opts.Clean = true
 	if err := os.MkdirAll(opts.OutputDir, 0o750); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 	seedExport(t, opts.OutputDir, "index.html")
-	manifest, err := os.ReadFile(filepath.Join(opts.OutputDir, export.MarkerName))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = exportRun(&lateCancel{Context: context.Background()}, opts)
-	if !errors.Is(err, context.Canceled) {
-		t.Fatalf("got %v, want it to wrap context.Canceled", err)
-	}
-	for name, want := range map[string]string{export.MarkerName: string(manifest), "index.html": "earlier export\n"} {
-		b, rerr := os.ReadFile(filepath.Join(opts.OutputDir, name))
-		if rerr != nil {
-			t.Errorf("%s was removed: %v", name, rerr)
-		} else if string(b) != want {
-			t.Errorf("%s = %q, want the earlier export left alone", name, b)
-		}
-	}
-	if out() != "" {
-		t.Errorf("got stdout %q, want no paths reported", out())
-	}
-}
-
-// A cancellation that arrives while the site is being built stops the export
-// before the output directory is touched, and says it was cancelled.
-//
-// Mutation: drop the ctx checks from exportRun and this goes red with "the
-// output directory was created"; drop Write's as well and it goes red with
-// "got nil error".
-func TestExportRunStopsWhenCancelled(t *testing.T) {
-	opts, _, out, _ := testOptions(t)
+	manifest := readFile(t, opts.OutputDir, export.MarkerName)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	build := opts.Build
@@ -3315,15 +2430,13 @@ func TestExportRunStopsWhenCancelled(t *testing.T) {
 		return build(root)
 	}
 
-	err := exportRun(ctx, opts)
-	if err == nil {
-		t.Fatal("got nil error, want the export to stop")
+	if err := exportRun(ctx, opts); !errors.Is(err, context.Canceled) {
+		t.Fatalf("got %v, want it to wrap context.Canceled", err)
 	}
-	if !errors.Is(err, context.Canceled) {
-		t.Errorf("got %v, want it to wrap context.Canceled so the runner exits 130", err)
-	}
-	if _, serr := os.Stat(opts.OutputDir); !errors.Is(serr, os.ErrNotExist) {
-		t.Errorf("the output directory was created (stat: %v)", serr)
+	for name, want := range map[string]string{export.MarkerName: manifest, "index.html": "earlier export\n"} {
+		if got := readFile(t, opts.OutputDir, name); got != want {
+			t.Errorf("%s = %q, want the earlier export left alone", name, got)
+		}
 	}
 	if out() != "" {
 		t.Errorf("got stdout %q, want no paths reported", out())

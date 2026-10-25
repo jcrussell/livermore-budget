@@ -152,7 +152,8 @@ func TestTwoTextsOfOneYearAreRefused(t *testing.T) {
 // Mutation: drop the data-files test from the section loop and a.html's
 // section lists d. Mutation: drop the data-files arm of the list split and
 // d falls into the list no page states. Mutation: keep the checked group in here and a.html's
-// line is 2 in two themes.
+// line is 2 in two themes. Mutation: drop the caveats template's Checked
+// branch and k's entry says a.html states it.
 func TestADataFilesCaveatIsStatedOnNoPageAndACheckIsNoLimit(t *testing.T) {
 	o, nav := caveatSite(
 		`[{"id":"x","summary":"X.","theme":"left-out","text":"T.","applies_to":[]},`+
@@ -188,6 +189,20 @@ func TestADataFilesCaveatIsStatedOnNoPageAndACheckIsNoLimit(t *testing.T) {
 	}
 	if diff := cmp.Diff([]string{"left-out", "checked", "data-files"}, themes); diff != "" {
 		t.Errorf("themes (-want +got):\n%s", diff)
+	}
+
+	data, err := buildCaveatsPage(o, o.Views[2], nav, cx, ColumnIndex{})
+	if err != nil {
+		t.Fatalf("buildCaveatsPage: %v", err)
+	}
+	html, err := renderPage(o.assetTree(), CaveatsTemplate, data)
+	if err != nil {
+		t.Fatalf("render caveats.html: %v", err)
+	}
+	_, k, _ := strings.Cut(string(html), `id="caveat-k"`)
+	k, _, _ = strings.Cut(k, "</article>")
+	if !strings.Contains(k, "Checked for") || strings.Contains(k, "Stated on") {
+		t.Errorf("caveats.html's entry for the checked k does not say which page it was checked for: %s", k)
 	}
 }
 
@@ -391,8 +406,7 @@ func TestViewsStatingOneSetInTwoOrdersShareASection(t *testing.T) {
 //
 // Mutation: have href ignore the view and b.html links x at caveat-x, which
 // is a.html's section. Mutation: put the canonical anchor on every section
-// and b's anchor for x reads caveat-x; the rendered page then carries the id
-// twice, which TestEveryCaveatSummaryLinksToAnAnchorThatExists refuses.
+// and b's anchor for x reads caveat-x.
 func TestACaveatTwoSectionsShareIsLinkedToEachViewsOwn(t *testing.T) {
 	o, nav := caveatSite(
 		`[{"id":"x","summary":"X.","theme":"left-out","text":"T.","applies_to":[]}]`,

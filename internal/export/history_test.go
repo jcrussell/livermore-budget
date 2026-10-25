@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/jcrussell/livermore-budget/internal/export"
+	"github.com/jcrussell/livermore-budget/internal/project"
 )
 
 // historySeries is one series of a history fixture document, small enough for a
@@ -297,5 +299,46 @@ func TestTheHistoryViewRefusesARowNameMatchingNoSeries(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "names row") {
 		t.Errorf("error %q does not name the unmatched row declaration", err)
+	}
+}
+
+// TestAnUnauditedDocumentsColumnsAreLabelledUnaudited holds both pages that
+// print an audited column -- history and change -- to the word the caveat
+// leaves standing, in the column chip and in every mark's tooltip, where the
+// page meets basisLabelFor's answer.
+// Mutation: label buildHistoryPage's or buildChangePage's columns with the
+// document's raw basis and that page's arm goes red on "audited".
+func TestAnUnauditedDocumentsColumnsAreLabelledUnaudited(t *testing.T) {
+	const caveat = `"caveats":[{"id":"` + project.UnauditedCaveatID + `","summary":"Unaudited.",` +
+		`"theme":"left-out","text":"No assurance.","applies_to":[]}]`
+	chip := regexp.MustCompile(`<span class="basis">([^<]*)</span>`)
+	tooltip := regexp.MustCompile(`<(?:circle|rect)\b[^>]*>\s*<title>([^<]*)</title>`)
+
+	doc := strings.Replace(string(historyDoc(balancesFixture()...)), `"caveats":[]`, caveat, 1)
+	dir, err := writeHistorySite(t, []byte(doc), balancesSections())
+	if err != nil {
+		t.Fatalf("Write the history page: %v", err)
+	}
+	pages := map[string]string{"balances.html": readFile(t, dir, "balances.html")}
+
+	dir = t.TempDir()
+	o := changeOptions(t, dir, false)
+	o.Projections[project.ChangesProjection] = []byte(strings.Replace(
+		string(o.Projections[project.ChangesProjection]), `"caveats":[]`, caveat, 1))
+	if _, err := writeSite(o); err != nil {
+		t.Fatalf("Write the change page: %v", err)
+	}
+	pages["change.html"] = readFile(t, dir, "change.html")
+
+	for name, page := range pages {
+		chips := chip.FindAllStringSubmatch(page, -1)
+		if len(chips) == 0 {
+			t.Errorf("%s renders no basis chip, so this asserts nothing of it", name)
+		}
+		for _, m := range append(chips, tooltip.FindAllStringSubmatch(page, -1)...) {
+			if strings.Contains(strings.ReplaceAll(m[1], "unaudited", ""), "audited") {
+				t.Errorf("%s labels a column %q under the %s caveat", name, m[1], project.UnauditedCaveatID)
+			}
+		}
 	}
 }
