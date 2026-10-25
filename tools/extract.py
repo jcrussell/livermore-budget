@@ -162,8 +162,6 @@ def check_against_schema(obj: dict, schema_name: str) -> None:
     A subset and not an implementation: required keys, JSON types, enum,
     const, string and array lengths, prefixItems and numeric minimums. PyPI
     is unreachable here, and Go validates the same file fully.
-
-    Why, measured: docs/schema-contracts.md.
     """
     path = REPO / "schema" / schema_name
     schema = load_schema(schema_name)

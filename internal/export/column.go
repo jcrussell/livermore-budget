@@ -21,7 +21,8 @@ const columnSchemaVersion = 1
 // table, and per printed schedule its links and its parent edges, keyed by
 // (fiscal year, basis).
 //
-// The schedules are not merged; why, measured: docs/schema-contracts.md.
+// The schedules are not merged: one graph would reconcile the cells two
+// schedules are declared to differ at.
 type ColumnDoc struct {
 	SchemaVersion int                    `json:"schema_version"`
 	GeneratedBy   string                 `json:"generated_by,omitempty"`

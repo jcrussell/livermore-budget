@@ -407,8 +407,6 @@ func loadFacts(fsys fs.FS) ([]fact.Fact, error) {
 	// Shape before semantics, and over the RAW file: a struct has already lost
 	// the difference between a key that was absent and one present and empty,
 	// which is what "absent is not zero" rests on.
-	//
-	// Why, measured: docs/schema-contracts.md.
 	raw, err := fs.ReadFile(fsys, factsFile)
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", factsFile, err)

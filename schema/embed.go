@@ -3,8 +3,6 @@
 //
 // Go validates fully; tools/extract.py, which may take no dependency, compares
 // its own refusals against the `required` arrays.
-//
-// Why, measured: docs/schema-contracts.md.
 package schema
 
 import (
