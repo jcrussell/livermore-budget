@@ -109,6 +109,19 @@ func decodeWhole[T any](stem string, raw []byte) (T, error) {
 	return d, nil
 }
 
+// decodeProjection is decodeWhole for one schedule a page draws, refusing one
+// another projection built.
+func decodeProjection[T any](page, stem, want string, raw []byte) (T, error) {
+	d, err := decodeWhole[T](stem, raw)
+	if err != nil {
+		return d, err
+	}
+	if env, _ := decodeDocument(stem, raw); env.Projection != want {
+		return d, fmt.Errorf("the %s page reads %s as %s and it is %q", page, stem, want, env.Projection)
+	}
+	return d, nil
+}
+
 // sitePage is one rendered view: where it goes and what it says.
 type sitePage struct {
 	Path string

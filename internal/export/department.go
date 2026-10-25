@@ -122,19 +122,6 @@ type departmentDocument struct {
 	} `json:"metadata"`
 }
 
-// decodeDepartmentDocument reads one of the page's two schedules, refusing one
-// another projection built.
-func decodeDepartmentDocument(stem, want string, raw []byte) (departmentDocument, error) {
-	d, err := decodeWhole[departmentDocument](stem, raw)
-	if err != nil {
-		return d, err
-	}
-	if d.Projection != want {
-		return d, fmt.Errorf("the department page reads %s as %s and it is %q", stem, want, d.Projection)
-	}
-	return d, nil
-}
-
 // buildDepartmentPage renders the department view, each department read out
 // of every year's column on two sides: department-funding's links into it and
 // department-spending's into its divisions. It refuses, in any year, whatever
@@ -177,12 +164,14 @@ func buildDepartmentPage(p pageCtx) (departmentPageData, error) {
 		if readErr != nil {
 			return departmentPageData{}, readErr
 		}
-		funding, fundErr := decodeDepartmentDocument(stem, project.DepartmentFundingProjection, o.Projections[stem])
+		funding, fundErr := decodeProjection[departmentDocument]("department", stem,
+			project.DepartmentFundingProjection, o.Projections[stem])
 		if fundErr != nil {
 			return departmentPageData{}, fundErr
 		}
 		spendStem := reads[0]
-		spending, spendErr := decodeDepartmentDocument(spendStem, project.DepartmentSpendingProjection,
+		spending, spendErr := decodeProjection[departmentDocument]("department", spendStem,
+			project.DepartmentSpendingProjection,
 			o.Projections[spendStem])
 		if spendErr != nil {
 			return departmentPageData{}, spendErr

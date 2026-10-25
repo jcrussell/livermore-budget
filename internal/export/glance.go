@@ -108,19 +108,6 @@ type glanceDocument struct {
 	} `json:"metadata"`
 }
 
-// decodeGlanceDocument reads one schedule the glance page draws, refusing one
-// that is another projection's.
-func decodeGlanceDocument(stem, want string, raw []byte) (glanceDocument, error) {
-	d, err := decodeWhole[glanceDocument](stem, raw)
-	if err != nil {
-		return d, err
-	}
-	if d.Projection != want {
-		return d, fmt.Errorf("the glance page reads %s as %s and it is %q", stem, want, d.Projection)
-	}
-	return d, nil
-}
-
 // glanceRows is every link of doc whose ends pick picks, as rows grouped by
 // the end pick names. It refuses an end the table lacks or that has no label,
 // and an inferred link: the page lists every row as a printed cell.
@@ -211,7 +198,7 @@ func buildGlancePage(p pageCtx) (glancePageData, error) {
 		sel   yearSelect
 	)
 	for _, stem := range v.yearStems() {
-		spine, spineErr := decodeGlanceDocument(stem, opens.Projection, o.Projections[stem])
+		spine, spineErr := decodeProjection[glanceDocument]("glance", stem, opens.Projection, o.Projections[stem])
 		if spineErr != nil {
 			return glancePageData{}, spineErr
 		}
@@ -226,7 +213,8 @@ func buildGlancePage(p pageCtx) (glancePageData, error) {
 		if readErr != nil {
 			return glancePageData{}, readErr
 		}
-		funding, fundingErr := decodeGlanceDocument(reads[0], project.DepartmentFundingProjection, o.Projections[reads[0]])
+		funding, fundingErr := decodeProjection[glanceDocument]("glance", reads[0],
+			project.DepartmentFundingProjection, o.Projections[reads[0]])
 		if fundingErr != nil {
 			return glancePageData{}, fundingErr
 		}
