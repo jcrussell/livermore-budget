@@ -98,7 +98,7 @@ line (`fisc-h96o`).
 the bare years 2025 and 2024, which the parser refuses as headers, and the
 geometry line pairing fails anyway: a stray "0.0" with no row label sits inside
 the line tolerance of the row above, giving 51 geometry lines against 52 text
-lines. `internal/mapping`'s `TestACFRp0041HasNoGeometryColumnGuard` measures both.
+lines, measured on the committed `testdata/` copies of p41.
 
 **Still not mapped**: six of the expenditure block's nine other top-level rows are
 the ACFR's remaining functions — Fire, Police, Public Works, Community
