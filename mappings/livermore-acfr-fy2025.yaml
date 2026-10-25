@@ -75,14 +75,6 @@ rules:
     grain: fund-group-by-category
     units: millions
     note: >-
-      The three fund-balance lines the statement closes with. THIS RULE
-      DECLARES NO total_row AND THE PAGE PRINTS NONE FOR IT -- a fund balance is
-      a stock and the page never adds these three together, so parts_unchecked
-      grows by one and that is the honest state rather than a missing
-      declaration. What DOES assert them is the fund-balance-identity check:
-      92.10 + (5.00) = 87.10, the same identity it asserts over the Budget
-      Book's twelve spine cells.
-
       The three fund-balance lines the statement closes with. No total_row: a
       fund balance is a stock and the page never adds these together;
       fund-balance-identity asserts 92.10 + (5.00) = 87.10.
