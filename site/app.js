@@ -708,8 +708,7 @@ function entryInside(entry, inside) {
  * @returns {boolean}
  */
 export function splittable(d) {
-  if (!frontier || !fetched || !frontier.has(d.id) || !splitsHere(d).length) return false;
-  return core.openSplitOf(fetched, frontier, d.id) === "";
+  return glyphOf(d) === "open";
 }
 
 /**
@@ -720,14 +719,14 @@ export function splittable(d) {
  * @returns {boolean}
  */
 export function foldable(d) {
-  if (!frontier || !fetched || !frontier.has(d.id) || !splitsHere(d).length) return false;
-  return core.openSplitOf(fetched, frontier, d.id) !== "";
+  return glyphOf(d) === "fold";
 }
 
 /**
  * The glyph a node carries at a frontier of the expansion `doc`: "open" (⊕)
  * where activating it splits it, "fold" (⊖) where it is a split's hub, else
- * "". splittable and foldable answer it for the chart on screen.
+ * "". glyphOf answers it for the chart on screen, and splittable and
+ * foldable read glyphOf, so the glyph drawn and the click are one rule.
  * @param {FiscProjection | null} doc
  * @param {Set<string> | null} front
  * @param {{id: string}} d

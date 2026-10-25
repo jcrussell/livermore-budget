@@ -232,6 +232,7 @@ test("a click pins a segment's tip, linking the page text and the PDF page of ev
   mod.boot(document);
   const pages = factPages();
   let pinned = 0;
+  let tails = 0;
   for (const b of bars(document).slice(0, 3)) {
     const { segments } = mod.rank(mod.groupRows(mod.readRows(b.section.querySelector("table"))));
     const segs = [...b.section.querySelectorAll(".glance-seg")];
@@ -253,10 +254,12 @@ test("a click pins a segment's tip, linking the page text and the PDF page of ev
       for (const href of tip.hrefs) assert.ok(pageTextExists(href), `${href} names no committed page text`);
       assert.deepEqual(pdfFaults(tip), [], `${b.label} ${b.id} ${s.label}: the tip's PDF links are not its pages'`);
       pinned++;
+      if (!s.id) tails++;
     });
     fire(document.body, "click");
   }
-  t.diagnostic(`${pinned} segments pinned, each linking its rows' facts' pages`);
+  t.diagnostic(`${pinned} segments pinned, ${tails} of them a tail, each linking its rows' facts' pages`);
+  assert.ok(tails > 0, "no bar sampled folds a tail, so the tail's pages are not checked");
 });
 
 // A bar that cannot draw says so in its own section, its table left shown,

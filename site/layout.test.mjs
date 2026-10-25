@@ -576,7 +576,7 @@ for (const label of Object.keys(ALIKE)) {
       // Found by label, so a year the page no longer ships fails by name.
       const year = pageFixture().config.years.find((y) => y.label === label);
       if (!year) throw new Error(`the pinned page ships no year labelled ${JSON.stringify(label)}`);
-      const { app, document } = await bootedApp({ checkedStem: year.stem });
+      const { app } = await bootedApp({ checkedStem: year.stem });
       overlapped = {};
       alike = {};
       wider = {};
@@ -615,10 +615,13 @@ for (const label of Object.keys(ALIKE)) {
         }
       }
       // The words render() draws are the words measured above: Expand all
-      // drawn, where labels are cut, each mark's tspans against labelFit's.
-      if (!app.expandAll()) throw new Error("Expand all split nothing");
+      // drawn from the root on a page of its own, since layOutState leaves
+      // the walked page holding the last chart it laid, where labels are
+      // cut, each mark's tspans against labelFit's.
+      const { app: fresh, document } = await bootedApp({ checkedStem: year.stem });
+      if (!fresh.expandAll()) throw new Error("Expand all split nothing");
       await settle();
-      const fitted = new Map(labelFit(app, { nodes: app.laidNodes }).map((f) => [f.id, f.words]));
+      const fitted = new Map(labelFit(fresh, { nodes: fresh.laidNodes }).map((f) => [f.id, f.words]));
       drawnApart = [];
       drawnCut = 0;
       for (const m of document.querySelectorAll("#chart g.node")) {

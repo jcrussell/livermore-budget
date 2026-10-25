@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+
 	"github.com/jcrussell/livermore-budget/internal/amount"
 )
 
@@ -16,9 +18,13 @@ const p76PublishedScope = "transfers-by-fund"
 // p76Page is Budget Book p76, "SUMMARY OF TRANSFERS".
 const p76Page = 76
 
-// p76StatedFY2026 is the FY2025-26 figure of the grand total p76 prints for
-// itself, the bare "$" row beneath its last section.
-const p76StatedFY2026 amount.Cents = 2152599700
+// p76StatedFY2026 and p76StatedFY2027 are the budget-year figures of the
+// grand total p76 prints for itself, the bare "$" row beneath its last
+// section (p0076.txt:64).
+const (
+	p76StatedFY2026 amount.Cents = 2152599700
+	p76StatedFY2027 amount.Cents = 2162463300
+)
 
 // loadPublishedP76 is the published rules cut to p76's scope.
 func loadPublishedP76(t *testing.T) *File {
@@ -135,5 +141,35 @@ func TestP76ReadsUnderTheColumnGuardWithAHeaderlessColumn(t *testing.T) {
 	if err := mid.Validate(); err == nil {
 		t.Error("a null between two headers was accepted; it sits in a gap with known " +
 			"bounds that the grid would have checked")
+	}
+}
+
+// TestPublishedP76SumsToItsPrintedGrandTotal holds the published p76 rules
+// to the one total the page prints for itself. It prints no label over it,
+// so no rule can carry it as a total_row and no rollup can cover the five
+// sections, and the lattice ties p76 to the spine only group by group: this
+// is the only arithmetic the page offers against itself. An equality in both
+// budget years. Mutation: swap one published p76 rule's two budget-year
+// columns and both years miss their totals.
+func TestPublishedP76SumsToItsPrintedGrandTotal(t *testing.T) {
+	f := loadPublishedP76(t)
+	r, err := NewResolver(budgetDoc(t, p76Page), f)
+	if err != nil {
+		t.Fatalf("NewResolver: %v", err)
+	}
+	byYear := map[int]amount.Cents{}
+	for i := range f.Rules {
+		rule := &f.Rules[i]
+		vals, _, err := r.Values(rule, &rule.Parts[0])
+		if err != nil {
+			t.Fatalf("rule %s: %v", rule.ID, err)
+		}
+		for _, v := range vals {
+			byYear[v.Column.FiscalYear] += v.Cents
+		}
+	}
+	want := map[int]amount.Cents{2026: p76StatedFY2026, 2027: p76StatedFY2027}
+	if diff := cmp.Diff(want, byYear); diff != "" {
+		t.Errorf("the published p76 rules' sums by fiscal year against the printed grand total (-printed +rules):\n%s", diff)
 	}
 }

@@ -11,19 +11,31 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 describe("the shipped modules hold no state", () => {
-  // Mutation: read globalThis.FISC_CONFIG or document at the top of any one
-  // of these modules and its import throws here.
+  // A read of the config or of d3 while these import throws, as a read of
+  // document does with no DOM: an absent global would read as undefined and
+  // pass. Mutation: read globalThis.FISC_CONFIG, d3 or document at the top
+  // of any one of these modules and its import throws here.
   test("every page module imports with no page config, no d3 and no DOM, and exports no unfrozen object", async () => {
     delete globalThis.FISC_CONFIG;
     delete globalThis.d3;
+    const refuse = (name) => Object.defineProperty(globalThis, name, {
+      configurable: true, get() { throw new Error(`a module read ${name} at import`); } });
     assert.equal(typeof globalThis.document, "undefined", "nothing installed a DOM before the import");
     // Every shipped module but app.js, core.js and sankey.js, which are
     // imported on their own terms, so a new page module is held here unasked.
     const own = new Set(["app", "core", "sankey"]);
     const names = readdirSync(HERE).filter((f) => /^[a-z]+\.js$/.test(f)).map((f) => f.slice(0, -3)).filter((n) => !own.has(n));
     assert.ok(names.includes("sides") && names.includes("format"), names.join());
-    for (const name of names) {
-      const mod = await import(pathToFileURL(path.join(HERE, `${name}.js`)).href);
+    const mods = {};
+    refuse("FISC_CONFIG");
+    refuse("d3");
+    try {
+      for (const name of names) mods[name] = await import(pathToFileURL(path.join(HERE, `${name}.js`)).href);
+    } finally {
+      delete globalThis.FISC_CONFIG;
+      delete globalThis.d3;
+    }
+    for (const [name, mod] of Object.entries(mods)) {
       const loose = Object.entries(mod).filter(([, v]) => typeof v === "object" && !Object.isFrozen(v)).map(([k]) => k);
       assert.deepEqual(loose, [], `${name}.js exports a binding every test would share`);
     }

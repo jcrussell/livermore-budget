@@ -653,6 +653,34 @@ describe("a node filter hiding a contra cell of a ribbon", () => {
   });
 });
 
+// WHICH RIBBONS GO, on a chart small enough to name every ribbon: hiding a
+// fund group removes exactly the ribbons with an end in it, and hiding a kind
+// exactly the ribbons of that kind. The walks above hold that nothing is lost
+// or invented, which a filter hiding the wrong ribbons also satisfies.
+// Mutation: test only a ribbon's source against the hidden groups in
+// core.filterDocument, or its kind against the group set, and an arm goes red.
+describe("a group or kind filter on a planted chart", () => {
+  test("hides exactly the ribbons it names", async () => {
+    const { app } = await bootedApp();
+    const node = (id) => ({ id, label: id, kind: "x", tier: 0 });
+    const link = (source, target, kind, value_cents) => ({ source, target, kind, value_cents, fact_ids: [`f-${source}-${target}`] });
+    const doc = {
+      nodes: ["a1", "a2", "b1", "b2"].map(node),
+      links: [link("a1", "a2", "revenue", 100), link("a1", "b2", "transfer", 200), link("b1", "b2", "revenue", 300),
+        link("b1", "a2", "revenue", 400)],
+    };
+    const groupOf = (n) => n.id[0];
+    const ends = (ls) => ls.map((l) => `${l.source}->${l.target}`).sort();
+    const none = { groups: new Set(), kinds: new Set(), nodes: new Set(), smallest: 0 };
+    const byGroup = app.filterDocument(structuredClone(doc), groupOf, { ...none, groups: new Set(["a"]) }, null, null);
+    assert.deepEqual({ drawn: ends(byGroup.doc.links), hidden: ends(byGroup.hidden) },
+      { drawn: ["b1->b2"], hidden: ["a1->a2", "a1->b2", "b1->a2"] });
+    const byKind = app.filterDocument(structuredClone(doc), groupOf, { ...none, kinds: new Set(["transfer"]) }, null, null);
+    assert.deepEqual({ drawn: ends(byKind.doc.links), hidden: ends(byKind.hidden) },
+      { drawn: ["a1->a2", "b1->a2", "b1->b2"], hidden: ["a1->b2"] });
+  });
+});
+
 describe("a node filter and a ribbon carrying no cells", () => {
   // Mutation: keep a cell-less ribbon whatever leaves.out holds (no
   // leaves.out arm in core.filterDocument) and this goes red: the ribbon at

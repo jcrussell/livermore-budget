@@ -3146,9 +3146,10 @@ rules:
   # twice over -- a covered rule must print its own total, and covered rules
   # must declare the same columns, which these do not because each names its own
   # fund_group -- and an `unassertable` rollup still requires a total_row it
-  # would have to invent. So the cross-rule sum is held by
-  # cuts-tie-along-the-lattice's a-transfer-out-is-p76-or-to-the-cip split,
-  # against the spine (fisc-9m7). Consequence,
+  # would have to invent. So the cross-rule sum is held in Go:
+  # TestPublishedP76SumsToItsPrintedGrandTotal holds the five rules to that
+  # printed total, and cuts-tie-along-the-lattice ties them to the spine
+  # group by group (fisc-9m7). Consequence,
   # stated so it is not discovered afterwards: fisc build's parts_unchecked
   # goes 6 -> 11.
   # ==========================================================================
