@@ -28,19 +28,9 @@ func committedStore(t *testing.T) ([]byte, []fact.Fact) {
 	return raw, facts
 }
 
-// TestFactShardsReconstituteTheCommittedStore is the claim the whole published
-// store rests on, asserted over the real file rather than over a fixture.
-//
-// Concatenating the shards in order must reproduce facts.jsonl byte for byte.
-// That is one equality and it covers three failures at once: no fact lost, none
-// invented, none rewritten. It holds because fact.less opens on DocID then
-// Page, so (doc_id, page) is a strict PREFIX of the total order and each shard
-// is a contiguous run of the file.
-//
-// Asserted here as well as inside buildFactAssets because the two answer
-// different questions. The builder proves it about whatever store is being
-// shipped, on every run; this proves it about the store as committed, which is
-// the one a reader will actually download.
+// TestFactShardsReconstituteTheCommittedStore: the shards concatenated in order
+// reproduce the committed facts.jsonl byte for byte -- none lost, invented or
+// rewritten -- because (doc_id, page) prefixes fact.less's order.
 func TestFactShardsReconstituteTheCommittedStore(t *testing.T) {
 	raw, facts := committedStore(t)
 	assets, err := buildFactAssets(raw, facts, "fisc test")
@@ -88,11 +78,8 @@ func TestFactShardsReconstituteTheCommittedStore(t *testing.T) {
 	}
 }
 
-// TestBuildFactAssetsRefusesAStoreItCannotReproduce mutates the INPUT, not an
-// in-memory structure, which is this project's standard for proving a check
-// can fail: a store whose keys are in a different order on one line is exactly
-// what a hand-edited facts.jsonl looks like, and it re-encodes to something
-// else.
+// TestBuildFactAssetsRefusesAStoreItCannotReproduce mutates the input: one line
+// with its keys reordered, as a hand edit would, re-encodes to something else.
 func TestBuildFactAssetsRefusesAStoreItCannotReproduce(t *testing.T) {
 	raw, facts := committedStore(t)
 	lines := bytes.SplitN(raw, []byte("\n"), 2)
@@ -120,10 +107,8 @@ func TestBuildFactAssetsRefusesAStoreItCannotReproduce(t *testing.T) {
 	}
 }
 
-// TestBuildFactAssetsRefusesAnUnsortedStore is the same refusal one step
-// earlier and with a better message. Every claim the sharding makes rests on
-// the total order; a store out of it does not shard into contiguous runs at
-// all, and reporting that as a byte mismatch would tell a reader nothing.
+// TestBuildFactAssetsRefusesAnUnsortedStore: a store out of total order is
+// refused as unsorted, before it could surface as a byte mismatch.
 func TestBuildFactAssetsRefusesAnUnsortedStore(t *testing.T) {
 	raw, facts := committedStore(t)
 	swapped := append([]fact.Fact{}, facts...)
@@ -145,14 +130,8 @@ func TestBuildFactAssetsRefusesAnUnsortedStore(t *testing.T) {
 	}
 }
 
-// TestTheCSVHeaderIsEveryFactFieldInOrder pins the column list against the
-// struct that defines it.
-//
-// ORDER, NOT MEMBERSHIP. fact.Fact's doc comment says field order IS the JSON
-// key order and that the order is part of the format; a set comparison would
-// leave the one property the CSV promises untested. And it is compared against
-// a MARSHALLED FACT rather than against another reflection pass, so the test
-// and the code do not share their one possible mistake.
+// TestTheCSVHeaderIsEveryFactFieldInOrder pins the column list, in order, to
+// the keys of a marshalled fact.Fact.
 func TestTheCSVHeaderIsEveryFactFieldInOrder(t *testing.T) {
 	b, err := json.Marshal(fact.Fact{})
 	if err != nil {
@@ -186,13 +165,8 @@ func TestTheCSVHeaderIsEveryFactFieldInOrder(t *testing.T) {
 	}
 }
 
-// TestTheCSVCarriesAmountCentsVerbatim is the no-float assertion.
-//
-// AGENTS.md's provenance invariants forbid float amounts, and a CSV is where that
-// rule is easiest to break by accident: decode to float64, format, and
-// 6999000000 becomes 6.999e+09. Transcoding through json.Number means the
-// literal text never becomes a number at all, and this compares the CSV's cell
-// against the JSONL's characters to say so.
+// TestTheCSVCarriesAmountCentsVerbatim: a CSV amount cell is the JSONL's
+// characters, never a float's formatting (6999000000, not 6.999e+09).
 func TestTheCSVCarriesAmountCentsVerbatim(t *testing.T) {
 	raw, facts := committedStore(t)
 	out, err := factsCSV(raw)
@@ -258,10 +232,8 @@ func literalOf(t *testing.T, line []byte, key string) string {
 	return ""
 }
 
-// TestTheCSVQuotesTokensThatCarryACommaAndRoundTrips is the reason the stdlib
-// writer is used rather than a Sprintf: 1,110 of the store's fields are grouped
-// numbers with commas in them, so a hand-rolled join would shift every column
-// after token on those lines.
+// TestTheCSVQuotesTokensThatCarryACommaAndRoundTrips: grouped-number tokens
+// carry commas, so the CSV must quote them and read back to the same columns.
 func TestTheCSVQuotesTokensThatCarryACommaAndRoundTrips(t *testing.T) {
 	raw, _ := committedStore(t)
 	out, err := factsCSV(raw)
@@ -363,10 +335,8 @@ func TestTheCSVSpellsAnAbsentFundAsAnEmptyCellAndRefusesNullElsewhere(t *testing
 	}
 }
 
-// TestTheCSVRefusesALineMissingAKey closes csv.Writer's own gap: it enforces no
-// field count -- only csv.Reader does -- so a short line would ship a short row
-// in silence, and every column after the gap would be shifted in a file that
-// still parses.
+// TestTheCSVRefusesALineMissingAKey: csv.Writer enforces no field count, so a
+// short line must be refused rather than shift every later column.
 func TestTheCSVRefusesALineMissingAKey(t *testing.T) {
 	raw, _ := committedStore(t)
 	lines := bytes.SplitN(raw, []byte("\n"), 2)
@@ -402,18 +372,9 @@ func TestTheCSVRefusesALineMissingAKey(t *testing.T) {
 	}
 }
 
-// TestTheCSVRefusesATruncatedStore is the failure mode a loop that stops on
-// io.EOF invites, and it is worse than it sounds.
-//
-// json.Decoder.Token() returns io.EOF at the end of the stream AND at MOST
-// points inside a cut-off object. Measured: a cut after a key, after a colon,
-// mid-number, or straight after the opening brace all return bare io.EOF; only
-// a cut inside a string literal returns io.ErrUnexpectedEOF. So a transcoder
-// that treats io.EOF as "done" writes a CSV silently missing its tail, which
-// parses perfectly and carries no sign of what it lost.
-//
-// EVERY CUT POSITION IN THE FINAL RECORD, not one: a single fixed offset can
-// land inside a string, the one shape that needs no guard.
+// TestTheCSVRefusesATruncatedStore cuts the final record at every position:
+// json.Decoder.Token returns bare io.EOF at most cut points, so a loop that
+// stops on io.EOF would ship a CSV missing its tail.
 func TestTheCSVRefusesATruncatedStore(t *testing.T) {
 	raw, _ := committedStore(t)
 	// TWO RECORDS, NOT 1,448. The property is about one cut-off object, and
@@ -427,13 +388,8 @@ func TestTheCSVRefusesATruncatedStore(t *testing.T) {
 		t.Fatalf("factsCSV on the intact pair: %v", err)
 	}
 
-	// FROM last+1: cutting at exactly the record boundary leaves a store that
-	// is one record shorter and perfectly well formed, and factsCSV cannot know
-	// that -- it transcodes what it is given and has no expected count. What
-	// catches THAT is buildFactAssets' byte equality against facts.jsonl, which
-	// runs over the same bytes before this function ever sees them. The
-	// division of labour is worth stating: this refuses a record it cannot
-	// finish reading, the reconciliation refuses a store that is not the store.
+	// From last+1: a cut at the record boundary is a well-formed shorter store,
+	// which buildFactAssets' byte equality refuses rather than factsCSV.
 	for cut := last + 1; cut < len(body); cut++ {
 		out, err := factsCSV(body[:cut])
 		if err != nil {
@@ -449,13 +405,8 @@ func TestTheCSVRefusesATruncatedStore(t *testing.T) {
 	}
 }
 
-// TestTheFactIndexEnumeratesEveryShardAndIsNotOnTheResolutionPath.
-//
-// The second half is the one worth an assertion. A locator resolves by
-// COMPUTING facts/<doc>/pages/pNNNN.jsonl; the index exists to build a page and
-// to check a download. So every path it publishes must equal what shardPath
-// returns for the same locator -- if the two could disagree, the index would be
-// load-bearing after all.
+// TestTheFactIndexEnumeratesEveryShardAndIsNotOnTheResolutionPath: every path
+// the index publishes equals shardPath for the same locator.
 func TestTheFactIndexEnumeratesEveryShardAndIsNotOnTheResolutionPath(t *testing.T) {
 	raw, facts := committedStore(t)
 	assets, err := buildFactAssets(raw, facts, "fisc test")
@@ -487,16 +438,8 @@ func TestTheFactIndexEnumeratesEveryShardAndIsNotOnTheResolutionPath(t *testing.
 }
 
 // TestEveryShardedPageHasItsExtractedText: every page the store shards has its
-// extracted text committed, so a provenance link never resolves to a shard
-// whose page text 404s. p76 is cited by no projection's metadata.sources;
-// pageIndex() seeding buildSite's cited set is what ships its text.
-//
-// THIS ARM CANNOT GO RED TODAY: every document the store shards is extracted
-// contiguously and in full, so every page has its text by construction. What
-// would make it live is a PARTIALLY extracted document;
-// fact-offset-points-at-token forecloses the underlying case from the other
-// side. The empty-store guard below is the half that can fail: without it this
-// test passes on a store with no pages at all.
+// extracted text committed. The per-page arm cannot go red while every document
+// is extracted whole; the empty-store guard is the half that can fail.
 func TestEveryShardedPageHasItsExtractedText(t *testing.T) {
 	root := repoRootForTest(t)
 	raw, facts := committedStore(t)
@@ -529,14 +472,8 @@ func TestEveryShardedPageHasItsExtractedText(t *testing.T) {
 	}
 }
 
-// TestTheSiteLinksEveryShardItShips applies unviewedDocuments' standard to
-// assets: bytes no reader can reach are a defect.
-//
-// assertPublishedReachable governs PROJECTIONS -- it is why four fund-flows
-// documents cannot ship as files no page opens. Nothing governed Files, so the
-// fact store could have shipped 1.1 MB that no page linked and every check
-// would have stayed green. This closes that for the store specifically: every
-// key under facts/ is either a row of the page index or an offered download.
+// TestTheSiteLinksEveryShardItShips: every key under facts/ is a row of the
+// page index or an offered download, so no shipped byte is unreachable.
 func TestTheSiteLinksEveryShardItShips(t *testing.T) {
 	root := repoRootForTest(t)
 	built, err := buildAll(root)
@@ -613,18 +550,8 @@ func TestTheProvenanceViewIsPublishedWhenThereIsAStore(t *testing.T) {
 	}
 }
 
-// TestTheIndexNamesOnlyFilesTheSiteWrites, under BOTH page-text modes.
-//
-// The test this replaces compared factPage.TextPath against pageTextPath() --
-// the function that produced it -- so it asserted nothing and could not see
-// that the field was wrong. It was: export.Write chooses between shipping the
-// extracted text and citing a remote browsable copy, and it makes that choice
-// AFTER this index is built, so the packager was publishing 21 paths that
-// `fisc export --source-browse-url` does not write.
-//
-// The general property is the one worth pinning, rather than the one field:
-// every path facts/index.json names is a file the site actually wrote. It runs
-// over both modes because the defect existed in exactly one of them.
+// TestTheIndexNamesOnlyFilesTheSiteWrites: every path facts/index.json names is
+// a file the site wrote, under both page-text modes.
 func TestTheIndexNamesOnlyFilesTheSiteWrites(t *testing.T) {
 	root := repoRootForTest(t)
 	for _, browse := range []string{"", "https://example.invalid/blob/main"} {
@@ -694,16 +621,9 @@ func TestTheIndexNamesOnlyFilesTheSiteWrites(t *testing.T) {
 	}
 }
 
-// TestCleanDoesNotDestroyASiteOverAFaultItCouldHaveSeen is the general form of
-// the ordering this command holds: an export whose fact store covers a page
-// the extraction does not refuses in Prepare, before --clean removes
-// anything. The PageIndex seeding makes pages cited that no projection names,
-// and p76 is exactly such a page.
-//
-// So the assertion is not about page text. It is that a fault detectable
-// without touching the filesystem never costs a reader their site, and it is
-// driven through the page-text arm because that is the one that got left
-// behind. export.Prepare resolves everything; only I/O can fail after it.
+// TestCleanDoesNotDestroyASiteOverAFaultItCouldHaveSeen: a store covering a
+// page the extraction lacks (p76) is refused in Prepare, before --clean removes
+// anything.
 func TestCleanDoesNotDestroyASiteOverAFaultItCouldHaveSeen(t *testing.T) {
 	root := repoRootForTest(t)
 	dir := filepath.Join(t.TempDir(), "dist")
@@ -763,15 +683,8 @@ func TestCleanDoesNotDestroyASiteOverAFaultItCouldHaveSeen(t *testing.T) {
 // budgetDocIDForTest is the one document the committed store covers.
 const budgetDocIDForTest = "livermore-budget-fy2026-2027"
 
-// TestEveryShippedDocumentCanResolveItsRecords is the fail-closed arm for a
-// field whose absence is legal.
-//
-// Options.RecordsBase may be empty -- absent is not zero, and a caller
-// publishing no records is not a caller publishing a base pointing nowhere --
-// so validate cannot demand one. That leaves "the real export forgot to wire
-// it" as a silent regression: every page still renders, every chart still
-// draws, and only the records links vanish. This is where that is caught, over
-// what fisc export actually ships.
+// TestEveryShippedDocumentCanResolveItsRecords: Options.RecordsBase may be
+// empty, so this is where the real export failing to wire it is caught.
 func TestEveryShippedDocumentCanResolveItsRecords(t *testing.T) {
 	root := repoRootForTest(t)
 	built, err := buildAll(root)
@@ -793,13 +706,8 @@ func TestEveryShippedDocumentCanResolveItsRecords(t *testing.T) {
 	}
 }
 
-// TestTheRecordsBaseComposesBackToTheShardPath is what makes the split safe.
-//
-// shardPath is documented as the ONE place the locator-to-URL rule is spelled,
-// and it is now spelled in two halves so a client can hold the first and
-// compute the second. This asserts the halves still make the whole for every
-// page actually published -- otherwise "the rule is spelled once" would be a
-// comment rather than a property.
+// TestTheRecordsBaseComposesBackToTheShardPath: the records base and the page
+// suffix compose to shardPath for every published page.
 func TestTheRecordsBaseComposesBackToTheShardPath(t *testing.T) {
 	root := repoRootForTest(t)
 	built, err := buildAll(root)

@@ -15,19 +15,12 @@ import (
 )
 
 // departmentFixtureColumns are the columns site/department.test.mjs reads
-// beyond the index's: FY2023-24 actual, the one column printing a Transfers
-// Out row in pp.85-125's upper block and the one where departments' two blocks
-// are held apart.
+// beyond the index's: FY2023-24 actual, where pp.85-125 prints Transfers Out.
 var departmentFixtureColumns = []string{"fy2024-actual"}
 
 // TestTheDepartmentFixtureHoldsWhatTheClientReads pins
-// testdata/department.golden.html and testdata/fy2024-actual.column.json,
-// which site/department.test.mjs boots over with the index's pinned columns,
-// to what Go writes over the client subset: the same markup and the same
-// decoded config, build stamps aside; a config the schema accepts whose years
-// include every pinned column; and the column held as the index's are.
-//
-// On a failure the export's files are left where a cp -f takes them.
+// testdata/department.golden.html and testdata/fy2024-actual.column.json to what
+// Go writes over the client subset, build stamps aside.
 func TestTheDepartmentFixtureHoldsWhatTheClientReads(t *testing.T) {
 	dir := clientExport(t)
 	root := repoRootForTest(t)
@@ -79,13 +72,10 @@ func TestTheDepartmentFixtureHoldsWhatTheClientReads(t *testing.T) {
 }
 
 // TestTheDepartmentPageDeclaresEveryDepartmentwideException: the cells the
-// department page prints as held apart are exactly the cells
-// structure.BudgetBookExceptions holds pp.85-125's upper block apart from its
-// lower one at a department, one per pinned cell, each with its reason.
-//
-// Mutation: pass "general-fund-departments" for the cut in
-// departmentsHeldApart and the page holds apart the General Fund schedule's
-// two rounding cells instead of the departmentwide five.
+// department page holds apart are exactly structure.BudgetBookExceptions' for
+// pp.85-125 at a department, each with its reason.
+// Mutation: pass "general-fund-departments" in departmentsHeldApart and the
+// page holds apart the General Fund's two rounding cells instead.
 func TestTheDepartmentPageDeclaresEveryDepartmentwideException(t *testing.T) {
 	var want []string
 	for _, e := range structure.BudgetBookExceptions() {
@@ -118,13 +108,10 @@ func TestTheDepartmentPageDeclaresEveryDepartmentwideException(t *testing.T) {
 	}
 }
 
-// TestTheHeldReasonIsTrueOfWhatThePageDraws: the department page draws
-// Maintenance's Transfers Out inside public works' spending sum, so the
-// reason it prints for FY2023-24's held cell must say the row is counted,
-// not that the spending side leaves it out.
-//
-// Mutation: restore the exception's reason to "the departmentwide cut leaves
-// out Maintenance's Transfers Out, ..." and this goes red.
+// TestTheHeldReasonIsTrueOfWhatThePageDraws: the held FY2023-24 cell's reason
+// must say Maintenance's Transfers Out is counted in public works' spending.
+// Mutation: restore the reason to "the departmentwide cut leaves out
+// Maintenance's Transfers Out, ..." and this goes red.
 func TestTheHeldReasonIsTrueOfWhatThePageDraws(t *testing.T) {
 	var found bool
 	for _, h := range departmentsHeldApart() {

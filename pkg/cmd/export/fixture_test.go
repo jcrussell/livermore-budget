@@ -22,26 +22,17 @@ import (
 	"github.com/jcrussell/livermore-budget/schema"
 )
 
-// The client fixtures are testdata/flows.golden.html and the column files
-// the page fetches: what `fisc export` writes over clientSubset rather than over
-// the whole store, held decoded rather than byte for byte. The page's markup
-// and config and each column are the ones Go writes over the subset, build
-// stamps aside; each column also validates, resolves, and carries figures equal
-// to the facts each link cites, on the pages its locators name.
+// The client fixtures are testdata/flows.golden.html and its column files: what
+// `fisc export` writes over clientSubset, held decoded, build stamps aside.
 
 // clientFixtureColumns are the column files the page fixture's years fetch,
 // as stems of testdata/<stem>.column.json.
 var clientFixtureColumns = []string{"fy2026-adopted", "fy2027-adopted"}
 
 // clientSubset is the declared subset of the store the client fixtures are
-// exported from, keyed by node id: a fund group kept whole, or one fund of a
-// group that is not, each with the failure mode it is kept for. Every other
-// fund is dropped from fundAxisScopes and from nothing else. Every group with
-// a figure other than zero in a budget year is kept whole, because a group cut
-// short draws a window the served site never draws;
-// TestTheClientSubsetDrawsEveryGroupWhole holds what each schedule draws over
-// the subset to what it draws over the store, which a fact no link cites does
-// not reach.
+// exported from, keyed by node id, each with the failure mode it is kept for.
+// A group with a budget-year figure is kept whole
+// (TestTheClientSubsetDrawsEveryGroupWhole).
 var clientSubset = map[string]string{
 	"fund-group/general": "fund/100 and its divisions, the only fund pp.167-170 decompose, " +
 		"which most of the client suite opens",
@@ -60,10 +51,8 @@ var clientSubset = map[string]string{
 		"as the served site does",
 }
 
-// fundAxisScopes are the scopes a fund is dropped from. Every other scope
-// stays whole: the spine and the departments' spending are what a step's gap
-// licence is stated against, in cents over the whole column, so a fund
-// dropped from either would be a difference the client refuses.
+// fundAxisScopes are the scopes a fund is dropped from; the spine and the
+// departments' spending stay whole, as the client's gap licence needs.
 var fundAxisScopes = []string{"revenue-by-fund", "expenditure-by-fund", "department-funding-sources"}
 
 // clientFacts is the store less every fund-axis fact of a fund clientSubset
@@ -141,11 +130,8 @@ func (c pageConfig) split(page []byte) (markup []byte, config []byte, err error)
 	return packagedBy.ReplaceAll(markup, []byte("Packaged by")), body, nil
 }
 
-// faults is every way fixture fails to be the page served is: the same
-// markup and the same decoded config, build stamps aside, and a config its
-// schema accepts. The config is compared whole because the markup renders its
-// figures -- the hero, the caveats, the page links -- so a config free to
-// differ would describe a page its own markup contradicts.
+// faults is every way fixture differs from the page served: markup, decoded
+// config whole (build stamps aside), and a config its schema accepts.
 func (c pageConfig) faults(served, fixture []byte) []string {
 	var faults []string
 	sMarkup, sBody, err := c.split(served)
@@ -225,36 +211,26 @@ func holdGolden(t *testing.T, dir, served, golden string) {
 	}
 }
 
-// TestTheGlanceFixtureIsWhatGoWrites holds testdata/index.golden.html, which
-// site/glance.test.mjs runs the client over, to the glance page Go writes at
-// index.html over clientSubset. clientSubset keeps every fund group with a
-// figure in a budget year whole, so the fixture's rows are every cell the
-// site shows, and its wholes the spine's own figures.
+// TestTheGlanceFixtureIsWhatGoWrites holds testdata/index.golden.html to the
+// glance page Go writes over clientSubset.
 func TestTheGlanceFixtureIsWhatGoWrites(t *testing.T) {
 	holdGolden(t, clientExport(t), "index.html", "index.golden.html")
 }
 
-// TestTheCapitalFixtureIsWhatGoWrites holds testdata/capital.golden.html,
-// which site/capital.test.mjs runs the client over, to the capital page Go
-// writes over clientSubset. clientSubset keeps cip-project-listing whole, so
-// the fixture is every project the site shows.
+// TestTheCapitalFixtureIsWhatGoWrites holds testdata/capital.golden.html to the
+// capital page Go writes over clientSubset.
 func TestTheCapitalFixtureIsWhatGoWrites(t *testing.T) {
 	holdGolden(t, clientExport(t), "capital.html", "capital.golden.html")
 }
 
-// TestTheChangeFixtureIsWhatGoWrites holds testdata/change.golden.html, which
-// site/change.test.mjs runs the client over, to the change page Go writes
-// over clientSubset. clientSubset drops funds from the revenue-by-fund scope,
-// so the budget figure's rows are the subset's and the audited figures',
-// which drop nothing, are the site's.
+// TestTheChangeFixtureIsWhatGoWrites holds testdata/change.golden.html to the
+// change page Go writes over clientSubset.
 func TestTheChangeFixtureIsWhatGoWrites(t *testing.T) {
 	holdGolden(t, clientExport(t), "change.html", "change.golden.html")
 }
 
-// TestTheSidesFixtureIsWhatGoWrites holds testdata/ledger.golden.html, which
-// site/sides.test.mjs runs the form module over, to the page Go writes over
-// clientSubset. The page carries no figure: it fetches the pinned columns, so
-// the fixture pins the config and the markup the client fills.
+// TestTheSidesFixtureIsWhatGoWrites holds testdata/ledger.golden.html to the
+// page Go writes over clientSubset: config and markup, no figures.
 func TestTheSidesFixtureIsWhatGoWrites(t *testing.T) {
 	holdGolden(t, clientExport(t), "ledger.html", "ledger.golden.html")
 }
@@ -361,11 +337,8 @@ func columnFixtureFaults(stem string, served, fixture []byte, stamp string, fact
 	return faults
 }
 
-// scheduleOf is one schedule's marks and links, each spelled by node id so
-// two columns whose tables are indexed differently compare: every field the
-// client folds or labels by, and the figures as well where figures is set.
-// An index past the table is skipped; the arm that refuses one is
-// columnFixtureFaults'.
+// scheduleOf is one schedule's marks and links spelled by node id, with figures
+// where figures is set. An index past the table is skipped here.
 func scheduleOf(col export.ColumnDoc, sched export.ColumnSched, figures bool) (nodes, links []string) {
 	id := func(i int) string {
 		if i < 0 || i >= len(col.Nodes) {
@@ -399,10 +372,9 @@ func scheduleOf(col export.ColumnDoc, sched export.ColumnSched, figures bool) (n
 	return nodes, links
 }
 
-// linkFactFaults holds one link to the facts it cites: each in the store, of
-// the column's year and basis, summing to the link's value -- the draw leg
-// carrying their negation -- and on exactly the pages its locators name. A
-// link citing nothing must say so.
+// linkFactFaults holds one link to its cited facts: in the store, of the
+// column's year and basis, summing to its value (the draw leg negated), on the
+// pages its locators name.
 func linkFactFaults(at string, l export.ColumnLink, src, dst string, column export.ColumnKey, facts map[string]fact.Fact) []string {
 	if len(l.FactIDs) == 0 {
 		if !l.Derived {
@@ -854,10 +826,8 @@ func TestTheClientFixtureChecksCanFail(t *testing.T) {
 	}
 }
 
-// TestTheClientSubsetServesThePageConfigTheStoreDoes exports the store and the
-// subset and requires the page config to be the same in both, but for the
-// pages it links and each year's counts: those count and cite the facts no
-// link draws, which is all the subset drops (TestTheClientSubsetDrawsEveryGroupWhole).
+// TestTheClientSubsetServesThePageConfigTheStoreDoes: the page config is the
+// same over subset and store but for linked pages and each year's counts.
 func TestTheClientSubsetServesThePageConfigTheStoreDoes(t *testing.T) {
 	full, subset := exportedSite(t), clientExport(t)
 	config := func(dir string) map[string]any {
@@ -889,10 +859,8 @@ func TestTheClientSubsetServesThePageConfigTheStoreDoes(t *testing.T) {
 	}
 }
 
-// TestTheClientSubsetIsDeclaredAgainstTheStore holds each member of
-// clientSubset to the store: a reason, a fund group or fund the fund-axis
-// scopes carry, and a fund only where its group is not kept whole. The cut is
-// not vacuous: it drops facts and keeps facts.
+// TestTheClientSubsetIsDeclaredAgainstTheStore holds each clientSubset member
+// to the store, and the cut to dropping facts and keeping facts.
 func TestTheClientSubsetIsDeclaredAgainstTheStore(t *testing.T) {
 	_, facts, err := readFactStore(repoRootForTest(t))
 	if err != nil {
@@ -931,17 +899,9 @@ func TestTheClientSubsetIsDeclaredAgainstTheStore(t *testing.T) {
 	t.Logf("the client subset keeps %d of the store's %d facts", kept, len(facts))
 }
 
-// TestTheClientSubsetDrawsEveryGroupWhole requires every schedule the
-// columns serve to draw the same marks and links, figures included, and to
-// state the same caveats and scopes, over the subset as over the store. A
-// group cut short draws its window with the spine's whole figure in and only
-// its kept funds out, which no step licenses and the client does not refuse,
-// so the client tests would measure a chart the served site never draws.
-// Every schedule rather than a group's outflow, because a fund that only
-// spends in a year has no inflow to miss, and rather than a list, because a
-// schedule nobody listed would be compared by nothing. Only counts and
-// sources may differ: they count and cite the facts no link draws, which is
-// all the subset drops.
+// TestTheClientSubsetDrawsEveryGroupWhole: every served schedule draws the same
+// marks, links, figures, caveats and scopes over the subset as over the store;
+// only counts and sources may differ.
 func TestTheClientSubsetDrawsEveryGroupWhole(t *testing.T) {
 	full, subset := exportedSite(t), clientExport(t)
 	for _, stem := range clientFixtureColumns {

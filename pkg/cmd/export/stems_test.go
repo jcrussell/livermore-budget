@@ -7,14 +7,9 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/project"
 )
 
-// TestEveryPublishedStemRoundTripsToItsSchedule holds the two spellings of
-// the stem rule together: project.Stem appends a column suffix to a
-// projection's name, and internal/export's column index strips it to recover
-// the schedule a stem's document becomes in its column. The two live in
-// packages that do not import each other, so this is the one place both are
-// in scope. Every published graph document must fold into the column its own
-// metadata names and be found there under its projection's name, and a series
-// document must fold into none.
+// TestEveryPublishedStemRoundTripsToItsSchedule holds project.Stem and the
+// column index's suffix strip together: each graph document folds into its own
+// column under its projection's name, and a series document into none.
 func TestEveryPublishedStemRoundTripsToItsSchedule(t *testing.T) {
 	root := repoRootForTest(t)
 	built, err := buildProjections(root)

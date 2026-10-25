@@ -82,12 +82,9 @@ func exportedSite(t *testing.T) string {
 	return opts.OutputDir
 }
 
-// TestEveryServedColumnIsTheScheduleItFolds reads every column file the export
-// writes, held to facts/facts.jsonl rather than to a golden. Each node and
-// link index resolves, each link's ends are the projection's, and its facts
-// are of the column's year and basis, sum to its value and are the pages it
-// cites. The fund-balance draw carries its facts' change negated, so at least
-// one must be checked or that allowance is never exercised.
+// TestEveryServedColumnIsTheScheduleItFolds holds every column file the export
+// writes to facts/facts.jsonl: indices resolve, links' ends are the projection's,
+// and facts match year and basis, sum to the value and are the pages cited.
 func TestEveryServedColumnIsTheScheduleItFolds(t *testing.T) {
 	dir := exportedSite(t)
 	root := repoRootForTest(t)

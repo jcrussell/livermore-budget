@@ -39,12 +39,9 @@ func goldenSankey(t *testing.T) []byte {
 	return b
 }
 
-// goldenFunding is a department-funding document of the golden spine's
-// column, the stem it is published at and its bytes: what the glance page at
-// index.html reads beside the spine, with no site to open on without it. Its
-// two departments, paid by the General Fund and read off p67, sum to the
-// spine's all-funds gross expenditure less every residual departmentsApartFromSpine
-// declares for that column, so the departments bar ties as glanceTies holds it.
+// goldenFunding is a department-funding document of the golden spine's column,
+// its stem and bytes, which the glance page reads beside the spine; its p67
+// departments tie to the spine as glanceTies holds them.
 func goldenFunding(t *testing.T) (string, []byte) {
 	t.Helper()
 	var spine struct {
@@ -345,13 +342,10 @@ func TestExportRunWritesASiteAndSaysHowToServeIt(t *testing.T) {
 	}
 }
 
-// TestEveryCaveatLinkLandsOnAnAnchorThatExists walks every page of the
-// exported corpus for the two spellings of a caveats.html link -- markup on a
-// page's caveats line, JSON in its FISC_CONFIG for a year switch -- and holds
-// each to an id caveats.html carries, where the template's fragment and the
-// index's anchor meet.
-// Mutation: append "-typo" to the group anchor the "caveats-line" template
-// links, or to caveatIndex.href's fragment, and that spelling goes red.
+// TestEveryCaveatLinkLandsOnAnAnchorThatExists holds every caveats.html link
+// the corpus writes, in markup and in FISC_CONFIG, to an id caveats.html carries.
+// Mutation: append "-typo" to the "caveats-line" template's anchor, or to
+// caveatIndex.href's fragment, and that spelling goes red.
 func TestEveryCaveatLinkLandsOnAnAnchorThatExists(t *testing.T) {
 	built := builtStemsForTest(t)
 	opts, _, _, _ := testOptions(t)
@@ -389,8 +383,7 @@ func TestEveryCaveatLinkLandsOnAnAnchorThatExists(t *testing.T) {
 	}
 }
 
-// TestTheSourcesPageListsEveryPageTheSankeyCites: flows.html lists no cited
-// page of its own and links the sources page, so that page must list every
+// TestTheSourcesPageListsEveryPageTheSankeyCites: the sources page lists every
 // page the Sankey's config cites, in every year. Mutation: render the footer's
 // source list unconditionally -- the first arm goes red; drop p66 from
 // provenance.html's table and footer -- the second does.
@@ -444,15 +437,9 @@ func TestTheSourcesPageListsEveryPageTheSankeyCites(t *testing.T) {
 	t.Logf("%d page(s) flows.html cites", cited)
 }
 
-// The acceptance test for fisc-ze7: the exported site resolves BOTH citation
-// classes with no network access to github.com.
-//
-// It walks the page's own links rather than a list, because the failure being
-// prevented is invisible to every other test — the export succeeds, the page
-// renders, and the citation 404s only for the reader who follows it. Class one,
-// the city's PDF, stays remote by design: it is the city's publication and its
-// LFS copy is not ours to republish. Class two, the extracted text every figure
-// is traced to, has to be a file inside the output.
+// TestExportRunResolvesBothCitationClassesWithoutGitHub walks the page's own
+// links: the city's PDF stays remote, and the extracted text every figure is
+// traced to is a file inside the output.
 func TestExportRunResolvesBothCitationClassesWithoutGitHub(t *testing.T) {
 	opts, _, _, _ := testOptions(t)
 	if err := exportRun(context.Background(), opts); err != nil {
@@ -474,10 +461,8 @@ func TestExportRunResolvesBothCitationClassesWithoutGitHub(t *testing.T) {
 		case strings.Contains(ref, "://"):
 			t.Errorf("the page reaches %q; every citation but the city's PDF has to resolve inside the site", ref)
 		default:
-			// The anchor comes off before the filesystem is asked:
-			// "caveats.html#caveat-sankey--x" names a file plus a place in it,
-			// and only the file half is a question about what was written. The
-			// fragment half is TestEveryCaveatLinkLandsOnAnAnchorThatExists'.
+			// The fragment comes off before the filesystem is asked; the fragment half is
+			// TestEveryCaveatLinkLandsOnAnAnchorThatExists'.
 			target := ref
 			if before, _, ok := strings.Cut(target, "#"); ok {
 				target = before
@@ -573,13 +558,8 @@ func pageRefs(page string) []string {
 			}
 			ref := rest[:j]
 			rest = rest[j:]
-			// FRAGMENTS ARE KEPT HERE. This function reports what the page
-			// says, and its caller needs the fragment on both classes of
-			// reference for opposite reasons: it COUNTS "#page=" on the city's
-			// PDF links, and it has to STRIP the anchor off a relative one
-			// before asking the filesystem about it. Cutting in this loop
-			// broke the first while fixing the second -- measured, "got 0 PDF
-			// citations, want one per cited page".
+			// Fragments are kept here: the caller counts "#page=" on PDF links and strips
+			// the anchor off a relative one itself.
 			if ref == "" || strings.HasPrefix(ref, "#") {
 				continue
 			}
@@ -599,11 +579,9 @@ func readFile(t *testing.T, dir, name string) string {
 	return string(b)
 }
 
-// TestExportRunRefusesAnUnreachableDocumentBeforeTouchingTheSite pins the
-// ORDER of the reachability check against Write: `fisc export --clean` over a
-// corpus that has just published an undeclared document refuses before it
-// writes or removes anything, so the reader's site survives a fault
-// detectable before anything was touched.
+// TestExportRunRefusesAnUnreachableDocumentBeforeTouchingTheSite: `fisc export
+// --clean` over an undeclared published document refuses before it writes or
+// removes anything.
 func TestExportRunRefusesAnUnreachableDocumentBeforeTouchingTheSite(t *testing.T) {
 	opts, _, _, _ := testOptions(t)
 	if err := exportRun(context.Background(), opts); err != nil {
@@ -614,13 +592,8 @@ func TestExportRunRefusesAnUnreachableDocumentBeforeTouchingTheSite(t *testing.T
 		t.Fatalf("no site to destroy: %v", err)
 	}
 
-	// A published document that is BUILT, rendered by no view, and declared by
-	// no entry. The stub builds only the spine, and the check skips documents
-	// that were not built (that is assertPublishedBuilt's finding), so the
-	// builder has to produce this one for the state to be reachable at all.
-	// A DECLARED STEM, READ OUT OF THE MAP RATHER THAN NAMED, so a page that
-	// starts rendering one does not send this red; if the map ever empties,
-	// the Fatalf below says so rather than the test asserting nothing.
+	// A published document that is built, rendered by no view and declared by no
+	// entry; the stem is read out of the map, and Fatalf fires if it empties.
 	stem := ""
 	for k := range unviewedDocuments {
 		if stem == "" || k < stem {
@@ -662,15 +635,12 @@ func TestExportRunRefusesAnUnreachableDocumentBeforeTouchingTheSite(t *testing.T
 	}
 }
 
-// --clean removes a file the earlier export wrote and this one does not, the
-// directories that leaves empty and a stranded manifest temp file, leaves a
-// file no export wrote, and says how many of each kind it removed.
-//
-// Mutation: drop the clean branch from Write and this goes red with "a file
-// the earlier export wrote survived --clean"; skip the pruning and it goes
-// red with "facts/gone was left behind empty"; count the temp file among the
-// earlier export's files in the summary and it goes red with "does not say
-// what --clean removed".
+// --clean removes what the earlier export wrote and this one does not, the
+// directories left empty and a stranded manifest temp file, keeps a file no
+// export wrote, and counts each kind removed.
+// Mutation: drop Write's clean branch -- "a file the earlier export wrote
+// survived --clean"; skip pruning -- "facts/gone was left behind empty"; count
+// the temp file among the earlier export's -- "does not say what --clean removed".
 func TestExportRunCleanRemovesWhatTheEarlierExportWrote(t *testing.T) {
 	opts, _, _, errOut := testOptions(t)
 	build := opts.Build
@@ -723,12 +693,9 @@ func TestExportRunCleanRemovesWhatTheEarlierExportWrote(t *testing.T) {
 	}
 }
 
-// A path the earlier export wrote as a file and this one writes under is a
-// usage error without --clean, exiting 2 with a hint naming --clean, and
-// --clean converges.
-//
-// Mutation: return Write's error unchanged and this goes red with "got
-// <error>, want a FlagError".
+// A path an earlier export wrote as a file and this one writes under is a usage
+// error without --clean, exiting 2 with a hint, and --clean converges.
+// Mutation: return Write's error unchanged -- "got <error>, want a FlagError".
 func TestExportRunNeedsCleanWhereAnEarlierFileIsInTheWay(t *testing.T) {
 	opts, _, _, _ := testOptions(t)
 	build := opts.Build
@@ -792,14 +759,10 @@ func treeOf(t *testing.T, dir string) map[string]string {
 	return tree
 }
 
-// --clean --dry-run prints exactly the paths --clean would remove, one per
-// line, and leaves the directory as it was, down to its modification times:
-// no file written, none removed, no write probe made and taken away.
-//
-// Mutation: fall through to Write after printing and this goes red with a
-// tree diff; skip the printing and it goes red with stdout ""; keep the
-// write probe in Validate for a dry run and it goes red with a diff in the
-// output directory's modification time.
+// --clean --dry-run prints exactly the paths --clean would remove and leaves the
+// directory as it was, down to its modification times.
+// Mutation: fall through to Write after printing -- a tree diff; skip printing --
+// stdout ""; keep Validate's write probe for a dry run -- a modification-time diff.
 func TestExportRunDryRunPrintsWhatCleanWouldRemoveAndWritesNothing(t *testing.T) {
 	opts, _, out, _ := testOptions(t)
 	build := opts.Build
@@ -850,13 +813,10 @@ func TestExportRunDryRunPrintsWhatCleanWouldRemoveAndWritesNothing(t *testing.T)
 	}
 }
 
-// The dry run lists exactly what --clean then removes: every file and every
-// directory that vanishes from the output directory, and nothing that stays.
-//
-// Mutation: drop the directories from the dry run's printing and this goes
-// red with facts/gone and facts/gone/deep "removed but not listed"; make
-// prunedBy prune every parent and the --clean run goes red with "directory
-// not empty" on facts/kept, which still holds an unlisted file.
+// The dry run lists exactly what --clean then removes, files and directories.
+// Mutation: drop directories from the dry run's printing -- facts/gone and
+// facts/gone/deep "removed but not listed"; make prunedBy prune every parent --
+// "directory not empty" on facts/kept.
 func TestExportRunDryRunListsWhatCleanRemoves(t *testing.T) {
 	opts, _, _, _ := testOptions(t)
 	build := opts.Build
@@ -916,11 +876,9 @@ func TestExportRunDryRunListsWhatCleanRemoves(t *testing.T) {
 	}
 }
 
-// A dry run over a directory that does not exist yet creates nothing and
-// prints nothing: there is no manifest, so --clean would remove nothing.
-//
-// Mutation: fall through to Write after printing and this goes red with "the
-// dry run created the output directory".
+// A dry run over a missing directory creates and prints nothing.
+// Mutation: fall through to Write after printing -- "the dry run created the
+// output directory".
 func TestExportRunDryRunOverAMissingDirectoryCreatesNothing(t *testing.T) {
 	opts, _, out, _ := testOptions(t)
 	opts.Clean = true
@@ -955,14 +913,9 @@ func TestExportRunReportsABuilderFailure(t *testing.T) {
 	}
 }
 
-// TestBuildProjectionsRunsThePipeline is the check that the published site is
-// built from the fact store rather than from anything else. It reads the real
-// committed facts/facts.jsonl through the real projection and compares against
-// testdata/sankey.golden.json, the hand-derived worked example — so it fails
-// both if the pipeline drifts and if somebody edits the golden to match a bug.
-//
-// generated_by is the one key that legitimately differs: the golden records
-// that a human derived it, and a build records the binary that did.
+// TestBuildProjectionsRunsThePipeline reads the committed facts/facts.jsonl
+// through the real projection against the hand-derived
+// testdata/sankey.golden.json; only generated_by may differ.
 func TestBuildProjectionsRunsThePipeline(t *testing.T) {
 	root := repoRootForTest(t)
 	got, err := buildProjections(root)
@@ -970,9 +923,7 @@ func TestBuildProjectionsRunsThePipeline(t *testing.T) {
 		t.Fatalf("buildProjections: %v", err)
 	}
 	// A single-column document goes through project.PublishedStem: the opening
-	// published column keeps the bare stem, others are suffixed by year, and by
-	// basis where it is not the published one. A multi-column document keeps
-	// its projection's name.
+	// column keeps the bare stem, others carry year and non-published basis.
 	if diff := cmp.Diff([]string{
 		"changes-in-fund-balances",
 		"cip-projects",
@@ -1036,12 +987,7 @@ func TestLoadDocsReadsTheSourceRegistry(t *testing.T) {
 	}
 }
 
-// keys is the stems in a map, SORTED.
-//
-// The sort is not cosmetic. Go randomises map iteration, so without it this
-// helper returns a different order on different runs and any cmp.Diff against a
-// literal list is flaky -- it passed only because two elements come back in the
-// written order often enough to look stable. A third stem made it visible.
+// keys is the stems in a map, sorted, so a cmp.Diff against a literal is stable.
 func keys(m map[string][]byte) []string {
 	out := make([]string, 0, len(m))
 	for k := range m {
@@ -1052,10 +998,7 @@ func keys(m map[string][]byte) []string {
 }
 
 // TestTheCommittedStemsAreUnchanged pins the document stems as typed literals:
-// a list derived from the naming rule would agree with a rename.
-// A stem is the schedule key and a year's name in window.FISC_CONFIG, so a
-// rename moves both silently. Published paths are
-// TestTheSitePublishesOneFilePerColumnAndNothingTwice's.
+// a stem is the schedule key and a year's name in window.FISC_CONFIG.
 func TestTheCommittedStemsAreUnchanged(t *testing.T) {
 	root := repoRootForTest(t)
 	built, err := buildProjections(root)
@@ -1131,10 +1074,8 @@ func TestEveryRecordsLinkTheConfigCarriesIsAShardTheExportWrote(t *testing.T) {
 	t.Logf("%d records links, each a shard the export wrote", shards)
 }
 
-// TestTheSitePublishesOneFilePerColumnAndNothingTwice pins the file set
-// `fisc export` lays down, as typed literals: deriving it from ColumnsOf would
-// agree with any change to ColumnsOf. A document stating no fiscal year or
-// basis ships as itself.
+// TestTheSitePublishesOneFilePerColumnAndNothingTwice pins `fisc export`'s file
+// set as typed literals; a document stating no year or basis ships as itself.
 func TestTheSitePublishesOneFilePerColumnAndNothingTwice(t *testing.T) {
 	root := repoRootForTest(t)
 	opts, _, _, _ := testOptions(t)
@@ -1181,16 +1122,9 @@ func TestTheSitePublishesOneFilePerColumnAndNothingTwice(t *testing.T) {
 	}
 }
 
-// TestStemAsksHowManyDocumentsNotHowManyColumns pins both directions of the
-// naming rule; the second case is the one a column count gets wrong.
-//
-// The question is whether the projection publishes one document PER YEAR, which
-// is answered by the number of SLICES it declared. Asking the column count
-// instead looks equivalent -- today every multi-slice projection is
-// single-column and the single-slice one is multi-column -- and is not: a store
-// carrying one revenue-by-fund column makes the trends document single-column
-// too, and the column test would then ship it as revenue-trends-2024.json while
-// data/revenue-trends.json, the path the contract promises, did not exist.
+// TestStemAsksHowManyDocumentsNotHowManyColumns: a projection publishes one
+// document per year by its declared slices, not its column count; a store with
+// one revenue-by-fund column must still ship data/revenue-trends.json.
 func TestStemAsksHowManyDocumentsNotHowManyColumns(t *testing.T) {
 	year := func(y int) project.Options {
 		return project.Options{
@@ -1214,10 +1148,8 @@ func TestStemAsksHowManyDocumentsNotHowManyColumns(t *testing.T) {
 		// The regression: ONE slice of ONE column is still one document, so it
 		// keeps the bare stem even though the year is not the opening one.
 		{"one document of one column is not a year of anything", year(2024), 1, "sankey"},
-		// Two BASES for one fiscal year: the basis is spelled out because a year
-		// alone cannot tell them apart, and Sankey.Slices derives its slices
-		// from (year, basis), so mapping pp.66-67's revised column produces
-		// exactly this.
+		// Two bases for one fiscal year: the basis is spelled out, as pp.66-67's
+		// revised column would produce.
 		{"a second basis for one year is not the same document",
 			project.Options{Columns: []project.Column{
 				{FiscalYear: project.PublishedFiscalYear, Basis: "revised"},
@@ -1250,12 +1182,8 @@ func TestStemAsksHowManyDocumentsNotHowManyColumns(t *testing.T) {
 	}
 }
 
-// TestBuildProjectionsDoesNotRefuseASecondSchedule is fisc-neh, pinned.
-//
-// A projection is built over the slices it declares, not over the
-// published fiscal years: a trends projection declares one slice of a
-// different schedule, and refusing it for lacking the SPINE slice fails
-// `fisc export` before it writes a file.
+// TestBuildProjectionsDoesNotRefuseASecondSchedule: a projection is built over
+// the slices it declares, so a trends slice lacking the spine's is not refused.
 func TestBuildProjectionsDoesNotRefuseASecondSchedule(t *testing.T) {
 	root := repoRootForTest(t)
 	got, err := buildProjections(root)
@@ -1303,11 +1231,8 @@ func TestBuildProjectionsDoesNotRefuseASecondSchedule(t *testing.T) {
 	}
 }
 
-// TestEveryPublishedDocumentIsRenderedOrDeclaredUnrendered is the assertion
-// whose absence let four documents ship unreachable.
-//
-// published-projection-built and assertPublishedBuilt assert every published
-// document was built; neither asks whether a page renders it.
+// TestEveryPublishedDocumentIsRenderedOrDeclaredUnrendered: every published
+// document is rendered by a page or declared in unviewedDocuments.
 func TestEveryPublishedDocumentIsRenderedOrDeclaredUnrendered(t *testing.T) {
 	built := builtStemsForTest(t)
 	_, ix, err := export.ColumnsOf(built, "")
@@ -1328,13 +1253,8 @@ func TestEveryPublishedDocumentIsRenderedOrDeclaredUnrendered(t *testing.T) {
 		t.Errorf("got %v, want a refusal naming the unrendered document", err)
 	}
 
-	// And a declaration that has stopped being true must go red rather than
-	// quiet, which is the property that retires an entry instead of leaving an
-	// exemption for whoever forgets. Same standard internal/check's
-	// staleDocumentDeclarations applies to uncheckedDocuments.
-	// Built from the REAL view set plus one, so the only thing wrong with it is
-	// the stale declaration -- starting from a bare slice would trip the
-	// missing-view arm above instead and prove nothing about this one.
+	// A declaration that stopped being true goes red. Built from the real view set
+	// plus one, so the stale declaration is the only fault.
 	stale := mustViews(t, result{Projections: built})
 	for stem := range unviewedDocuments {
 		stale = append(stale, export.View{Path: "x.html", Projection: stem})
@@ -1347,11 +1267,7 @@ func TestEveryPublishedDocumentIsRenderedOrDeclaredUnrendered(t *testing.T) {
 		t.Errorf("got %v, want a refusal telling the caller to delete the declaration", err)
 	}
 
-	// A leftover entry naming no published document is the other half of the
-	// same property. A MISTYPED entry is already caught by the arm above -- the
-	// real document goes undeclared -- but one left behind when a document stops
-	// being published is silent, and silence is what this declaration exists to
-	// refuse.
+	// A leftover entry naming no published document is refused too.
 	unviewedDocuments["no-such-document"] = "left behind"
 	t.Cleanup(func() { delete(unviewedDocuments, "no-such-document") })
 	if err := assertPublishedReachable(mustViews(t, result{Projections: built}), built, ix); err == nil {
@@ -1361,14 +1277,10 @@ func TestEveryPublishedDocumentIsRenderedOrDeclaredUnrendered(t *testing.T) {
 	}
 }
 
-// TestTheRevenueScheduleCaveatNamesThePageThatPrintsItsFourColumns holds the
-// caveat every document drawing Budget Book pp.127-140 carries to the site it
-// ships on: the page it says prints all four columns is the nav label of the
-// view that reaches revenue-trends.
-//
+// TestTheRevenueScheduleCaveatNamesThePageThatPrintsItsFourColumns: the page the
+// pp.127-140 caveat names is the nav label of the view reaching revenue-trends.
 // Mutation: restore "the Revenue tables print all four" in
-// revenueSchedulePublishedTwiceCaveat, and this goes red on every document
-// carrying it.
+// revenueSchedulePublishedTwiceCaveat, and every document carrying it goes red.
 func TestTheRevenueScheduleCaveatNamesThePageThatPrintsItsFourColumns(t *testing.T) {
 	built := builtStemsForTest(t)
 	_, ix, err := export.ColumnsOf(built, "")
@@ -1428,11 +1340,10 @@ func builtStemsForTest(t *testing.T) map[string][]byte {
 	return built
 }
 
-// TestViewsOpensOnTheSpineAndGivesYearsToItsCharts pins the shape of the view
-// list: that the site opens on the glance page over the spine, that the year
-// control belongs to the spine's documents and to no other view's, and that
-// the spine's Sankey is at flows.html. Mutation: swap the two views' paths in
-// data/views.yaml and the opening and flows arms go red.
+// TestViewsOpensOnTheSpineAndGivesYearsToItsCharts: the site opens on the glance
+// page, the year control is the spine's alone, and the Sankey is at flows.html.
+// Mutation: swap the two views' paths in data/views.yaml and the opening and
+// flows arms go red.
 func TestViewsOpensOnTheSpineAndGivesYearsToItsCharts(t *testing.T) {
 	built := builtStemsForTest(t)
 	got := mustViews(t, result{Projections: built})
@@ -1548,10 +1459,8 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItsCharts(t *testing.T) {
 	}
 }
 
-// TestOpensIntoJoinsOnColumnNotOnDeclaredOrder (fisc-zojk): the schedule a
-// year's chart draws is joined on Column, not on its position in
-// PublishedDocuments. A join on declared order pairs sankey with
-// fund-flows-2024-actual.
+// TestOpensIntoJoinsOnColumnNotOnDeclaredOrder: a year's schedule is joined on
+// Column; a join on declared order pairs sankey with fund-flows-2024-actual.
 func TestOpensIntoJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 	built := builtStemsForTest(t)
 
@@ -1609,9 +1518,8 @@ func TestOpensIntoJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 		t.Errorf("got %v, want the refusal naming the year's column", err)
 	}
 
-	// No chart draws a document that was not built: the Sankey, at
-	// flows.html, draws its own document where its expansion is gone.
-	// Mutation: key views' fallback on export.IndexPath and "no expansion"
+	// No chart draws an unbuilt document: without the expansion the Sankey draws
+	// its own. Mutation: key views' fallback on export.IndexPath and "no expansion"
 	// goes red, the Sankey dropped.
 	without := func(prefixes ...string) map[string][]byte {
 		out := map[string][]byte{}
@@ -1646,11 +1554,8 @@ func TestOpensIntoJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 	}
 }
 
-// TestADocumentOutsideTheColumnItIsPublishedForIsRefused: publishedInto joins
-// on PublishedDocuments' columns and export.ColumnIndex on each built
-// document's own metadata. Where the two disagree, drawsBuilt keeps the view's
-// chart, because a document it promised was built, and the write refuses it
-// by the column's name rather than shipping the Sankey drawing something else.
+// TestADocumentOutsideTheColumnItIsPublishedForIsRefused: where publishedInto
+// and export.ColumnIndex disagree, the write refuses by the column's name.
 func TestADocumentOutsideTheColumnItIsPublishedForIsRefused(t *testing.T) {
 	built := builtStemsForTest(t)
 	var doc map[string]any
@@ -1676,22 +1581,14 @@ func TestADocumentOutsideTheColumnItIsPublishedForIsRefused(t *testing.T) {
 	}
 }
 
-// TestAViewWhoseDocumentWasNotBuiltIsDropped: a nav entry pointing at a page
-// that was not written is a 404 a reader can click, and it is the one failure
-// this function must never produce. Dropping the view is what prevents it;
-// `fisc verify` is what says the document is missing. The spine is built
-// with the one schedule the index reads beside it, which
-// TestTheIndexIsRefusedByNameWithoutItsRead holds the export to refuse without.
+// TestAViewWhoseDocumentWasNotBuiltIsDropped: a view over an unbuilt document
+// is dropped rather than linked as a 404.
 func TestAViewWhoseDocumentWasNotBuiltIsDropped(t *testing.T) {
 	only := map[string][]byte{export.PrimaryProjection: {}, project.DepartmentFundingProjection: {}}
 	got := mustViews(t, result{Projections: only})
 
-	// EVERY VIEW THAT NAMES A PROJECTION IS THE SPINE'S, and that is the
-	// assertion rather than a count: a view naming NO projection, the caveats
-	// index, has nothing that could fail to be built and so nothing to drop.
-	// A count would fail this test for a reason it is not about, and the
-	// shortest way to green would be to make the caveats page conditional on
-	// a document it does not have.
+	// Every view that names a projection is the spine's; the caveats index names
+	// none and has nothing to drop.
 	for _, v := range got {
 		if v.Projection == "" {
 			continue
@@ -1708,13 +1605,8 @@ func TestAViewWhoseDocumentWasNotBuiltIsDropped(t *testing.T) {
 	if got[0].Path != export.IndexPath {
 		t.Errorf("the site opens on %q, want %q", got[0].Path, export.IndexPath)
 	}
-	// The views whose documents were not built really are gone: the whole
-	// point. Named by their CURRENT paths, because a path that no longer exists
-	// is an arm that can never match -- and this comment made exactly that
-	// claim while the line below still named drilldown.html, a page views()
-	// stopped emitting in the same commit. Twice in two commits, which is why
-	// the list is now derived from the views the full set produces rather than
-	// typed out.
+	// The views whose documents were not built are gone, derived from the full
+	// set's views rather than typed out.
 	dropped := map[string]bool{}
 	for _, v := range mustViews(t, result{Projections: map[string][]byte{
 		export.PrimaryProjection:            {},
@@ -1740,13 +1632,10 @@ func TestAViewWhoseDocumentWasNotBuiltIsDropped(t *testing.T) {
 	}
 }
 
-// TestTheIndexIsRefusedByNameWithoutItsRead: the glance page at index.html
-// reads department-funding beside the spine, and dropping it for that, as
-// any other view is dropped, leaves a site with no page to open on. The
-// export refuses by the view and the read it lacks, before writing anything.
-// Mutation: drop the index arm of views' unbuilt-read branch, so the index
-// is dropped as any other view is, and the export refuses with the
-// packager's "0 views are at index.html" instead; both arms go red.
+// TestTheIndexIsRefusedByNameWithoutItsRead: without department-funding the
+// export refuses by the index view and its missing read, before writing.
+// Mutation: drop the index arm of views' unbuilt-read branch, and the export
+// refuses with "0 views are at index.html" instead; both arms go red.
 func TestTheIndexIsRefusedByNameWithoutItsRead(t *testing.T) {
 	_, err := views(repoRootForTest(t), result{Projections: map[string][]byte{export.PrimaryProjection: {}}})
 	if err == nil {
@@ -1772,16 +1661,8 @@ func TestTheIndexIsRefusedByNameWithoutItsRead(t *testing.T) {
 	}
 }
 
-// TestExportRefusesAPublishedDocumentThatWasNotBuilt is the export half of
-// fisc-w7d, and it is the half a reader meets first: `fisc verify` says a
-// document is missing, but `fisc export` is what would otherwise ship a site
-// without it.
-//
-// Both arms matter and they are different repairs. A stem absent is a projection
-// that built nothing at all. A stem present but short a column is the worse one:
-// the file lands at the path the contract promises, every downstream check
-// compares each series against the columns THAT DOCUMENT declares, so the site
-// agrees with itself about a chart that is missing a year.
+// TestExportRefusesAPublishedDocumentThatWasNotBuilt: a stem absent, and a stem
+// present but short a column, are each refused by `fisc export`.
 func TestExportRefusesAPublishedDocumentThatWasNotBuilt(t *testing.T) {
 	// The real published set, built exactly as declared, is the control: if this
 	// does not pass, neither arm below is evidence of anything.
@@ -1857,23 +1738,9 @@ func TestExportRefusesAPublishedDocumentThatWasNotBuilt(t *testing.T) {
 	}
 }
 
-// TestPublishedDocumentsAreWhatTheCorpusBuilds pins project.PublishedDocuments
-// against the documents the committed corpus actually writes, read back out of
-// the shipped BYTES rather than out of the Options they were built from.
-//
-// WHY THIS TEST HAS TO EXIST. project.TrendsColumns states four columns instead
-// of deriving them, and that is deliberate: a published set derived from the
-// facts agrees with the corpus by construction and goes quiet in exactly the
-// state it exists to catch. The cost of stating them is that they can go stale,
-// and nothing else would notice — TestRegistry compares projection NAMES, and
-// published-projection-built only asks whether the corpus covers the
-// declaration, so a fifth mapped column would build, ship, and sit outside the
-// published set in silence.
-//
-// This is the other direction: the corpus may not cover MORE than the site says
-// it publishes. When it legitimately does — a fifth column mapped, a third
-// document — this test is what fails, and the repair is to widen the
-// declaration in the commit that widened the corpus.
+// TestPublishedDocumentsAreWhatTheCorpusBuilds: the corpus, read back from the
+// shipped bytes, builds no more than project.PublishedDocuments declares (its
+// TrendsColumns are stated, not derived).
 func TestPublishedDocumentsAreWhatTheCorpusBuilds(t *testing.T) {
 	root := repoRootForTest(t)
 	built, err := buildProjections(root)
@@ -1890,18 +1757,11 @@ func TestPublishedDocumentsAreWhatTheCorpusBuilds(t *testing.T) {
 		}
 		var doc struct {
 			Metadata struct {
-				// The spine publishes ONE column and names it singularly;
-				// the trends publish four and carry a list. A document of one
-				// shape decoded through the other leaves its field zero, which
-				// is why both are read and exactly one is expected to be set.
+				// The spine publishes one column, the trends a list; exactly one is set.
 				FiscalYear int    `json:"fiscal_year"`
 				Basis      string `json:"basis"`
-				// The spine and the trends publish ONE schedule and name it
-				// singularly; the drill-down publishes two and carries a list.
-				// Exactly one of the two keys is present on any document, which
-				// is what MultiScopeEnvelope exists to keep true -- a document
-				// of two schedules writing Scopes[0] into a singular key would
-				// name one as the whole of it.
+				// One schedule is named singularly, two as a list; exactly one key is present
+				// (MultiScopeEnvelope).
 				Scope   string   `json:"scope"`
 				Scopes  []string `json:"scopes"`
 				Columns []struct {
@@ -1942,8 +1802,7 @@ func TestPublishedDocumentsAreWhatTheCorpusBuilds(t *testing.T) {
 	}
 
 	// And nothing published is left over: a document the corpus builds at a stem
-	// no declaration names is shipped and unguarded, which is the whole of
-	// fisc-w7d from the other end.
+	// no declaration names is shipped and unguarded.
 	declared := map[string]bool{}
 	for _, d := range project.PublishedDocuments() {
 		declared[d.Stem] = true
@@ -1956,14 +1815,8 @@ func TestPublishedDocumentsAreWhatTheCorpusBuilds(t *testing.T) {
 	}
 }
 
-// TestStemRefusesADocumentWithNoColumns covers `o.Columns[0]`, refused
-// rather than indexed blind.
-//
-// A zero-column Options is not reachable through project.Slices today, but a
-// projection is an interface any future type can satisfy, and the failure mode
-// of `o.Columns[0]` is a PANIC inside the command whose job is writing files --
-// which is worse than any refusal, because it leaves a half-exported directory
-// and no message a reader could act on. It is refused with the reason instead.
+// TestStemRefusesADocumentWithNoColumns: a zero-column Options is refused with
+// a reason rather than panicking on `o.Columns[0]`.
 func TestStemRefusesADocumentWithNoColumns(t *testing.T) {
 	// More than one document, or the one-document branch returns before the
 	// index.
@@ -1986,31 +1839,14 @@ func TestStemRefusesADocumentWithNoColumns(t *testing.T) {
 	}
 }
 
-// TestTheFundFlowsFixtureIsTheDocumentTheSiteDraws keeps
-// testdata/fund-flows.golden.json honest.
-//
-// THAT FIXTURE IS A CAPTURE, NOT A DERIVATION, and this test is what makes the
-// difference bearable. testdata/sankey.golden.json is hand-derived from
-// internal/project's spineRows fixture, so reproducing that golden proves the
-// projection reads those rows correctly. Nothing comparable is affordable
-// here: the drill-down is 280 facts over 18 pages, and a hand-authored table
-// of them would be a transcription of the same schedules the mapping rules
-// already read.
-//
-// So the fixture exists as the real drill-down internal/export's view tests
-// take as input, and this test keeps it the one buildProjections writes:
-// without it, a step could be proved against a document that stopped being
-// ours.
+// TestTheFundFlowsFixtureIsTheDocumentTheSiteDraws holds the captured
+// testdata/fund-flows.golden.json to what buildProjections writes.
 func TestTheFundFlowsFixtureIsTheDocumentTheSiteDraws(t *testing.T) {
 	fixtureIsTheDocumentExported(t, project.FundFlowsProjection, "fund-flows.golden.json")
 }
 
 // fixtureIsTheDocumentExported compares one committed capture line for line
-// with what buildProjections writes at `stem`.
-//
-// metadata.generated_by is excluded because it carries the commit and the build
-// time, which no committed file can match. Nothing else is excluded: the nodes,
-// the links, the counts, the caveats and the key order are all compared.
+// with what buildProjections writes at `stem`, metadata.generated_by aside.
 func fixtureIsTheDocumentExported(t *testing.T, stem, fixture string) {
 	t.Helper()
 	root := repoRootForTest(t)
@@ -2119,14 +1955,10 @@ func mustViews(t *testing.T, built result) []export.View {
 	return vs
 }
 
-// TestEveryPageALinkCitesHasItsLinksInTheConfig holds each page's config's
-// per-page links to every locator of every link the published columns carry
-// in a schedule that page reaches: the client shows a figure's citations by
-// looking its pages up, so a cited page with no entry is a figure shown
-// without its provenance. A schedule no view reaches shows no figure.
-//
+// TestEveryPageALinkCitesHasItsLinksInTheConfig: every locator of every link in
+// a schedule a page reaches has an entry in that page's config's links.
 // Mutation: make department.html's config carry the opening year's sources
-// alone, and the department page's rows on the other years' pages go red.
+// alone, and the department rows on other years' pages go red.
 func TestEveryPageALinkCitesHasItsLinksInTheConfig(t *testing.T) {
 	root := repoRootForTest(t)
 	opts, _, _, _ := testOptions(t)
@@ -2226,17 +2058,10 @@ func TestEveryPageALinkCitesHasItsLinksInTheConfig(t *testing.T) {
 	t.Logf("cited pages, each with its links in its page's config: %v", cited)
 }
 
-// A refused credential must not be echoed to the terminal either, by any
-// refusal: a token passed as the username is as secret as a password, and a
-// value refused for its scheme, its host, its query or its parse still
-// carries both. A "/", "?" or "#" inside the password, and one or three
-// slashes after the scheme, all move where a parser thinks the authority
-// ends, which is why no refusal tries to cut the userinfo out.
-//
-// Mutation: drop the "@" arm and the "sec/ret" case goes red with "repeats
-// sec" in an invalid-port message, the "///" and "http:/" cases with
-// "repeats secret" in a no-host message, and the "p#x" case with "repeats
-// p#x".
+// No refusal echoes a credential: a username is as secret as a password, and
+// "/", "?", "#" or odd slashes move where a parser thinks userinfo ends.
+// Mutation: drop the "@" arm -- "sec/ret" goes red with "repeats sec", "///"
+// and "http:/" with "repeats secret", "p#x" with "repeats p#x".
 func TestValidateBrowseURLEchoesNoUserinfo(t *testing.T) {
 	for _, tc := range []struct {
 		raw     string
@@ -2271,13 +2096,10 @@ func TestValidateBrowseURLEchoesNoUserinfo(t *testing.T) {
 	}
 }
 
-// An export into a directory fisc does not own -- `-o data`, `-o site` --
-// leaves its marker beside files it did not write, and a later --clean would
-// delete them, so Validate refuses it, with or without --clean, before
-// anything is written.
-//
-// Mutation: drop the RefuseForeignDir call from Validate and every case goes
-// red with "got nil error, want a refusal of a directory fisc does not own".
+// Validate refuses an export into a directory fisc does not own -- `-o data`,
+// `-o site` -- with or without --clean, before anything is written.
+// Mutation: drop Validate's RefuseForeignDir call -- "got nil error, want a
+// refusal of a directory fisc does not own".
 func TestNewCmdExportRefusesADirectoryItDoesNotOwn(t *testing.T) {
 	const edit = "// a local edit\n"
 	dirs := map[string]map[string]string{
@@ -2286,7 +2108,7 @@ func TestNewCmdExportRefusesADirectoryItDoesNotOwn(t *testing.T) {
 		// The marker an older binary wrote is not a manifest, so the site
 		// beside it is nobody's export.
 		"older-marker": {export.MarkerName: "fisc export\n", "index.html": "<html>\n"},
-		// fisc-3s5d.65's directory: an older marker over nothing but
+		// An older marker over nothing but
 		// subdirectories holding source.
 		"older-marker-over-source": {export.MarkerName: "fisc export\n", "cmd/fisc/main.go": "package main\n", "src/x.go": "package x\n"},
 	}
@@ -2340,13 +2162,9 @@ func TestNewCmdExportRefusesADirectoryItDoesNotOwn(t *testing.T) {
 	}
 }
 
-// An output directory Validate cannot read is the environment failing, not
-// the caller naming the wrong directory, so it is not a FlagError and the
-// runner exits 1 rather than 2.
-//
-// Mutation: wrap every RefuseForeignDir error in FlagErrorf again and this
-// goes red with "got *cmdutil.FlagError ... want an error the runner exits 1
-// on".
+// An unreadable output directory is not a FlagError: the runner exits 1.
+// Mutation: wrap every RefuseForeignDir error in FlagErrorf -- "got
+// *cmdutil.FlagError ... want an error the runner exits 1 on".
 func TestNewCmdExportReportsAnUnreadableDirectoryAsAnError(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("root reads a mode-000 directory")
@@ -2406,14 +2224,9 @@ func TestNewCmdExportAcceptsADirectoryItOwns(t *testing.T) {
 	}
 }
 
-// A cancellation that lands during the build, with --clean over an earlier
-// export, returns an error wrapping context.Canceled, so the runner exits
-// 130, reports no path, and leaves the earlier site as it was.
-//
-// exportRun's own ctx checks stop it first and Write's stops it behind them,
-// so neither alone is witnessed here.
-// Mutation: drop exportRun's ctx checks and discard Write's error and this
-// goes red with "got <nil>".
+// A cancellation during the build, with --clean over an earlier export, wraps
+// context.Canceled (exit 130) and leaves the earlier site as it was.
+// Mutation: drop exportRun's ctx checks and discard Write's error -- "got <nil>".
 func TestExportRunStopsWhenCancelled(t *testing.T) {
 	opts, _, out, _ := testOptions(t)
 	opts.Clean = true
@@ -2465,22 +2278,9 @@ func seedExport(t *testing.T, dir string, files ...string) {
 	}
 }
 
-// TestAPageThatDisclaimsAuditAssuranceDoesNotClaimItInItsProse couples the two
-// statements of one claim that print on one page: the caveat and the lede.
-//
-// The two ACFR ten-year tables draw the section the ACFR itself labels
-// (Unaudited), and each of their documents ships the
-// statistical-section-unaudited caveat, whose text quotes the auditor: "we do
-// not express an opinion or any form of assurance thereon." The Title and Lede
-// are composed here, out of any document's sight -- nothing else stops them
-// asserting the assurance the caveat, further down the same page, disclaims.
-//
-// A PIN RATHER THAN A BANNED-WORD LIST: what a sentence claims cannot be
-// checked mechanically, so the pin makes drift fail. The scan is conditional on the document's own declaration: a view whose
-// document ships no such caveat may say "audited" freely, and "unaudited" is
-// the caveat's own word, so it is lifted out before the scan. The anchor half
-// fails first if the caveat itself disappears, so the scan cannot rot into a
-// vacuous pass.
+// TestAPageThatDisclaimsAuditAssuranceDoesNotClaimItInItsProse: a view whose
+// document ships statistical-section-unaudited claims no audit in its Title or
+// Lede ("unaudited" lifted out); the anchor half fails if the caveat goes.
 func TestAPageThatDisclaimsAuditAssuranceDoesNotClaimItInItsProse(t *testing.T) {
 	built := builtStemsForTest(t)
 
@@ -2532,9 +2332,8 @@ func TestAPageThatDisclaimsAuditAssuranceDoesNotClaimItInItsProse(t *testing.T) 
 	}
 }
 
-// TestEveryProjectionBuildsToTheSameBytesTwice builds every projection of
-// the committed store twice and holds each to the same bytes: an order taken
-// from a map, in a builder, a caveat list or a split, differs between runs.
+// TestEveryProjectionBuildsToTheSameBytesTwice builds every projection twice
+// and holds each to the same bytes.
 // Mutation: range over a map where a builder emits its splits or caveats and
 // this goes red on that projection.
 func TestEveryProjectionBuildsToTheSameBytesTwice(t *testing.T) {

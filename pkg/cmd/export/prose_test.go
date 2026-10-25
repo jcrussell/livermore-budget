@@ -11,11 +11,8 @@ import (
 	"testing"
 )
 
-// proseDenial is the rule the served prose is held to: a chart's description,
-// a derived node's rationale or a caveat says what its own chart draws and
-// from which pages, and denies nothing about what any other schedule prints.
-// It is a tripwire, not a parser: it does not chase paraphrases, and fisc-tf5u
-// owns the claim that a sentence is true against the pages.
+// proseDenial is the tripwire the served prose is held to: a sentence says what
+// its own chart draws and denies nothing about other schedules.
 var proseDenial = regexp.MustCompile(`(?i)no published|not broken down|no schedule|nothing published|prints? none|in any published|nowhere`)
 
 var (
@@ -26,11 +23,8 @@ var (
 // servedText is one string the export serves, and where.
 type servedText struct{ where, words string }
 
-// servedProse is every string one export at dir serves in its own words: the
-// text of each page's markup, every string of each page's FISC_CONFIG, and
-// every string of each JSON file outside facts/ and extracted/, whose records
-// and page texts are the city's words. kinds counts the strings by where they
-// came from: "markup", "config" and "json".
+// servedProse is every string one export at dir serves in its own words; kinds
+// counts them by source: "markup", "config" and "json".
 func servedProse(dir string) (prose []servedText, kinds map[string]int, err error) {
 	kinds = map[string]int{}
 	var strs func(kind, where string, v any)
@@ -93,11 +87,7 @@ func servedProse(dir string) (prose []servedText, kinds map[string]int, err erro
 }
 
 // TestServedProseDeniesNothing holds every string servedProse collects from
-// one real export to proseDenial.
-//
-// COVERAGE IS THE COUNT OF STRINGS BY WHERE THEY CAME FROM, not of files
-// parsed: a page whose config stops decoding, or a walk that stops reaching
-// the columns, still parses, and the count of each kind is what sees it.
+// one real export to proseDenial; coverage is the count per kind.
 func TestServedProseDeniesNothing(t *testing.T) {
 	prose, kinds, err := servedProse(exportedSite(t))
 	if err != nil {

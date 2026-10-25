@@ -18,10 +18,8 @@ var (
 	yearLabel  = regexp.MustCompile(`<option value="([^"]+)"[^>]*>([^<]*)</option>`)
 )
 
-// TestEveryPageLabelsAYearAlike holds the year selects of the site Go writes
-// to one label per key: a year carried from one page to another reads the
-// same in both. Flows, Ledger, Departments and Capital each offer a year.
-//
+// TestEveryPageLabelsAYearAlike holds every year select Go writes to one label
+// per key.
 // Mutation: label capital's options with the fiscal year label alone rather
 // than through yearOptionOf -- capital.html's arms go red.
 func TestEveryPageLabelsAYearAlike(t *testing.T) {
@@ -63,15 +61,10 @@ func TestEveryPageLabelsAYearAlike(t *testing.T) {
 	}
 }
 
-// TestEachNavLinkListsTheYearsItsViewOffers holds every top-bar link of the
-// site Go writes to the page it opens: a link's data-years is that page's
-// year select's keys, in order, and a link with none opens a page with no
-// select. site/format.js carryYear reads data-years alone, so a link listing
-// a year its view lacks carries a reader into a refusal, and one listing
-// none never carries the year at all.
-//
-// Mutation: drop the data-years attribute from "topbar" in
-// site/chrome.html.tmpl, and every per-year link goes red.
+// TestEachNavLinkListsTheYearsItsViewOffers: a top-bar link's data-years is its
+// page's year select's keys, in order, and none where there is no select.
+// Mutation: drop data-years from "topbar" in site/chrome.html.tmpl, and every
+// per-year link goes red.
 func TestEachNavLinkListsTheYearsItsViewOffers(t *testing.T) {
 	dir := clientExport(t)
 	pages, err := filepath.Glob(filepath.Join(dir, "*.html"))

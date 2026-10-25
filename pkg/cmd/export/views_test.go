@@ -29,11 +29,8 @@ func committedViews(t *testing.T) ([]byte, *registry.Registry) {
 	return b, reg
 }
 
-// TestLoadViewsRefusesWhatItCannotResolve holds the loader to the file's own
-// faults: a key it does not know, and a name that resolves against nothing.
-// Each case is the committed file with one edit, so the edit is the only
-// thing wrong with it, and the refusal must name the entry it is about: the
-// fix is an edit to data/views.yaml, and the reader wants to know where.
+// TestLoadViewsRefusesWhatItCannotResolve: an unknown key or a name resolving
+// against nothing is refused, naming the entry. Each case is one edit.
 func TestLoadViewsRefusesWhatItCannotResolve(t *testing.T) {
 	b, reg := committedViews(t)
 	if _, err := decodeViews(b, reg); err != nil {
@@ -119,15 +116,10 @@ func TestExportRefusesAViewsFileItCannotLoad(t *testing.T) {
 	}
 }
 
-// TestASectionRowLabelIsTheRegistrys holds a section's closed row to
-// data/taxonomy.yaml: the view names the category, and the label the Line
-// cell displays is that category's document term, read from the registry
-// rather than spelled a second time; a row naming no category displays its
-// printed label. No committed view closes a section, so the declaration is
-// built here.
-//
-// Mutation: have sectionDecl.section store the slug in place of
-// c.DocumentTerm, and the first row goes red.
+// TestASectionRowLabelIsTheRegistrys: a section's closed row displays its
+// category's data/taxonomy.yaml document term, or its printed label without one.
+// Mutation: store the slug in place of c.DocumentTerm in sectionDecl.section,
+// and the first row goes red.
 func TestASectionRowLabelIsTheRegistrys(t *testing.T) {
 	_, reg := committedViews(t)
 	const slug = "fund-balance/excess-of-revenues"
@@ -143,11 +135,8 @@ func TestASectionRowLabelIsTheRegistrys(t *testing.T) {
 	}
 }
 
-// TestADeclarationFaultInAChartIsRefusedNotDropped holds views() to dropping
-// a view only for what was not built: a fault in what the file declares is
-// the file's, and `fisc export` must refuse it by name rather than ship the
-// site without it. Each case is the committed file with one edit, exported
-// over the real build.
+// TestADeclarationFaultInAChartIsRefusedNotDropped: a fault in what the file
+// declares is refused by name by `fisc export`, not dropped.
 func TestADeclarationFaultInAChartIsRefusedNotDropped(t *testing.T) {
 	built := builtStemsForTest(t)
 	for _, tc := range []struct {

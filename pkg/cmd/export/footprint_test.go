@@ -8,16 +8,9 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/structure"
 )
 
-// TestEveryPublishedDocumentSelectsExactlyItsCutsFootprint is the measurement
-// fisc-4qv2.4 rests on: a graph document's fact selection -- scope, kind and
-// column, project.Options' three selectors -- is exactly the facts the cuts and
-// residues declared on its scopes admit, in its column and its kinds. The
-// selection is the builders' own, project.SelectFacts; the footprint is
-// structure's Cut.Admits and Residue.Matches, a different question (which
-// cells a schedule prints) asked of the same facts. So a builder that narrowed
-// or widened its selection past the cut model, or a cut pinned to fund groups
-// its scope's document still draws, is red here. It names the documents that
-// draw a declared residue.
+// TestEveryPublishedDocumentSelectsExactlyItsCutsFootprint: a graph document's
+// project.SelectFacts selection is exactly the facts its scopes' cuts and
+// residues admit, in its column and kinds.
 func TestEveryPublishedDocumentSelectsExactlyItsCutsFootprint(t *testing.T) {
 	root := repoRootForTest(t)
 	_, facts, err := readFactStore(root)
@@ -84,11 +77,8 @@ func TestEveryPublishedDocumentSelectsExactlyItsCutsFootprint(t *testing.T) {
 	if documents == 0 {
 		t.Fatal("no published document is a single column, so nothing above compared")
 	}
-	// department-spending draws pp.85-125's one Transfers Out row, which sits
-	// in no cut: the residue is drawn, and it is the only one. The expansion
-	// selects every scope it stitches whole, that row and pp.186-209's CIP
-	// block with them, and cites neither: it reads only reserves and balances
-	// off pp.186-209, and the row prints a dash in both budget years.
+	// department-spending draws pp.85-125's one Transfers Out row, in no cut; the
+	// expansion selects that row and pp.186-209's CIP block but cites neither.
 	if residueDrawers != 6 {
 		t.Errorf("%d documents select a declared residue, want the four department-spending columns "+
 			"and the expansion's two", residueDrawers)
