@@ -292,6 +292,9 @@ Why, measured: [`docs/review-loop-evidence.md`](docs/review-loop-evidence.md) �
 - The doctrine is written down: `internal/check/vacuity.go` — a vacuous check is
   declared or `--strict` fails on it. `internal/check/check.go` sets out what
   these checks can and cannot witness.
+- **Adding, removing or re-scoping a check regenerates
+  `internal/check/testdata/committed-verdicts.json`** with the `cp` its
+  failing test prints, and the diff is read before it is committed.
 - **Ask what the fixture is hiding, not whether the test passes.** A test that is
   **green because the gate fired** earlier — rejected before it reached the code
   under test — is indistinguishable by exit code from one green because the

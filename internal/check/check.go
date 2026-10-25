@@ -78,6 +78,9 @@ type Check interface {
 // it saying nothing); then the fact store and its two independent witnesses;
 // then projection coverage; then the published graph, shape before
 // arithmetic; then the checks with nothing to check yet, in one place.
+//
+// internal/check/testdata/committed-verdicts.json pins every check
+// listed here, its status and its subject count over the committed corpus.
 func All() []Check {
 	return publish(
 		&artifactsMatchManifest{},
