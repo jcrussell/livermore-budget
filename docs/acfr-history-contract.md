@@ -181,8 +181,7 @@ statement, printed in millions — gives an ending General Fund balance of $87.1
 where p167's 2025 components sum to $87,043,576, a figure the audited statement
 (p54) prints to the dollar (`fisc-y242`). The p41 disagreement ships as a caveat
 on the `fund-balances` document. The two ties that do hold in the Statistical Section
-(p187↔p189, p193↔p192) are between pages this lane does not publish; see
-`docs/acfr-statistical-section.md`.
+(p187↔p189, p193↔p192) are between pages this lane does not publish.
 
 ## The reader surface
 

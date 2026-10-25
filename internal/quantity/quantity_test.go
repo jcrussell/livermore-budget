@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-// Every token below is real: read off the Statistical Section pages named in
-// docs/acfr-statistical-section.md, not invented to fit the grammar.
+// Every token below is real: read off the Statistical Section page named
+// beside it, not invented to fit the grammar.
 func TestPercentage(t *testing.T) {
 	for _, tok := range []string{
 		"2.5%",   // p177
