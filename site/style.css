@@ -1772,32 +1772,6 @@ noscript p {
 
 /* department.html. Only that page's rules go in this block. */
 
-.department-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 24px;
-  margin: 8px 0 16px;
-}
-
-.department-controls label {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  color: var(--ink-2);
-  font-size: 14px;
-}
-
-.department-controls select {
-  max-width: 100%;
-  font: inherit;
-  font-weight: 600;
-  color: var(--ink-1);
-  background: var(--surface-1);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 4px 8px;
-}
-
 .department-tie {
   color: var(--ink-2);
 }

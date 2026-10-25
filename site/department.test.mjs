@@ -194,24 +194,12 @@ describe("a spending row is a transfer because its links say so", () => {
 });
 
 describe("the page over the pinned columns", () => {
-  test("the hash opens one department of one column, and the selects say which", async () => {
+  test("the hash opens one department of one column, and the year select says which", async () => {
     const { document, window } = await booted("#y=fy2024-actual&d=department/public-works");
-    assert.equal(document.getElementById("department-select").value, "department/public-works");
     assert.equal(document.getElementById("year-select").value, "fy2024-actual");
     assert.equal(window.location.hash, "#y=fy2024-actual&d=department/public-works");
     assert.equal(document.getElementById("department-heading").textContent, "Public Works, FY 2023-24 actual");
     assert.equal(document.getElementById("department-refusal"), null);
-  });
-
-  test("choosing a department records it in the hash", async () => {
-    const { document, window, config } = await booted("#y=fy2026-adopted&d=department/public-works");
-    const select = document.getElementById("department-select");
-    select.value = "department/police-department";
-    select.dispatchEvent(new window.Event("change"));
-    await settle();
-    assert.equal(window.location.hash, "#y=fy2026-adopted&d=department/police-department");
-    assert.match(document.getElementById("department-heading").textContent, /^Police Department, /);
-    assert.equal(mod.hashOf(mod.parseHash(window.location.hash, config)), window.location.hash);
   });
 
   test("a hash naming no department or column is refused in words and the opening view shown", async () => {
@@ -222,7 +210,7 @@ describe("the page over the pinned columns", () => {
     assert.match(refusal.textContent, /department\/nope/);
     assert.equal(document.getElementById("year-select").value, config.years.at(-1).path.replace(/\.json$/, ""));
     const longest = mod.departmentBars(columnFixture(config.years.at(-1).path.replace(/\.json$/, "")), config).bars[0].id;
-    assert.equal(document.getElementById("department-select").value, longest);
+    assert.equal(document.querySelector('#department-list > li[data-selected="true"]')?.dataset.department, longest);
   });
 
   // Mutation: drop one row's tile in departmentSides, and each side's drawn
@@ -640,7 +628,6 @@ describe("opening a bar chooses its department for the sides and the hash", () =
     assert.notEqual(first, config.departments[0].id, "the config's first department is the longest, so the arm is never drawn");
     assert.deepEqual(openIds(document), [first]);
     assert.equal(window.location.hash, `#y=${config.years.at(-1).path.replace(/\.json$/, "")}&d=${first}`);
-    assert.equal(document.getElementById("department-select").value, first);
     const label = config.departments.find((d) => d.id === first).label;
     assert.ok(document.getElementById("department-heading").textContent.startsWith(label + ", "), "the sides are not the open bar's");
     const li = document.querySelector(`#department-list > li[data-department="${first}"]`);
@@ -655,7 +642,7 @@ describe("opening a bar chooses its department for the sides and the hash", () =
     await settle();
     assert.deepEqual(openIds(document), ["department/police-department"]);
     assert.equal(window.location.hash, "#y=fy2026-adopted&d=department/police-department");
-    assert.equal(document.getElementById("department-select").value, "department/police-department");
+    assert.equal(mod.hashOf(mod.parseHash(window.location.hash, config)), window.location.hash);
     assert.match(document.getElementById("department-heading").textContent, /^Police Department, /);
     const police = mod.departmentFigures(columnFixture("fy2026-adopted"), config, "department/police-department");
     assert.deepEqual(drawnOf(document, "funding").map((x) => x.id), police.funding.rows.map((r) => r.id), "the funding bars are not police's");
@@ -688,15 +675,6 @@ describe("opening a bar chooses its department for the sides and the hash", () =
     await settle();
     assert.deepEqual(openIds(document), []);
     assert.ok(!key(rowOf(document, "department/fire-department"), "a"), "a key other than Enter or Space was taken");
-  });
-
-  test("choosing a department in the select opens its bar", async () => {
-    const { document, window } = await booted("#y=fy2027-adopted&d=department/public-works");
-    const select = document.getElementById("department-select");
-    select.value = "department/city-council";
-    select.dispatchEvent(new window.Event("change"));
-    await settle();
-    assert.deepEqual(openIds(document), ["department/city-council"]);
   });
 
   test("a year switch redraws the bars from that column and keeps the department open", async () => {
@@ -763,7 +741,6 @@ describe("the open bar's link to its sides keeps the view", () => {
     assert.ok(e.defaultPrevented, "the link was followed as a fragment");
     assert.equal(window.location.hash, hash);
     assert.equal(document.getElementById("year-select").value, "fy2024-actual");
-    assert.equal(document.getElementById("department-select").value, "department/public-works");
     assert.equal(document.getElementById("department-heading").textContent, "Public Works, FY 2023-24 actual");
     const open = [...document.querySelectorAll('#department-list > li .department-row[aria-expanded="true"]')]
       .map((r) => r.parentElement.dataset.department);
@@ -775,37 +752,9 @@ describe("the open bar's link to its sides keeps the view", () => {
 // after show() resolves, as though a refused or overtaken view were shown,
 // and both arms go red naming the config's first department.
 describe("the opening view writes the hash only for a view it shows", () => {
-  test("a choice made while the opening column is fetched keeps its own hash", async () => {
-    const { html, config } = departmentPage();
-    const browser = installBrowser({ html });
-    await settle();
-    const newest = config.years.at(-1).path;
-    let release;
-    const plan = {};
-    for (const stem of PINNED) plan[stem + ".json"] = { doc: columnFixture(stem) };
-    const doc = plan[newest].doc;
-    plan[newest] = { settle: (h) => { release = () => h.resolve(doc); } };
-    browser.window.fetch = plannedFetch(plan, config.exported_by);
-    doc.generated_by = config.exported_by;
-    const booting = mod.boot(browser.window);
-    await settle();
-    assert.equal(typeof release, "function", "the opening column was never fetched");
-    const select = browser.document.getElementById("department-select");
-    const chosen = "department/police-department";
-    assert.notEqual(chosen, config.departments[0].id, "the chosen department is the config's first, so the arm is never drawn");
-    select.value = chosen;
-    select.dispatchEvent(new browser.window.Event("change"));
-    release();
-    await booting;
-    await settle();
-    assert.equal(browser.window.location.hash, `#y=${newest.replace(/\.json$/, "")}&d=${chosen}`);
-    assert.equal(select.value, chosen);
-    assert.match(browser.document.getElementById("department-heading").textContent, /^Police Department, /);
-  });
-
-  // Mutation: read the department select in a year's change, as one
-  // fromControls did for both selects, and the year chosen during the first
-  // fetch opens the config's first department.
+  // Mutation: carry the config's first department into a year's change, and
+  // the year chosen during the first fetch opens it rather than its longest
+  // bar.
   test("a year chosen while the opening column is fetched opens that year's longest bar", async () => {
     const { html, config } = departmentPage();
     const browser = installBrowser({ html });

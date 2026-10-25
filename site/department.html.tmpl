@@ -12,16 +12,6 @@
 
 <main id="department-main">
 
-<form class="department-controls" id="department-controls">
-  <label>Department
-    <select id="department-select">
-      {{- range .Departments}}
-      <option value="{{.ID}}">{{.Label}}</option>
-      {{- end}}
-    </select>
-  </label>
-</form>
-
 <section class="department-bars" aria-labelledby="bars-heading">
   <h2 id="bars-heading">Every department</h2>
   <details class="how-to-read" open>

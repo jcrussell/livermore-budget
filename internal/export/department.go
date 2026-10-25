@@ -89,8 +89,7 @@ type departmentMember struct {
 // departmentPageData is the department template's input.
 type departmentPageData struct {
 	chrome
-	Years       []departmentYear
-	Departments []departmentEntry
+	Years []departmentYear
 	// ConfigJSON is the page's config. json.Marshal escapes <, > and &, so the
 	// blob cannot close the script element it sits in.
 	ConfigJSON template.JS
@@ -248,9 +247,8 @@ func buildDepartmentPage(p pageCtx) (departmentPageData, error) {
 		return departmentPageData{}, err
 	}
 	return departmentPageData{
-		chrome:      ch,
-		Years:       years,
-		Departments: entries,
+		chrome: ch,
+		Years:  years,
 		// #nosec G203 -- blob is encoding/json's output, which escapes <, >
 		// and &, so it cannot terminate the script element it sits in.
 		ConfigJSON: template.JS(blob),

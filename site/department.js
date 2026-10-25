@@ -485,7 +485,6 @@ export async function boot(win = globalThis.window) {
     sayRefusal(doc, "department", "This page could not read its config: " + String(e));
     return;
   }
-  const deptSelect = /** @type {HTMLSelectElement | null} */ (doc.getElementById("department-select"));
   const column = columnLoader(win, config.exported_by);
 
   // Closing the open bar hides its detail but keeps the department.
@@ -510,7 +509,6 @@ export async function boot(win = globalThis.window) {
   const show = async (st) => {
     const ticket = ++shown;
     asked = { year: st.year, department: st.department };
-    if (deptSelect && st.department) deptSelect.value = st.department;
     selectYear(doc, yearKey(st.year));
     try {
       const col = await column(st.year);
@@ -524,7 +522,6 @@ export async function boot(win = globalThis.window) {
         barsOf = st.year;
       }
       const view = { year: st.year, department: st.department || longest };
-      if (deptSelect) deptSelect.value = view.department;
       sidesOf = "";
       tips.unpin(false);
       render(doc, config, col, view, groups, tips);
@@ -542,7 +539,6 @@ export async function boot(win = globalThis.window) {
       // The bars drawn are barsOf's year's, whichever view asked for them.
       if (barsOf) current = { year: barsOf, department: current.department };
       if (current.year) selectYear(doc, yearKey(current.year));
-      if (deptSelect && current.department) deptSelect.value = current.department;
       sayRefusal(doc, "department", "This department could not be drawn: " + String(e));
       return undefined;
     }
@@ -597,8 +593,8 @@ export async function boot(win = globalThis.window) {
       activate(ke);
     });
   }
-  // Before the opening column resolves the select shows a department nobody
-  // chose, so a year chosen then keeps the view's department.
+  // A year chosen while a view is still being fetched keeps that view's
+  // department.
   const asking = () => asked || current;
   const restore = async () => {
     const st = parseHash(win.location.hash, config);
@@ -610,9 +606,6 @@ export async function boot(win = globalThis.window) {
     const hash = hashOf(view);
     if (win.location.hash !== hash) win.history.replaceState(null, "", hash);
   };
-  if (deptSelect) {
-    deptSelect.addEventListener("change", () => choose({ year: asking().year, department: deptSelect.value }));
-  }
   wireYearSelect(doc, (key) => {
     const year = config.years.find((/** @type {any} */ y) => yearKey(y.path) === key);
     if (year) choose({ year: year.path, department: asking().department });
