@@ -39,26 +39,10 @@ func spendingFacts(t *testing.T, mutate func(f *fact.Fact)) []fact.Fact {
 	t.Helper()
 	out := make([]fact.Fact, 0, len(spendingCells))
 	for _, c := range spendingCells {
-		row := mapping.Row{Category: c.category, Department: c.division, Label: c.label}
-		rowPath := fact.RowPath(row)
-		columnPath := fact.ColumnPath(mapping.Column{}, DepartmentSpendingScope)
-		f := fact.Fact{
-			ID: fact.MakeID(testDoc, "dw-"+c.division, rowPath, c.label, columnPath,
-				testYear, testBasis),
-			DocID:       testDoc,
-			Page:        c.page,
-			RuleID:      "dw-" + c.division,
-			Kind:        c.kind,
-			Basis:       testBasis,
-			Scope:       DepartmentSpendingScope,
-			FiscalYear:  testYear,
-			RowPath:     rowPath,
-			RowLabel:    c.label,
-			Category:    c.category,
-			Department:  c.division,
-			ColumnPath:  columnPath,
-			AmountCents: c.cents,
-		}
+		f := printedFact(testDoc, "dw-"+c.division,
+			mapping.Row{Category: c.category, Department: c.division, Label: c.label}, c.label,
+			mapping.Column{}, DepartmentSpendingScope, c.kind, testColumn, c.cents)
+		f.Page = c.page
 		if mutate != nil {
 			mutate(&f)
 		}

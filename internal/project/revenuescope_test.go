@@ -56,33 +56,14 @@ func revenueDetailFacts(t *testing.T, scope string) []fact.Fact {
 	t.Helper()
 	out := make([]fact.Fact, 0, len(p127PropertyTaxes))
 	for _, r := range p127PropertyTaxes {
-		row := mapping.Row{Category: "taxes/property"}
-		rowPath := fact.RowPath(row)
-		columnPath := fact.ColumnPath(mapping.Column{FundGroup: "general", Fund: 100}, scope)
-		sign := vocab.SignPositive
+		f := printedFact(testDoc, "gf-rev-property-taxes", mapping.Row{Category: "taxes/property"},
+			r.label, mapping.Column{FundGroup: "general", Fund: 100}, scope, vocab.KindRevenue,
+			testColumn, r.cents)
+		f.Page = 127
 		if r.cents < 0 {
-			sign = vocab.SignContra
+			f.Sign = vocab.SignContra
 		}
-		out = append(out, fact.Fact{
-			ID: fact.MakeID(testDoc, "gf-rev-property-taxes", rowPath, r.label, columnPath,
-				testYear, testBasis),
-			DocID:       testDoc,
-			Page:        127,
-			RuleID:      "gf-rev-property-taxes",
-			Kind:        vocab.KindRevenue,
-			Basis:       testBasis,
-			Scope:       scope,
-			FiscalYear:  testYear,
-			RowPath:     rowPath,
-			RowLabel:    r.label,
-			Category:    "taxes/property",
-			ColumnPath:  columnPath,
-			FundGroup:   "general",
-			Fund:        fact.FundNumber(100),
-			Sign:        sign,
-			Units:       "dollars",
-			AmountCents: r.cents,
-		})
+		out = append(out, f)
 	}
 	return out
 }

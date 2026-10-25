@@ -26,6 +26,9 @@ const (
 	testBasis = vocab.BasisAdopted
 )
 
+// testColumn is the one column every single-column fixture prints.
+var testColumn = Column{FiscalYear: testYear, Basis: testBasis}
+
 // testOptions are the options the golden file was derived under.
 func testOptions() Options {
 	return Options{
@@ -148,26 +151,42 @@ func (c cellSpec) fact(t *testing.T) fact.Fact {
 	if c.page == 0 {
 		c.page = spinePage(c.group)
 	}
-	rowPath := fact.RowPath(mapping.Row{Category: c.category})
-	columnPath := fact.ColumnPath(mapping.Column{FundGroup: c.group}, testScope)
-	return fact.Fact{
-		ID:          fact.MakeID(testDoc, c.rule, rowPath, c.label, columnPath, c.year, testBasis),
-		DocID:       testDoc,
-		Page:        c.page,
-		RuleID:      c.rule,
-		Kind:        c.kind,
-		Basis:       testBasis,
-		Scope:       testScope,
-		FiscalYear:  c.year,
+	f := printedFact(testDoc, c.rule, mapping.Row{Category: c.category}, c.label,
+		mapping.Column{FundGroup: c.group}, testScope, c.kind, Column{FiscalYear: c.year, Basis: testBasis},
+		c.cents)
+	f.Page, f.Sign = c.page, c.sign
+	return f
+}
+
+// printedFact is one figure of a test document at a row and a column, its id
+// hashed from the same tuple the mapping engine hashes. Every fixture fact
+// is positive and in dollars until the caller says otherwise.
+func printedFact(doc, rule string, row mapping.Row, label string, col mapping.Column, scope string,
+	kind vocab.Kind, c Column, cents int64) fact.Fact {
+	rowPath := fact.RowPath(row)
+	columnPath := fact.ColumnPath(col, scope)
+	f := fact.Fact{
+		ID:          fact.MakeID(doc, rule, rowPath, label, columnPath, c.FiscalYear, c.Basis),
+		DocID:       doc,
+		RuleID:      rule,
+		Kind:        kind,
+		Basis:       c.Basis,
+		Scope:       scope,
+		FiscalYear:  c.FiscalYear,
 		RowPath:     rowPath,
-		RowLabel:    c.label,
-		Category:    c.category,
+		RowLabel:    label,
+		Category:    row.Category,
+		Department:  row.Department,
 		ColumnPath:  columnPath,
-		FundGroup:   c.group,
-		Sign:        c.sign,
+		FundGroup:   col.FundGroup,
+		Sign:        vocab.SignPositive,
 		Units:       "dollars",
-		AmountCents: c.cents,
+		AmountCents: cents,
 	}
+	if col.Fund != 0 {
+		f.Fund = fact.FundNumber(col.Fund)
+	}
+	return f
 }
 
 // ruleFor is the rule id the spine uses for each kind. It is part of the fact

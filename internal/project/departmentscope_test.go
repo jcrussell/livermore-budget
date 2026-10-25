@@ -72,28 +72,10 @@ func detailFacts(t *testing.T, scope string, withDepartment bool) []fact.Fact {
 			// department.
 			label = d.division + " Wages & Benefits"
 		}
-		rowPath := fact.RowPath(row)
-		columnPath := fact.ColumnPath(mapping.Column{FundGroup: "general"}, scope)
-		out = append(out, fact.Fact{
-			ID: fact.MakeID(testDoc, "div-"+d.division, rowPath, label, columnPath,
-				testYear, testBasis),
-			DocID:       testDoc,
-			Page:        167,
-			RuleID:      "div-" + d.division,
-			Kind:        vocab.KindExpenditure,
-			Basis:       testBasis,
-			Scope:       scope,
-			FiscalYear:  testYear,
-			RowPath:     rowPath,
-			RowLabel:    label,
-			Category:    "wages-and-benefits",
-			Department:  row.Department,
-			ColumnPath:  columnPath,
-			FundGroup:   "general",
-			Sign:        vocab.SignPositive,
-			Units:       "dollars",
-			AmountCents: d.cents,
-		})
+		f := printedFact(testDoc, "div-"+d.division, row, label, mapping.Column{FundGroup: "general"},
+			scope, vocab.KindExpenditure, testColumn, d.cents)
+		f.Page = 167
+		out = append(out, f)
 	}
 	return out
 }

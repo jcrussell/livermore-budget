@@ -25,33 +25,13 @@ func historyFacts(t *testing.T, scope, rule, label string, kind vocab.Kind,
 	category, group string, cents int64,
 ) []fact.Fact {
 	t.Helper()
-	row := mapping.Row{Category: category}
-	rowPath := fact.RowPath(row)
-	columnPath := fact.ColumnPath(mapping.Column{FundGroup: group}, scope)
 	cols := HistoryColumns()
 	out := make([]fact.Fact, 0, len(cols))
 	for i, c := range cols {
-		out = append(out, fact.Fact{
-			ID: fact.MakeID(acfrDoc, rule, rowPath, label, columnPath,
-				c.FiscalYear, c.Basis),
-			DocID:       acfrDoc,
-			Page:        167,
-			Offset:      10 * i,
-			Token:       "x",
-			RuleID:      rule,
-			Kind:        kind,
-			Basis:       c.Basis,
-			Scope:       scope,
-			FiscalYear:  c.FiscalYear,
-			RowPath:     rowPath,
-			RowLabel:    label,
-			Category:    category,
-			ColumnPath:  columnPath,
-			FundGroup:   group,
-			Sign:        vocab.SignPositive,
-			Units:       "dollars",
-			AmountCents: cents + int64(i),
-		})
+		f := printedFact(acfrDoc, rule, mapping.Row{Category: category}, label,
+			mapping.Column{FundGroup: group}, scope, kind, c, cents+int64(i))
+		f.Page, f.Offset, f.Token = 167, 10*i, "x"
+		out = append(out, f)
 	}
 	return out
 }

@@ -27,33 +27,12 @@ var trendColumnsFixture = []Column{
 // trendFacts renders one printed row across the four columns, in a fund.
 func trendFacts(t *testing.T, rule, label string, fund int, group string, cents [4]int64) []fact.Fact {
 	t.Helper()
-	row := mapping.Row{Category: "taxes/property"}
-	rowPath := fact.RowPath(row)
-	columnPath := fact.ColumnPath(mapping.Column{FundGroup: group, Fund: fund}, TrendsScope)
 	out := make([]fact.Fact, 0, len(trendColumnsFixture))
 	for i, c := range trendColumnsFixture {
-		out = append(out, fact.Fact{
-			ID: fact.MakeID(testDoc, rule, rowPath, label, columnPath,
-				c.FiscalYear, c.Basis),
-			DocID:       testDoc,
-			Page:        127,
-			Offset:      100*(fund%1000) + 10*i,
-			Token:       "x",
-			RuleID:      rule,
-			Kind:        vocab.KindRevenue,
-			Basis:       c.Basis,
-			Scope:       TrendsScope,
-			FiscalYear:  c.FiscalYear,
-			RowPath:     rowPath,
-			RowLabel:    label,
-			Category:    "taxes/property",
-			ColumnPath:  columnPath,
-			FundGroup:   group,
-			Fund:        fact.FundNumber(fund),
-			Sign:        vocab.SignPositive,
-			Units:       "dollars",
-			AmountCents: cents[i],
-		})
+		f := printedFact(testDoc, rule, mapping.Row{Category: "taxes/property"}, label,
+			mapping.Column{FundGroup: group, Fund: fund}, TrendsScope, vocab.KindRevenue, c, cents[i])
+		f.Page, f.Offset, f.Token = 127, 100*(fund%1000)+10*i, "x"
+		out = append(out, f)
 	}
 	return out
 }
