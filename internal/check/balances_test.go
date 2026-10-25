@@ -99,27 +99,6 @@ func runBalanceExcepting(t *testing.T, c local, exceptions []structure.BalanceEx
 	return runCheck(t, c, &Subject{Facts: facts, Files: files, BalanceExceptions: exceptions})
 }
 
-func wantPass(t *testing.T, res Result, subjects int) {
-	t.Helper()
-	if res.Status != StatusPass || res.Subjects != subjects {
-		t.Fatalf("%s over %d (%s), findings %s; want pass over %d",
-			res.Status, res.Subjects, res.Summary, said(res), subjects)
-	}
-}
-
-func wantFail(t *testing.T, res Result, want ...string) {
-	t.Helper()
-	got := said(res)
-	if res.Status != StatusFail {
-		t.Fatalf("%s (%s), findings %s; want fail saying %q", res.Status, res.Summary, got, want)
-	}
-	for _, w := range want {
-		if !strings.Contains(got, w) {
-			t.Errorf("findings %s do not say %q", got, w)
-		}
-	}
-}
-
 // replace returns lines with the one of category c set to cents.
 func replace(lines []balanceLine, c string, cents int64) []balanceLine {
 	out := slices.Clone(lines)

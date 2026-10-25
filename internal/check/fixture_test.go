@@ -446,3 +446,27 @@ func hasFinding(res Result, parts ...string) bool {
 	}
 	return false
 }
+
+// wantPass fails the test unless res passed over exactly subjects subjects.
+func wantPass(t *testing.T, res Result, subjects int) {
+	t.Helper()
+	if res.Status != StatusPass || res.Subjects != subjects {
+		t.Fatalf("%s over %d (%s), findings %s; want pass over %d",
+			res.Status, res.Subjects, res.Summary, said(res), subjects)
+	}
+}
+
+// wantFail fails the test unless res failed and its findings, taken together,
+// say every one of want.
+func wantFail(t *testing.T, res Result, want ...string) {
+	t.Helper()
+	got := said(res)
+	if res.Status != StatusFail {
+		t.Fatalf("%s (%s), findings %s; want fail saying %q", res.Status, res.Summary, got, want)
+	}
+	for _, w := range want {
+		if !strings.Contains(got, w) {
+			t.Errorf("findings %s do not say %q", got, w)
+		}
+	}
+}

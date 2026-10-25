@@ -1539,90 +1539,17 @@ func TestRuleFundsMatchTheirHeadings(t *testing.T) {
 		"      Total Water Utility Fund              1,000\n" +
 		"      Total Information Technology Fund     2,000\n"
 
-	t.Run("a rule whose printed total names its fund passes", func(t *testing.T) {
-		res := resultFor(t, runChecks(t, fundRuleSubject(t, page, []mapping.Rule{
-			fundRule("water", 500, "enterprise", "Total Water Utility Fund"),
-			fundRule("it", 700, "internal-service", "Total Information Technology Fund"),
-		}, nil)), id)
-		if res.Status != StatusPass {
-			t.Fatalf("status = %s (%s), want pass", res.Status, res.Summary)
-		}
-		if res.Subjects != 2 {
-			t.Errorf("subjects = %d, want 2 fund-bearing rules", res.Subjects)
-		}
-	})
-
-	// Both funds exist and match the columns' fund group, and the column sums
-	// are identical, so every other check passes; only the printed name differs.
-	t.Run("a fund swapped for another of the same type fails", func(t *testing.T) {
+	// The swapped fund exists and matches the columns' fund group, and the
+	// column sums are identical, so every other check passes; only the printed
+	// name differs. The mismatch is one finding, not also "anchored to nothing
+	// on the page".
+	t.Run("a fund swapped for another of the same type fails once", func(t *testing.T) {
 		res := resultFor(t, runChecks(t, fundRuleSubject(t, page, []mapping.Rule{
 			// Reads the Water block and files it under Information Technology.
 			fundRule("water", 700, "internal-service", "Total Water Utility Fund"),
 			fundRule("it", 700, "internal-service", "Total Information Technology Fund"),
 		}, nil)), id)
-		if res.Status != StatusFail {
-			t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
-		}
-		if !hasFinding(res, "mis-assigned inside its own type") {
-			t.Errorf("findings %v do not name the hazard", res.Findings)
-		}
-	})
-
-	t.Run("a printed name no fund claims fails", func(t *testing.T) {
-		res := resultFor(t, runChecks(t, fundRuleSubject(t,
-			"      Total Wastewater Utility            1,000\n", []mapping.Rule{
-				fundRule("ww", 500, "enterprise", "Total Wastewater Utility"),
-			}, nil)), id)
-		if res.Status != StatusFail {
-			t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
-		}
-		if !hasFinding(res, "anchored to nothing on the page") {
-			t.Errorf("findings %v do not say the number is unanchored", res.Findings)
-		}
-	})
-
-	// Clause 2: nine of the schedule's 69 funds print zero in both years, so
-	// dropping one moves no sum, and clause 1 inspects only rules that exist.
-	t.Run("a printed fund total no rule claims fails", func(t *testing.T) {
-		res := resultFor(t, runChecks(t, fundRuleSubject(t, page, []mapping.Rule{
-			fundRule("water", 500, "enterprise", "Total Water Utility Fund"),
-		}, nil)), id)
-		if res.Status != StatusFail {
-			t.Fatalf("status = %s (%s), want fail: the page prints an Information "+
-				"Technology total and no rule reads it", res.Status, res.Summary)
-		}
-		if !hasFinding(res, "no rule or rollup declares that total") {
-			t.Errorf("findings %v do not name the unmapped section", res.Findings)
-		}
-	})
-
-	// A rule mapping a fund section with fund_group-only columns (p76's shape)
-	// still claims its own printed total.
-	t.Run("a rule with no fund of its own still claims its printed total", func(t *testing.T) {
-		noFund := fundRule("it", 700, "internal-service", "Total Information Technology Fund")
-		noFund.Parts[0].Columns[0].Fund = 0 // the group is declared, the fund is not
-
-		res := resultFor(t, runChecks(t, fundRuleSubject(t, page, []mapping.Rule{
-			fundRule("water", 500, "enterprise", "Total Water Utility Fund"),
-			noFund,
-		}, nil)), id)
-		if res.Status != StatusPass {
-			t.Fatalf("status = %s (%s), want pass: both printed totals are mapped",
-				res.Status, res.Summary)
-		}
-		if hasFinding(res, "no rule or rollup declares that total") {
-			t.Errorf("a section a rule maps is reported as unclaimed:\n%s",
-				said(res))
-		}
-	})
-
-	// A mismatch is one finding, not also "anchored to nothing on the page".
-	t.Run("a fund mismatch produces exactly one finding", func(t *testing.T) {
-		res := resultFor(t, runChecks(t, fundRuleSubject(t, page, []mapping.Rule{
-			fundRule("water", 700, "internal-service", "Total Water Utility Fund"),
-			fundRule("it", 700, "internal-service", "Total Information Technology Fund"),
-		}, nil)), id)
-
+		wantFail(t, res, "mis-assigned inside its own type")
 		mismatches := 0
 		for _, f := range res.Findings {
 			if f.Subject == "water" {
@@ -1640,43 +1567,64 @@ func TestRuleFundsMatchTheirHeadings(t *testing.T) {
 		}
 	})
 
+	// A rule mapping a fund section with fund_group-only columns (p76's shape)
+	// still claims its own printed total.
+	noFund := fundRule("it", 700, "internal-service", "Total Information Technology Fund")
+	noFund.Parts[0].Columns[0].Fund = 0 // the group is declared, the fund is not
 	// pp.127-130's shape: one fund split by category across rules, named once
 	// by the rollup that covers them.
-	t.Run("a fund named only by a rollup that covers the rules passes", func(t *testing.T) {
-		gf := func(id, totalRow string) mapping.Rule {
-			return fundRule(id, 100, "general", totalRow)
-		}
-		res := resultFor(t, runChecks(t, fundRuleSubject(t,
-			"      Total Property Taxes                 1,000\n"+
-				"      Total Sales Taxes                    2,000\n"+
-				"      Total General Fund                   3,000\n",
-			[]mapping.Rule{gf("prop", "Total Property Taxes"), gf("sales", "Total Sales Taxes")},
-			[]mapping.Rollup{{ID: "gf", Page: 1, TotalRow: "Total General Fund",
-				Covers: []string{"prop", "sales"}}})), id)
-		if res.Status != StatusPass {
-			t.Fatalf("status = %s (%s), want pass: `Total General Fund` names fund 100 "+
-				"and covers both rules", res.Status, res.Summary)
-		}
-	})
-
-	// The rollup covering only one of them: the uncovered rule is anchored to
-	// nothing printed.
-	t.Run("a rule the naming rollup does not cover fails", func(t *testing.T) {
-		gf := func(id, totalRow string) mapping.Rule {
-			return fundRule(id, 100, "general", totalRow)
-		}
-		res := resultFor(t, runChecks(t, fundRuleSubject(t,
-			"      Total Property Taxes                 1,000\n"+
-				"      Total Sales Taxes                    2,000\n"+
-				"      Total General Fund                   3,000\n",
-			[]mapping.Rule{gf("prop", "Total Property Taxes"), gf("sales", "Total Sales Taxes")},
-			[]mapping.Rollup{{ID: "gf", Page: 1, TotalRow: "Total General Fund",
-				Covers: []string{"prop"}}})), id)
-		if res.Status != StatusFail {
-			t.Fatalf("status = %s (%s), want fail: nothing printed names fund 100 for "+
-				"the sales rule", res.Status, res.Summary)
-		}
-	})
+	const gfPage = "" +
+		"      Total Property Taxes                 1,000\n" +
+		"      Total Sales Taxes                    2,000\n" +
+		"      Total General Fund                   3,000\n"
+	gfRules := []mapping.Rule{
+		fundRule("prop", 100, "general", "Total Property Taxes"),
+		fundRule("sales", 100, "general", "Total Sales Taxes"),
+	}
+	gfRollup := func(covers ...string) []mapping.Rollup {
+		return []mapping.Rollup{{ID: "gf", Page: 1, TotalRow: "Total General Fund", Covers: covers}}
+	}
+	for _, c := range []struct {
+		name     string
+		page     string
+		rules    []mapping.Rule
+		rollups  []mapping.Rollup
+		status   Status
+		subjects int    // for a pass
+		finding  string // for a fail; empty asserts the status alone
+	}{
+		{name: "a rule whose printed total names its fund passes", page: page, rules: []mapping.Rule{
+			fundRule("water", 500, "enterprise", "Total Water Utility Fund"),
+			fundRule("it", 700, "internal-service", "Total Information Technology Fund"),
+		}, status: StatusPass, subjects: 2},
+		{name: "a printed name no fund claims fails",
+			page:   "      Total Wastewater Utility            1,000\n",
+			rules:  []mapping.Rule{fundRule("ww", 500, "enterprise", "Total Wastewater Utility")},
+			status: StatusFail, finding: "anchored to nothing on the page"},
+		// Clause 2: nine of the schedule's 69 funds print zero in both years, so
+		// dropping one moves no sum, and clause 1 inspects only rules that exist.
+		{name: "a printed fund total no rule claims fails", page: page,
+			rules:  []mapping.Rule{fundRule("water", 500, "enterprise", "Total Water Utility Fund")},
+			status: StatusFail, finding: "no rule or rollup declares that total"},
+		{name: "a rule with no fund of its own still claims its printed total", page: page,
+			rules:  []mapping.Rule{fundRule("water", 500, "enterprise", "Total Water Utility Fund"), noFund},
+			status: StatusPass, subjects: 1},
+		{name: "a fund named only by a rollup that covers the rules passes", page: gfPage,
+			rules: gfRules, rollups: gfRollup("prop", "sales"), status: StatusPass, subjects: 2},
+		// The rollup covering only one of them: the uncovered rule is anchored
+		// to nothing printed.
+		{name: "a rule the naming rollup does not cover fails", page: gfPage,
+			rules: gfRules, rollups: gfRollup("prop"), status: StatusFail},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			res := resultFor(t, runChecks(t, fundRuleSubject(t, c.page, c.rules, c.rollups)), id)
+			if c.status == StatusPass {
+				wantPass(t, res, c.subjects)
+			} else {
+				wantFail(t, res, c.finding)
+			}
+		})
+	}
 
 	// A two-fund rule is held to a heading naming them in column order, as
 	// p81 heads "Airport Fund" and "Water Fund".
