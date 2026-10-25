@@ -5,22 +5,13 @@
 #@cite     "General Fund Expenditures by Major Category", PDF pp. 167-170
 #@cite     "Departmentwide Expenditures with Funding Sources", PDF pp. 85-125
 #
-# TWO TIERS, AND THE FACTS NAME THE LOWER ONE. 29 mixed-case DIVISIONS grouped
-# under 11 ALL-CAPS DEPARTMENTS. A mapping row's `department:` field carries the
-# DIVISION slug, because the division is the level the object rows are printed
-# under and the level whose `Total` the document prints beside them. The
-# department is reached through the division's `department:` field here, and it
-# is what the `<DEPARTMENT> TOTAL` rollups assert.
+# TWO TIERS: DIVISIONS (mixed case) grouped under DEPARTMENTS (ALL CAPS). A
+# mapping row's `department:` normally carries the DIVISION slug, the level
+# whose rows and `Total` print together; the `<DEPARTMENT> TOTAL` rollups assert
+# the department. pp.85-125's funding-source rows name a DEPARTMENT.
 #
-# TWO SCHEDULES PRINT THIS AXIS AND THEY DO NOT AGREE ON ITS SIZE, which is why
-# every DIVISION entry's `pages` names both where it applies. The DEPARTMENT
-# entries below still name pp.167-170 only, though each department's ALL-CAPS
-# heading is printed on its pp.85-125 page too -- fisc-h2ls, and note that
-# TestEveryDivisionIsPrintedOnItsPages covers divisions and not departments, so
-# nothing catches it. pp.167-170 are a GENERAL
-# FUND schedule and print 23 divisions. pp.85-125 are the whole department,
-# whatever fund pays for it, and print 29 — the same 23, matched by label
-# exactly, plus six that no General Fund schedule can show because their money
+# pp.167-170 are a General Fund schedule and print 23 divisions; pp.85-125
+# print the whole department and 29 — the same 23 by label plus six whose money
 # is mostly not the General Fund's:
 #
 #   Risk Management          p93   under CITY ATTORNEY
@@ -30,63 +21,21 @@
 #   Horizons                 p119  under POLICE DEPARTMENT
 #   Water Resources          p124  under PUBLIC WORKS
 #
-# The 23 match by LABEL and not merely by slug, wrapped ones included: both
-# schedules wrap "Community Development Admin", "Housing & Human Services",
-# "Innovation & Economic Devel" and "Public Works Administration" across two
-# lines. Three of the four break at the same point on both. THE FOURTH DOES NOT
-# -- p101 gives "Community Development" / "Admin" where p169 gives "Community" /
-# "Development Admin" -- so a rule anchoring on either page's head is anchoring
-# on that page and not on the label. Each entry's note records its own breaks.
-# No entry needs an alias, and none has one.
+# Department entries name pp.167-170 only (fisc-h2ls). Four labels wrap; p101
+# and p169 break "Community Development Admin" at different points.
 #
-# TWO NAMESPACES, NOT ONE, AND THAT IS FORCED BY THE PAGE. Five departments
-# share a name with a division beneath them, all five matching on slug and on
-# label:
+# Slugs are unique WITHIN each tier, not across: five departments share their
+# division's printed name, and a unique slug would be a name the city does not
+# print. No slug in either tier may equal a data/taxonomy.yaml category slug,
+# because internal/fact.RowPath joins the two on a "/".
 #
-#   CITY COUNCIL            p167:7   / City Council            p167:9
-#   CITY MANAGER            p167:17  / City Manager            p167:19
-#   CITY ATTORNEY           p167:33  / City Attorney           p167:35
-#   GENERAL SERVICES        p167:63  / General Services        p168:7
-#   ADMINISTRATIVE SERVICES p168:15  / Administrative Services p168:17
+# Everything here is published: slugs are mechanical transforms of printed
+# labels and the parentage is printed.
 #
-# So slugs are unique WITHIN each tier and deliberately not across them:
-# requiring that would mean inventing five names the city does not print, and an
-# invented name in a registry whose whole claim is "this is what the document
-# says" is the defect this project exists to refuse. `city-council` naming both
-# a department and its sole division is the document's own structure.
-#
-# WHAT DOES NOT RELAX: no slug in EITHER tier may equal a data/taxonomy.yaml
-# category slug. A fact's row_path joins the slug its `department` field holds
-# to its category on a "/" (internal/fact.RowPath), so a string spanning those
-# two AXES is genuinely ambiguous, where a department and a division sharing a
-# name is not.
-#
-# The department field holds both tiers: pp.167-170 and pp.85-125's upper
-# block name a DIVISION, and pp.85-125's funding-source rows name a
-# DEPARTMENT. So a colliding taxonomy slug takes a `-function` suffix, on that
-# side because every slug here is a transform of a printed heading.
-#
-# EVERYTHING HERE IS PUBLISHED. The slugs are mechanical transforms of printed
-# labels, and the parentage is printed too — each ALL-CAPS heading opens its
-# department, its divisions follow, and `<DEPARTMENT> TOTAL` closes it. Nothing
-# in this file is derived, which is why no entry carries a rationale.
-#
-# THREE THINGS THE PAGES DO THAT A READER WOULD NOT EXPECT, recorded rather
-# than smoothed over:
-#
-#   - PUBLIC WORKS (p169:47) closes as "PUBLIC WORKS DEPARTMENT TOTAL"
-#     (p170:11). Every other department's total row is its heading plus
-#     " TOTAL". A rule that derives the anchor from the heading is wrong here.
-#   - INNOVATION & ECONOMIC DEVELOPMENT (p167:53) closes as
-#     "INNOVATION & ECONOMIC DEVELOPEMENT TOTAL" (p167:61-62) — the city's own
-#     misspelling, and wrapped across two lines. `document_term` is the
-#     heading's spelling; the total row's is the rule file's business.
-#   - Fire Administration prints ONE object row (Services & Supplies, p170:15).
-#     The department is a contract service and has no wages line at all, so
-#     nothing may assume a division carries two or three object rows.
-#
-# Three departments and three divisions straddle a page break; `pages` lists
-# every page an entry is printed on, in ascending order.
+# Page surprises: PUBLIC WORKS closes as "PUBLIC WORKS DEPARTMENT TOTAL"
+# (p170:11); INNOVATION & ECONOMIC DEVELOPMENT's total misspells DEVELOPEMENT
+# and wraps (p167:61-62); Fire Administration prints one object row (p170:15).
+# `pages` lists every page an entry is printed on, ascending.
 
 schema_version: 1
 

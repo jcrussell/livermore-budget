@@ -6,70 +6,40 @@
 #@cite     Appendix, "Relationship Between Funds and Departments", PDF pp. 255-257
 #@cite     Appendix, "Description of Funds", PDF pp. 258-261
 #
-# `number` and `name` and `type` are PUBLISHED: they are read off the appendix
-# list of funds (pp. 253-254) and confirmed against the fund-by-department
-# tables (pp. 255-257), which print the same 112 numbers in a cleaner layout.
-# `constraint_tier` and `restriction_note` are DERIVED — our reading of the
-# "Description of Funds" narrative (pp. 258-261) — and must not be presented as
-# something the city printed. Where the document does not support a
-# classification the tier is `unknown`; a later bead resolves those.
+# `number`, `name` and `type` are PUBLISHED: read off pp.253-254 and confirmed
+# against pp.255-257. `constraint_tier` and `restriction_note` are DERIVED, our
+# reading of pp.258-261, and must not be presented as printed; unsupported tiers
+# are `unknown`.
 #
-# Scope: the budget excludes fiduciary funds (Budget Book p. 51), and the
-# appendix accordingly numbers none. Every fund here is a budgeted fund. The
-# ACFR's fiduciary activity therefore has NO fund-number join into this file.
+# The budget excludes fiduciary funds (p51), so the ACFR's fiduciary activity
+# has no fund-number join into this file.
 #
-# Type mapping. The appendix has eight section headings; the schema has seven
-# types. "CAPITAL IMPROVEMENT PROGRAM FUNDS" (811-840) is not a GASB fund type
-# — p258 lists only five governmental types and says "Funds in red are CIP
-# funds", i.e. each CIP fund is the capital-project side of an operating fund.
-# Those are recorded here as `type: capital`. CIP funds that sit inside a
-# proprietary fund keep that fund's type: 601/611/621/641 are `enterprise` and
-# 731/741 are `internal-service`, exactly as the appendix prints them.
-# The CIP-fund -> operating-fund pairing is printed in the CIP funding bridge
-# table at p. 222 and is recorded in each CIP fund's restriction_note.
+# CIP funds (811-840) are `type: capital`; CIP funds inside a proprietary fund
+# keep its type (601/611/621/641 enterprise, 731/741 internal-service), as the
+# appendix prints them. Each CIP fund's restriction_note records its p222
+# operating-fund pairing.
 #
-# `major` is set only where the budget book itself says so: the fund-balance
-# schedules "by Major and Aggregate Non-Major Funds" (pp. 68-75) list General
-# Fund, Low Income Housing Fund, and the Airport / Stormwater / Wastewater /
-# Water enterprises under "Major Funds", and p255-256 label them the same way.
-# It is omitted (unknown) for the internal service funds — those schedules do
-# group them under "Major Funds", but an internal service fund is never a major
-# fund in GASB terms, so the label is presentational and we do not repeat it.
-# It is also omitted for the four enterprise CIP funds (601/611/621/641), which
-# were created in FY 2024-25 (footnote, p. 68) and appear in no such schedule.
+# `major` is set only where pp.68-75 and pp.255-256 say so, and omitted for
+# internal service funds and for 601/611/621/641 (created FY 2024-25, p68).
 #
-# `aliases` are the OTHER spellings the city prints for the same fund, each
-# with the page it was read from. They are PUBLISHED text and are recorded
-# verbatim, including the appendix's "Community Beneift Fund" at 291: a typo
-# the city printed is stated here, not silently corrected. Every schedule that
-# names a fund in prose rather than by number resolves through
-# `registry.FundByLabel`, which matches EXACTLY — no prefix, no fuzzy, no case
-# folding — and errors on a label no fund claims. Two funds may not claim one
-# label; funds.yaml does not load if they do.
+# `aliases` are other spellings the city prints, verbatim with their page,
+# typos included ("Community Beneift Fund", 291). registry.FundByLabel matches
+# EXACTLY and errors on an unclaimed label; two funds may not claim one label.
 #
-# Exactness is not fussiness. p76's transfer summary abbreviates to "Low
-# Income Hsng", "Traffic Imp Fee", "Host Comm Impact", "Measure D" and "State
-# Gas Tax", and each of those heads BOTH an operating fund and its CIP twin
-# (200/812, 510/823, 282/820, 550/828, 560/834). A prefix match answers each
-# one twice. Which fund p76 means is settled by arithmetic, in the fund-balance
-# schedules' "Uses of Funds" pages (pp. 187, 193, 199, 205), whose "Transfers
-# Out" column excludes transfers to CIP funds and is printed per fund group:
+# p76's abbreviations each head an operating fund and its CIP twin
+# (200/812, 510/823, 282/820, 550/828, 560/834). The fund-balance "Uses of
+# Funds" pages (pp.187, 193, 199, 205) settle which, per fund group:
 #
-#   - the CIP funds transfer out NOTHING in any of the four years, so no row
-#     on p76 leaves a CIP fund;
-#   - the capital funds' Transfers Out — 181,971 / 210,500 / 211,150 /
-#     217,485 — is p76's Traffic Imp Fee plus State Gas Tax plus Measure D,
-#     exactly, in every year. Those three are 510, 560 and 550;
-#   - the special revenue funds' Transfers Out — 1,083,617 / 1,259,206 /
-#     817,050 / 800,550 — is p76's Low Income Hsng, Home Grant, State Grant,
-#     Downtown Revital, CASP Fee, Downtown LMD, Other LMDs, Open Space and
-#     Host Comm Impact, exactly, in every year. So "Low Income Hsng" is 200
-#     and "Host Comm Impact" is 282, and "Open Space" is the special revenue
-#     fund 300 rather than the permanent fund 471 (the permanent funds
-#     transfer out nothing either).
+#   - the CIP funds transfer out nothing in any year;
+#   - the capital funds' Transfers Out (181,971 / 210,500 / 211,150 / 217,485)
+#     is Traffic Imp Fee + State Gas Tax + Measure D exactly: 510, 560, 550;
+#   - the special revenue funds' Transfers Out (1,083,617 / 1,259,206 /
+#     817,050 / 800,550) is Low Income Hsng, Home Grant, State Grant, Downtown
+#     Revital, CASP Fee, Downtown LMD, Other LMDs, Open Space and Host Comm
+#     Impact exactly: so 200, 282, and Open Space 300 rather than 471.
 #
-# Adding an alias asserts something checkable about a printed page. Where the
-# term alone does not say which fund it names — 211's "Police Evidence", 286's
+# Where a term alone does not say which fund it names, the alias carries a
+# `note` holding the evidence.
 # "CASP Fee" — the alias carries a `note` holding the evidence, and says so
 # when the last step is our inference rather than the document's word.
 
