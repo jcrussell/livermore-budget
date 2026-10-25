@@ -11,10 +11,9 @@ import (
 	"sort"
 	"strings"
 
-	yaml "go.yaml.in/yaml/v3"
-
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/hint"
+	"github.com/jcrussell/livermore-budget/internal/strictyaml"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
@@ -117,24 +116,12 @@ func LoadDir(fsys fs.FS, dir string) ([]*File, error) {
 // parse decodes and validates a rule file.
 func parse(r io.Reader, p string) (*File, error) {
 	var f File
-	dec := yaml.NewDecoder(r)
 	// Unknown fields are errors, so a row that lost its `page` to a typo fails.
-	dec.KnownFields(true)
-	if err := dec.Decode(&f); err != nil {
-		if errors.Is(err, io.EOF) {
-			return nil, &parseError{Path: p, Msg: "file is empty"}
-		}
-		return nil, &parseError{Path: p, Msg: err.Error()}
-	}
-
-	// A second `---` document is refused rather than silently discarded.
-	var extra File
-	if err := dec.Decode(&extra); err == nil {
-		return nil, hint.With(
-			&parseError{Path: p, Msg: "file contains more than one YAML document"},
+	if err := strictyaml.Decode(r, &f); errors.Is(err, strictyaml.ErrMultipleDocuments) {
+		return nil, hint.With(&parseError{Path: p, Msg: err.Error()},
 			"put each document in its own file; every rule in a file must "+
 				"belong to the doc_id declared at the top")
-	} else if !errors.Is(err, io.EOF) {
+	} else if err != nil {
 		return nil, &parseError{Path: p, Msg: err.Error()}
 	}
 	f.Path = p

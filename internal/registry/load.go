@@ -2,18 +2,15 @@ package registry
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"maps"
 	"regexp"
 	"slices"
 	"strings"
 
-	yaml "go.yaml.in/yaml/v3"
-
 	"github.com/jcrussell/livermore-budget/internal/hint"
+	"github.com/jcrussell/livermore-budget/internal/strictyaml"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
@@ -80,21 +77,9 @@ func decodeFile(fsys fs.FS, name string, v any) error {
 	if err != nil {
 		return fmt.Errorf("read %s: %w", name, err)
 	}
-	dec := yaml.NewDecoder(bytes.NewReader(b))
 	// An unknown key is a hard error: a misspelled `assignabel: false` would
 	// publish a rollup as a spendable category.
-	dec.KnownFields(true)
-	if err := dec.Decode(v); err != nil {
-		if errors.Is(err, io.EOF) {
-			return &Error{File: name, Msg: "file is empty"}
-		}
-		return &Error{File: name, Msg: err.Error()}
-	}
-	// Refuse a second `---` document rather than silently discard it.
-	var extra any
-	if err := dec.Decode(&extra); err == nil {
-		return &Error{File: name, Msg: "file contains more than one YAML document"}
-	} else if !errors.Is(err, io.EOF) {
+	if err := strictyaml.Decode(bytes.NewReader(b), v); err != nil {
 		return &Error{File: name, Msg: err.Error()}
 	}
 	return nil

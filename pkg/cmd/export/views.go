@@ -2,20 +2,17 @@ package export
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 
-	yaml "go.yaml.in/yaml/v3"
-
 	"github.com/jcrussell/livermore-budget/internal/export"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/registry"
+	"github.com/jcrussell/livermore-budget/internal/strictyaml"
 )
 
 // viewsFile is the one source of every authored field of an [export.View];
@@ -108,20 +105,9 @@ func loadViews(fsys fs.FS, reg *registry.Registry) ([]viewDecl, error) {
 // decodeViews is loadViews over the file's bytes.
 func decodeViews(b []byte, reg *registry.Registry) ([]viewDecl, error) {
 	var doc viewsDoc
-	dec := yaml.NewDecoder(bytes.NewReader(b))
 	// An unknown key is a hard error: a misspelled `split_caps:` would ship
 	// every split uncapped.
-	dec.KnownFields(true)
-	if err := dec.Decode(&doc); err != nil {
-		if errors.Is(err, io.EOF) {
-			return nil, &viewsError{Msg: "file is empty"}
-		}
-		return nil, &viewsError{Msg: err.Error()}
-	}
-	var extra any
-	if err := dec.Decode(&extra); err == nil {
-		return nil, &viewsError{Msg: "file contains more than one YAML document"}
-	} else if !errors.Is(err, io.EOF) {
+	if err := strictyaml.Decode(bytes.NewReader(b), &doc); err != nil {
 		return nil, &viewsError{Msg: err.Error()}
 	}
 	if doc.SchemaVersion != viewsSchemaVersion {
