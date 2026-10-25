@@ -168,7 +168,7 @@ Go only — neither the PDFs nor Python are needed to build, test or verify.
 ```bash
 make build        # bin/fisc
 make test         # always -race
-make pre-commit   # fmt, vet, narration, beadrefs, doccheck, test, verify, lint, js
+make pre-commit   # fmt, vet, narration, beadrefs, doccheck, test, facts, verify, lint, js
 make narration    # refuse history in Go comments, in the beads and in the memories
 make beadrefs     # refuse a fisc-* id that names no bead
 make doccheck     # refuse a citation naming no section of this file
@@ -176,8 +176,8 @@ make site         # static site into dist/ (gitignored)
 make extract      # re-extract from PDFs; needs poppler-utils and git lfs pull
 ```
 
-- **Run `make pre-commit` yourself.** It runs `fisc verify --strict`; the Go
-  tests do not re-run the checks over the committed corpus.
+- **Run `make pre-commit` yourself.** It rebuilds `facts/facts.jsonl` and
+  compares it, and runs `fisc verify --strict`; the Go tests do neither.
 - `./bin/fisc verify` is the gate. `--full` adds the PDF hash check and needs the
   LFS files.
 - Rebuild and compare, never in place: `./bin/fisc build --output

@@ -734,7 +734,7 @@ export function foldable(d) {
  * @returns {"open" | "fold" | ""}
  */
 export function glyphAt(doc, front, d) {
-  if (!front || !doc || !front.has(d.id) || !splitsHere(d).length) return "";
+  if (!front || !doc || !front.has(d.id) || core.isAggregate(d.id) || !core.splitsOf(doc, d.id).length) return "";
   return core.openSplitOf(doc, front, d.id) === "" ? "open" : "fold";
 }
 

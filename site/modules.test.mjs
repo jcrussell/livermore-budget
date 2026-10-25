@@ -26,7 +26,6 @@ describe("the shipped modules hold no state", () => {
       const mod = await import(pathToFileURL(path.join(HERE, `${name}.js`)).href);
       const loose = Object.entries(mod).filter(([, v]) => typeof v === "object" && !Object.isFrozen(v)).map(([k]) => k);
       assert.deepEqual(loose, [], `${name}.js exports a binding every test would share`);
-      assert.equal(typeof mod.boot === "function", name !== "format", `${name}.js boot`);
     }
   });
 

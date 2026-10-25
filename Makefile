@@ -296,11 +296,16 @@ codehash: ## Fingerprint FILES=... by code alone, ignoring comments
 	@go run ./tools/codehash $(FILES)
 
 .PHONY: pre-commit
-pre-commit: fmt vet narration beadrefs doccheck test verify lint-if-available js-if-available ## Format, vet, narration, beadrefs, doccheck, test, verify, lint, and check app.js
+pre-commit: fmt vet narration beadrefs doccheck test facts verify lint-if-available js-if-available ## Format, vet, narration, beadrefs, doccheck, test, facts, verify, lint, and check app.js
 
-# The Go tests do not re-run the checks over the committed corpus: this does,
-# as CI's verify job does.
-.PHONY: verify
+# The Go tests do not re-run the checks over the committed corpus, nor
+# rebuild it from the mappings: these do, as CI's facts and verify jobs do.
+.PHONY: facts verify
+facts: build ## Rebuild facts.jsonl from the mappings and compare it to the committed one
+	./$(OUT) build --output bin/facts-rebuilt.jsonl
+	@cmp -s bin/facts-rebuilt.jsonl facts/facts.jsonl || { \
+		echo "facts/facts.jsonl is not what the mappings produce: rebuild it and read the diff" >&2; exit 1; }
+
 verify: build ## Run fisc verify --strict over the committed corpus
 	./$(OUT) verify --strict
 

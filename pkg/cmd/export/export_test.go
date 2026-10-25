@@ -2542,6 +2542,9 @@ func TestEveryProjectionBuildsToTheSameBytesTwice(t *testing.T) {
 	if len(first) == 0 {
 		t.Fatal("the committed store builds no projection, so nothing is compared")
 	}
+	if diff := cmp.Diff(slices.Sorted(maps.Keys(first)), slices.Sorted(maps.Keys(second))); diff != "" {
+		t.Errorf("the two builds wrote different stems (-first +second):\n%s", diff)
+	}
 	for stem, b := range first {
 		if !bytes.Equal(b, second[stem]) {
 			t.Errorf("%s builds to different bytes on a second build", stem)
