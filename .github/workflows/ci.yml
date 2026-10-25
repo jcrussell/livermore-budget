@@ -1,61 +1,30 @@
 name: CI
 
-# Every job here is pure Go over the committed artifacts under
-# data/extracted/. Nothing in CI needs the source PDFs, and that is a property
-# worth spending a few lines to keep:
+# Every job is pure Go over the committed artifacts under data/extracted/;
+# none needs the source PDFs, the only LFS content (~67 MB against a free tier of
+# 1 GB of bandwidth a month). Each checkout sets `lfs: false` and
+# GIT_LFS_SKIP_SMUDGE is set workflow-wide; that is a convention held by review,
+# not a check. `fisc verify --full` reads the PDFs, monthly, in verify-full.yml.
 #
-#   data/pdf/** is the only thing in Git LFS (3 files, ~67 MB). GitHub's free
-#   LFS tier is 1 GB of bandwidth a month, so ~14 checkouts with smudge on
-#   would exhaust it and every job in the repository would start failing on a
-#   quota error that looks nothing like its cause.
-#
-# So each checkout sets `lfs: false` explicitly rather than relying on the
-# default, and GIT_LFS_SKIP_SMUDGE is set workflow-wide so a nested action or
-# a future `git checkout` cannot turn the smudge filter back on.
-#
-# Note what this is and is not. Every job here was verified to pass with
-# data/pdf/ entirely absent, so nothing breaks today -- but that is a fact
-# about the current code, not a check. Nothing in this workflow FAILS if a
-# future job sets `lfs: true`, so these two lines are a convention held by
-# review, not an assertion.
-#
-# `fisc verify --full` is the one thing that has a reason to read the PDFs, and
-# it now exists (fisc-1wr.5): it hashes each document against the sha256 that
-# data/sources.yaml and the extraction manifest independently record. It is NOT
-# run here, deliberately -- that job needs `lfs: true` and would spend the
-# bandwidth budget above on every push. A monthly schedule for it is fisc-v87;
-# a pointer-only checkout makes that check report ERROR with `git lfs pull`,
-# not a false failure, so the job has to fetch for real.
-#
-# The Pages deploy lives at the bottom of this file rather than in its own
-# workflow, and that placement is the whole point. Two workflows both triggered
-# by `push: main` are two CONCURRENT runs with no ordering between them, so the
-# deploy -- having fewer jobs -- would routinely publish before the tests
-# finished, and a red CI would arrive after the site was already live. As a job
-# here it can simply `needs:` the gates (fisc-60x).
+# The Pages deploy is a job here so it can `needs:` the gates; a second workflow
+# on `push: main` would run concurrently and could publish before CI went red.
 
 on:
   push:
     branches: [main]
   pull_request:
 
-# Read-only by DEFAULT (byob-security.5): this is the floor every job inherits,
-# and all but one keep it. The two Pages jobs at the bottom raise it on
-# themselves and nowhere else -- see the note above `pages-build`.
+# Read-only by default (byob-security.5); pages-deploy raises it on itself.
 permissions:
   contents: read
 
-# A push that supersedes an in-flight run cancels it. main is excluded from
-# cancellation by including the ref in the group: two pushes to main are two
-# different states worth knowing about, whereas two pushes to a PR branch are
-# a work in progress.
+# A newer push cancels an in-flight run, except on main.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
-  # Belt and braces with `lfs: false` below: this stops the smudge filter even
-  # if some step runs git itself. See the bandwidth note at the top.
+  # With `lfs: false` on every checkout; see the header.
   GIT_LFS_SKIP_SMUDGE: "1"
 
 jobs:
@@ -69,16 +38,12 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
-      # .golangci-version exists so the pin lives in one place; the Makefile
-      # and a developer's shell read the same file. golangci-lint-action v9
-      # expects a v2.x golangci-lint, which 2.11.4 is.
+      # .golangci-version is the one pin; the Makefile reads it too.
       - name: Read the pinned golangci-lint version
         id: golangci
         run: echo "version=v$(tr -d '[:space:]' < .golangci-version)" >> "$GITHUB_OUTPUT"
       # Not `make lint`: the action installs the pinned binary and caches its
-      # analysis, which a bare `golangci-lint run` on a runner cannot do. The
-      # configuration is still .golangci.yml, so this and `make lint` enforce
-      # the same rules.
+      # analysis. Both read .golangci.yml.
       - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
           version: ${{ steps.golangci.outputs.version }}
@@ -93,17 +58,8 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
-      # Not `make fmt`: that target rewrites the tree in place and exits 0, so
-      # in CI it would launder unformatted code into a green run. Reported
-      # rather than repaired, over the same five directories the Makefile
-      # covers -- site/ is in that list because site/embed.go lives there and
-      # an earlier three-directory version of both silently skipped it, and
-      # tools/ because it was named one subdirectory at a time and a new one
-      # went in unformatted-unchecked.
-      #
-      # This is the gofmt half only. Import grouping is goimports with
-      # local-prefixes, which gofmt does not know about and `make fmt` will
-      # happily "fix" the wrong way; the lint job is what catches that.
+      # Not `make fmt`, which rewrites in place and exits 0. Same directories as
+      # the Makefile's. Import grouping is goimports', so the lint job catches it.
       - name: Check formatting
         run: |
           unformatted=$(gofmt -l ./cmd ./internal ./pkg ./schema ./site ./tools)
@@ -135,8 +91,6 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
-      # The tests read fixtures under testdata/ and never Python, the PDFs, or
-      # the network, so this job needs nothing the checkout did not bring.
       - run: make test
 
   js:
@@ -146,11 +100,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           lfs: false # ~67 MB of PDFs no Go code reads; see the header note.
-      # The only job in this workflow that needs node, and the only place npm
-      # runs: `make js` installs jsdom from the committed lockfile and runs
-      # node's test runner over site/*.test.mjs, which import the shipped
-      # site/app.js. Node stays off the deploy path -- pages-build runs
-      # `fisc export` and never touches this.
+      # The only job that needs node; node stays off the deploy path.
       - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
         with:
           node-version: '22'
@@ -167,11 +117,8 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
-      # Two of the three arms are real gates here: the Go arm reads committed
-      # source, and the beads arm reads .beads/issues.jsonl, which is committed
-      # too. The memory arm warns and continues, because bd is not installed on
-      # this runner and the memories live in a Dolt database that no checkout
-      # carries -- so this job proves everything git holds, and nothing else.
+      # The Go and beads arms are gates here; the memory arm warns and continues,
+      # bd being absent.
       - run: make narration
 
   beadrefs:
@@ -184,9 +131,6 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
-      # This one is a full gate here rather than an advisory check: it resolves
-      # against .beads/issues.jsonl, which the checkout carries, so bd being
-      # absent from the runner costs it nothing.
       - run: make beadrefs
 
   doccheck:
@@ -199,8 +143,6 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
-      # A full gate, for the same reason beadrefs is: it resolves against
-      # AGENTS.md, which every checkout carries.
       - run: make doccheck
 
   extract-schema:
@@ -233,20 +175,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           lfs: false # ~67 MB of PDFs no Go code reads; see the header note.
-      # go-version-file, like every other job, so this scans the same toolchain
-      # the build job compiles with. Most of what govulncheck reports for this
-      # module is standard library, and which standard library it sees is
-      # whichever toolchain is installed -- so scanning `stable` while shipping
-      # a binary built from the go.mod floor would answer a question nobody
-      # asked. The `toolchain` directive in go.mod is what keeps the two the
-      # same; see the comment there.
+      # go-version-file, so this scans the standard library the build compiles
+      # with; go.mod's `toolchain` directive keeps the two the same.
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
-      # The scanner is pinned like everything else; what has to be fresh is the
-      # vulnerability database, and govulncheck fetches that from vuln.go.dev
-      # on every run. Installed rather than added to go.mod, so it does not
-      # become a dependency of the module the tidy job checks.
+      # A pinned scanner; the vulnerability database is fetched fresh each run.
+      # Installed rather than added to go.mod.
       - name: Install govulncheck
         run: go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
       - run: govulncheck ./...
@@ -283,19 +218,8 @@ jobs:
         with:
           go-version-file: go.mod
       - run: make build
-      # facts.jsonl is a build product: every line is derivable from
-      # data/extracted/ plus mappings/. Rebuild it somewhere else and compare
-      # byte for byte, rather than overwriting the committed file and diffing
-      # against the index. `git diff --exit-code` would be just as strict today
-      # -- facts.jsonl carries no CR bytes and `text eol=lf` forces LF in the
-      # worktree -- but it would leave the committed fact store overwritten in
-      # the workspace on failure, and it compares through the clean filter
-      # rather than the bytes, which is not what this check claims to do.
-      #
-      # --output is resolved against the repository root and refuses absolute
-      # paths (build.validateRepoPath), so the rebuild cannot go to $(mktemp
-      # -d). bin/ is gitignored and `make clean` already owns it, so writing
-      # there leaves the tree exactly as checked out.
+      # Rebuild beside the committed file and compare bytes. --output must be
+      # repo-relative (build.validateRepoPath); bin/ is gitignored.
       - name: Rebuild the fact store
         run: ./bin/fisc build --output bin/facts-rebuilt.jsonl
       - name: Compare against the committed fact store
@@ -323,46 +247,19 @@ jobs:
         with:
           go-version-file: go.mod
       - run: make build
-      # This job is the reason data/pdf may stay absent: verify reads the
-      # committed fact store, the rules, the three registries under data/, and
-      # every artifact under data/extracted/ -- which it hashes against the
-      # manifest that lists them -- and nothing else. Without --full it never
-      # opens data/pdf/; the one check that would is reported as SKIPPED, with
-      # the reason, on the last lines of the log. It is a separate job from `facts`
-      # rather than a step in it because the two answer different questions --
-      # "the rules still produce this file" and "this file's claims hold" -- and a
-      # single job would report only whichever failed first.
-      #
-      # --strict, which fails on a VACUOUS check that no entry in
-      # internal/check's declaredVacuous accounts for. It used to be omitted,
-      # with a prose comment here naming the beads that would retire the three
-      # vacuous checks. That comment was the wrong place for the claim: nothing
-      # checked it, and every one of those checks is blocked behind work far
-      # down the backlog, so the flag would have been red on every run from the
-      # day it landed and a permanently red gate gets commented out
-      # (fisc-1wr.4). The reasons are now in the source, printed verbatim on
-      # every run beside the bead that deletes each one, and a vacuous check
-      # nobody has declared fails HERE on the day it appears (fisc-z0p).
+      # verify never opens data/pdf/ without --full; that one check reports
+      # SKIPPED. A separate job from `facts` so each failure is reported. --strict
+      # fails on a vacuous check internal/check's declaredVacuous does not account
+      # for (fisc-z0p).
       - name: Check the corpus
         run: ./bin/fisc verify --strict
 
   # ---------------------------------------------------------------- publish --
   #
-  # Everything below this line only runs on a push to main that has already gone
-  # green. On a pull request the `if` is false and both jobs are skipped, so a
-  # fork PR can never reach the write scopes.
-  #
-  # The `needs` list IS the gate, and it is why nothing here re-runs a check:
-  # `facts` already proved facts.jsonl is what the rules produce, and `verify`
-  # already proved the corpus holds. A separate workflow could not depend on
-  # either and would have had to duplicate both.
-  #
-  # govulncheck is deliberately NOT in that list. Its result depends on a
-  # vulnerability database fetched at run time, not on the commit, so the same
-  # tree can be green today and red tomorrow -- and the published artefact is
-  # static HTML, CSS and vendored d3. No Go code ships, so nothing govulncheck
-  # reports can reach a visitor. Gating publication on it would mean the site
-  # stops being republishable for reasons that have nothing to do with the site.
+  # Runs only on a push to main that has gone green; a pull request skips both
+  # jobs, so a fork never reaches the write scopes. The `needs` list is the gate,
+  # so nothing here re-runs a check. govulncheck is not in it: its result depends
+  # on a database fetched at run time, and no Go code ships to a visitor.
   pages-build:
     name: package the site
     needs: [lint, format, narration, beadrefs, doccheck, extract-schema, build, test, vet, tidy, facts, verify, js]
@@ -376,11 +273,7 @@ jobs:
         with:
           go-version-file: go.mod
       - run: make build
-      # Not `make site`: that target also prints the local "serve it" hint,
-      # which is noise in a runner log. Same command underneath. `fisc export`
-      # reads facts/facts.jsonl and never re-runs the mapping engine, so this
-      # cannot move a published figure -- it republishes what `fisc build`
-      # committed and the jobs above just finished checking.
+      # Not `make site`, which prints a local serve hint. Same command.
       - name: Export the site
         run: ./bin/fisc export --clean
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
@@ -392,16 +285,13 @@ jobs:
     name: deploy to Pages
     needs: pages-build
     runs-on: ubuntu-latest
-    # The only place in this file that is not read-only. Job-level permissions
-    # REPLACE the workflow-level block rather than adding to it, so this is the
-    # complete grant: no `contents`, because deploy-pages reads the uploaded
-    # artefact and not the repository.
+    # The only grant above read-only. Job-level permissions replace the
+    # workflow's, so this is complete; deploy-pages reads the artefact, not the
+    # repository.
     permissions:
       pages: write
       id-token: write
-    # The workflow-wide concurrency group is per-ref and deliberately does not
-    # cancel on main, which is right for CI but leaves two quick pushes racing
-    # for one Pages deployment. This job takes its own group so those queue.
+    # Its own group, so two quick pushes to main queue for one deployment.
     concurrency:
       group: pages
       cancel-in-progress: false
