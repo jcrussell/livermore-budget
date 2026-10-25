@@ -1,10 +1,5 @@
 # Agent Instructions
 
-**Rules live here. Measurements a reader would otherwise re-derive live in
-`docs/`.** There is no third place, and no argument for a rule anywhere: this
-repository has no users to persuade, so a paragraph defending a rule is a
-paragraph to keep true for nobody.
-
 ## What this project is
 
 **The purpose of this project is to let a reader explore the City of Livermore's
@@ -65,17 +60,13 @@ Why, measured: [`docs/chart-model.md`](docs/chart-model.md).
 
 ```bash
 bd prime                          # workflow context, commands, and memories
-bd ready --exclude-type=byob,epic # claimable work; byob decisions and epics hidden
+bd ready --exclude-type=byob,epic # claimable work; see "Issue tracking"
 ```
 
 - Read [`docs/extraction-substrate.md`](docs/extraction-substrate.md) before
   touching extraction: what each substrate carries and which is a trap.
 - Read [`testdata/README.md`](testdata/README.md) before writing a parser. Every
   fixture exists for a named failure mode.
-- `bd list --type=byob --no-parent` is the architectural decisions this project
-  follows. **Never claim or close a `byob-*` bead** — closing one hides
-  reference material from future sessions.
-- Status and next steps live in the bead graph, not in a status document.
 
 ## Two rules that must precede the generated block
 
@@ -103,8 +94,10 @@ they are ordered for position rather than for reading and must stay above the
 - This changes what the work is, not just its framing: `fisc-9nw` asked for a
   check guarding a case the parser had already made unreachable, and the right
   answer was to write no check at all.
-- **Correct the bead in the same session you find it stale**, in its notes,
-  saying what was measured.
+- **Correct the bead in place, in the same session you find it stale**, saying
+  what was measured — not with a note that leaves the wrong text first. Where a
+  closed bead's decision is reversed, `bd supersede` it with the one that
+  replaces it: a note cannot reach a close reason.
 - Never write "filed as a bead" without filing it. A pointer to nothing reads as
   though the work is tracked.
 
@@ -161,16 +154,8 @@ bd close <id>         # Complete work
 
 Go only — neither the PDFs nor Python are needed to build, test or verify.
 
-```bash
-make build        # bin/fisc
-make test         # always -race
-make pre-commit   # fmt, vet, narration, beadrefs, doccheck, test, facts, verify, lint, js
-make narration    # refuse history in Go comments, in the beads and in the memories
-make beadrefs     # refuse a fisc-* id that names no bead
-make doccheck     # refuse a citation naming no section of this file
-make site         # static site into dist/ (gitignored)
-make extract      # re-extract from PDFs; needs poppler-utils and git lfs pull
-```
+`make help` lists every target. `make extract` needs poppler-utils and
+`git lfs pull`.
 
 - **Run `make pre-commit` yourself.** It rebuilds `facts/facts.jsonl` and
   compares it, and runs `fisc verify --strict`; the Go tests do neither.
@@ -181,7 +166,8 @@ make extract      # re-extract from PDFs; needs poppler-utils and git lfs pull
   file is the audit trail and CI compares it byte for byte.
 - Read each gate's argument where it is enforced — the Makefile comments carry
   it, and each failure message names the section here it comes from.
-- `narration`'s memory arm fails like any other arm **when `bd` can answer**, and
+- `make narration` refuses history in Go comments, the beads and the memories.
+  Its memory arm fails like any other arm **when `bd` can answer**, and
   warns and continues when it cannot. It can never be a CI gate, because memories
   live in the Dolt DB and in no git artifact.
 - Its **beads arm is a full gate**, because `.beads/issues.jsonl` is committed:
@@ -195,8 +181,8 @@ make extract      # re-extract from PDFs; needs poppler-utils and git lfs pull
   the directory git actually reads (`core.hooksPath` when set, `.git/hooks`
   otherwise) and **refuses when that directory is tracked**, as `.beads/hooks` is
   here — a committed hook would make `make pre-commit` mandatory for everyone who
-  has bd. So in this checkout the fisc gate is not installed at all — bd's own
-  tracked hook still runs — and you must run `make pre-commit` yourself.
+  has bd. So in this checkout the fisc gate is not installed at all; bd's own
+  tracked hook still runs.
 
 ## Architecture
 
@@ -214,14 +200,17 @@ Beads (`bd`) is the tracker. Do not use TodoWrite, TaskCreate or markdown TODO
 lists.
 
 ```bash
-bd ready --exclude-type=byob,epic  # claimable work; an epic is never claimable
-bd show <id>                       # detail, dependencies, and blockers
+bd ready --exclude-type=byob,epic  # claimable work; byob and epics never are
 bd update <id> --claim             # claim before starting
 bd close <id> --reason "..."       # close with what actually happened
 ```
 
-- **Do not read the roadmap off this file.** `bd list --type=epic --status=all`
-  is the roadmap; every enumeration written here has gone stale.
+- `bd list --type=byob --no-parent` is the architectural decisions this project
+  follows. **Never claim or close a `byob-*` bead** — closing one hides
+  reference material from future sessions.
+- **Status, next steps and the roadmap live in the bead graph**, not in this
+  file or a status document: `bd list --type=epic --status=all` is the roadmap;
+  every enumeration written here has gone stale.
 - **A closed epic means its end condition was met**, not that every bead under it
   is done. Remaining children are open at top level, and the dotted ids record
   where they came from.
@@ -238,15 +227,6 @@ bd close <id> --reason "..."       # close with what actually happened
     wording, tooling and process.
   - A blocker ranks at least as high as what it blocks.
 - **Priority drifts.** Look for a bead whose `P1` contradicts its own note.
-- **A bead says what needs DOING, not what happened** — *History's home is git*
-  applied to the tracker. A bead that reads as a changelog buries the work under
-  it. Drop the commit shas, the account of what landed, and the corrections of
-  earlier notes; keep a measurement only where it is evidence a reader would
-  otherwise re-derive or re-litigate.
-- **Correct a stale bead in place rather than annotating it.** A note saying the
-  text above is wrong leaves the wrong text as the thing a session reads first.
-  Where a closed bead's decision is reversed, `bd supersede` it with the one
-  that replaces it — a note cannot reach a close reason.
 - Use `bd remember` for cross-session knowledge, not MEMORY.md files. A durable,
   specific finding goes in the relevant bead, in this file, or in the contract
   doc under `docs/` it belongs to.
@@ -265,9 +245,7 @@ Why, measured: [`docs/prose-claims-evidence.md`](docs/prose-claims-evidence.md).
   lane reshapes the declarations an earlier one wrote, so a per-lane pass spends
   itself on shapes that are gone by the time the branch lands.
 - **Deferring the review never defers the check.** Each lane still ships its
-  test and its stated mutation in its own commit (`fisc-rx1d`), and every
-  finding a lane does not fix is still a bead in the session that found it. A
-  lane that lands with neither is a lane nothing can see go wrong, whenever the
+  test and its stated mutation in its own commit (`fisc-rx1d`), whenever the
   review happens.
 - Triage before you fix. Every finding is WRONG-OUTPUT, FAIL-OPEN, FALSE-CLAIM,
   DESIGN or HYGIENE.
@@ -289,10 +267,10 @@ Why, measured: [`docs/prose-claims-evidence.md`](docs/prose-claims-evidence.md).
   Give that diff a narrow extra pass, or keep it small enough to say why it needs
   none. `fisc-i92i`.
 - **Every finding you do not fix becomes a bead, in the same session, before you
-  report.** Declined, deferred, out of scope or too small — all the same rule.
-  P3 and P4 exist so "not worth doing now" has somewhere to live.
-- Refuse "I will fix it in the next commit": file it anyway and close it in that
-  commit. Reporting to the owner is not filing, and neither is a commit message.
+  report** — a deferred review's lane included. Declined, deferred, out of
+  scope, too small or "I will fix it in the next commit" (file it, and close it
+  in that commit) — all the same rule. Reporting to the owner is not filing, and
+  neither is a commit message.
 - A finding that touches a golden gets one extra step: regenerate, then read the
   diff against a rule cheap enough to check by eye, before re-reviewing. There is
   deliberately no `-update` flag in this repo.
@@ -433,7 +411,9 @@ Breaking one is a defect even when tests pass.
   that nothing can check and nothing keeps in step, sitting exactly where a
   reader looks for the present. So no errata — *"an earlier version of this
   comment said X"* — and no `Found by /code-review` credit in source. Where an
-  erratum carries a rule, keep the rule and drop the history.
+  erratum carries a rule, keep the rule and drop the history. **A bead says what
+  needs DOING**: no commit shas, no account of what landed, no corrections of
+  earlier notes.
 - **So correct prose in place rather than annotating it.** A passage saying the
   text above is wrong leaves the wrong text as the thing a reader meets first,
   which is the whole of what annotating it was meant to fix.
