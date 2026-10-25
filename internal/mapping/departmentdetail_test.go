@@ -19,8 +19,8 @@ const departmentDetailScope = "expenditure-by-department"
 // one the moment fisc-5gk.1 added rollups on p130 and p140.
 var departmentDetailPages = map[int]bool{167: true, 168: true, 169: true, 170: true}
 
-// TestPublishedDepartmentDetailResolves is to pp.167-170 what
-// TestPublishedSpineResolves is to pp.66-67: every part of every rule resolves
+// TestPublishedDepartmentDetailResolves: for pp.167-170,
+// every part of every rule resolves
 // against the real pages, and every printed total the document offers is
 // checked against what we read.
 //

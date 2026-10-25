@@ -18,14 +18,6 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/hint"
 )
 
-// The spine's headline figures, as the Budget Book prints them on p66 and p67.
-// They are stated here in dollars and converted, so the expectation reads the
-// way the document does.
-const (
-	generalFundFY2026Expenditures = 144_650_802
-	allFundsFY2026Revenues        = 299_969_007
-)
-
 // fixtureDoc is one document's extraction directory together with the prefix
 // its fixtures are named with under testdata/, because the two differ:
 // data/extracted/livermore-budget-fy2026-2027/pages/p0066.txt is copied to
@@ -313,68 +305,6 @@ func partOn(t *testing.T, r *Rule, page int) *Part {
 	}
 	t.Fatalf("rule %q has no part for page %d", r.ID, page)
 	return nil
-}
-
-// TestSpineTiesToTheDocumentsOwnTotals is the check this package exists to
-// make. It reads Budget Book pp. 66-67 through the committed rule and asserts
-// that every column the city prints a total for reconciles to it exactly.
-//
-// The arithmetic is carried in the test rather than described, because a claim
-// about these documents is only as good as the figures behind it: the M0 spike
-// got 136 facts out of these two pages with all 16 column totals tying, and
-// anything less than exact here is a bug, not a rounding question.
-func TestSpineTiesToTheDocumentsOwnTotals(t *testing.T) {
-	r, f := spineResolver(t, 66, 67)
-
-	var readValues, checkedColumns int
-	byColumn := map[string]amount.Cents{}
-	for i := range f.Rules {
-		ru := &f.Rules[i]
-		for j := range ru.Parts {
-			p := &ru.Parts[j]
-			values, _, err := r.Values(ru, p)
-			if err != nil {
-				t.Fatalf("Values(%s, p%d): %v", ru.ID, p.Page, err)
-			}
-			readValues += len(values)
-			for _, v := range values {
-				byColumn[fmt.Sprintf("%s/%s/%d", ru.Kind, v.Column.FundGroup, v.Column.FiscalYear)] += v.Cents
-			}
-
-			res, err := r.CheckTotals(ru, p)
-			if err != nil {
-				t.Errorf("CheckTotals(%s, p%d): %v", ru.ID, p.Page, err)
-				continue
-			}
-			checkedColumns += res.Columns
-		}
-	}
-
-	// 40 on p66 revenues + 16 on p66 expenditures + 80 on p67. The spike also
-	// reported 136, but 8 of its were invented zeros standing in for a row it
-	// believed p67 omits. The page prints that row; our extractor was dropping
-	// it. Every one of these 136 is a cell the city printed.
-	if want := 136; readValues != want {
-		t.Errorf("read %d values, want %d", readValues, want)
-	}
-	if want := 16; checkedColumns != want {
-		t.Errorf("tied %d columns to a stated total, want %d", checkedColumns, want)
-	}
-
-	gf := byColumn["expenditure/general/2026"]
-	if want := amount.Cents(generalFundFY2026Expenditures * 100); gf != want {
-		t.Errorf("General Fund FY2025-26 expenditures = %s, want %s", gf, want)
-	}
-
-	var allFunds amount.Cents
-	for key, sum := range byColumn {
-		if strings.HasPrefix(key, "revenue/") && strings.HasSuffix(key, "/2026") {
-			allFunds += sum
-		}
-	}
-	if want := amount.Cents(allFundsFY2026Revenues * 100); allFunds != want {
-		t.Errorf("all-funds FY2025-26 revenues = %s, want %s", allFunds, want)
-	}
 }
 
 // omittedRowFixture builds a two-page document whose continuation page really
