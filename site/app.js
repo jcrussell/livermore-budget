@@ -115,16 +115,6 @@ export function shareOf(d) {
 export const FORMS = new Map([["sankey", SANKEY]]);
 
 /**
- * @param {FiscChart} chart
- * @returns {FormRenderer}
- */
-export function formFor(chart) {
-  const renderer = FORMS.get(chart.form);
-  if (!renderer) throw new Error("no renderer here draws a " + chart.form + " chart");
-  return renderer;
-}
-
-/**
  * The overview's node tiers, coarsest first. Absent skips the fold.
  * @type {number[]}
  */
@@ -661,9 +651,6 @@ export function redraw(next, refused = "That could not be drawn", landOn, anchor
   // What the last year switch folded back is said until the reader moves.
   paintSplitsLine(null, [], null);
   dropPin();
-  if (filter.isolated && !laidNodes.some((n) => isolates(filter.isolated, n))) {
-    filter = Object.freeze(Object.assign({}, filter, { isolated: "" }));
-  }
   resetDetail();
   hideTip();
   paintBulk();
@@ -1307,14 +1294,9 @@ export function paintChartHint() {
   const tails = Boolean(chart) && chart.nodes.some(expandable);
   const expands = tails ? " " + say("expand") : "";
   const folds = expansions.length ? " " + say("fold_back") : "";
-  const swatch = buildLegendCount() ? " " + say("swatch") : "";
-  hint.textContent = (anyOpens ? say("open_into") : say("nothing_opens")) + follow + expands + folds + swatch;
-}
-
-/** How many fund-group swatches the legend is showing. */
-export function buildLegendCount() {
   const legend = maybeEl("legend");
-  return legend ? legend.children.length : 0;
+  const swatch = legend && legend.children.length ? " " + say("swatch") : "";
+  hint.textContent = (anyOpens ? say("open_into") : say("nothing_opens")) + follow + expands + folds + swatch;
 }
 
 /**
@@ -1371,7 +1353,10 @@ export function chartOnScreen() {
 
 /** @returns {FormRenderer} */
 export function formOnScreen() {
-  return formFor(chartOnScreen());
+  const chart = chartOnScreen();
+  const renderer = FORMS.get(chart.form);
+  if (!renderer) throw new Error("no renderer here draws a " + chart.form + " chart");
+  return renderer;
 }
 
 /**
@@ -2038,9 +2023,6 @@ export function setFilter(next) {
   whole = unfiltered;
   keepOutNames();
   dropPin();
-  if (filter.isolated && !laidNodes.some((n) => isolates(filter.isolated, n))) {
-    filter = Object.freeze(Object.assign({}, filter, { isolated: "" }));
-  }
   resetDetail();
   hideTip();
   buildLegend();
@@ -2098,19 +2080,6 @@ export function smallestWords(cents) {
 }
 
 /**
- * The stop at or below `cents`.
- * @param {number} cents
- * @returns {number}
- */
-export function smallestStop(cents) {
-  let at = 0;
-  SMALLEST_STOPS.forEach((stop, k) => {
-    if (stop <= cents) at = k;
-  });
-  return at;
-}
-
-/**
  * Checked means shown.
  * @param {string} id
  * @param {string} words
@@ -2165,7 +2134,8 @@ export function syncFilterPanel() {
   }
   const range = /** @type {HTMLInputElement | null} */ (maybeEl("filter-smallest"));
   if (range) {
-    range.value = String(smallestStop(filter.smallest));
+    // The stop at or below the threshold.
+    range.value = String(Math.max(0, SMALLEST_STOPS.findLastIndex((stop) => stop <= filter.smallest)));
     range.setAttribute("aria-valuetext", smallestWords(filter.smallest));
   }
   const out = maybeEl("filter-smallest-value");
@@ -2255,19 +2225,6 @@ export function nodeDescription(d) {
     ", " + say(d.derived ? "inferred_by_us" : "printed_by_city") +
     (form.crossTab(mark) ? ", " + PARTITION_NOTE : "") +
     (note ? ", " + note.replace(/^\u25c7 /, "") : "") + (gone ? ", " + gone : "") + what;
-}
-
-/**
- * Looked up in Go's refs, never rebuilt from the id: a missing link is
- * visible, a link to the wrong paragraph is not.
- * @param {string} id
- * @returns {string}
- */
-export function caveatHref(id) {
-  const refs = shownYear ? shownYear.caveats : [];
-  if (!Array.isArray(refs)) return "";
-  const ref = refs.find((c) => c.id === id);
-  return ref && ref.href ? ref.href : "";
 }
 
 /**
@@ -2467,10 +2424,16 @@ export function unpin() {
   else applyEmphasis();
 }
 
-/** pin's rule, before a redraw repaints: a node's isolation goes, a group's stays. */
+/**
+ * pin's rule, after a redraw lays out and before it repaints: a node's
+ * isolation goes, a group's stays unless nothing drawn carries it.
+ */
 function dropPin() {
   pinned = null;
   if (followsNode()) filter = Object.freeze(Object.assign({}, filter, { isolated: "" }));
+  if (filter.isolated && !laidNodes.some((n) => isolates(filter.isolated, n))) {
+    filter = Object.freeze(Object.assign({}, filter, { isolated: "" }));
+  }
 }
 
 /** @returns {boolean} */
@@ -2631,11 +2594,14 @@ export function paintDetail(d) {
     if (note) panel.append(h("p", "why", note));
     const gone = hiddenAt(n.id);
     if (gone) panel.append(h("p", "subtle", gone));
+    // Looked up in Go's refs, never rebuilt from the id: a missing link is
+    // visible, a link to the wrong paragraph is not.
+    const refs = shownYear && Array.isArray(shownYear.caveats) ? shownYear.caveats : [];
     for (const c of caveatsFor(n.id)) {
       const why = h("p", "why");
       why.append(document.createTextNode("\u26a0 " + c.summary + " "));
-      const href = caveatHref(c.id);
-      if (href) why.append(link("Read it in full", href));
+      const ref = refs.find((r) => r.id === c.id);
+      if (ref && ref.href) why.append(link("Read it in full", ref.href));
       panel.append(why);
     }
   }
@@ -2843,19 +2809,6 @@ function askReveal(doc, next) {
   }
 }
 
-/**
- * Label, role where options read alike, and what Enter does.
- * @param {LaidNode | FiscNode} n
- * @param {(LaidNode | FiscNode)[]} hits every option listed
- * @returns {string}
- */
-export function searchOptionWords(n, hits) {
-  const alike = hits.some((o) => o !== n && o.label === n.label);
-  const laid = laidNodes.some((x) => x.id === n.id);
-  const offer = !laid ? say("search_reveals") : splittable(n) ? say("search_opens") : expandable(n) ? say("search_expands") : "";
-  return n.label + (alike ? " (" + String(n.role).replace(/_/g, " ") + ")" : "") + (offer ? ", " + offer : "");
-}
-
 /** The search's options as listed, and the one the arrows are on (-1 for none). */
 export let searchState = { hits: /** @type {(LaidNode | FiscNode)[]} */ ([]), active: -1 };
 
@@ -2868,7 +2821,12 @@ export function paintSearch() {
   const hits = searchMatches(input.value);
   searchState = { hits, active: -1 };
   list.replaceChildren(...hits.map((n, k) => {
-    const option = h("li", "search-option", searchOptionWords(n, hits));
+    // Label, role where options read alike, and what Enter does.
+    const alike = hits.some((o) => o !== n && o.label === n.label);
+    const laid = laidNodes.some((x) => x.id === n.id);
+    const offer = !laid ? say("search_reveals") : splittable(n) ? say("search_opens") : expandable(n) ? say("search_expands") : "";
+    const words = n.label + (alike ? " (" + String(n.role).replace(/_/g, " ") + ")" : "") + (offer ? ", " + offer : "");
+    const option = h("li", "search-option", words);
     option.id = "search-option-" + k;
     option.setAttribute("role", "option");
     option.setAttribute("aria-selected", "false");
@@ -3024,17 +2982,9 @@ export function wireLayout() {
   const toggle = maybeEl("rail-toggle");
   if (toggle) {
     toggle.removeAttribute("hidden");
-    toggle.addEventListener("click", () => setRail(!railOpen));
+    // The rail is the page's, not the view's: hash and history do not move.
+    toggle.addEventListener("click", () => { railOpen = !railOpen; paintRail(); });
   }
-  paintRail();
-}
-
-/**
- * The rail is the page's, not the view's: hash and history do not move.
- * @param {boolean} open
- */
-export function setRail(open) {
-  railOpen = open;
   paintRail();
 }
 
@@ -3157,17 +3107,6 @@ export function wireRoom() {
   window.addEventListener("resize", askRoom);
 }
 
-/**
- * A browser refusal changes nothing and fires no fullscreenchange.
- * @returns {Promise<void>}
- */
-export function toggleFullscreen() {
-  const card = maybeEl("chart-card");
-  if (!card) return Promise.resolve();
-  const asked = isFullscreen() ? document.exitFullscreen() : card.requestFullscreen();
-  return Promise.resolve(asked).catch(() => {});
-}
-
 /** Shown only where the browser offers full screen. */
 export function wireFullscreen() {
   const button = maybeEl("chart-fullscreen");
@@ -3175,7 +3114,10 @@ export function wireFullscreen() {
   if (!button || !card || !document.fullscreenEnabled || typeof card.requestFullscreen !== "function") return;
   button.textContent = say("full_screen");
   button.removeAttribute("hidden");
-  button.addEventListener("click", () => { void toggleFullscreen(); });
+  // A browser refusal changes nothing and fires no fullscreenchange.
+  button.addEventListener("click", () => {
+    void Promise.resolve(isFullscreen() ? document.exitFullscreen() : card.requestFullscreen()).catch(() => {});
+  });
   document.addEventListener("fullscreenchange", onFullscreenChange);
 }
 
