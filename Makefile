@@ -52,66 +52,17 @@ vet: ## Run go vet
 tidy: ## Tidy go.mod/go.sum
 	go mod tidy
 
-# narration refuses the two phrases that only ever introduce HISTORY into a
-# source comment: a review credit, and an erratum about what the comment used to
-# say. AGENTS.md's "History's home is git" forbids both and was a paragraph until
-# now; one lane put seventeen of them into four files with that paragraph in
-# context the whole time, so this is the rule restated as something that can go
-# red.
+# narration refuses the two phrases that only ever introduce history into a
+# comment -- a review credit and an erratum -- per AGENTS.md, "History's home is
+# git". Deliberately two narrow phrases: "an earlier version" has honest uses
+# about a reprinted DOCUMENT. tools/narration matches over each run of comment
+# lines joined, since gofmt wraps a phrase anywhere, and fails on a path it
+# cannot read.
 #
-# IT IS DELIBERATELY TWO NARROW PHRASES AND NOT A PROSE DETECTOR. "an earlier
-# version" and "used to say" have honest uses in a doc comment about a DOCUMENT
-# -- the city reprints schedules -- so widening this would refuse true sentences
-# about the corpus and teach people to reword around it. What it catches is the
-# two forms that are never about the code's present.
-#
-# THE GO ARM JUDGES COMMENT BLOCKS, NOT LINES. A refused phrase wraps wherever
-# gofmt put the wrap, and a bare interior line of a /* */ block carries no
-# marker for a line pattern to hold on to, so tools/narration gathers each run
-# of comment lines with no code and no blank line between them and matches over
-# the join, with every gap \s+ -- the same form tools/memcheck uses over the
-# memories, and for the same reason. It fails on a path it cannot read, so an
-# entry gone from the hand-maintained list below takes this red rather than
-# silently narrowing the scan.
-#
-# THE SECOND ARM READS THE COMMITTED BEAD EXPORT, and unlike the third it is a
-# full gate: .beads/issues.jsonl is a tracked file, so it needs no bd, no Dolt
-# server and no network, exactly as beadrefs does not.
-#
-# ITS PHRASE LIST IS NOT THE GO ARM'S and must not be made so. `Found by
-# /code-review` is refused in source, and in a bead it is provenance of a
-# finding rather than a claim about the past. The list also cannot take a bare
-# past-tense verb, because a bead naming its own requirement -- "the guard this
-# bead asked for is now paid for" -- is a true sentence. See tools/beadcheck.
-#
-# THE THIRD ARM READS THE MEMORIES, which bd prime injects into every session.
-# Same rule, worse placed: a memory's erratum arrives in context whether or not
-# anyone opens the file it is about. It is an arm on this target rather
-# than a target of its own so that pre-commit gains no new step. The two print
-# DIFFERENT messages, because the remedies differ: a source comment is edited in
-# the file and its history stays in git, a memory is edited with bd remember and
-# leaves no git artifact at all.
-#
-# IT WARNS AND CONTINUES WHENEVER bd CANNOT ANSWER -- absent from PATH, or
-# present and failing, which is what a fresh clone with no Dolt DB looks like.
-# Without the second of those a contributor with Go and no beads database could
-# not commit at all, and "a contributor with only Go can still land a change" is
-# a property this project keeps.
-#
-# An empty memory set warns for the same reason, one layer down in memcheck: a
-# checkout between `bd init` and a pull of the project's memories has a working
-# bd and nothing for this to read, and must still be able to commit.
-#
-# THE COST OF THAT IS REAL AND IS THE REASON IT IS SPELT OUT. This arm FAILS like
-# any other WHEN bd CAN ANSWER, and skips whenever it cannot -- three ways above,
-# and a fourth inside memcheck for a database holding no memories. What it can
-# never be is a CI gate, because memories live in the Dolt DB and in no git
-# artifact. So a green memory arm is evidence only that the memories were
-# readable and clean on THIS machine, and a skip is not evidence of anything.
-#
-# The Go and bead arms have no such limit -- they read committed files -- and CI
-# runs this target for them. So the target is a real gate over the tree and an
-# advisory check over the database.
+# The bead arm reads the committed export and is a full gate; its phrase list is
+# its own (see tools/beadcheck). The memory arm reads bd's memories, fails when bd
+# can answer and warns and continues when it cannot, so it is advisory and never
+# a CI gate.
 .PHONY: narration
 narration: ## Refuse review credits and errata in Go sources, beads and memories
 	@go run ./tools/narration ./cmd ./internal ./pkg ./schema ./site ./tools
@@ -133,78 +84,29 @@ narration: ## Refuse review credits and errata in Go sources, beads and memories
 	rm -f "$$err"; \
 	printf '%s' "$$memories" | go run ./tools/memcheck
 
-# beadrefs refuses a bead id that names no bead.
-#
-# An invented id does not read as a mistake: the work really is tracked and only
-# the pointer is dead, so it reads as done and nobody goes looking. It has
-# happened twice, and it was a prose rule in AGENTS.md until now.
-#
-# UNLIKE narration'S MEMORY ARM THIS IS A REAL GATE. It resolves against
-# .beads/issues.jsonl, which is committed, so it needs no bd, no Dolt server and
-# no network, and CI runs it. Where bd IS present it is asked about ids the
-# export lacks, which is the window between filing a bead and committing the
-# export.
-#
-# The path list is hand-maintained and beadrefs fails on a path it cannot read,
-# so an entry deleted from the tree takes this red rather than silently
-# narrowing the scan.
-#
-# BOTH PREFIXES ARE CHECKED. A byob id names reference material and AGENTS.md
-# says never to claim or close one -- but that is a rule about what an agent may
-# DO to a bead, not about whether a citation of one should resolve. They are
-# rows of the same export, and AGENTS.md's Go section cites them.
+# beadrefs refuses a bead id that names no bead, fisc-* and byob-* alike. It
+# resolves against the committed .beads/issues.jsonl, so it is a real gate; where
+# bd is present it is asked about ids the export lacks. It fails on a path in the
+# list below it cannot read.
 .PHONY: beadrefs
 beadrefs: ## Refuse bead ids that name no bead, in prose and in comments
 	@go run ./tools/beadrefs .beads/issues.jsonl \
 		AGENTS.md CLAUDE.md README.md Makefile requirements.txt \
 		.github docs cmd internal pkg tools site schema mappings data testdata
 
-# doccheck refuses a citation that names no section of AGENTS.md.
-#
-# The tree cites AGENTS.md by section name from Go, from this file and from
-# site/app.js, and nothing checked the strings. So renaming a section left every citation of it pointing at
-# nothing, which is worse than no pointer: it reads as though the rule is
-# written down and sends the reader looking for a heading that is gone.
-#
-# SOME OF THEM ARE PRINTED TO A TERMINAL rather than only sitting in a comment --
-# tools/narration's failure message, tools/memcheck, tools/beadrefs and doccheck
-# itself -- so a stale one is a false claim made to a user already dealing with a
-# failure. tools/doccheck's package comment carries the count; it is not repeated
-# here, because this exact sentence has now been wrong at two, three and four in
-# consecutive commits by being written down twice.
-#
-# A BOLD LEAD PHRASE IS AN ANCHOR TOO, and that is not a nicety: several
-# citations name "History's home is git", which is bolded text inside a section
-# and not a heading at all.
-#
-# Like beadrefs and unlike narration's memory arm, this is a real gate. It reads
-# the committed AGENTS.md and nothing else -- no bd, no Dolt, no node, no
-# network -- so CI runs it too.
-#
-# It also refuses a citation written outside the canonical form rather than
-# guessing what the prose meant, and a docs/ path that resolves to no file --
-# both are pointers at nothing wearing different clothes. The boundary each of
-# those arms declares for itself is in the tool's package comment.
-#
-# AND A SOURCE PATH THAT RESOLVES TO NO FILE, under internal/, pkg/, cmd/ and
-# tools/ only; srcPathPattern says why only those. The usual fix is to drop the
-# path: a comment names a symbol and does not say where the symbol lives.
+# doccheck refuses a citation naming no section (or bold lead phrase) of
+# AGENTS.md, a citation outside the canonical form, a docs/ path naming no file,
+# and a source path under internal/, pkg/, cmd/ or tools/ naming no file. It
+# reads committed files only, so it is a real gate. The boundary of each arm is
+# in the tool's package comment.
 .PHONY: doccheck
 doccheck: ## Refuse dead citations, malformed citations, and dead docs/ and source paths
 	@go run ./tools/doccheck AGENTS.md \
 		AGENTS.md CLAUDE.md README.md Makefile requirements.txt \
 		.github docs cmd internal pkg tools site schema mappings data testdata
 
-# lint-if-available is what the commit hook runs, and it is NOT `lint`.
-#
-# golangci-lint is not required to build or test this project, and adding it to
-# pre-commit would make an external binary mandatory to commit at all -- a
-# contributor with Go and nothing else could no longer land a change. So absence
-# WARNS and continues, while a lint that actually runs still fails the commit.
-#
-# The degradation is for ABSENCE ONLY. `lint` itself must keep hard-failing,
-# because CI's required lint job is that target and a version of it that shrugged
-# would defeat the gate this bead exists to strengthen.
+# lint-if-available warns and continues when golangci-lint is absent, so it is
+# not mandatory to commit; `lint` itself hard-fails, as CI's required job.
 .PHONY: lint-if-available
 lint-if-available: ## Run lint, warning rather than failing if golangci-lint is absent
 	@command -v golangci-lint >/dev/null 2>&1 || { \
@@ -213,38 +115,17 @@ lint-if-available: ## Run lint, warning rather than failing if golangci-lint is 
 	}; \
 	$(MAKE) --no-print-directory lint
 
-# js runs the client's tests: node's own test runner over site/*.test.mjs,
-# each of which imports the shipped site/app.js under jsdom and drives it over
-# the artifacts Go pins under testdata/.
+# js runs node's test runner over site/*.test.mjs under jsdom. Node is off the
+# deploy path, and `npm ci` runs once per lockfile change: npm writes
+# node_modules/.package-lock.json last, which makes it the stamp. The glob is
+# quoted so node expands it.
 #
-# NODE AND NPM ARE OFF THE DEPLOY PATH, the way tools/extract.py is off the
-# build path: `make site`, `make build` and `fisc export` never run either, and
-# a contributor without node can still build, test and serve the site. jsdom is
-# the one dependency, dev-only, pinned by package.json and package-lock.json.
-#
-# THE INSTALL IS A MAKE RULE ON THE LOCKFILE, so `npm ci` runs once per
-# lockfile change rather than on every `make pre-commit`: npm writes
-# node_modules/.package-lock.json as the last step of a successful install,
-# which is what makes it a usable stamp. `npm ci` and not `npm install`,
-# because the lockfile is the pin and a drifted one must refuse rather than be
-# rewritten.
-#
-# THE GLOB IS QUOTED SO NODE EXPANDS IT, not the shell. Handing `node --test` a
-# DIRECTORY makes it try to load that path as a module and fail with
-# MODULE_NOT_FOUND, which reads like a broken suite rather than a wrong
-# argument; and an unquoted pattern matching nothing would reach node as the
-# literal string.
-#
-# THE RUN IS CAPPED BY A CGROUP, NOT BY V8. A failing assert whose operand is
-# a mark of a booted app formats the laid graph behind it, and that growth is
-# off the V8 heap: a child with a 2 GB heap_size_limit reached 7.2 GB RSS and
-# the kernel OOM-killed it on this 7.8 GiB host (render.test.mjs, 2026-10-10),
-# so --max-old-space-size caps nothing here. Under systemd-run the cgroup kills
-# the whole run instead, which TAP reports as a bare `exit 1`, so the scope's
-# Result is read back and an oom-kill is named. Where no user systemd answers
-# (CI's disposable runners) the run is uncapped. JS_FILES narrows the run to
-# one file. Measured at concurrency 2, 2026-10-10: every file but render peaks
-# at 735 MB of summed node RSS and render alone at about 915 MB.
+# The run is capped by a cgroup, not V8: a failing assert over a mark formats the
+# laid graph off the V8 heap (a 2 GB heap_size_limit child reached 7.2 GB RSS on
+# a 7.8 GiB host, render.test.mjs, 2026-10-10). Under systemd-run an oom-kill is
+# read back from the scope and named; with no user systemd (CI) the run is
+# uncapped. Measured at concurrency 2, 2026-10-10: every file but render peaks at
+# 735 MB of summed node RSS, render alone at about 915 MB. JS_FILES narrows it.
 JS_FILES ?= "site/*.test.mjs"
 JS_MEM ?= 3G
 JS_JOBS ?= 2
@@ -267,8 +148,7 @@ js: node_modules/.package-lock.json ## Run the client's tests under node and jsd
 		node --test --test-concurrency=$(JS_JOBS) $(JS_FILES); \
 	fi
 
-# js-if-available is to `js` what lint-if-available is to `lint`, and for the
-# same reason: node must not become mandatory to commit.
+# js-if-available is to `js` what lint-if-available is to `lint`.
 .PHONY: js-if-available
 js-if-available: ## Run js, warning rather than failing if node or npm is absent
 	@command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 || { \
@@ -277,19 +157,11 @@ js-if-available: ## Run js, warning rather than failing if node or npm is absent
 	}; \
 	$(MAKE) --no-print-directory js
 
-# codehash fingerprints Go files by their code alone, so that a change asserted
-# to be comments-only can be proved to be one. It is a BEFORE-AND-AFTER
-# comparison and so is deliberately not part of pre-commit, which a single-shot
-# target could not express:
+# codehash fingerprints Go files by code alone, to prove a change comments-only:
 #
 #     make codehash FILES="internal/geom/geom.go" > /tmp/before
 #     ...rewrite the comments...
 #     make codehash FILES="internal/geom/geom.go" | diff /tmp/before -
-#
-# Reading `git diff` and requiring every changed line to start with // would be
-# cheaper and answers a different question: a diff reports which LINES differ,
-# not whether any code moved. See tools/codehash/main.go for why it is also
-# unsound line by line.
 .PHONY: codehash
 codehash: ## Fingerprint FILES=... by code alone, ignoring comments
 	@test -n "$(FILES)" || { echo "usage: make codehash FILES=\"a.go b.go\"" >&2; exit 2; }
@@ -310,46 +182,12 @@ facts: build ## Rebuild facts.jsonl from the mappings and compare it to the comm
 verify: build ## Run fisc verify --strict over the committed corpus
 	./$(OUT) verify --strict
 
-# A HOOK CANNOT BE COMMITTED. The hooks directory is not tracked, so "install
-# the pre-commit hook" is per-checkout setup somebody has to actually run -- and
-# until this target existed, CLAUDE.md and the workflow doc since merged into
-# AGENTS.md both described the symlink as though it were already there. It was not, in any
-# checkout anyone looked at, which made a workflow document assert a guard that
-# did not exist.
-#
-# THE SECOND VERSION OF THAT DEFECT WAS THIS TARGET'S OWN. It wrote into
-# .git/hooks unconditionally and announced success. But core.hooksPath REPLACES
-# .git/hooks rather than adding to it, and bd sets it to .beads/hooks here, so
-# git never read what this installed: the symlink and its script sat on disk for
-# a week, the local gate never ran once, and the target printed that it had
-# installed a hook that runs `make pre-commit`. A false claim the program prints
-# is the worst kind, so the path now comes from git and the claim is READ BACK
-# from the file git will actually execute before anything is printed.
-#
-# `git rev-parse --git-path hooks` is the one question that answers this: it
-# returns core.hooksPath when set and .git/hooks when not.
-#
-# IT REFUSES A HOOK IT DOES NOT OWN, rather than appending to it. Appending was
-# the first attempt and it was wrong three ways at once: a hook ending in `exec`
-# or `exit 0` never reaches an appended arm, and the read-back below greps for
-# the string rather than for reachability, so it would have printed success over
-# a gate that could not run; appending shell syntax to a hook that is not shell
-# -- the pre-commit framework installs a Python one -- makes every commit die on
-# a SyntaxError with nothing to say why; and retargeting an existing symlink is
-# clobbering whatever owns it. All three were found by review over this range.
-#
-# BUT IT REFUSES A HOOK GIT TRACKS, and that is the case here: core.hooksPath
-# points at .beads/hooks, whose six hooks are committed files. Writing there
-# would either leave the tree permanently dirty or, if committed, turn an opt-in
-# convenience into a hook that fires for everyone who has bd -- including a
-# contributor with no Go toolchain, who could then not commit at all. The
-# paragraph below is the rule that forbids that, so this refuses and says what
-# the options are instead of quietly making the trade.
-#
-# THE LOCAL HOOK IS A CONVENIENCE AND CI IS THE GATE. A contributor who never
-# runs this target is not doing anything wrong; the required lint and verify
-# jobs still fail their PR. Keep it that way -- a repository whose correctness
-# depends on every clone having run a setup step has no gate at all.
+# hooks installs where git reads hooks (`git rev-parse --git-path hooks`, which
+# is core.hooksPath when set), and reads the result back before claiming success.
+# It refuses a directory outside this repository, a hook it does not own (it
+# never appends: an arm after `exec` never runs, and shell appended to a
+# non-shell hook breaks every commit), and a hook git tracks, as .beads/hooks is
+# here. CI is the gate; the local hook is a convenience.
 .PHONY: hooks
 hooks: ## Install the local pre-commit hook where git reads it, or refuse and say why
 	@dir="$$(git rev-parse --git-path hooks)"; \
@@ -424,10 +262,7 @@ hooks: ## Install the local pre-commit hook where git reads it, or refuse and sa
 	fi; \
 	echo "installed $$back/pre-commit -> pre-commit.fisc (runs 'make pre-commit')"
 
-# Extraction is deliberately NOT part of the Go binary. It is a rare,
-# human-initiated step whose output is committed; fisc reads only that output
-# and needs neither Python nor the PDFs.
-#
+# Extraction is not part of the Go binary; its output is committed.
 # DOC=<id> extracts one document; omit it for all three.
 .PHONY: extract
 extract: ## Re-extract PDFs with poppler (DOC=<id> for one)
@@ -444,11 +279,7 @@ extract-test: ## Hold extract.py's schema subset to the cases Go refuses
 extract-list: ## List extractable documents
 	$(PYTHON) tools/extract.py --list
 
-# The site is a static export of the committed fact store: `fisc export` reads
-# facts/facts.jsonl and does NOT re-run the mapping engine, so this target
-# cannot change a published figure. The page fetches data/sankey.json, so it
-# needs a server -- app.js detects file:// and says so, but the hint belongs
-# where someone would look for it.
+# `fisc export` reads facts/facts.jsonl and never re-runs the mapping engine.
 .PHONY: site
 site: build ## Build the static site into dist/
 	$(OUT) export --clean
