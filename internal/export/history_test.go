@@ -294,7 +294,7 @@ func TestAnUnauditedDocumentsColumnsAreLabelledUnaudited(t *testing.T) {
 			t.Errorf("%s renders %d basis chips and %d mark tooltips, so this asserts nothing of one", name, len(chips), len(tips))
 		}
 		for _, m := range append(chips, tips...) {
-			if strings.Contains(strings.ReplaceAll(strings.ToLower(m[1]), "unaudited", ""), "audited") {
+			if strings.Contains(strings.ReplaceAll(strings.ToLower(m[1]), "unaudited", ""), "audit") {
 				t.Errorf("%s labels a column %q under the %s caveat", name, m[1], project.UnauditedCaveatID)
 			}
 		}
