@@ -17,10 +17,8 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
-// schemaVersionErr reports a version this package cannot read. A file written
-// for a newer fisc is a different failure from a malformed one — nothing is
-// wrong with the file — so it gets the hint that says so, as mapping.Parse
-// does for rule files.
+// schemaVersionErr reports a version this package cannot read, with the hint
+// that a newer fisc wrote it rather than that it is malformed.
 func schemaVersionErr(file string, got, want int) error {
 	err := &Error{File: file, Field: "schema_version",
 		Msg: fmt.Sprintf("got %d, want %d", got, want)}
@@ -44,41 +42,23 @@ type taxonomyDoc struct {
 }
 
 // departmentsDoc is the whole of departments.yaml. The two tiers are two
-// top-level lists rather than divisions nested inside their department,
-// because they are two NAMESPACES: nesting would read as one hierarchy and
-// invite the cross-tier uniqueness rule the file cannot satisfy.
+// top-level lists because they are two namespaces.
 type departmentsDoc struct {
 	SchemaVersion int          `yaml:"schema_version"`
 	Departments   []Department `yaml:"departments"`
 	Divisions     []Division   `yaml:"divisions"`
 }
 
-// categoryEntry decodes a category. It exists only to carry `assignable`,
-// whose default is TRUE: an absent YAML key leaves a bool false, and a false
-// default here would make every ordinary category unassignable and every
-// mapping rule invalid. The pointer separates "absent" from "explicitly
-// false"; Load folds it into Category.Assignable so no caller has to.
+// categoryEntry decodes a category so the pointer can tell an absent
+// `assignable` (default TRUE) from an explicit false.
 type categoryEntry struct {
 	Category      `yaml:",inline"`
 	RawAssignable *bool `yaml:"assignable"`
 }
 
-// Load reads and validates all three registries from the root of fsys, so a
-// caller passes os.DirFS("data") and tests pass an in-memory tree
-// (byob-interfaces.3).
-//
-// ALL THREE FILES ARE REQUIRED: they are three parts of one vocabulary, and a
-// partly loaded registry would answer FundGroup confidently while answering
-// every Category with "unknown". departments.yaml joined them when the
-// pp.167-170 lane made the department axis real; before that a fact carrying a
-// department resolved against nothing and the check for it could only report
-// that it had no file to ask.
-//
-// The cost of "required" is that every in-memory fixture has to carry all
-// three. That is the intended trade: an optional registry is one a test can
-// forget, and the invariant this package sells — a registry that loaded is one
-// whose invariants already hold — is only worth anything if it covers the whole
-// vocabulary.
+// Load reads and validates all three registries from the root of fsys
+// (byob-interfaces.3). ALL THREE FILES ARE REQUIRED: a partly loaded registry
+// would answer some lookups confidently and others with "unknown".
 func Load(fsys fs.FS) (*Registry, error) {
 	r := &Registry{}
 	if err := r.loadFunds(fsys); err != nil {
@@ -101,9 +81,8 @@ func decodeFile(fsys fs.FS, name string, v any) error {
 		return fmt.Errorf("read %s: %w", name, err)
 	}
 	dec := yaml.NewDecoder(bytes.NewReader(b))
-	// An unknown key is a hard error, as in internal/mapping. These files are
-	// the vocabulary itself: a misspelled `assignabel: false` that decoded
-	// quietly would publish a rollup node as a spendable category.
+	// An unknown key is a hard error: a misspelled `assignabel: false` would
+	// publish a rollup as a spendable category.
 	dec.KnownFields(true)
 	if err := dec.Decode(v); err != nil {
 		if errors.Is(err, io.EOF) {
@@ -111,9 +90,7 @@ func decodeFile(fsys fs.FS, name string, v any) error {
 		}
 		return &Error{File: name, Msg: err.Error()}
 	}
-	// The decoder is a stream, so stopping here would silently discard a
-	// second `---` document — the same quiet loss KnownFields exists to
-	// prevent, one level up.
+	// Refuse a second `---` document rather than silently discard it.
 	var extra any
 	if err := dec.Decode(&extra); err == nil {
 		return &Error{File: name, Msg: "file contains more than one YAML document"}
@@ -149,11 +126,8 @@ func (r *Registry) loadFunds(fsys fs.FS) error {
 	r.fundLabels = make(map[string]int, 2*len(doc.Funds))
 	groups := map[string]bool{}
 
-	// claimLabel records the one fund a published spelling may resolve to.
-	// The second claimant is an error naming both, because a label two funds
-	// answer to is a label no schedule can be mapped by: this is where
-	// "Measure D" on the operating fund and on its CIP twin stops being a
-	// coin flip at lookup time and becomes a file that will not load.
+	// claimLabel records the one fund a published spelling may resolve to; a
+	// second claimant fails the load.
 	aliased := map[string]bool{}
 	claimLabel := func(label string, f Fund, isAlias bool) error {
 		prev, dup := r.fundLabels[label]
@@ -196,10 +170,8 @@ func (r *Registry) loadFunds(fsys fs.FS) error {
 			return fundf(f.Number, "constraint_tier", "got %q, want one of %s",
 				f.ConstraintTier, strings.Join(constraintTiers, ", "))
 		}
-		// The tier is our reading, not the city's, so the note is its
-		// evidence. A tier with nothing behind it is an assertion about
-		// public money that no reader can check — including the `unknown`
-		// tier, whose note says why the document settles nothing.
+		// The tier is our reading, so the note is its evidence, including for
+		// `unknown`.
 		if f.RestrictionNote == "" {
 			return fundf(f.Number, "restriction_note",
 				"is required; constraint_tier %q is derived and must say what it is derived from",
@@ -265,18 +237,13 @@ func (r *Registry) loadTaxonomy(fsys fs.FS) error {
 		if err := validateCategory(c, catf); err != nil {
 			return err
 		}
-		// Absent means assignable: the exceptions are the three rollup nodes,
-		// and requiring every other category to opt in would make the common
-		// case the one that is easy to get wrong.
 		c.Assignable = e.RawAssignable == nil || *e.RawAssignable
 		r.categories[c.Slug] = c
 		r.slugs = append(r.slugs, c.Slug)
 	}
 	slices.Sort(r.slugs)
 
-	// Parents resolve in a second pass so the file's order stays free: the
-	// taxonomy groups entries by revenue, expenditure, transfer and fund
-	// balance for a reader, not by definition-before-use.
+	// Parents resolve in a second pass so the file's order stays free.
 	for _, slug := range r.slugs {
 		if err := validateParent(r.categories[slug], r.categories, catf); err != nil {
 			return err
@@ -285,26 +252,17 @@ func (r *Registry) loadTaxonomy(fsys fs.FS) error {
 	return nil
 }
 
-// slugShape is the form a departments.yaml slug must take: lowercase,
-// digits, single hyphens, ONE segment.
-//
-// One segment is not a style rule. A fact's row_path is `<division>/<category>`
-// (internal/fact.RowPath), so a slug carrying its own "/" would emit a
-// two-slash row_path that no reader could split back into its two axes. It is
-// the same shape internal/check enforces on the value a fact carries, through
-// ValidSlug.
+// slugShape is the form a departments.yaml slug must take: lowercase, digits,
+// single hyphens, ONE segment, because row_path is `<division>/<category>`
+// (fact.RowPath). internal/check enforces the same on facts via ValidSlug.
 var slugShape = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 
 // ValidSlug reports whether s has a department slug's shape.
 func ValidSlug(s string) bool { return slugShape.MatchString(s) }
 
-// loadDepartments reads departments.yaml.
-//
-// IT RUNS AFTER loadTaxonomy AND DEPENDS ON IT: the cross-axis check below asks
-// whether a division slug is already a category slug, and it can only ask that
-// of a loaded taxonomy. Reordering Load would turn that check silently vacuous
-// rather than failing, which is why this says so rather than relying on the
-// call order looking deliberate.
+// loadDepartments reads departments.yaml. IT MUST RUN AFTER loadTaxonomy: the
+// cross-axis check asks the loaded taxonomy, and would otherwise pass
+// vacuously.
 func (r *Registry) loadDepartments(fsys fs.FS) error {
 	var doc departmentsDoc
 	if err := decodeFile(fsys, DepartmentsFile, &doc); err != nil {
@@ -348,18 +306,14 @@ func (r *Registry) loadDepartments(fsys fs.FS) error {
 		if d.Label == "" {
 			return deptf(d.Slug, "label", "is required")
 		}
-		// A fact's row_path joins its `department` to its category on a "/",
-		// and Budget Book pp.85-125's rows put a department slug there, so the
-		// two axes may not share a slug.
+		// row_path joins `department` to a category on "/", and pp.85-125 put
+		// a department slug there, so the axes may not share a slug.
 		if _, isCategory := r.categories[d.Slug]; isCategory {
 			return deptf(d.Slug, "slug",
 				"is also a %s category slug; a department and a category are two axes and a "+
 					"fact's row_path joins them, so one string may not be both",
 				TaxonomyFile)
 		}
-		// The heading is how a reader finds the entry on the page. Without it
-		// the parentage recorded here is an assertion about the document that
-		// nobody can go and check.
 		if d.DocumentTerm == "" {
 			return deptf(d.Slug, "document_term",
 				"is required; it is the ALL-CAPS heading pp.167-170 print for this department")
@@ -392,12 +346,8 @@ func (r *Registry) loadDepartments(fsys fs.FS) error {
 		if d.Label == "" {
 			return divf(d.Slug, "label", "is required")
 		}
-		// THE CROSS-AXIS REFUSAL, and it is the one collision in this file that
-		// matters. A department and a division may share a name -- the city
-		// prints five such pairs -- but a division and a CATEGORY may not,
-		// because row_path joins exactly those two on a "/" and a reader
-		// splitting `planning/services-and-supplies` has no way to know which
-		// half is which if one string can be either.
+		// A department and a division may share a name; a division and a
+		// CATEGORY may not, because row_path joins exactly those two.
 		if _, isCategory := r.categories[d.Slug]; isCategory {
 			return divf(d.Slug, "slug",
 				"is also a %s category slug; a division and a category are two axes and a "+
@@ -423,11 +373,8 @@ func (r *Registry) loadDepartments(fsys fs.FS) error {
 	}
 	slices.Sort(r.divisionSlugs)
 
-	// A department with no divisions is a heading over nothing. On pp.167-170
-	// every heading has at least one row group beneath it, so an unclaimed
-	// department is a division that was dropped or misfiled -- and a dropped
-	// division is invisible to the object-category sums, which is the whole
-	// reason the department tier is recorded at all.
+	// A department with no divisions is a dropped or misfiled division, which
+	// would be invisible to the object-category sums.
 	for _, slug := range r.departmentSlugs {
 		if !claimed[slug] {
 			return deptf(slug, "", "no division names this department")
@@ -446,9 +393,7 @@ func validateSlug(slug string, ef errFunc) error {
 }
 
 // validatePages checks a `pages` list: present, 1-based, ascending, each page
-// once. The rules are validateAlias's, applied to an entry rather than to
-// an alias, because the claim is the same one -- this entry is printed there,
-// go and look.
+// once.
 func validatePages(pages []int, slug string, ef errFunc) error {
 	if len(pages) == 0 {
 		return ef(slug, "pages", "is required; say which page the entry is printed on")
@@ -456,16 +401,8 @@ func validatePages(pages []int, slug string, ef errFunc) error {
 	return validatePagesShape(pages, slug, ef)
 }
 
-// validatePagesShape is validatePages WITHOUT the presence rule: 1-based,
-// ascending, each page once.
-//
-// The split exists because a taxonomy category's `pages` is optional and its shape
-// is not. The categories that carry none are exactly the `assignable: false`
-// rollups -- so "required when assignable" is defensible on today's data and is
-// filed as fisc-3did rather than taken here, because it would churn forty inline
-// fixtures for a rule with no live violation. What is NOT defensible is the state
-// this replaces, where a category could claim page 0 or list a page twice and load
-// clean.
+// validatePagesShape is validatePages without the presence rule, for a
+// taxonomy category whose `pages` is optional (fisc-3did).
 func validatePagesShape(pages []int, slug string, ef errFunc) error {
 	const field = "pages"
 	for i, p := range pages {
@@ -480,11 +417,9 @@ func validatePagesShape(pages []int, slug string, ef errFunc) error {
 	return nil
 }
 
-// validateProvenance is the fourth invariant on an entry that carries derived,
-// rationale and source_note: a derived entry carries both, and a published one
-// neither. A forgotten `derived: true` is far likelier than a stray rationale,
-// and it fails open: the entry reads as justified while `verify` never demands
-// the justification.
+// validateProvenance is the fourth invariant: a derived entry carries rationale
+// and source_note, and a published one neither. A forgotten `derived: true`
+// otherwise fails open.
 func validateProvenance(slug string, derived bool, rationale, sourceNote string, ef errFunc) error {
 	switch {
 	case derived && rationale == "":
@@ -504,32 +439,22 @@ func validateProvenance(slug string, derived bool, rationale, sourceNote string,
 // errFunc formats an error against one named entry.
 type errFunc func(entry, field, format string, args ...any) error
 
-// entryErrFunc formats an error against a field of one already-named entry.
-// It is what lets validateAlias serve both channels: a fund is named by its
-// number and a category by its slug, and the alias rules care about neither.
+// entryErrFunc formats an error against a field of one already-named entry, so
+// validateAlias serves funds and categories alike.
 type entryErrFunc func(field, format string, args ...any) error
 
-// validateAlias checks one published spelling. Uniqueness is not checked
-// here — for funds that is claimLabel's job, because it spans the whole file —
-// so this is only the shape of the entry itself.
+// validateAlias checks the shape of one published spelling; fund-wide
+// uniqueness is claimLabel's.
 //
-// IT DELIBERATELY MAKES NO CLAIM ABOUT THE OWNING ENTRY'S OWN `pages`.
-// contra_rows gets exactly that cross-field arm below and aliases must never
-// get it: measured over the committed taxonomy, every category alias block is
-// WHOLLY DISJOINT from its category's pages. That is not a defect -- a contra
-// row is a detail line inside the category's own printed subtotal, so it is on
-// a page the category claims; an alias is the OTHER SPELLING, and the reason a
-// spelling needs recording at all is that some other schedule prints it.
-// Adding the arm here "by symmetry" would reject the whole committed alias
-// channel.
+// It must make NO claim about the owning entry's `pages`: every committed
+// category alias is printed on pages its category does not list, because an
+// alias is the spelling some other schedule prints.
 func validateAlias(i int, a alias, ef entryErrFunc) error {
 	at := fmt.Sprintf("aliases[%d]", i)
 	if a.Term == "" {
 		return ef(at+".term", "is required")
 	}
-	// An alias asserts that the city prints this string. Without a page that
-	// assertion cannot be checked, and an alias nobody can check is a rename
-	// we have made up: the whole channel exists so a reader can go and look.
+	// An alias without a page is a rename nobody can check.
 	if len(a.Pages) == 0 {
 		return ef(at+".pages",
 			"is required; alias %q must say which page it was read from", a.Term)
@@ -546,18 +471,12 @@ func validateAlias(i int, a alias, ef entryErrFunc) error {
 		}
 	}
 
-	// The fourth provenance invariant, on the alias channel. Pages says the
-	// string is printed; derived says the binding to THIS fund is ours. A
-	// reader must be able to tell the two apart without re-doing the work.
 	switch {
 	case a.Derived && a.Rationale == "":
 		return ef(at+".rationale",
 			"is required when derived is true; alias %q must say what the binding rests on",
 			a.Term)
 	case !a.Derived && a.Rationale != "":
-		// Same asymmetry validateCategory records: a forgotten `derived: true`
-		// is far likelier than a stray rationale, and it fails open — the entry
-		// reads as justified while nothing ever demands the justification.
 		return ef(at+".derived",
 			"is not set for alias %q, but a rationale is given; a binding the city prints needs none",
 			a.Term)
@@ -566,9 +485,7 @@ func validateAlias(i int, a alias, ef entryErrFunc) error {
 }
 
 func validateCategory(c Category, catf errFunc) error {
-	// The label is the city's word for the slug, and it is the only field
-	// `internal/project` publishes. A category without one would put our
-	// machine identifier on the site.
+	// Label is the only field `internal/project` publishes.
 	if c.Label == "" {
 		return catf(c.Slug, "label", "is required")
 	}
@@ -577,14 +494,8 @@ func validateCategory(c Category, catf errFunc) error {
 	if len(c.Kinds) == 0 {
 		return catf(c.Slug, "kinds", "is required")
 	}
-	// AND A MEMBER MUST BE A REAL KIND. Otherwise `kinds: [banana]` loads clean and
-	// leaves `fisc verify` fully green, because fact-kind-matches-category
-	// compares a fact's kind against this list and a category no fact has reached is
-	// never consulted. Some are in that state today, including an assignable one, so
-	// the typo would surface years later as a mass failure instead of now as a
-	// one-line file error. It is the shape fisc-ttq already cost this repo once,
-	// when all four transfer categories declared a `transfer` kind that
-	// vocab.Kind has never defined.
+	// A member must be a real kind, or `kinds: [banana]` loads clean and
+	// verify stays green until a fact reaches the category (fisc-ttq).
 	seen := make(map[string]bool, len(c.Kinds))
 	for _, k := range c.Kinds {
 		if !vocab.Kind(k).Valid() {
@@ -603,26 +514,15 @@ func validateCategory(c Category, catf errFunc) error {
 	catAliasf := func(field, format string, args ...any) error {
 		return catf(c.Slug, field, format, args...)
 	}
-	// UNIQUENESS IS PER CATEGORY AND MUST NOT BE FILE-WIDE. A fund gets
-	// claimLabel, which spans funds.yaml, because a label answering to two
-	// funds is a label no schedule can be mapped by. A category alias is not
-	// that: fund-balance/beginning and fund-balance/ending BOTH publish
-	// "Fund Balance / Working Capital", and correctly -- pp.66-67 print the
-	// same words on two rows and the surrounding structure says which is
-	// which. What is never right is one category saying it twice, or an alias
-	// repeating the label it is supposed to be an alternative TO.
+	// Uniqueness is PER CATEGORY, not file-wide: fund-balance/beginning and
+	// /ending both correctly publish "Fund Balance / Working Capital".
 	terms := make(map[string]bool, len(c.Aliases))
 	for i, a := range c.Aliases {
 		if err := validateAlias(i, a, catAliasf); err != nil {
 			return err
 		}
-		// BOTH published spellings, not just the label. Five committed
-		// categories have a document_term that differs from their label --
-		// fund-balance/beginning is "Beginning Fund Balance / Working Capital"
-		// against a printed "BEGINNING WORKING CAPITAL" -- so a rule that
-		// compared only the label would let a category list its own
-		// document_term as an alternative to itself, and would have appeared
-		// to work purely because most entries have the two the same.
+		// Compare both published spellings: five categories have a
+		// document_term that differs from their label.
 		for _, own := range [...]struct{ field, value string }{
 			{"label", c.Label},
 			{"document_term", c.DocumentTerm},
@@ -639,12 +539,8 @@ func validateCategory(c Category, catf errFunc) error {
 		}
 		terms[a.Term] = true
 	}
-	// A contra row is checked AGAINST the category's pages, so a category
-	// that declares contra rows and no pages would skip the arm entirely --
-	// which is fail-open, and was: `contra_rows: [{term: x, page: 9999}]` on a
-	// page-less rollup loaded clean. `pages` is optional in general (three
-	// rollups carry none) and is REQUIRED the moment a contra row needs
-	// somewhere to be checked against.
+	// Contra rows are checked against pages, so pages are required once any
+	// contra row is declared; otherwise the check fails open.
 	if len(c.ContraRows) > 0 && len(c.Pages) == 0 {
 		return catf(c.Slug, "pages",
 			"is required when contra_rows is set; a contra row is a detail line "+
@@ -661,38 +557,17 @@ func validateCategory(c Category, catf errFunc) error {
 			return catf(c.Slug, at+".page",
 				"is %d for %q; pages are 1-based PDF page numbers", cr.Page, cr.Term)
 		}
-		// THE CROSS-FIELD ARM, and it is the one worth having: a contra row is
-		// a detail line printed INSIDE this category's own subtotal, so it can
-		// only be on a page this category claims. A row citing some other page
-		// means one of the two records is wrong, and today neither is read by
-		// anything in production -- so nothing else would ever notice.
-		//
-		// Note the arm is proved by n=2, both in taxes/property, both on p127
-		// which that category lists. It is the only rule here that can become
-		// false as data grows rather than only as a file is mistyped.
-		//
-		// AND IT IS INTERNAL CONSISTENCY ONLY. Nothing here bounds `pages` to
-		// a page the document actually has, so widening `pages` is both the
-		// honest remedy for a contra row on a page the category really is
-		// printed on AND the way to defeat this check: pages: [..., 9999]
-		// with a contra row on 9999 loads clean. Load reads three YAML files
-		// and has no corpus to ask, so the bound cannot be taken here --
-		// TestFundAliasesArePrintedOnTheirPages is the shape that can, against
-		// the extracted text. Filed as fisc-e0p8.
-		//
-		// It must NOT be copied onto aliases -- see validateAlias.
+		// A contra row is printed inside this category's subtotal, so it must
+		// be on a page the category claims. Internal consistency only: nothing
+		// here bounds `pages` to the document (fisc-e0p8). Must NOT be copied
+		// onto aliases -- see validateAlias.
 		if !slices.Contains(c.Pages, cr.Page) {
 			return catf(c.Slug, at+".page",
 				"is %d for %q, which is not one of the category's pages %v",
 				cr.Page, cr.Term, c.Pages)
 		}
-		// A contra row NAMES ONE PRINTED LINE, so the same term on the same
-		// page twice is that line recorded twice -- and a consumer re-summing
-		// the detail would apply its sign flip twice, which on p127's ERAF row
-		// is a -14,086,438 error that no other reader could catch, because
-		// Load is the only reader of contra_rows in the tree. The same term on
-		// a DIFFERENT page is fine: a schedule may print the row more than
-		// once.
+		// The same term on the same page twice would apply its sign flip
+		// twice (p127 ERAF: -14,086,438). A different page is fine.
 		if rows[cr] {
 			return catf(c.Slug, at, "repeats %q on page %d", cr.Term, cr.Page)
 		}
@@ -704,15 +579,9 @@ func validateCategory(c Category, catf errFunc) error {
 	return validateProvenance(c.Slug, c.Derived, c.Rationale, c.SourceNote, catf)
 }
 
-// validateParent checks the hierarchy against the grammar taxonomy.yaml
-// states: a nested slug's parent is the slug minus its last segment, so
-// `parent:` on taxes/property/eraf may name taxes/property and nothing else.
-// Checking `parent:` against the slug means a mis-parented entry — the slug
-// saying one thing and `parent:` another — cannot load, and so cannot put a row
-// under a group it does not belong to in a rollup view.
-//
-// Depth is unbounded and no cycle check is needed: a parent slug is strictly
-// shorter than its child's.
+// validateParent checks that a nested slug's parent is the slug minus its last
+// segment, so a mis-parented entry cannot load. A parent is strictly shorter,
+// so no cycle check is needed.
 func validateParent(c Category, byslug map[string]Category, catf errFunc) error {
 	i := strings.LastIndex(c.Slug, "/")
 	nested := i >= 0

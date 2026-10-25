@@ -1,24 +1,13 @@
 // Package registry reads the three curated registries under data/: the fund
 // list (funds.yaml), the category taxonomy (taxonomy.yaml) and the department
-// axis (departments.yaml).
+// axis (departments.yaml), the controlled vocabulary behind a fact's
+// `category`, `fund_group` and `department`. It is the only place any of them
+// is parsed.
 //
-// These files are the controlled vocabulary behind three of a fact's fields.
-// Until something reads them, a mapping rule's `category:` and a column's
-// `fund_group:` are free strings, and a rule that writes `tax/property` where
-// the taxonomy says `taxes/property` produces a fact that is confidently
-// wrong and joins to nothing. This package is what makes those fields
-// checkable, and it is the only place any of them is parsed.
-//
-// Loading validates. A registry that loaded is one whose invariants already
-// hold — no duplicate slug or fund number, every parent resolving, every
-// derived entry carrying its rationale and source note — so a caller looks up
-// without re-checking. The strictness is deliberate: these registries are
-// hand-written, and a typo that survives load becomes a wrong classification
-// on a published page rather than a build failure.
-//
-// Consumers are expected to declare their own narrow interface over the
-// handful of methods they use (byob-interfaces.2) rather than importing
-// Registry itself; `internal/project` takes Label that way.
+// Loading validates: a loaded registry has no duplicate slug or fund number,
+// every parent resolves, and every derived entry carries its rationale and
+// source note, so a caller looks up without re-checking. Consumers declare
+// their own narrow interface over it (byob-interfaces.2).
 package registry
 
 import (
@@ -27,18 +16,13 @@ import (
 	"strings"
 )
 
-// These are the names Load reads from the root of the filesystem it is given,
-// so a caller passes os.DirFS("data") rather than composing paths this package
-// would have to agree with.
+// These are the names Load reads from the root of the filesystem it is given.
 const (
 	FundsFile       = "funds.yaml"
 	TaxonomyFile    = "taxonomy.yaml"
 	DepartmentsFile = "departments.yaml"
 )
 
-// The three registries version independently: a change to the fund schema says
-// nothing about the taxonomy schema, and one shared constant would force a
-// pointless bump on the others every time.
 const (
 	// fundsSchemaVersion is the only funds.yaml version this package reads.
 	fundsSchemaVersion = 1
@@ -49,26 +33,19 @@ const (
 	departmentsSchemaVersion = 1
 )
 
-// The near miss this project is most likely to make: `debt-service` is a fund
-// TYPE in funds.yaml (FundTypeDebtService), `debt-services` an expenditure CATEGORY in
-// taxonomy.yaml. They are different axes — a fund's classification versus what
-// a dollar was spent on — and taxonomy.yaml renamed its category to the plural
-// specifically to keep one string from spanning both.
+// `debt-service` is a fund TYPE (FundTypeDebtService) and `debt-services` an
+// expenditure CATEGORY: different axes, kept apart by spelling.
 const categoryDebtServices = "debt-services"
 
-// Duplicate constant keys in a map literal are a compile-time error, so this
-// declaration stops building the day someone "normalizes" one of the two
-// spellings into the other — which is exactly the edit that would silently
-// cross the axes, and which no test over today's data would catch.
+// Duplicate constant keys are a compile-time error, so this stops building the
+// day someone normalizes one spelling into the other.
 var _ = map[string]struct{}{
 	FundTypeDebtService:  {},
 	categoryDebtServices: {},
 }
 
 // fundTypes is the closed set of `type` values funds.yaml may use: the seven
-// the appendix prints (p258, plus the proprietary types on p261). `permanent`
-// has no column on the citywide spine, which is a gap in the spine and not a
-// reason to leave the type out here.
+// the appendix prints (p258, plus the proprietary types on p261).
 var fundTypes = []string{
 	FundTypeGeneral,
 	FundTypeSpecialRevenue,
@@ -94,11 +71,9 @@ const (
 // order.
 func FundTypes() []string { return slices.Clone(fundTypes) }
 
-// constraintTiers is the closed set of constraint_tier values. Unlike the
-// fund types these are DERIVED — our reading of the Description of Funds
-// narrative — which is why `unknown` is a member: it records that the
-// document does not support a classification, and it must stay
-// distinguishable from a tier we simply failed to write down.
+// constraintTiers is the closed set of constraint_tier values. They are
+// DERIVED from the Description of Funds narrative; `unknown` records that the
+// document does not support a classification.
 var constraintTiers = []string{
 	"discretionary",
 	"restricted-by-law",
@@ -107,24 +82,12 @@ var constraintTiers = []string{
 }
 
 // alias is one string the city prints for a thing this registry names
-// differently. Term is the printed spelling, verbatim -- abbreviations and
-// typos included, because normalizing is what would let "Measure D" collapse
-// onto two different funds -- and Pages says where to go and look. An alias
-// nobody can check is a rename we have made up.
+// differently. Term is the printed spelling verbatim, typos included, and Pages
+// says where it is printed.
 //
-// Derived draws the fourth provenance invariant through this channel: binding a
-// printed string to an entry is sometimes a mechanical reading and sometimes an
-// inference, and the two must not be presented alike. "Cal Home Reuse" for "CAL
-// Home Reuse" is a reading — the page names the fund and the only difference is
-// case. "Police Evidence" for fund 211 is an inference: the city never prints
-// that the two names are one fund, and the binding rests on arithmetic done
-// here. The second obliges a Rationale saying what the inference rests on, and
-// Load refuses it without one.
-//
-// There is deliberately no SourceNote to match Category's: Pages already is the
-// source note for an alias, because an alias's whole claim is "this string
-// appears on these pages". Rationale carries the different question of why the
-// string binds to THIS entry.
+// Derived marks a binding that is an inference rather than a reading ("Police
+// Evidence" for fund 211 rests on arithmetic; "Cal Home Reuse" differs only in
+// case). Load refuses a derived alias without a Rationale.
 type alias struct {
 	Term    string `yaml:"term"`
 	Pages   []int  `yaml:"pages"`
@@ -142,12 +105,8 @@ type contraRow struct {
 	Page int    `yaml:"page"`
 }
 
-// Category is one entry in taxonomy.yaml — the only place a `category:` value
-// is defined.
-//
-// Slug is ours and no reader should be shown it; Label and DocumentTerm and
-// every Alias are the city's words, which is what makes Label the field
-// `internal/project` publishes.
+// Category is one entry in taxonomy.yaml. Slug is ours; Label, DocumentTerm and
+// every Alias are the city's words.
 type Category struct {
 	Slug         string      `yaml:"slug"`
 	Label        string      `yaml:"label"`
@@ -160,24 +119,18 @@ type Category struct {
 	Note         string      `yaml:"note"`
 
 	// Derived marks a slug that is not a mechanical transform of a printed
-	// string. It obliges Rationale and SourceNote, and Load refuses an entry
-	// that claims one without the others: published and derived must not be
-	// presented alike.
+	// string. Load refuses it without Rationale and SourceNote.
 	Derived    bool   `yaml:"derived"`
 	Rationale  string `yaml:"rationale"`
 	SourceNote string `yaml:"source_note"`
 
-	// Assignable reports whether a mapping rule may write this slug as a
-	// `category:`. It is not decoded directly — the YAML key defaults to true
-	// by absence, which a bool field cannot express — but is set by Load from
-	// categoryEntry.
+	// Assignable reports whether a mapping rule may write this slug. Load sets
+	// it from categoryEntry, because the YAML key defaults to true by absence.
 	Assignable bool `yaml:"-"`
 }
 
-// clone deep-copies the slice fields. Category is returned by value, which
-// copies slice headers only, so without this a caller could write through
-// Pages or Aliases into the registry's own state and change what every later
-// lookup sees.
+// clone deep-copies the slice fields so a caller cannot write through them into
+// the registry's state.
 func (c Category) clone() Category {
 	c.Kinds = slices.Clone(c.Kinds)
 	c.Pages = slices.Clone(c.Pages)
@@ -189,11 +142,8 @@ func (c Category) clone() Category {
 	return c
 }
 
-// Fund is one entry in funds.yaml.
-//
-// Number, Name and Type are published (appendix pp. 253-257).
-// ConstraintTier and RestrictionNote are DERIVED from the Description of
-// Funds narrative and must not be presented as something the city printed.
+// Fund is one entry in funds.yaml. Number, Name and Type are published
+// (appendix pp. 253-257); ConstraintTier and RestrictionNote are DERIVED.
 type Fund struct {
 	Number          int    `yaml:"number"`
 	Name            string `yaml:"name"`
@@ -201,24 +151,16 @@ type Fund struct {
 	ConstraintTier  string `yaml:"constraint_tier"`
 	RestrictionNote string `yaml:"restriction_note"`
 
-	// Aliases are the other spellings the city prints for this fund. Name is
-	// the appendix's (pp. 253-257) and the schedules do not repeat it: p76
-	// prints "Low Income Hsng", p136 "Police Evidence", p140 "Facilities
-	// Rehab Pgm". Each is published text with the page it was read from, and
-	// FundByLabel resolves it — a schedule that names a fund in prose has no
-	// fund number to join on otherwise.
+	// Aliases are the other spellings the schedules print for this fund (p76
+	// "Low Income Hsng", p136 "Police Evidence"), each with its page.
+	// FundByLabel resolves them.
 	Aliases []alias `yaml:"aliases"`
 
-	// Major is set only where the budget book itself says so, which is why it
-	// is absent rather than false for the internal service funds: those
-	// schedules do group them under "Major Funds", but the label there is
-	// presentational.
+	// Major is set only where the budget book says so.
 	Major bool `yaml:"major"`
 }
 
-// clone deep-copies the slice fields, for the same reason Category.clone
-// does: a caller must not be able to write through Aliases into the
-// registry's own state.
+// clone deep-copies the slice fields, as Category.clone does.
 func (f Fund) clone() Fund {
 	f.Aliases = slices.Clone(f.Aliases)
 	for i := range f.Aliases {
@@ -228,20 +170,13 @@ func (f Fund) clone() Fund {
 }
 
 // Department is one of the eleven ALL-CAPS headings Budget Book pp.167-170
-// print over their division rows.
+// print over their division rows. A FACT NEVER NAMES ONE: a fact's
+// `department:` carries a Division slug, reached up through
+// Division.Department.
 //
-// A FACT NEVER NAMES ONE. A mapping row's `department:` carries a DIVISION
-// slug, because the division is the level the object rows sit under; the
-// department is reached through Division.Department, and it is what the
-// `<DEPARTMENT> TOTAL` rollups assert. This tier exists so that grouping is
-// recorded once, in the file, rather than re-derived from the page by every
-// reader.
-//
-// DocumentTerm is the heading as printed. It is not always the total row's
-// wording: PUBLIC WORKS (p169:47) closes as "PUBLIC WORKS DEPARTMENT TOTAL"
-// (p170:11), and INNOVATION & ECONOMIC DEVELOPMENT (p167:53) closes with the
-// city's own misspelling. An anchor derived from this field would be wrong
-// twice, which is why the rule file spells its anchors out.
+// DocumentTerm is the heading as printed, not always the total row's wording
+// (PUBLIC WORKS p169:47 closes as "PUBLIC WORKS DEPARTMENT TOTAL"), so the rule
+// file spells its anchors out.
 type Department struct {
 	Slug         string `yaml:"slug"`
 	Label        string `yaml:"label"`
@@ -249,44 +184,27 @@ type Department struct {
 	Pages        []int  `yaml:"pages"`
 	Note         string `yaml:"note"`
 
-	// Derived carries the fourth provenance invariant onto this axis, on the
-	// same terms Category states it. Nothing in departments.yaml is derived
-	// today — the slugs are transforms of printed labels and the parentage is
-	// printed — but a later department that has to be inferred must not be
-	// presented like one the city printed.
+	// Derived marks an inferred department, on the same terms as Category.
 	Derived    bool   `yaml:"derived"`
 	Rationale  string `yaml:"rationale"`
 	SourceNote string `yaml:"source_note"`
 }
 
-// clone deep-copies the slice fields, for the reason Category.clone does: the
-// value is returned by copy, which copies a slice header only, so without this
-// a caller could write through Pages into the registry's own state.
+// clone deep-copies the slice fields, as Category.clone does.
 func (d Department) clone() Department {
 	d.Pages = slices.Clone(d.Pages)
 	return d
 }
 
-// Division is one of the mixed-case row groups the budget book prints beneath a
-// Department, and it is what a fact's `department` field holds.
+// Division is one of the mixed-case row groups printed beneath a Department,
+// and it is what a fact's published `department` field holds.
 //
-// Two schedules print this axis at different sizes: pp.167-170 are General Fund
-// only and print 23, pp.85-125 are the whole department and print 29. The
-// registry holds the union, and each entry's Pages says which schedules show it.
-// departments.yaml's header carries the six that only pp.85-125 reach.
+// pp.167-170 (General Fund only) print 23 and pp.85-125 print 29; the registry
+// holds the union, and Pages says which schedules show each.
 //
-// The field and this type disagree in name, and deliberately: `department` is
-// published in facts.jsonl and in every mapping rule, so renaming it would
-// rewrite the audit trail to fix a word. What the string means is recorded
-// here instead.
-//
-// Department names the heading above this division. It is a separate NAMESPACE
-// from Slug rather than a parent segment of it: five departments share a name
-// with a division beneath them, all five matching on slug and on label — so
-// one namespace would force five invented names. It is also a field rather
-// than a `police/patrol` slug because check's departmentSlug rule is
-// single-segment and fact.RowPath composes `<division>/<category>`; a
-// two-segment slug would emit a two-slash row_path.
+// Department is a separate namespace from Slug, not a parent segment: five
+// departments share a name with a division beneath them, and fact.RowPath
+// composes `<division>/<category>` from a single-segment slug.
 type Division struct {
 	Slug       string `yaml:"slug"`
 	Label      string `yaml:"label"`
@@ -314,9 +232,8 @@ type Registry struct {
 	funds       map[int]Fund
 	fundNumbers []int    // sorted, for enumeration in a stable order
 	fundGroups  []string // sorted, deduplicated, as observed in funds.yaml
-	// fundLabels maps every published spelling — each fund's name and each
-	// of its aliases — to the one fund that may claim it. Load rejects a
-	// second claimant, so this is a function, not a set of candidates.
+	// fundLabels maps every published spelling to the one fund that may claim
+	// it; Load rejects a second claimant.
 	fundLabels map[string]int
 
 	departments     map[string]Department
@@ -325,11 +242,8 @@ type Registry struct {
 	divisionSlugs   []string // sorted, for enumeration in a stable order
 }
 
-// Category returns the taxonomy entry for slug.
-//
-// The second result is the answer to "does this slug exist", which callers
-// need separately from Assignable: a rule naming a rollup and a rule naming a
-// typo are both unassignable, and the fixes differ.
+// Category returns the taxonomy entry for slug. The bool answers "does it
+// exist", which Assignable cannot: a rollup and a typo are both unassignable.
 func (r *Registry) Category(slug string) (Category, bool) {
 	c, ok := r.categories[slug]
 	if !ok {
@@ -338,11 +252,8 @@ func (r *Registry) Category(slug string) (Category, bool) {
 	return c.clone(), true
 }
 
-// Label returns the human label for slug — the city's printed words, which is
-// what a reader should see in place of our machine identifier.
-//
-// internal/project's labels interface declares it over this package, so a
-// change to its signature is a change to the site's contract.
+// Label returns the city's printed words for slug. internal/project's labels
+// interface declares it, so its signature is part of the site's contract.
 func (r *Registry) Label(slug string) (string, bool) {
 	c, ok := r.categories[slug]
 	if !ok {
@@ -351,14 +262,9 @@ func (r *Registry) Label(slug string) (string, bool) {
 	return c.Label, true
 }
 
-// Assignable reports whether a mapping rule may classify a fact as slug.
-//
-// It is false for a slug that does not exist AND for a rollup node such as
-// `taxes`, which exists so a view can name the group and which the taxonomy
-// says a rule may never write. Use Category to tell the two apart: "you named
-// a rollup, use one of its children" and "you typo'd a slug" need different
-// fixes, and a checker that reports only "unassignable" makes the reader
-// work the difference out.
+// Assignable reports whether a mapping rule may classify a fact as slug. It is
+// false for an unknown slug and for a rollup such as `taxes`; use Category to
+// tell the two apart.
 func (r *Registry) Assignable(slug string) bool {
 	c, ok := r.categories[slug]
 	return ok && c.Assignable
@@ -374,14 +280,10 @@ func (r *Registry) Categories() []Category {
 	return out
 }
 
-// LinesPrintedAs is every entry under parent that the city prints as printed
-// for kind: a `parent:` of parent, a `kinds:` naming kind, and a
-// `document_term` or an alias equal to printed byte for byte. It is how a
-// printed row, which carries a label and no slug, gets an identity.
-//
-// Exact, because pp.127-140 print "Current Year - Secured" beside "Current
-// Year - Unsecured". A slice, because ambiguity is the caller's to refuse:
-// fact-revenue-lines-resolve reports it with the rows it resolves to.
+// LinesPrintedAs is every entry under parent, for kind, whose document_term or
+// alias equals printed byte for byte. Exact, because pp.127-140 print "Current
+// Year - Secured" beside "Current Year - Unsecured"; a slice, because
+// fact-revenue-lines-resolve refuses the ambiguity with the rows it resolves to.
 func (r *Registry) LinesPrintedAs(parent, printed, kind string) []string {
 	// An empty spelling would match every entry declaring no document_term.
 	if printed == "" {
@@ -435,18 +337,9 @@ func (r *Registry) Fund(number int) (Fund, bool) {
 	return f.clone(), true
 }
 
-// FundName is the city's own name for a fund number, and whether the registry
-// knows the number at all.
-//
-// It exists beside Fund, which returns the whole entry, because it is the half
-// of it that internal/project's Labels interface declares. That interface is
-// kept to the methods actually used (byob-interfaces.2) AND to types that do
-// not drag this package with them: Fund returns a registry.Fund, so a consumer
-// declaring it would import internal/registry, which is the coupling the
-// narrow interface exists to avoid.
-//
-// A miss is not an error, for the same reason Label's is not: an unknown fund
-// renders as its number rather than failing a build.
+// FundName is the city's name for a fund number, and whether the registry
+// knows it. It is the half of Fund that internal/project's Labels interface can
+// declare without importing this package. A miss renders as the number.
 func (r *Registry) FundName(number int) (string, bool) {
 	f, ok := r.funds[number]
 	if !ok {
@@ -455,21 +348,11 @@ func (r *Registry) FundName(number int) (string, bool) {
 	return f.Name, true
 }
 
-// FundByLabel returns the fund the city prints as label — its name in
-// funds.yaml, or one of the aliases declared there — matched EXACTLY.
-//
-// Exactness is the point. The schedules abbreviate, and the abbreviations are
-// ambiguous rather than merely short: p76 prints "Low Income Hsng", "Traffic
-// Imp Fee", "Host Comm Impact", "Measure D" and "State Gas Tax", and each of
-// those heads both an operating fund and its CIP twin (200/812, 510/823,
-// 282/820, 550/828, 560/834). A prefix or fuzzy match picks one of each pair
-// silently, which is the plausible-wrong-value failure this project exists to
-// prevent. Which fund each label names is settled by reading the document and
-// written down as an alias, once, in funds.yaml.
-//
-// Ambiguity is therefore rejected when funds.yaml loads and cannot arise
-// here: no two funds may claim one label. A label that names no fund is an
-// UnknownFundError naming the label, never a nearest match.
+// FundByLabel returns the fund the city prints as label, matched EXACTLY
+// against its name or an alias. The abbreviations are ambiguous ("Measure D"
+// heads both 550 and its CIP twin 828), so no prefix or fuzzy match: a label
+// naming no fund is an UnknownFundError, and Load rejects two funds claiming
+// one label.
 func (r *Registry) FundByLabel(label string) (Fund, error) {
 	number, ok := r.fundLabels[label]
 	if !ok {
@@ -478,12 +361,8 @@ func (r *Registry) FundByLabel(label string) (Fund, error) {
 	return r.funds[number].clone(), nil
 }
 
-// Funds returns every fund, ordered by number. The slice and every slice
-// inside it are copies, so a caller may sort or trim the result.
-//
-// Callers need this to enumerate rather than probe: fund numbers are sparse
-// (100 to 840, with gaps), so counting or listing them by scanning a range is
-// a guess about the document's numbering scheme.
+// Funds returns a copy of every fund, ordered by number. Fund numbers are
+// sparse, so callers enumerate rather than probe.
 func (r *Registry) Funds() []Fund {
 	out := make([]Fund, 0, len(r.fundNumbers))
 	for _, n := range r.fundNumbers {
@@ -492,32 +371,17 @@ func (r *Registry) Funds() []Fund {
 	return out
 }
 
-// ConstraintTier is the spending constraint recorded for a fund: how tightly
-// the money is tied down, which is the question a reader of the published
-// site actually has about a large balance.
-//
-// It returns "" for a fund the registry does not list. That is a different
-// answer from the tier "unknown", which is a real classification meaning the
-// budget document does not establish a restriction — do not collapse them.
+// ConstraintTier is the spending constraint recorded for a fund. It returns ""
+// for an unlisted fund, which is not the tier "unknown" (the document
+// establishes no restriction).
 func (r *Registry) ConstraintTier(fund int) string {
 	return r.funds[fund].ConstraintTier
 }
 
-// FundType is the fund type funds.yaml records for a number, and whether the
-// registry knows the number at all.
-//
-// IT IS THE PARENT EDGE OF THE TIER HIERARCHY, and that is why it exists beside
-// Fund rather than being read off it. A fund node's parent is
-// fund-group/<type>, and taking that type from HERE rather than from the fact's
-// own fund_group is what keeps the fold from being a tautology: funds.yaml's
-// `type:` is transcribed from the appendix pp.253-257, while a fact's fund_group
-// comes from the section header its row sits under on pp.131-140. Two
-// independent records of one claim, which is the only shape in which comparing
-// them says anything.
-//
-// It returns the type and false for an unlisted fund rather than "" and true,
-// because "" is not a fund type and a node parented to `fund-group/` would be a
-// node parented to nothing.
+// FundType is the type funds.yaml records for a number, and whether the
+// registry knows it. It is the parent edge of the tier hierarchy: taking the
+// type from the appendix (pp.253-257) rather than from the fact's fund_group
+// (pp.131-140) is what keeps the fold from being a tautology.
 func (r *Registry) FundType(number int) (string, bool) {
 	f, ok := r.funds[number]
 	if !ok {
@@ -526,27 +390,15 @@ func (r *Registry) FundType(number int) (string, bool) {
 	return f.Type, true
 }
 
-// RestrictionNote is our reading of what ties a fund's money down, from the
-// Description of Funds narrative (pp. 258-261).
-//
-// IT IS DERIVED AND THE CALLER IS PUBLISHING IT. funds.yaml's own header says
-// constraint_tier and restriction_note "must not be presented as something the
-// city printed", so a node carrying a ConstraintTier carries this beside it as
-// the rationale: the classification and the sentence it was read from travel
-// together or the classification is unsourced. See docs/sankey-contract.md's
-// constraint_tier section.
+// RestrictionNote is our DERIVED reading of what ties a fund's money down
+// (pp. 258-261). It travels beside ConstraintTier as its rationale. See
+// docs/sankey-contract.md's constraint_tier section.
 func (r *Registry) RestrictionNote(fund int) string {
 	return r.funds[fund].RestrictionNote
 }
 
-// DivisionLabel is the city's own words for a division slug, which is what a
-// fact's `department` field holds.
-//
-// It exists beside Division for FundName's reason: Division returns a
-// registry.Division, so internal/project declaring it in [project.Labels] would
-// import this package, which is the coupling the narrow interface avoids.
-//
-// A miss is the caller's to refuse; a projection drawing a division does.
+// DivisionLabel is the city's words for a division slug, declarable in
+// [project.Labels] without importing this package.
 func (r *Registry) DivisionLabel(slug string) (string, bool) {
 	d, ok := r.divisions[slug]
 	if !ok || d.Label == "" {
@@ -555,9 +407,8 @@ func (r *Registry) DivisionLabel(slug string) (string, bool) {
 	return d.Label, true
 }
 
-// DepartmentLabel is the city's own words for a department slug -- the ALL-CAPS
-// tier -- and whether departments.yaml lists it. Separate from
-// [Registry.DivisionLabel] because some slugs are in both tiers.
+// DepartmentLabel is the city's words for a department slug -- the ALL-CAPS
+// tier -- and whether departments.yaml lists it.
 func (r *Registry) DepartmentLabel(slug string) (string, bool) {
 	d, ok := r.departments[slug]
 	if !ok {
@@ -566,12 +417,8 @@ func (r *Registry) DepartmentLabel(slug string) (string, bool) {
 	return d.Label, true
 }
 
-// FundGroup reports whether name is a fund type funds.yaml actually uses.
-//
-// The answer comes from the loaded file rather than from this package's known
-// set, so a group that no longer has any fund in it stops validating. That is
-// the intended reading of `fund_group:` on a spine column: it names a block of
-// funds in the document, and a block with no funds is not a block.
+// FundGroup reports whether name is a fund type the loaded funds.yaml actually
+// uses, so a group with no fund left in it stops validating.
 func (r *Registry) FundGroup(name string) bool {
 	return slices.Contains(r.fundGroups, name)
 }
@@ -584,9 +431,6 @@ func (r *Registry) FundGroups() []string {
 
 // Division returns the departments.yaml entry for slug, which is what a fact's
 // `department` field holds.
-//
-// The name mismatch is deliberate and is explained on [Division]: the fact
-// field is published and the type says what the string means.
 func (r *Registry) Division(slug string) (Division, bool) {
 	d, ok := r.divisions[slug]
 	if !ok {
@@ -595,9 +439,9 @@ func (r *Registry) Division(slug string) (Division, bool) {
 	return d.clone(), true
 }
 
-// Department reports whether slug is a department departments.yaml lists — the
-// ALL-CAPS tier. Budget Book pp.85-125's rows name a department where every
-// other rule names a division.
+// Department reports whether slug is a department departments.yaml lists.
+// Budget Book pp.85-125's rows name a department where other rules name a
+// division.
 func (r *Registry) Department(slug string) bool {
 	_, ok := r.departments[slug]
 	return ok
@@ -623,26 +467,19 @@ func (r *Registry) Departments() []Department {
 	return out
 }
 
-// Error reports a problem in one registry file, naming the entry at fault. The
-// files are long and hand-written, so an error that says only "duplicate slug"
-// costs the reader a search through a file whose whole point is that its entries
-// are hard to tell apart.
+// Error reports a problem in one registry file, naming the entry at fault.
 type Error struct {
 	// File is FundsFile, TaxonomyFile, DepartmentsFile or SourcesFile.
 	File string
-	// Entry names the offending fund, category, division or source, already
-	// rendered ("fund 291", `category "taxes/property"`). It is empty for a
-	// file-level problem such as a bad schema_version.
+	// Entry names the offending entry, already rendered ("fund 291"); empty
+	// for a file-level problem.
 	Entry string
 	Field string
 	Msg   string
 }
 
-// unknownFundError reports a printed label that names no fund. It is its own
-// type so a caller mapping a schedule can tell "this page names a fund we
-// have not written down" from any other failure, and can report every such
-// label at once instead of stopping at the first: the fix is an edit to
-// funds.yaml, and a reader wants the whole list.
+// unknownFundError reports a printed label that names no fund, as its own type
+// so a caller can collect every such label at once.
 type unknownFundError struct {
 	// Label is the string as printed, unnormalized.
 	Label string
@@ -666,12 +503,8 @@ func (e *Error) Error() string {
 	return b.String()
 }
 
-// labeler mirrors the Label method of the interface `internal/project`
-// declares to get the city's words onto the site. Asserting it here means a
-// change to THAT method's signature breaks this package's own build instead of
-// a consumer's, which is the only way a narrow interface owned by the consumer
-// stays honest. It covers Label alone; the consumer's interface declares five
-// more, and a change to any of those still surfaces only in project's build.
+// labeler mirrors the Label method `internal/project` declares, so a change to
+// its signature breaks this package's build. It covers Label alone.
 type labeler interface {
 	Label(slug string) (string, bool)
 }
