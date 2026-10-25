@@ -1,12 +1,7 @@
 // Package build implements `fisc build`, which resolves the curated mapping
-// rules against the committed extraction and writes the fact store.
-//
-// It is the only writer of facts.jsonl, and the file it writes is a build
-// product: every line is derivable from data/extracted/ plus mappings/, so a
-// rebuild that differs is either a rule change or a bug, and CI can tell which
-// by diffing. That is why the write is atomic and the order canonical — a
-// half-written or differently-ordered file would make the diff meaningless,
-// which would cost the project its cheapest real check.
+// rules against the committed extraction and writes the fact store. It is the
+// only writer of facts.jsonl; the write is atomic and the order canonical so a
+// rebuild diffs cleanly against the committed file.
 package build
 
 import (
@@ -30,16 +25,13 @@ import (
 	"github.com/jcrussell/livermore-budget/pkg/iostreams"
 )
 
-// Defaults. Both paths are repository-relative so a build is reproducible from
-// any working directory, which is what lets CI and a developer's shell produce
-// byte-identical output.
+// Defaults, repository-relative so a build is reproducible from any directory.
 const (
 	defaultOutput   = repo.FactsPath
 	defaultMappings = repo.MappingsDir
 )
 
-// factsPerm is the mode of the written fact store. It is world-readable
-// because facts.jsonl is committed and published; nothing about it is secret.
+// factsPerm is world-readable: facts.jsonl is committed and published.
 const factsPerm fs.FileMode = 0o644
 
 // Options carries the command's dependencies and its parsed flags.
@@ -89,8 +81,7 @@ figures resting on our arithmetic alone.`,
   # Machine-readable report, for CI
   fisc build --json`,
 		GroupID: "data",
-		// A stray argument is a mistyped flag, not an input: this command
-		// takes its paths from flags so it can state their defaults.
+		// A stray argument is a mistyped flag; paths come from flags.
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if runF != nil {
@@ -111,8 +102,7 @@ figures resting on our arithmetic alone.`,
 }
 
 // Validate checks the flags before anything is opened or written, so a
-// mistyped path fails as a usage error rather than part way through a build
-// that has already replaced the fact store.
+// mistyped path is a usage error, not a half-replaced fact store.
 func (o *Options) Validate() error {
 	for _, f := range []struct{ flag, value string }{
 		{"--output", o.Output},
@@ -125,11 +115,8 @@ func (o *Options) Validate() error {
 	return nil
 }
 
-// validateRepoPath refuses a path that is absolute or that climbs out of the
-// repository. Both flags are joined onto the repository root, so an absolute
-// value would silently mean something other than what it says, and a `../..`
-// would let a mistyped flag read or overwrite files outside the tree this
-// command is supposed to be describing.
+// validateRepoPath refuses a path that is absolute or climbs out of the
+// repository: both flags are joined onto the repository root.
 func validateRepoPath(flag, value string) error {
 	switch {
 	case value == "":
@@ -173,10 +160,8 @@ func buildRun(ctx context.Context, o *Options) error {
 		return err
 	}
 
-	// An empty result is refused rather than written. A mistyped --mappings
-	// resolves to a directory with no rules in it, and truncating the fact
-	// store on the way to reporting success is the most expensive way this
-	// command could fail.
+	// An empty result is refused: a mistyped --mappings must not truncate the
+	// fact store on the way to reporting success.
 	if len(facts) == 0 {
 		return hint.With(
 			fmt.Errorf("%d rule files in %q produced no facts", len(files), dir),
@@ -188,7 +173,7 @@ func buildRun(ctx context.Context, o *Options) error {
 		return err
 	}
 	// Sortedness is checked rather than assumed: Sort and the published order
-	// are two statements of the same contract, and this is where they meet.
+	// meet here.
 	if err := fact.CheckSorted(facts); err != nil {
 		return err
 	}
@@ -207,14 +192,8 @@ func buildRun(ctx context.Context, o *Options) error {
 }
 
 // resolve turns every rule file into facts, reporting what it could and could
-// not check along the way.
-//
-// The whole corpus is held in memory before anything is written, because the
-// canonical order is global and the uniqueness check is too: a fact from the
-// last rule file can sort before the first one's, and two rules in different
-// files can claim the same cell. Streaming would trade a check the project
-// depends on for memory this corpus does not need — the Budget Book's whole
-// mapping is in the low tens of thousands of facts.
+// not check. The whole corpus is held in memory because the canonical order
+// and the uniqueness check are both global.
 func resolve(ctx context.Context, root string, files []*mapping.File) ([]fact.Fact, *report, error) {
 	rep := newReport()
 	var facts []fact.Fact
@@ -259,10 +238,8 @@ func resolve(ctx context.Context, root string, files []*mapping.File) ([]fact.Fa
 				facts = append(facts, got...)
 				rep.addOmissions(rule, omissions)
 
-				// A rule whose printed total spans its parts is checked once,
-				// after every part has been read, rather than part by part; a
-				// rule in a subtotal chain with no total_row is checked when
-				// its chain is.
+				// A spanning total is checked once after every part is read; a
+				// chained rule with no total_row is checked with its chain.
 				if inChain[rule.ID] && rule.TotalRow == "" {
 					continue
 				}
@@ -312,9 +289,7 @@ func resolve(ctx context.Context, root string, files []*mapping.File) ([]fact.Fa
 			}
 		}
 
-		// Rollups run after every rule in the file has resolved: a total
-		// covering several rules cannot be summed until all of them have
-		// stated their own.
+		// Rollups run after every rule in the file has resolved.
 		if err := rep.checkRollups(r, f); err != nil {
 			return nil, nil, err
 		}

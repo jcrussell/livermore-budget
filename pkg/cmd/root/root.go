@@ -1,6 +1,4 @@
-// Package root assembles the fisc command tree. It aggregates feature
-// packages and owns nothing else — adding a command is one import and one
-// AddCommand line.
+// Package root assembles the fisc command tree and owns nothing else.
 package root
 
 import (
@@ -9,18 +7,14 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/jcrussell/livermore-budget/internal/build"
-	// internal/build is the link-time version metadata and already holds the
-	// name `build`, so the command package that produces facts is aliased
-	// rather than renamed: `fisc build` is the user-facing name and the
-	// package should keep it.
+	// internal/build already holds the name `build`.
 	buildcmd "github.com/jcrussell/livermore-budget/pkg/cmd/build"
 	exportcmd "github.com/jcrussell/livermore-budget/pkg/cmd/export"
 	verifycmd "github.com/jcrussell/livermore-budget/pkg/cmd/verify"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
-// Command groups. Commands set GroupID so `fisc --help` reads as a workflow
-// rather than an alphabetical list.
+// Command groups, so `fisc --help` reads as a workflow.
 const (
 	groupData = "data"
 	groupSite = "site"
@@ -43,22 +37,15 @@ regenerate data/extracted/ with tools/extract.py. fisc reads only the
 committed artifacts, so it needs neither Python nor the source PDFs.`,
 		Version: build.Get().String(),
 
-		// Reject stray positional args. Without this, an unknown command is
-		// silently treated as an argument to root, which prints help and
-		// exits 0 -- a typo'd command would look like success. cobra.NoArgs
-		// reports it as `unknown command "x" for "fisc"`, which the runner
-		// maps to exit 2.
-		//
-		// The RunE below is what makes that validation reachable: cobra
-		// returns flag.ErrHelp for a non-runnable command *before* it
-		// validates args, so a root with no RunE ignores Args entirely.
+		// Without NoArgs an unknown command prints help and exits 0. The RunE
+		// makes Args reachable: cobra returns flag.ErrHelp for a non-runnable
+		// command before it validates args.
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cmd.Help()
 		},
 
-		// Errors are reported by the runner, which knows about exit codes.
-		// Usage is silenced so a runtime failure doesn't dump the help text.
+		// The runner reports errors; usage is silenced on runtime failures.
 		SilenceErrors: true,
 		SilenceUsage:  true,
 	}
@@ -75,8 +62,7 @@ committed artifacts, so it needs neither Python nor the source PDFs.`,
 		&cobra.Group{ID: groupSite, Title: "Site commands"},
 	)
 
-	// Feature commands are added here as they land: reanchor is still to come.
-	// See beads fisc-mq4.* and fisc-gxa.*.
+	// reanchor is still to come (fisc-mq4.*, fisc-gxa.*).
 	cmd.AddCommand(buildcmd.NewCmdBuild(f, nil))
 	cmd.AddCommand(verifycmd.NewCmdVerify(f, nil))
 	cmd.AddCommand(exportcmd.NewCmdExport(f, nil))
@@ -86,14 +72,9 @@ committed artifacts, so it needs neither Python nor the source PDFs.`,
 	return cmd
 }
 
-// refuseUnknownHelpTopics makes `fisc help <typo>` a usage error. cobra's own
-// help command reports an unknown topic only when Find fails, and root's Find
-// never does: with Args set it returns root and the typo as a leftover
-// argument, so cobra prints root's help and exits 0. Even its unknown-topic
-// branch prints to stdout and returns no error.
-//
-// It wraps cobra's help command rather than replacing it, so the help text
-// and its shell completion stay cobra's.
+// refuseUnknownHelpTopics makes `fisc help <typo>` a usage error. With Args
+// set, root's Find never fails, so cobra's help prints root's help and exits 0.
+// It wraps cobra's help command so the text and completion stay cobra's.
 func refuseUnknownHelpTopics(root *cobra.Command) {
 	root.InitDefaultHelpCmd()
 	help, _, err := root.Find([]string{"help"})

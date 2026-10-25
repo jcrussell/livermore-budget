@@ -53,10 +53,8 @@ func departmentsHeldApart() []export.HeldApart {
 
 // departmentsApartFromSpine is every column where structure.BudgetBookExceptions
 // declares pp.85-125's department rows apart from pp.66-67's citywide figure,
-// with the declaration's residual and reason, which the glance page prints
-// beside its departments bar in place of saying the rows tie. One entry per
-// exception and column, so an exception pinning several cells of one column
-// is one residual and not several.
+// with the residual and reason the glance page prints. One entry per exception
+// and column.
 func departmentsApartFromSpine() ([]export.ApartFromSpine, error) {
 	var out []export.ApartFromSpine
 	for _, e := range structure.BudgetBookExceptions() {

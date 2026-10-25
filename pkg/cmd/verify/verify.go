@@ -1,28 +1,11 @@
-// Package verify implements `fisc verify`, the command that makes this
-// project's central claim checkable.
+// Package verify implements `fisc verify`, which tests the fact store's order
+// and identity, the vocabulary, and the graph's arithmetic from committed files
+// alone: no source PDF, no Python, no network.
 //
-// Everything the site publishes is derived from committed artifacts, and this
-// command is where that derivation is tested: the fact store's order and
-// identity, the vocabulary every classification resolves in, and the arithmetic
-// of the graph the site draws. It reads only committed files — no source PDF, no
-// Python, no network — so CI can run it on a plain clone.
-//
-// Its exit code is the contract, and the line it draws is whether a report was
-// produced at all: 0 when the report is clean, 3 when it is not — a check failed,
-// or a check could not reach a verdict — and 1 when there is no report, because
-// the corpus could not be loaded. 2 is a flag this command did not understand.
-//
-// 3 covering both a failure and an error is deliberate: both mean "read the
-// report", and the report says which happened, with a status per check. 1 is
-// reserved for the case where reading the report is not an option.
-//
-// A run that has nothing to check is NOT a pass, and this command says so on its
-// own output while still exiting 0. `--strict` turns an UNDECLARED vacancy into a
-// failure; a vacancy named in internal/check's declaredVacuous, with the bead that
-// retires it, is reported and tolerated. The converse is not gated on the flag: a
-// declaration whose check has stopped being vacuous fails EVERY run, because it is
-// a false statement in this repository's own source. See internal/check for why
-// --strict is not the default.
+// Exit codes: 0 clean; 3 a check failed or reached no verdict (read the
+// report); 1 no report, the corpus could not load; 2 a bad flag. A vacuous
+// check is not a pass: `--strict` fails an undeclared vacancy, and a
+// declaredVacuous entry whose check is no longer vacuous fails every run.
 package verify
 
 import (
@@ -36,26 +19,13 @@ import (
 	"github.com/jcrussell/livermore-budget/pkg/iostreams"
 )
 
-// exitReportNotClean is the exit code for a run whose report is not clean: a
-// check failed, a check could not reach a verdict, or --strict was given and a
-// check had nothing to check. It is distinct from 1, which means there is no
-// report to read at all, so a script can tell "the corpus is wrong" from "fisc
-// could not look at it".
-//
-// It is a fixed 3 and deliberately not the number of failed checks, which
-// cmdutil.ExitCodeError's doc comment offers as a possibility: an exit code is
-// one byte, so a run with exactly 256 failures would exit 0 and a CI job would
-// go green on the worst result this command can produce. The count is in the
-// report, where it cannot wrap.
+// exitReportNotClean is the exit code for a report that is not clean, distinct
+// from 1 (no report). Fixed rather than the failure count: an exit code is one
+// byte, so 256 failures would exit 0.
 const exitReportNotClean = 3
 
-// loader builds the subject the checks read. Nil means [check.Load].
-//
-// This is the seam a test uses to hand the checks a corpus it constructed,
-// rather than standing up a repository on disk — the same shape `fisc export`
-// uses for its Builder, and defaulted in the run function for the same reason:
-// the default reaches the filesystem, and a command constructed for `--help`
-// must not.
+// loader builds the subject the checks read. Nil means [check.Load], defaulted
+// in the run function so a command built for `--help` touches no filesystem.
 type loader func(check.LoadOptions) (*check.Subject, error)
 
 // Options carries the command's dependencies and its parsed flags.
@@ -72,14 +42,8 @@ type Options struct {
 
 	// Load builds the subject. Nil means check.Load.
 	Load loader
-	// Checks are the checks to run. Nil means check.All.
-	//
-	// This is a seam for the same reason Load is one. What this command owns is the
-	// mapping from a mix of verdicts to an exit code and two output shapes, and the
-	// committed corpus deliberately produces only three of the five verdicts — a
-	// failure, an error and a skip are all states the report has to render and
-	// score correctly before any of them can be produced by the data. Injecting the
-	// set is how that mapping is tested without a corpus contrived to break.
+	// Checks is a seam because the committed corpus produces only some of
+	// the five verdicts, and each must render and score correctly.
 	Checks func() []check.Check
 }
 
@@ -130,9 +94,7 @@ also exits 3. SKIPPED means the check needed --full and did not run.`,
   # Fail if any check had nothing to check and no declaration says why
   fisc verify --strict`,
 		GroupID: "data", // root.GroupData; a literal, because root imports this package.
-		// A stray argument is a mistyped flag. Selecting individual checks is
-		// not a feature yet, and silently ignoring the name of one would be
-		// worse than refusing it.
+		// A stray argument is a mistyped flag; refused, not ignored.
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if runF != nil {
@@ -155,13 +117,7 @@ also exits 3. SKIPPED means the check needed --full and did not run.`,
 }
 
 // Validate reports flags that cannot produce a meaningful run, before anything
-// is opened (byob-input-validation.5).
-//
-// There is nothing to reject today: this command takes no paths, and its three
-// flags are independent booleans, each meaningful in every combination. The
-// method exists so that the first flag which does need rejecting has one
-// obvious place to be rejected in, and so this command has the shape every
-// other one has rather than validation inlined into its run function.
+// is opened (byob-input-validation.5). There is nothing to reject today.
 func (*Options) Validate() error { return nil }
 
 func verifyRun(ctx context.Context, o *Options) error {
@@ -177,10 +133,8 @@ func verifyRun(ctx context.Context, o *Options) error {
 	if load == nil {
 		load = check.Load
 	}
-	// The version is stamped into each projection's metadata.generated_by. It is
-	// this binary's, not a placeholder: `fisc export` stamps the same string, so
-	// the graph verify checks is byte-for-byte the graph export would publish —
-	// which is what the artifact drift check in fisc-1wr.5 will compare.
+	// The version is this binary's, the string `fisc export` stamps, so the
+	// graph verified is byte for byte the graph export would publish.
 	subject, err := load(check.LoadOptions{
 		Root:    root,
 		Version: build.Get().String(),
@@ -201,10 +155,8 @@ func verifyRun(ctx context.Context, o *Options) error {
 	if err := printReport(o.IO, rep, o.JSON); err != nil {
 		return err
 	}
-	// The report is printed first and the exit code carries the verdict, so a
-	// failing run still tells the reader everything it found. ExitCodeError
-	// prints nothing itself, which is what keeps the runner from appending an
-	// "error:" line to a report that has already said what is wrong.
+	// The report prints first; ExitCodeError prints nothing, so no "error:"
+	// line follows a report that already said what is wrong.
 	if rep.Failed() {
 		return &cmdutil.ExitCodeError{Code: exitReportNotClean}
 	}

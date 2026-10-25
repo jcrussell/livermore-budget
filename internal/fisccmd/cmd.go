@@ -1,6 +1,5 @@
-// Package fisccmd holds the top-level runner: the one place that turns an
-// error into an exit code, and the only place outside main that knows exit
-// codes exist at all.
+// Package fisccmd holds the top-level runner, the one place that turns an
+// error into an exit code.
 package fisccmd
 
 import (
@@ -24,16 +23,12 @@ const (
 	exitOK    = 0
 	exitError = 1
 	exitUsage = 2
-	// 128+SIGINT, the shell convention. Distinct from exitUsage so a script
-	// can tell "the user pressed Ctrl-C" from "you called me wrong".
+	// 128+SIGINT, the shell convention.
 	exitCancel = 130
 )
 
-// Run executes root with args and returns the process exit code. Commands
-// return errors; this function is what decides what those errors mean.
-//
-// The first SIGINT or SIGTERM cancels the context the commands read; the
-// handler is then released, so a second one kills the process outright.
+// Run executes root with args and returns the process exit code. The first
+// SIGINT or SIGTERM cancels the commands' context; a second kills the process.
 func Run(root *cobra.Command, args []string, ios *iostreams.IOStreams) int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -45,13 +40,9 @@ func Run(root *cobra.Command, args []string, ios *iostreams.IOStreams) int {
 }
 
 // run is Run under a context the caller controls. A command that succeeded
-// exits 0 however late the signal came: it has done its work. A command that
-// failed while the context was cancelled exits 130, whatever error the
-// interrupt produced -- an ExitCodeError included, since `fisc verify` turns
-// the checks a cancellation stopped into errored ones and reports the run
-// not clean. An error that is neither the cancellation itself nor an exit
-// code may be a failure the signal merely raced, so it is printed before
-// "cancelled" rather than dropped.
+// exits 0 however late the signal came. One that failed while the context was
+// cancelled exits 130, an ExitCodeError included; an error that is neither the
+// cancellation nor an exit code may be a raced failure, so it is printed.
 func run(ctx context.Context, root *cobra.Command, args []string, ios *iostreams.IOStreams) int {
 	root.SetArgs(args)
 	root.SetIn(ios.In)
@@ -69,21 +60,15 @@ func run(ctx context.Context, root *cobra.Command, args []string, ios *iostreams
 	return classify(err, ios)
 }
 
-// classify maps an error to an exit code and prints whatever the user needs
-// to see. It is separate from Run so it can be tested without a live cobra
-// tree or signal handling.
-//
-// A wrapped context.Canceled is an ordinary error here: only run, seeing the
-// process context cancelled, reports an interrupt. A command's own child
+// classify maps an error to an exit code and prints what the user needs. A
+// wrapped context.Canceled is an ordinary error here: a command's own child
 // context being cancelled is not the user pressing Ctrl-C.
 func classify(err error, ios *iostreams.IOStreams) int {
 	if err == nil {
 		return exitOK
 	}
 
-	// A hint only makes sense alongside the error it annotates. The silent
-	// and explicit-code paths deliberately print nothing, so a bare "hint:"
-	// line with no preceding error would be worse than none.
+	// A hint prints only after a printed error, never as a bare "hint:" line.
 	printed := false
 	defer func() {
 		var h *hint.ErrHint
@@ -116,10 +101,8 @@ func classify(err error, ios *iostreams.IOStreams) int {
 	return exitError
 }
 
-// isUsageError recognizes the errors cobra produces as untyped strings.
-// SetFlagErrorFunc covers parse failures, but an unknown command and the
-// MarkFlagsMutuallyExclusive family both bypass it, so they are matched on
-// their message shape here rather than at each call site.
+// isUsageError recognizes cobra's untyped usage errors: an unknown command and
+// the MarkFlagsMutuallyExclusive family bypass SetFlagErrorFunc.
 func isUsageError(err error) bool {
 	msg := err.Error()
 	return strings.HasPrefix(msg, "unknown command ") ||

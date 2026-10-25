@@ -9,11 +9,10 @@ import (
 	"strings"
 )
 
-// TempPrefix begins the name of every temp file WriteFile makes, which
-// os.CreateTemp follows with a decimal random suffix; an interrupted
-// WriteFile leaves one behind. It is a dotfile so a half-written facts.jsonl
-// is never picked up by a glob, and names fisc so IsTempName recognises the
-// residue without claiming another tool's.
+// TempPrefix begins every WriteFile temp file name, followed by
+// os.CreateTemp's decimal suffix. A dotfile, so no glob picks up a
+// half-written facts.jsonl, and names fisc so IsTempName claims no other
+// tool's residue.
 const TempPrefix = ".fisc-tmp-"
 
 const tempPattern = TempPrefix + "*"
@@ -34,24 +33,13 @@ func IsTempName(name string) bool {
 	return true
 }
 
-// dirPerm is the mode a created parent directory gets: owner and group, no
-// world bit, which is what gosec's G301 asks for and costs nothing here.
+// dirPerm has no world bit (gosec G301).
 const dirPerm fs.FileMode = 0o750
 
-// WriteFile replaces the file at path with whatever fn writes, atomically: fn
-// writes into a temporary file in the SAME directory, which is fsynced and
-// then renamed over the target. A reader therefore sees the old file or the
-// new one, never a torn one, and a failure leaves the target exactly as it was
-// with no temp file behind it.
-//
-// The same directory is the load-bearing detail, not an implementation choice.
-// os.Rename is atomic only within a filesystem; a temp file in os.TempDir()
-// would silently degrade to a copy across a mount boundary, which is precisely
-// the torn write this exists to prevent — and it would be invisible on the
-// machine where it was written.
-//
-// It takes a writer func rather than a []byte so a caller can stream: facts is
-// a JSON Lines file whose whole point is that it is written a record at a time.
+// WriteFile replaces the file at path with whatever fn writes, atomically: a
+// temp file in the same directory is fsynced and renamed over the target, so a
+// reader sees old or new, never torn, and a failure leaves no temp behind. The
+// same directory matters: os.Rename is atomic only within a filesystem.
 func WriteFile(path string, perm fs.FileMode, fn func(io.Writer) error) error {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, dirPerm); err != nil {
@@ -63,8 +51,7 @@ func WriteFile(path string, perm fs.FileMode, fn func(io.Writer) error) error {
 	}
 	name := tmp.Name()
 
-	// Every path out of here before the rename must take the temp file with
-	// it, including the ones fn causes.
+	// Every path out before the rename removes the temp file.
 	renamed := false
 	defer func() {
 		if !renamed {
@@ -76,14 +63,13 @@ func WriteFile(path string, perm fs.FileMode, fn func(io.Writer) error) error {
 	if err := fn(tmp); err != nil {
 		return fmt.Errorf("write %q: %w", path, err)
 	}
-	// Sync before the rename, not after: a rename that beats its own data to
-	// disk publishes a name pointing at nothing after a crash.
+	// Sync before the rename, or a crash can publish a name pointing at
+	// nothing.
 	if err := tmp.Sync(); err != nil {
 		return fmt.Errorf("sync %q: %w", path, err)
 	}
-	// Chmod through the handle rather than the name. os.CreateTemp makes the
-	// file 0600, and the caller's perm must land on this file rather than on
-	// whatever the name happens to refer to by the time the call runs.
+	// Chmod through the handle so perm lands on this file, not whatever the
+	// name refers to by then.
 	if err := tmp.Chmod(perm); err != nil {
 		return fmt.Errorf("set mode on %q: %w", path, err)
 	}

@@ -21,17 +21,12 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
-// factsPath is the fact store this export reads. It is repo's rather than
-// this package's: `fisc build` writes that path and `fisc verify` checks it, and
-// a site built from a different file than either would still export cleanly.
+// factsPath is repo's, the path `fisc build` writes and `fisc verify` checks.
 const factsPath = repo.FactsPath
 
 // buildAll is the default Builder: everything the site ships.
 func buildAll(repoRoot string) (result, error) {
-	// ONE READ OF THE STORE, used twice: the projections are built from the
-	// decoded facts and the shards are compared against the raw bytes. Reading
-	// it twice would make that comparison a claim about two files that happen
-	// to have the same name.
+	// One read of the store: the shards are compared against these raw bytes.
 	raw, facts, err := readFactStore(repoRoot)
 	if err != nil {
 		return result{}, err
@@ -59,13 +54,8 @@ func buildFrom(repoRoot string, raw []byte, facts []fact.Fact) (result, error) {
 	}, nil
 }
 
-// readFactStore reads facts/facts.jsonl BOTH ways: the raw bytes as committed
-// and the decoded facts.
-//
-// Both, from one read, because the two are compared. buildFactAssets re-encodes
-// the facts and asserts the result is the raw bytes back, and that assertion is
-// worth nothing if the two came from different reads of a file something could
-// have changed in between.
+// readFactStore reads facts/facts.jsonl as raw bytes and decoded facts from one
+// read, since buildFactAssets asserts the two encode alike.
 func readFactStore(repoRoot string) ([]byte, []fact.Fact, error) {
 	path := filepath.Join(repoRoot, filepath.FromSlash(factsPath))
 	// #nosec G304 -- the path is the repository root fisc found by walking up
@@ -82,25 +72,18 @@ func readFactStore(repoRoot string) ([]byte, []fact.Fact, error) {
 	return raw, facts, nil
 }
 
-// buildProjectionsFrom is the pipeline itself, over facts already read. It
-// still takes repoRoot because the label registry is loaded from data/ here, in
-// the composition root, and handed to internal/project.
+// buildProjectionsFrom is the pipeline itself, over facts already read.
 func buildProjectionsFrom(repoRoot string, facts []fact.Fact) (map[string][]byte, error) {
-	// The label registry is loaded here, in the composition root, and passed
-	// in: internal/project is deliberately decoupled from internal/registry
-	// and reaches it through an interface it declares itself.
+	// The label registry is loaded here and passed in: internal/project
+	// reaches it only through an interface it declares.
 	reg, err := loadRegistry(repoRoot)
 	if err != nil {
 		return nil, err
 	}
 
-	// The slices are internal/project's declaration, not this command's: `fisc
-	// verify` checks the same slices, and two copies would let it pass a graph
-	// this command does not publish.
-	//
-	// THE LOOP IS OVER PROJECTIONS, NOT OVER YEARS: a trends document is of one
-	// slice spanning four columns of a different schedule, so each projection
-	// is built over the slices it declares.
+	// The slices are internal/project's declaration, which `fisc verify`
+	// checks too. The loop is over projections, not years: a trends document
+	// is one slice spanning four columns.
 	version := build.Get().String()
 	out := map[string][]byte{}
 	builtAt := map[string]builtDoc{}
@@ -111,16 +94,10 @@ func buildProjectionsFrom(repoRoot string, facts []fact.Fact) (map[string][]byte
 			if err != nil {
 				return nil, err
 			}
-			// Two documents landing on one stem would write one file and drop
-			// the other in silence, and a reader would have no way to tell which
-			// of the two they were looking at.
+			// Two documents on one stem would silently drop one.
 			if prev, ok := builtAt[stem]; ok {
-				// NAMING BOTH PROJECTIONS, because builtAt spans the whole
-				// registry loop and the two documents need not come from one
-				// projection. While this said "the %s projection wants two
-				// documents" it named only the CURRENT one, so a collision
-				// between, say, the spine and a future one-slice projection read
-				// as a fault in whichever happened to be second.
+				// Both projections are named: builtAt spans the whole
+				// registry loop.
 				return nil, fmt.Errorf(
 					"the %s and %s projections both want the stem %q: %s and %s",
 					prev.name, p.Name(), stem,
@@ -136,17 +113,8 @@ func buildProjectionsFrom(repoRoot string, facts []fact.Fact) (map[string][]byte
 		}
 	}
 
-	// THE PUBLISHED SET IS ASSERTED. `fisc export` and `fisc verify` share one
-	// declaration of which slices the site publishes; what this catches is the
-	// two of them diverging -- a projection whose declared slices no longer
-	// include a published one would otherwise be checked under its own slices
-	// and published under one it says it is not of.
-	//
-	// It fails closed and names both sides, because the fix is never obvious
-	// from a missing file: either the projection wants slices this command
-	// cannot publish, or the published set moved and the projection was not
-	// told. It does not demand that every projection be of the published
-	// spine slice.
+	// The published set is asserted, so export and verify cannot diverge on
+	// which slices the site publishes. It fails closed naming both sides.
 	if err := assertPublishedBuilt(builtAt); err != nil {
 		return nil, err
 	}
@@ -164,19 +132,10 @@ func loadRegistry(repoRoot string) (*registry.Registry, error) {
 	return reg, nil
 }
 
-// assertPublishedBuilt is the export side of published-projection-built.
-//
-// It is a function of the stems built rather than inline in the loop above so a
-// test can hand it a published set that was not built, which is the state the
-// real repository is never in and the only one worth asserting about.
-//
-// THE STEM EXISTING IS NOT THE WHOLE ASSERTION. A document built over fewer
-// columns than the site publishes it over lands at the right path and is the
-// wrong file: revenue-trends.json carrying three of its four printed columns is
-// a chart a reader cannot tell from a complete one, and every check downstream
-// compares each series against the columns the DOCUMENT declares, so it agrees
-// with itself. project.MissingColumns is the comparison, shared with
-// internal/check rather than spelled twice.
+// assertPublishedBuilt is the export side of published-projection-built. The
+// stem existing is not enough: a document built over fewer columns than
+// published lands at the right path and agrees with itself, so
+// project.MissingColumns, shared with internal/check, is compared too.
 func assertPublishedBuilt(builtAt map[string]builtDoc) error {
 	for _, d := range project.PublishedDocuments() {
 		b, ok := builtAt[d.Stem]
@@ -194,30 +153,27 @@ func assertPublishedBuilt(builtAt map[string]builtDoc) error {
 	return nil
 }
 
-// builtStems is the stems built, in order, for a refusal that has to say what
-// it did build.
+// builtStems is the stems built, sorted, for a refusal.
 func builtStems(builtAt map[string]builtDoc) []string {
 	return slices.Sorted(maps.Keys(builtAt))
 }
 
-// builtDoc is a document that has claimed a stem, and which projection claimed
-// it. The name is carried so a collision can name BOTH sides.
+// builtDoc is a document that has claimed a stem, and the projection that
+// claimed it, so a collision names both.
 type builtDoc struct {
 	name string
 	opts project.Options
 }
 
-// sourceRegistry is as much of data/sources.yaml as the site needs. The file
-// is the only place a URL is asserted, so the page must read its citation
-// targets out of it rather than composing them from a document id.
+// sourceRegistry is as much of data/sources.yaml as the site needs: the only
+// place a URL is asserted.
 type sourceRegistry struct {
 	Sources []struct {
 		ID        string `yaml:"id"`
 		Title     string `yaml:"title"`
 		Publisher string `yaml:"publisher"`
-		// URL is the stable canonical address. url_versioned carries the
-		// CMS cache-buster and is deliberately not published: it changes
-		// whenever the city re-uploads, which would rot every citation.
+		// URL is the stable canonical address; url_versioned changes on every
+		// re-upload and would rot every citation.
 		URL string `yaml:"url"`
 	} `yaml:"sources"`
 }
@@ -249,10 +205,8 @@ func loadDocs(repoRoot string) ([]export.Doc, error) {
 // generatedBy names this binary for the page footer.
 func generatedBy() string { return "fisc " + build.Get().String() }
 
-// yearStems is the built document stems for one projection, in the order a
-// reader should meet them. It reads the stems project.PublishedDocuments
-// declares rather than rebuilding them from a year, and lists only those built,
-// so the year control never offers a 404.
+// yearStems is the built stems of project.PublishedDocuments for one
+// projection, in reading order, so the year control never offers a 404.
 func yearStems(name string, projections map[string][]byte) []string {
 	docs := project.PublishedDocuments()
 	out := make([]string, 0, len(docs))
@@ -268,11 +222,9 @@ func yearStems(name string, projections map[string][]byte) []string {
 }
 
 // unviewedDocuments are documents the site publishes and no page renders, each
-// with its reason. The build gates never ask whether a reader can reach a
-// document, so this declaration is what makes an unreachable one a decision;
-// assertPublishedReachable refuses an entry a view renders or that names no
-// published document. Each entry is a column pp.66-67 print no year for, so no
-// spine year opens into it.
+// with its reason; assertPublishedReachable refuses an entry a view renders or
+// that names no published document. Each is a column pp.66-67 print no year
+// for.
 var unviewedDocuments = map[string]string{
 	publishedStem(project.FundFlowsProjection, actual2024):  fundFlowsNoSpineColumn,
 	publishedStem(project.FundFlowsProjection, revised2025): fundFlowsNoSpineColumn,
@@ -287,9 +239,8 @@ var (
 	revised2025 = project.Column{FiscalYear: 2025, Basis: vocab.BasisRevised}
 )
 
-// publishedStem is the stem project.PublishedDocuments gives a projection's
-// document of one column, or "" if it publishes none, which
-// assertPublishedReachable refuses as an entry naming no published document.
+// publishedStem is the stem of a projection's one-column published document,
+// or "", which assertPublishedReachable refuses.
 func publishedStem(projection string, col project.Column) string {
 	for _, d := range project.PublishedDocuments() {
 		if d.Projection == projection && len(d.Columns) == 1 && d.Columns[0] == col {
@@ -312,11 +263,9 @@ const fundFlowsNoSpineColumn = "a published column of pp.127-140, pp.167-170 and
 	"seventh fund group, permanent, which the client draws muted rather than dropping " +
 	"(fisc-zojk)"
 
-// assertPublishedReachable refuses a built published document no view can
-// reach unless unviewedDocuments declares it, reached as
-// [export.View.ReachedStems] says over ix, the index folded from built: the
-// spine's second year only through the year control, and a schedule the
-// expansion is stitched from only through the expansion.
+// assertPublishedReachable refuses a built published document no view reaches
+// (per [export.View.ReachedStems] over ix) unless unviewedDocuments declares
+// it.
 func assertPublishedReachable(vs []export.View, built map[string][]byte, ix export.ColumnIndex) error {
 	reachable := make(map[string]struct{}, len(vs))
 	for _, v := range vs {
@@ -329,8 +278,7 @@ func assertPublishedReachable(vs []export.View, built map[string][]byte, ix expo
 		}
 	}
 	for _, d := range project.PublishedDocuments() {
-		// Unbuilt is assertPublishedBuilt's finding, and a caller's own Builder
-		// may build only some documents.
+		// Unbuilt is assertPublishedBuilt's finding.
 		if _, ok := built[d.Stem]; !ok {
 			continue
 		}
@@ -349,8 +297,7 @@ func assertPublishedReachable(vs []export.View, built map[string][]byte, ix expo
 		}
 	}
 
-	// An entry naming no published document is stale too. A mistyped one is
-	// caught above; a leftover one would be silent.
+	// A leftover entry naming no published document would be silent.
 	published := make(map[string]struct{}, len(unviewedDocuments))
 	for _, d := range project.PublishedDocuments() {
 		published[d.Stem] = struct{}{}
@@ -366,10 +313,8 @@ func assertPublishedReachable(vs []export.View, built map[string][]byte, ix expo
 }
 
 // opensInto reports whether the opening document was built and the drawn
-// schedule's projection built one for the same column, which decides whether
-// a view's chart draws it at all. It matches on Column, not declared order:
-// fund-flows' bare stem is third in PublishedDocuments. Which document each
-// year draws is export.ColumnIndex's question.
+// schedule's projection built one for the same column. It matches on Column,
+// not declared order: fund-flows' bare stem is third in PublishedDocuments.
 func opensInto(opening, drawn string, projections map[string][]byte) bool {
 	if _, ok := projections[opening]; !ok {
 		return false
@@ -383,17 +328,9 @@ func opensInto(opening, drawn string, projections map[string][]byte) bool {
 }
 
 // publishedInto is every stem PublishedDocuments declares of the drawn
-// schedule's projection over the opening document's column, built or not:
-// the join opensInto asks of the built set. Empty is a schedule the opening
-// document's column never carries, however much is built.
-//
-// IT JOINS ON THE DECLARATION, NOT ON export.ColumnIndex, because the question
-// is what was promised: ColumnIndex knows only what was built, so it cannot
-// tell a document that was not built, which a view does not draw, from one
-// never published for the column, which the write refuses by name. Which
-// built document a year draws is ColumnIndex's alone, and a built document
-// whose metadata places it outside the column declared for it is drawn here
-// and refused there by name.
+// projection over the opening document's column, built or not. It joins on the
+// declaration, not export.ColumnIndex, which knows only what was built and so
+// cannot tell unbuilt from never published.
 func publishedInto(opening, drawn string) []string {
 	var out []string
 	docs := project.PublishedDocuments()

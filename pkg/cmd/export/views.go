@@ -18,9 +18,8 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/registry"
 )
 
-// viewsFile is the site's views, read from the root of the same filesystem
-// registry.Load reads the vocabulary from. It is the one source of every
-// authored field of an [export.View]; what Go fills is the year control.
+// viewsFile is the one source of every authored field of an [export.View];
+// Go fills only the year control.
 const viewsFile = "views.yaml"
 
 // viewsSchemaVersion is the only views.yaml version this command reads.
@@ -96,10 +95,8 @@ func (e *viewsError) Error() string {
 }
 
 // loadViews reads views.yaml from the root of fsys and resolves every name it
-// carries: a projection against the published projections and a section row
-// against the registry's categories. It refuses an unknown key and an unknown
-// name, and nothing else; what a declared view must satisfy is validated at
-// the write.
+// carries against the published projections and the registry's categories.
+// What a declared view must satisfy is validated at the write.
 func loadViews(fsys fs.FS, reg *registry.Registry) ([]viewDecl, error) {
 	b, err := fs.ReadFile(fsys, viewsFile)
 	if err != nil {
@@ -112,9 +109,8 @@ func loadViews(fsys fs.FS, reg *registry.Registry) ([]viewDecl, error) {
 func decodeViews(b []byte, reg *registry.Registry) ([]viewDecl, error) {
 	var doc viewsDoc
 	dec := yaml.NewDecoder(bytes.NewReader(b))
-	// An unknown key is a hard error, as in internal/registry and
-	// internal/mapping: a misspelled `split_caps:` that decoded quietly would
-	// ship every split uncapped and nothing to say so.
+	// An unknown key is a hard error: a misspelled `split_caps:` would ship
+	// every split uncapped.
 	dec.KnownFields(true)
 	if err := dec.Decode(&doc); err != nil {
 		if errors.Is(err, io.EOF) {
@@ -182,17 +178,11 @@ func publishedProjections() []string {
 	return out
 }
 
-// views is the site's pages, in nav order, the page it opens on first, as
-// data/views.yaml declares them and the built documents allow. It lives in
-// the composition root because naming a view means knowing what a projection
-// is of, which internal/export must not.
-//
-// A view whose document was not built is dropped rather than refused: `fisc
-// verify` already fails a missing published document, and a nav entry to an
-// unwritten page is what must never ship. The provenance index names no
-// document and is dropped when there is no page index, for the same reason.
-// The one refusal is the view at the index whose read was not built, since
-// dropping it leaves a site with nothing to open on.
+// views is the site's pages in nav order, as data/views.yaml declares them and
+// the built documents allow. A view whose document was not built is dropped
+// (`fisc verify` fails the missing document), as is the provenance index with
+// no page index; the index view alone is refused, since dropping it leaves
+// nothing to open on.
 func views(repoRoot string, built result) ([]export.View, error) {
 	reg, err := loadRegistry(repoRoot)
 	if err != nil {
@@ -228,8 +218,8 @@ func views(repoRoot string, built result) ([]export.View, error) {
 			v.Draws = d.Overview.Projection
 		}
 		if read := unbuiltRead(v, projections); read != "" {
-			// THE SITE OPENS ON EXACTLY ONE INDEX, so the view there is never
-			// dropped: the export refuses by its name and the read it lacks.
+			// The site opens on exactly one index, so that view is refused by
+			// name, never dropped.
 			if v.Path == export.IndexPath {
 				return nil, fmt.Errorf("the site opens on %s (%q), which reads %s beside %s, "+
 					"and %s was not built for that column; refusing to export a site with no page to open on",
@@ -238,9 +228,8 @@ func views(repoRoot string, built result) ([]export.View, error) {
 			continue
 		}
 		if !drawsBuilt(v, projections) {
-			// The Sankey's own document is the spine, so where the schedule its
-			// chart draws was not built it draws that, with nothing to split;
-			// any other such view is dropped.
+			// The Sankey falls back to drawing its own spine document; any
+			// other such view is dropped.
 			if v.Template != export.SankeyTemplate {
 				continue
 			}
@@ -257,24 +246,18 @@ func views(repoRoot string, built result) ([]export.View, error) {
 	return out, nil
 }
 
-// drawsBuilt reports whether the schedule a view's own chart draws was built
-// for its opening column, where it is published for that column at all. A
-// view drawing a schedule that was not built is dropped, as one whose own
-// document was not built is, but for the Sankey, which draws its own document
-// instead. One never published for the opening column, and one published and
-// not built for any other year the view lists, is kept for the write to
-// refuse by that year's column: the chart a reader opens is the one a missing
-// opening schedule would empty, and a later year's is a broken build.
+// drawsBuilt reports whether the schedule a view's chart draws was built for
+// its opening column, where published for it at all. A schedule never
+// published for that column, or unbuilt for a later year, is kept for the
+// write to refuse by column.
 func drawsBuilt(v export.View, projections map[string][]byte) bool {
 	return v.Draws == "" || len(publishedInto(v.Projection, v.Draws)) == 0 ||
 		opensInto(v.Projection, v.Draws, projections)
 }
 
-// unbuiltRead is the first schedule a view reads beside its own document
-// that was not built for its opening column, or "" when there is none: such
-// a view is dropped, as the department page is when department-spending is
-// not built, and the export refuses when it is the index. A read never
-// published for that column is kept for the write to refuse by name.
+// unbuiltRead is the first schedule a view reads beside its own document that
+// was not built for its opening column, or "". A read never published for
+// that column is kept for the write to refuse by name.
 func unbuiltRead(v export.View, projections map[string][]byte) string {
 	for _, read := range v.Reads {
 		if len(publishedInto(v.Projection, read)) > 0 && !opensInto(v.Projection, read, projections) {

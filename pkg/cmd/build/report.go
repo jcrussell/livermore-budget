@@ -12,16 +12,9 @@ import (
 	"github.com/jcrussell/livermore-budget/pkg/iostreams"
 )
 
-// report is the build's account of itself.
-//
-// The unchecked list is why this is a struct rather than a couple of counters.
-// A column that ties to the total the document prints is verified by the
-// document; a column with no printed total rests on nothing but our own
-// arithmetic, and most schedules in this corpus print no total at all. A build
-// that reported only its failures would read as "all good" while most of what
-// it published was never checked by anything. Naming every unchecked part, with
-// its rule and page, is what keeps that distinction in front of the reader —
-// and, via --json, in front of CI.
+// report is the build's account of itself. It names every unchecked part with
+// its rule and page, because a column with no printed total rests only on our
+// arithmetic and a report of failures alone would read as all good.
 type report struct {
 	// Output is the repository-relative path that was written.
 	Output string `json:"output"`
@@ -31,68 +24,42 @@ type report struct {
 	Rules     int `json:"rules"`
 	Parts     int `json:"parts"`
 
-	// PartsChecked is how many parts tied to a total the document prints, and
-	// ColumnsTied how many columns those parts covered. The column count is the
-	// honest measure of coverage: a part is checked one column at a time.
+	// PartsChecked is how many parts tied to a printed total, and ColumnsTied
+	// how many columns those parts covered; a part is checked column by column.
 	PartsChecked int `json:"parts_checked"`
 	ColumnsTied  int `json:"columns_tied_to_a_stated_total"`
 
-	// ColumnsTiedByDeclaration is how many of ColumnsTied tied only because
-	// the rule declared a discrepancy in the document's own arithmetic.
-	// Reported separately and printed whenever it is non-zero,
-	// because "24 columns tie" and "23 tie exactly and one ties to a declared
-	// $1 of the city's rounding" are different claims, and a build that stated
-	// the first while meaning the second would be overstating its evidence.
+	// ColumnsTiedByDeclaration is how many of ColumnsTied tied only through a
+	// declared discrepancy in the document's own arithmetic, reported apart so
+	// an exact tie and a declared $1 of rounding are not one claim.
 	ColumnsTiedByDeclaration int `json:"columns_tied_by_declaration"`
 
 	// ColumnsTiedByTolerance is how many of ColumnsTied tied only inside the
-	// tolerance a rule's printed_decimals derives from its page,
-	// and ToleranceSlack what those columns were out by.
-	//
-	// SAME REASON AS ColumnsTiedByDeclaration, and it is the second half of the
-	// same discipline: a column that ties within half a printed unit per row has
-	// not tied EXACTLY, and a report adding the two together would publish this
-	// corpus as tighter than it is. The difference between the two counters is
-	// worth keeping straight -- a declaration names the exact figure the
-	// document is out by, a tolerance bounds an unnamed one -- so a reader can
-	// tell "the city's arithmetic is off by a stated $1" from "this page rounds
-	// and we did not have to say by how much".
+	// tolerance a rule's printed_decimals derives, and ToleranceSlack what they
+	// were out by. Kept apart from ColumnsTiedByDeclaration: a declaration names
+	// the exact discrepancy, a tolerance bounds an unnamed one.
 	ColumnsTiedByTolerance int            `json:"columns_tied_by_tolerance"`
 	ToleranceSlack         []amount.Cents `json:"tolerance_slack"`
 
-	// SpanningRulesChecked is how many of the checks above were rule-level
-	// rather than per-part -- a block whose rows straddle a page break, tied
-	// once against the one total the document prints for it
-	// (mapping.Rule.TotalSpansParts).
-	//
-	// It is reported because it changes what the two counters above MEAN
-	// without changing what they COUNT. ColumnsTied is the number of column
-	// comparisons made, and PartsChecked the number of parts those comparisons
-	// corroborate; for a per-part check those coincide part by part, and for a
-	// spanning rule one set of comparisons corroborates several parts. So a
-	// build with spanning rules can report more parts checked than columns
-	// tied, which is correct and would otherwise look like a bug.
+	// SpanningRulesChecked is how many checks were rule-level, one total over
+	// a block straddling a page break (mapping.Rule.TotalSpansParts). One such
+	// check credits several parts, so PartsChecked can exceed ColumnsTied.
 	SpanningRulesChecked int `json:"spanning_rules_checked"`
 
-	// RollupsAsserted is how many printed totals covering SEVERAL rules were
-	// tied, and RollupColumnsTied the columns they compared. They are separate
-	// from the counters above because they measure a different link of the
-	// chain: a rollup ties printed subtotals to a printed total, where
-	// CheckTotals ties mapped rows to a printed total.
+	// RollupsAsserted is how many printed totals covering several rules tied,
+	// and RollupColumnsTied the columns compared: printed subtotals to a
+	// printed total, a different link from CheckTotals.
 	RollupsAsserted   int `json:"rollups_asserted"`
 	RollupColumnsTied int `json:"rollup_columns_tied"`
 
-	// SubtotalLinesTied is how many printed subtotal rows were tied to the rows
-	// above them (mapping.Row.Subtotal), and SubtotalCellsTied the figures on
-	// them. A part of a rule whose rows sit under subtotals counts as checked
-	// once its chain ties, which is why PartsChecked can include parts that
-	// tie to no total_row.
+	// SubtotalLinesTied is how many printed subtotal rows tied to the rows
+	// above them (mapping.Row.Subtotal), and SubtotalCellsTied their figures. A
+	// part whose subtotal chain ties counts as checked with no total_row.
 	SubtotalLinesTied int `json:"subtotal_lines_tied"`
 	SubtotalCellsTied int `json:"subtotal_cells_tied"`
 
-	// SubtotalCellsTiedByDeclaration is how many of those figures tie only
-	// through a declared subtotal_deltas entry, kept apart for the reason
-	// ColumnsTiedByDeclaration is.
+	// SubtotalCellsTiedByDeclaration is how many of those tie only through a
+	// declared subtotal_deltas entry.
 	SubtotalCellsTiedByDeclaration int `json:"subtotal_cells_tied_by_declaration"`
 
 	PartsUnchecked    []uncheckedPart    `json:"parts_unchecked"`
@@ -100,13 +67,9 @@ type report struct {
 	Omissions         []declaredOmission `json:"declared_omissions"`
 }
 
-// unassertedRollup is a total the DOCUMENT prints over several rules that no
-// rule structure here can assert, with the declared reason.
-//
-// It is reported rather than omitted because silence is the failure mode. A
-// build that mapped p140's ten pages and never mentioned that the page's own
-// closing total exceeds them by ~$57M would be publishing the gap as though it
-// were not there.
+// unassertedRollup is a total the document prints over several rules that no
+// rule structure can assert, with the declared reason. Reported, because
+// silence would publish a gap (p140's ~$57M) as though it were not there.
 type unassertedRollup struct {
 	ID     string `json:"id"`
 	Page   int    `json:"page"`
@@ -121,10 +84,8 @@ type uncheckedPart struct {
 }
 
 // declaredOmission is one cell the rule says the page leaves blank, under
-// Column's header, on a row it prints. It is reported because it is a claim
-// about the document that nothing else surfaces: it produces no fact, so its
-// absence is invisible in facts.jsonl. A row another page prints is not one:
-// its facts are in facts.jsonl, cited to that page.
+// Column's header, on a row it prints. It produces no fact, so only this
+// surfaces it. A row another page prints is not one.
 type declaredOmission struct {
 	RuleID   string `json:"rule_id"`
 	Page     int    `json:"page"`
@@ -132,23 +93,17 @@ type declaredOmission struct {
 	Column   string `json:"column"`
 }
 
-// Reasons a part could not be checked. They are distinct because they call for
-// different responses: the first is a rule that has not been given a total to
-// check against, the second a rule that has been given one but has not said
-// where on a label-less page the totals begin.
-//
-// Neither says the DOCUMENT prints no total. That is a claim about the source,
-// and only a human reading the page can make it — ErrNoStatedTotals reaches
-// here solely from a label-less part with no stop_at, which is a gap in the
-// rule.
+// Reasons a part could not be checked: no total to check against, or a total
+// with no anchor on a label-less page. Neither claims the document prints no
+// total; ErrNoStatedTotals reaches here only from a label-less part with no
+// stop_at, a gap in the rule.
 const (
 	reasonNoTotalRow     = "the rule declares no total_row"
 	reasonNoStatedTotals = "the rule gives this part no anchor for a stated total"
 )
 
-// newReport starts an empty report with non-nil slices, so the --json shape is
-// the same whether or not anything went unchecked. A key that becomes null when
-// a list is empty makes a consumer handle two shapes for one meaning.
+// newReport starts with non-nil slices, so --json has one shape whether or not
+// anything went unchecked.
 func newReport() *report {
 	return &report{
 		ToleranceSlack:    []amount.Cents{},
@@ -158,20 +113,10 @@ func newReport() *report {
 	}
 }
 
-// checkTotals runs the document's own totals check for one part, and records
-// the parts it cannot run for.
-//
-// The condition is `rule.TotalRow != ""` and deliberately not "run it and see
-// what comes back". A rule that declares no total row still has a stop_at
-// anchor on its label-less parts, and StatedTotals will look for an amount run
-// after that anchor: there is none, so the result is ErrNotFound — the same
-// error a rule that DOES declare a total row produces when that row has moved,
-// which is a genuine failure that must fail the build. Asking the rule keeps
-// the two apart; asking the error cannot.
-//
-// ErrNoStatedTotals is neither a pass nor a failure. A part carrying a
-// total_row that the document prints no total for is unchecked, exactly like a
-// rule that declares none, and is reported the same way.
+// checkTotals runs the document's own totals check for one part. It keys on
+// rule.TotalRow rather than the error: with no total row, StatedTotals returns
+// ErrNotFound, the same error a moved total row gives, which must fail the
+// build. ErrNoStatedTotals is reported unchecked, neither pass nor failure.
 func (rep *report) checkTotals(r *mapping.Resolver, rule *mapping.Rule, p *mapping.Part) error {
 	if rule.TotalRow == "" {
 		rep.unchecked(rule, p, reasonNoTotalRow)
@@ -181,9 +126,7 @@ func (rep *report) checkTotals(r *mapping.Resolver, rule *mapping.Rule, p *mappi
 	switch {
 	case err == nil:
 		rep.PartsChecked++
-		// TotalsResult.Columns counts the non-skip columns the check actually
-		// compared; a skipped column produces no facts, so tying it would
-		// count coverage this build did not earn.
+		// Columns counts only compared, non-skip columns.
 		rep.ColumnsTied += res.Columns
 		rep.ColumnsTiedByDeclaration += res.Declared
 		rep.ColumnsTiedByTolerance += res.Tolerated
@@ -198,21 +141,13 @@ func (rep *report) checkTotals(r *mapping.Resolver, rule *mapping.Rule, p *mappi
 }
 
 // checkSpanningTotals runs the rule-level totals check for a block whose rows
-// straddle a page break, and credits EVERY part of the rule.
-//
-// Crediting all of them is the honest accounting and not a generosity: the one
-// comparison covers every row the rule maps, so every one of its parts rests on
-// the document's arithmetic rather than on ours. Crediting only the part that
-// prints the total would leave the others in PartsUnchecked under a reason
-// saying the rule declares no total_row -- which is false, and is exactly the
-// misreport this whole flag exists to remove.
+// straddle a page break, and credits every part of the rule: the one
+// comparison covers every row it maps.
 func (rep *report) checkSpanningTotals(r *mapping.Resolver, rule *mapping.Rule) error {
 	res, err := r.CheckSpanningTotals(rule)
 	if err != nil {
-		// Unlike the per-part path there is no ErrNoStatedTotals branch here.
-		// A rule that DECLARES its total spans its parts has asserted that one
-		// of its pages prints that total; if none does, that is a false
-		// declaration and a hard failure, not an unchecked part.
+		// No ErrNoStatedTotals branch: a rule declaring a spanning total
+		// asserts one of its pages prints it, so none is a hard failure.
 		return err
 	}
 	rep.SpanningRulesChecked++
@@ -229,9 +164,8 @@ func (rep *report) checkSpanningTotals(r *mapping.Resolver, rule *mapping.Rule) 
 func (rep *report) checkRollups(r *mapping.Resolver, f *mapping.File) error {
 	for i := range f.Rollups {
 		ro := &f.Rollups[i]
-		// Empty is spelled one way: the parser refuses a whitespace-only
-		// reason, so this and validateRollups cannot disagree about which
-		// entries are declarations.
+		// The parser refuses a whitespace-only reason, so this and
+		// validateRollups agree on which entries are declarations.
 		if ro.Unassertable != "" {
 			rep.RollupsUnasserted = append(rep.RollupsUnasserted,
 				unassertedRollup{ID: ro.ID, Page: ro.Page, Reason: ro.Unassertable})
@@ -259,9 +193,8 @@ func (rep *report) addOmissions(rule *mapping.Rule, omissions []mapping.Omission
 	}
 }
 
-// print reports the build. The facts are the data and they went to a file, so
-// the summary is chatter and belongs on ErrOut; --json is the machine-readable
-// form and is the only thing this command ever puts on Out.
+// print reports the build on ErrOut; --json is the only thing this command
+// puts on Out.
 func (rep *report) print(ios *iostreams.IOStreams, asJSON bool) error {
 	if asJSON {
 		enc := json.NewEncoder(ios.Out)
@@ -286,16 +219,13 @@ func (rep *report) print(ios *iostreams.IOStreams, asJSON bool) error {
 			english.Plural(rep.SpanningRulesChecked, "rule was", "rules were"))
 	}
 	if rep.ColumnsTiedByDeclaration > 0 {
-		// "of those columns" stays plural and the VERB agrees: one column ties,
-		// several tie. Pluralising the noun here gives "1 of those column tie".
+		// The verb agrees, not the noun: "1 of those column tie" is wrong.
 		fmt.Fprintf(w, "%d of those columns %s only to a declared delta in the document's own arithmetic\n",
 			rep.ColumnsTiedByDeclaration,
 			english.Plural(rep.ColumnsTiedByDeclaration, "ties", "tie"))
 	}
 	if rep.ColumnsTiedByTolerance > 0 {
-		// The slack is printed, not just the count. A tolerance is derived from
-		// the page and a reader cannot check that derivation from a count alone;
-		// what they can check is the figure, against the page.
+		// The slack is printed so a reader can check it against the page.
 		amounts := make([]string, 0, len(rep.ToleranceSlack))
 		for _, c := range rep.ToleranceSlack {
 			amounts = append(amounts, c.String())
