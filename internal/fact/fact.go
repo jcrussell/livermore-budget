@@ -1,12 +1,8 @@
 // Package fact turns resolved figures into the published fact record.
 //
-// A fact is one number the city printed, plus everything needed to find that
-// number again in the source document. The record is deliberately wide and
-// deliberately repetitive — every field appears on every line, nothing is
-// omitted when empty — because facts.jsonl is read by diffing it. A key that
-// vanishes when a value is empty turns "this fact's department became blank"
-// into a structural change, and a reviewer comparing two builds cannot tell
-// the two apart.
+// A fact is one number the city printed, plus everything needed to find it
+// again in the source document. Every field appears on every line, nothing
+// omitted when empty, because facts.jsonl is read by diffing it.
 package fact
 
 import (
@@ -26,23 +22,15 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
-// IDPrefix marks a fact id. It exists so an id is recognizable on sight in a
-// log line or a URL, and so a future identifier of another kind cannot be
-// mistaken for one.
+// IDPrefix marks a fact id, so one is recognizable on sight.
 const IDPrefix = "fisc-f-"
 
-// idHexLen is how much of the sha256 an id carries. Twelve hex digits is 48
-// bits: with the low tens of thousands of facts this corpus can produce, the
-// chance of an accidental collision is on the order of 1 in 10^6, and a
-// collision is a hard error rather than silent corruption, so the tradeoff is
-// legibility against a failure that announces itself.
+// idHexLen is how much of the sha256 an id carries: 48 bits, and a collision
+// is a hard error (CheckUniqueIDs), not silent corruption.
 const idHexLen = 12
 
-// Fact is one published figure.
-//
-// Field order is the JSON key order — encoding/json emits struct fields in
-// declaration order — and the order is part of the format, not an accident of
-// how this struct grew.
+// Fact is one published figure. Field order is the JSON key order and is
+// part of the format.
 type Fact struct {
 	// ID is content-addressed over identity, never over the amount. See MakeID.
 	ID    string `json:"id"`
@@ -51,9 +39,7 @@ type Fact struct {
 	// citation can point at the number rather than at the document.
 	Page   int `json:"page"`
 	Offset int `json:"offset"`
-	// Token is the text that was parsed, kept verbatim. An auditor comparing
-	// amount_cents against the PDF needs to see what the parser actually read,
-	// not a re-rendering of what it concluded.
+	// Token is the text that was parsed, kept verbatim.
 	Token  string `json:"token"`
 	RuleID string `json:"rule_id"`
 
@@ -62,16 +48,13 @@ type Fact struct {
 	Scope string      `json:"scope"`
 
 	FiscalYear int `json:"fiscal_year"`
-	// FiscalYearThrough is the last fiscal year of a figure the page prints
-	// for several years at once, and null -- not FiscalYear -- for a figure
-	// of one: Budget Book p80 prints DEBT SERVICE REQUIREMENTS for 2031-2035
-	// as one figure, which is fiscal_year 2031 through 2035 and is no
-	// FY2031 figure. A reader taking fiscal_year alone takes a band for a
-	// year: project.SelectFacts refuses one asked for as a year, and the
-	// readers keying by year that do not go through it (structure's
-	// containment cells among them) see no band only because the one scope
-	// printing bands is a declared residue no cut admits. It is hashed into
-	// the id where it is set (MakeIDThrough).
+	// FiscalYearThrough is the last fiscal year of a figure printed for
+	// several years at once (Budget Book p80's 2031-2035 debt service), and
+	// null for a one-year figure. A reader taking fiscal_year alone takes a
+	// band for a year: project.SelectFacts refuses one asked for as a year,
+	// and readers that bypass it see no band only because the one scope
+	// printing bands is a declared residue no cut admits. Hashed into the id
+	// where set (MakeIDThrough).
 	FiscalYearThrough *int `json:"fiscal_year_through"`
 
 	RowPath    string `json:"row_path"`
@@ -88,36 +71,23 @@ type Fact struct {
 	Fund *int `json:"fund"`
 
 	// Sign says how this row relates to its category; it is NOT an instruction
-	// to negate. AmountCents is always the figure as the document printed it,
-	// so a contra row the city parenthesizes arrives here already negative
-	// (Budget Book p127 prints ERAF as "(14,086,438)"). A consumer sums
-	// amount_cents directly and uses sign only to decide how to present the
-	// row — a flow diagram cannot draw a negative link, so contra rows net
-	// into their parent instead of getting one.
+	// to negate. AmountCents is the figure as printed, so a parenthesized contra
+	// row arrives already negative (Budget Book p127's ERAF). A consumer sums
+	// amount_cents directly and uses sign only for presentation.
 	//
-	// A THIRD VALUE SAYS SOMETHING ELSE AGAIN. SignNetted marks a row printed
-	// against its KIND's direction rather than a deduction inside its category:
-	// ACFR p41 parenthesises Transfers (out) because its block sums to a net
-	// figure, while Budget Book p66 prints TRANSFER OUT as a positive magnitude.
-	// A consumer summing one kind across scopes must read this or it will cancel
-	// where it meant to accumulate.
-	//
-	// Nothing re-signs a value between the parser and this record. That last
-	// value is what the paragraph this one replaced anticipated when it said a
-	// new convention "needs its own field rather than an overload of this one".
+	// SignNetted marks a row printed against its KIND's direction (ACFR p41's
+	// parenthesised Transfers (out), against Budget Book p66's positive TRANSFER
+	// OUT); a consumer summing one kind across scopes must read it. Nothing
+	// re-signs a value between the parser and this record.
 	Sign  vocab.Sign   `json:"sign"`
 	Units amount.Units `json:"units"`
-	// AmountCents is integer cents, always, whatever scale the source table was
-	// printed in. Units records that scale for provenance; it is not a
-	// conversion the reader has to apply.
+	// AmountCents is integer cents whatever scale the table was printed in;
+	// Units records that scale for provenance only.
 	AmountCents int64 `json:"amount_cents"`
 
-	// Derived marks a figure this project inferred rather than read. Every
-	// fact this package produces is read from a page, so it is false on every
-	// line today. The key is present anyway because "published and derived are
-	// different things" is the invariant the site is built on, and a consumer
-	// must be able to rely on the distinction being stated rather than
-	// inferred from a key's absence.
+	// Derived marks a figure inferred rather than read. Every fact this
+	// package produces is read from a page, so it is false; the key is stated
+	// rather than left to be inferred from its absence.
 	Derived bool `json:"derived"`
 }
 
@@ -135,8 +105,7 @@ func ByID(facts []Fact) map[string]Fact {
 func FundNumber(n int) *int { return &n }
 
 // fundOfColumn is the one place mapping.Column's absent fund, spelled 0, becomes
-// nil. The mapping side keeps 0 because ColumnPath hashes it into every fact id
-// (fisc-12jt).
+// nil; the mapping side keeps 0 because ColumnPath hashes it (fisc-12jt).
 func fundOfColumn(n int) *int {
 	if n == 0 {
 		return nil
@@ -177,69 +146,18 @@ func SameFund(a, b *int) bool {
 	return *a == *b
 }
 
-// MakeID returns the content-addressed id for a fact's identity.
+// MakeID returns the content-addressed id for a fact's identity: a hash of
+// (doc_id, rule_id, row_path, row_label, column_path, fiscal_year, basis).
+// It leaves out the amount, so a corrected figure is a modified line, and any
+// row or column index, so an inserted line renumbers nothing. The row label is
+// needed because a path is a classification, not unique within a rule (Budget
+// Book p127 prints thirteen taxes/property lines).
 //
-// The hashed tuple is (doc_id, rule_id, row_path, row_label, column_path,
-// fiscal_year, basis). What it leaves out matters more than what it includes:
-//
-//   - The amount. A corrected figure must be a modified line in facts.jsonl,
-//     not a delete plus an add, or every republication of a revised number
-//     reads as though a fact vanished and an unrelated one appeared.
-//   - Any row or column index. Positions shift when the city inserts a line;
-//     hashing one would renumber every fact below the insertion and turn a
-//     one-row change into a whole-file diff.
-//
-// The row label is in the tuple and the row path is not enough on its own,
-// because a path is a classification and a classification is not unique within
-// a rule. Budget Book p127 prints thirteen detail lines that are all
-// taxes/property — data/taxonomy.yaml is explicit that those lines are a rule's
-// label, not a category — so hashing the path alone gives all thirteen the same
-// id, and the p167 department-by-category schedule has the same shape.
-//
-// THE LABEL PASSED HERE IS mapping.Row.PrintedLabel(), the same string the
-// record publishes as row_label — not Row.Label, and not Row.Identity(). A row
-// may be named by two printed anchors (Row.LabelTail), and the three differ for
-// one: "Transfer From Wastewater", "Transfer From Wastewater to Stormwater",
-// and the same pair joined by "\x1f". Hashing Row.Label collided the two rows
-// Budget Book p76 prints as "Transfer From Wastewater to Stormwater" and
-// "Transfer From Wastewater to LAVWMA / Wastewater", so the real
-// choice was between the published label and the resolver's identity. Two
-// reasons settle it for the published one:
-//
-//   - An id must be recomputable from the record it names. facts.jsonl is the
-//     audit trail; a reader holding a line must be able to re-derive its id
-//     from the fields printed on that line. Identity() is not among them, and
-//     it cannot be recovered from row_label either — "A B" could be one anchor
-//     or two.
-//   - A re-spelling is not a re-wording. A row shipped as {label: "A B"} that
-//     later needs two-anchor matching and is re-spelt {label: "A", label_tail:
-//     "B"} keeps its id here, and would change it under Identity() — though the
-//     page, the printed row and every published field are unchanged. The
-//     doctrine below is that re-WORDING a row changes its id, because the
-//     resolver anchors on the label; splitting one anchor into two is not that.
-//
-// PrintedLabel() is NOT injective, and it is worth being plain about it: it
-// joins on a space, so {label: "Transfer From Water to Water"} and {label:
-// "Transfer From Water", label_tail: "to Water"} print the same string and hash
-// to the same id. What separates them is the parser's printed-label uniqueness
-// rule, not this encoding — so id uniqueness here rests on a validation, where
-// under Identity() it would have rested on the encoding alone. That is the real
-// cost of the choice, accepted because the first reason above is decisive and
-// because the collision needs two rows whose anchor text is the same word
-// sequence, which the parser refuses outright.
-//
-// The two notions of uniqueness this leaves apart are both enforced, in the
-// place each belongs. The parser enforces that no two rows of a rule share an
-// Identity(), which is what a positional read of a page needs, AND that no two
-// share a PrintedLabel(), which is what this id needs — two rows publishing one
-// row_label would be indistinguishable to every reader of facts.jsonl whatever
-// their ids were, so that is a defect to refuse and not to route around.
-// CheckUniqueIDs is the backstop if a rule ever reaches here unparsed.
-//
-// The cost is that re-wording a row in the source changes its id. That is the
-// right trade: the label is also what the resolver anchors on, so a re-wording
-// already forces a rule change, and a rule change is the reviewable event where
-// an id shift belongs.
+// THE LABEL IS mapping.Row.PrintedLabel(), the published row_label -- not
+// Row.Label or Row.Identity() -- so an id is recomputable from its own line.
+// PrintedLabel() is NOT injective (it joins label and label_tail on a space);
+// the parser's printed-label uniqueness rule is what keeps ids apart, and
+// CheckUniqueIDs is the backstop. Re-wording a row changes its id.
 func MakeID(docID, ruleID, rowPath, rowLabel, columnPath string, fiscalYear int, basis vocab.Basis) string {
 	return MakeIDThrough(docID, ruleID, rowPath, rowLabel, columnPath, fiscalYear, nil, basis)
 }
@@ -247,15 +165,11 @@ func MakeID(docID, ruleID, rowPath, rowLabel, columnPath string, fiscalYear int,
 // MakeIDThrough is [MakeID] for a figure that may be of several years: a
 // band's last year joins the tuple, and a one-year figure's tuple is MakeID's
 // unchanged, so no id outside a band moves. It is hashed so that
-// fact-ids-recompute refuses a facts.jsonl line whose band was edited: the
-// parser ties the years to the printed label at build, and nothing else at
-// verify re-reads them.
+// fact-ids-recompute refuses a facts.jsonl line whose band was edited.
 func MakeIDThrough(docID, ruleID, rowPath, rowLabel, columnPath string, fiscalYear int,
 	through *int, basis vocab.Basis) string {
-	// The separator is a unit separator rather than a printable character
-	// because every component here can contain "/" and some can contain "-".
-	// Joining on a character that occurs in the data would let two different
-	// tuples hash identically, which is the one thing an identity must not do.
+	// \x1f, because every component can contain "/" and some "-": a separator
+	// occurring in the data would let two tuples hash identically.
 	parts := []string{docID, ruleID, rowPath, rowLabel, columnPath, strconv.Itoa(fiscalYear), string(basis)}
 	if through != nil {
 		parts = append(parts, "through", strconv.Itoa(*through))
@@ -273,33 +187,16 @@ func BandOf(f *Fact) int {
 	return *f.FiscalYearThrough
 }
 
-// seriesIDPrefix marks a series id. It is deliberately not [IDPrefix]: a series
-// and a fact are different things and an id that could be either is an id a
-// reader has to look up to understand.
+// seriesIDPrefix marks a series id, distinct from [IDPrefix].
 const seriesIDPrefix = "fisc-s-"
 
-// makeSeriesID identifies one printed ROW across the columns it appears in.
-//
-// It is [MakeID]'s tuple MINUS the rule id, the fiscal year and the basis. Two
-// facts are the same printed row at different times exactly when one document
-// prints them on one line of one schedule, and the rule is not part of that: a
-// schedule mapped one rule per year, as Budget Book pp.186-209 are, prints a
-// fund's line once a year under four rules. So a series identity is derivable
-// by anyone holding facts.jsonl, and it is stable when a fifth year is mapped
-// -- which a positional or ordinal id would not be.
-//
-// What keeps two rows of one document apart is the row path, the printed label
-// and the column path together; TestASeriesIsOneCellPerYearAndBasis holds that
-// no two committed facts share a series, a year and a basis.
-//
-// IT CANNOT COLLIDE WITH A FACT ID. The arity differs (four components against
-// seven), the prefix differs, and \x1f is the separator in both for MakeID's
-// reason: every component can contain "/" and some can contain "-", so joining
-// on a character that occurs in the data would let two different tuples hash
-// alike.
-//
-// rowLabel is mapping.Row.PrintedLabel(), the same string the fact record
-// publishes, for every reason MakeID's doc comment gives about it.
+// makeSeriesID identifies one printed ROW across the columns it appears in:
+// [MakeID]'s tuple MINUS the rule id, the fiscal year and the basis, since a
+// schedule mapped one rule per year (Budget Book pp.186-209) prints a fund's
+// line under four rules. TestASeriesIsOneCellPerYearAndBasis holds that no two
+// committed facts share a series, a year and a basis. It cannot collide with a
+// fact id: arity and prefix differ. rowLabel is mapping.Row.PrintedLabel(), as
+// in MakeID.
 func makeSeriesID(docID, rowPath, rowLabel, columnPath string) string {
 	h := sha256.Sum256([]byte(strings.Join([]string{
 		docID, rowPath, rowLabel, columnPath,
@@ -312,11 +209,8 @@ func (f Fact) SeriesID() string {
 	return makeSeriesID(f.DocID, f.RowPath, f.RowLabel, f.ColumnPath)
 }
 
-// RowPath is the classification a row asserts, as a path.
-//
-// A department and a category are two axes, not two levels, so where both are
-// present the department leads and the category qualifies it: a fact is
-// "Police, wages and benefits". Where only one is present it stands alone.
+// RowPath is the classification a row asserts, as a path: department then
+// category where both are present (two axes, not two levels).
 func RowPath(r mapping.Row) string {
 	switch {
 	case r.Department != "" && r.Category != "":
@@ -328,12 +222,8 @@ func RowPath(r mapping.Row) string {
 	}
 }
 
-// ColumnPath names the fund dimension of a column.
-//
-// The fiscal year is deliberately not part of it. A column in these schedules
-// is a (fund, year) pair, but the year is carried as its own field and its own
-// id component, and folding it in here would make "the same fund, next year"
-// look like a different place rather than the same place at a different time.
+// ColumnPath names the fund dimension of a column. The fiscal year is not
+// part of it: it is its own field and id component.
 func ColumnPath(c mapping.Column, scope string) string {
 	var parts []string
 	if c.FundGroup != "" {
@@ -343,31 +233,18 @@ func ColumnPath(c mapping.Column, scope string) string {
 		parts = append(parts, "fund/"+strconv.Itoa(c.Fund))
 	}
 	if len(parts) == 0 {
-		// A column with no fund dimension of its own inherits the rule's
-		// scope, which is what a single-fund schedule relies on.
+		// A single-fund schedule's column inherits the rule's scope.
 		return scope
 	}
 	return strings.Join(parts, "/")
 }
 
-// FromValues builds the facts for one part's resolved figures.
-//
-// USUALLY ONE FACT PER FIGURE, AND TWO WHERE A ROW DECLARES A COUNTERPART.
-// This is the only fan-out in the pipeline: mapping.Resolver yields one Value
-// per printed token and everything upstream of here counts figures, not facts.
-// That placement is load-bearing rather than convenient. CheckTotals sums
-// Values against the total the page prints, and pkg/cmd/build calls Values
-// before it calls this, so no printed total, stated_total_delta or rollup can
-// see the second leg -- a counterpart cannot make a schedule stop tying to its
-// own document. The cost is the other side of the same coin: those checks
-// cannot catch a counterpart declared wrongly either, which is why a schedule
-// using them owes a reconciliation against something outside its own page.
-//
-// Declared omissions are not among them. A row the page does not print is
-// absent, not zero, and inventing a zero fact for it would put a provenance
-// pointer on a line the document has no line for. The column total tying is
-// what establishes the column is complete; a consumer reading a missing
-// (row, column) pair as "no flow" is reading it correctly.
+// FromValues builds the facts for one part's resolved figures: one fact per
+// figure, and two where a row declares a counterpart. This is the pipeline's
+// only fan-out, after CheckTotals has summed Values, so no printed total can
+// see the second leg -- and none can catch a counterpart declared wrongly, so
+// a schedule using them owes a reconciliation against something outside its
+// own page. A row the page does not print is absent, never a zero fact.
 func FromValues(f *mapping.File, rule *mapping.Rule, values []mapping.Value) ([]Fact, error) {
 	out := make([]Fact, 0, len(values))
 	for _, v := range values {
@@ -377,9 +254,8 @@ func FromValues(f *mapping.File, rule *mapping.Rule, values []mapping.Value) ([]
 			sign = vocab.SignPositive
 		}
 
-		// row is the printed row classified as this figure is: on a rule whose
-		// columns carry the category, the column's category and kind. Every
-		// read below of a fact's category or kind goes through it.
+		// row is the printed row classified as this figure is (a column may
+		// carry the category and kind); every read below goes through it.
 		row := v.Row
 		row.Category, row.Kind = v.Category(), v.Kind(rule)
 		col := row.EffectiveColumn(v.Column)
@@ -387,14 +263,9 @@ func FromValues(f *mapping.File, rule *mapping.Rule, values []mapping.Value) ([]
 		columnPath := ColumnPath(col, rule.Scope)
 		missing := ""
 		switch {
-		// THE CATEGORY, NOT THE ROW PATH, because the row path does not
-		// witness it. RowPath returns the bare department when Category is
-		// empty, so a Value carrying `department:` and no category yields a
-		// non-empty path and would publish a fact with Category: "" -- which
-		// both vocabulary checks SKIP, and which in an unprojected scope is
-		// named by nothing at all. mapping.Parse refuses that row; this is the
-		// same rule at the other constructor, so a Value built without the
-		// parser cannot reopen it.
+		// THE CATEGORY, NOT THE ROW PATH: RowPath returns the bare department
+		// when Category is empty, and both vocabulary checks skip Category "".
+		// mapping.Parse refuses that row; this holds a Value built without it.
 		case row.Category == "":
 			missing = "category (a department is a second axis, not a substitute)"
 		case rowPath == "":
@@ -445,19 +316,10 @@ func FromValues(f *mapping.File, rule *mapping.Rule, values []mapping.Value) ([]
 		cpCol := cp.Column(v.Column)
 		cpRow := row
 		cpRow.Category, cpRow.Kind = cp.Category, cp.Kind
-		// THE FAR LEG IS GUARDED ON BOTH PATHS, exactly as the near leg is
-		// twenty lines above. cpRow takes its category from the counterpart and
-		// its department from the row it fans out of, so both can be empty at
-		// once -- and the far leg would then publish row_path "" and an id
-		// hashed over it, an unaddressable fact rather than an error.
-		//
-		// AND THE SCOPE FALLBACK MUST NOT APPLY TO THE COLUMN. ColumnPath
-		// returns the rule's scope for a column with no fund dimension, which
-		// is what a single-fund schedule relies on. A counterpart taking it
-		// would publish a real-looking fact under "transfers-by-fund" rather
-		// than under a fund, where no fund-group check ever compares it against
-		// the spine -- and the payer, which is the only thing the far leg
-		// exists to name, would be absent from the fact that names it.
+		// THE FAR LEG IS GUARDED ON BOTH PATHS, as the near leg is: its row
+		// path can be empty. And the scope fallback must not apply to its
+		// column: a counterpart under the rule's scope names no payer and no
+		// fund-group check reaches it.
 		cpRowPath := RowPath(cpRow)
 		cpMissing, cpHint := "", ""
 		switch {
@@ -482,9 +344,8 @@ func FromValues(f *mapping.File, rule *mapping.Rule, values []mapping.Value) ([]
 			ID: MakeIDThrough(f.DocID, rule.ID, cpRowPath, cpRow.PrintedLabel(),
 				cpPath, col.FiscalYear, through, basis),
 			DocID: f.DocID,
-			// THE SAME PROVENANCE, DELIBERATELY. Both legs cite one printed
-			// figure, because that figure IS the evidence for both directions
-			// of one movement. fact-offset-points-at-token holds for both.
+			// THE SAME PROVENANCE: both legs cite one printed figure, and
+			// fact-offset-points-at-token holds for both.
 			Page:              v.Page,
 			Offset:            v.Offset,
 			Token:             v.Token,
@@ -521,15 +382,8 @@ func yearsThrough(c mapping.Column) *int {
 }
 
 // sortKey is the specified total order: (doc_id, page, row_path, column_path,
-// rule_id), then fiscal year, basis and id.
-//
-// The bead specifies the first five. The rest are needed for the order to be
-// total: two columns of one schedule differ only by fiscal year, so the first
-// five tie for them, and an order with ties is not a canonical order — two
-// correct builds could emit the same facts in different sequences, which is
-// exactly the nondeterminism the sortedness check exists to catch. The id
-// breaks any remaining tie absolutely, because ids are unique by construction
-// and CheckUniqueIDs has already proved it.
+// rule_id), then fiscal year, band, basis and id, so the order is total and
+// two correct builds cannot differ in sequence.
 func less(a, b Fact) bool {
 	switch {
 	case a.DocID != b.DocID:
@@ -558,11 +412,8 @@ func Sort(facts []Fact) {
 	sort.SliceStable(facts, func(i, j int) bool { return less(facts[i], facts[j]) })
 }
 
-// CheckSorted reports the first pair of facts that are out of canonical order.
-//
-// This is what makes nondeterminism visible in CI for free: a build that emits
-// the same facts in a different sequence fails here rather than producing a
-// whole-file diff that a reviewer has to read to discover says nothing.
+// CheckSorted reports the first pair of facts that are out of canonical order,
+// so a nondeterministic build fails rather than producing a whole-file diff.
 func CheckSorted(facts []Fact) error {
 	for i := 1; i < len(facts); i++ {
 		if less(facts[i], facts[i-1]) {
@@ -578,12 +429,8 @@ func CheckSorted(facts []Fact) error {
 	return nil
 }
 
-// CheckUniqueIDs reports two facts claiming the same identity.
-//
-// A collision is a real bug and never a hash accident to be worked around: it
-// means two rules assert a figure for the same cell of the same document, so
-// one of them is reading the wrong page, the wrong column, or double-counting
-// a subtotal. Whichever it is, publishing either number would be a guess.
+// CheckUniqueIDs reports two facts claiming the same identity: two rules
+// asserting a figure for one cell, which is a bug and never worked around.
 func CheckUniqueIDs(facts []Fact) error {
 	seen := make(map[string]Fact, len(facts))
 	for _, f := range facts {
@@ -605,15 +452,11 @@ func CheckUniqueIDs(facts []Fact) error {
 	return nil
 }
 
-// Write emits facts as JSON Lines in the order given, without sorting them:
-// the caller decides the order, and Write refuses to quietly impose one so a
-// caller that forgot to sort produces a file CheckSorted will reject rather
-// than a file that silently differs from the one it meant to write.
-//
-// Encoding is deliberate. HTML escaping is off, so "Fines & Forfeitures" stays
-// readable instead of becoming "&"; the encoder writes exactly one "\n"
-// after each record, giving LF endings and a trailing newline; and no field is
-// omitempty, so every line has the same keys in the same order.
+// Write emits facts as JSON Lines in the order given, without sorting them,
+// so a caller that forgot to sort produces a file CheckSorted rejects.
+// HTML escaping is off ("Fines & Forfeitures" stays readable), each record
+// ends in exactly one "\n", and no field is omitempty, so every line has the
+// same keys in the same order.
 func Write(w io.Writer, facts []Fact) error {
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
@@ -625,13 +468,11 @@ func Write(w io.Writer, facts []Fact) error {
 	return nil
 }
 
-// Read parses a facts.jsonl stream. It exists so verify can check a committed
-// file against a fresh build without re-deriving it.
+// Read parses a facts.jsonl stream.
 func Read(r io.Reader) ([]Fact, error) {
 	dec := json.NewDecoder(r)
-	// A key the model no longer has means the file was written by a different
-	// version of fisc, which must be loud: silently dropping it would let a
-	// stale file pass a rebuild-and-diff check on the fields that survived.
+	// An unknown key means a stale file, which must be loud rather than pass
+	// a rebuild-and-diff on the fields that survived.
 	dec.DisallowUnknownFields()
 
 	var out []Fact

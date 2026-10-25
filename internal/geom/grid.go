@@ -5,12 +5,9 @@ import (
 	"math"
 )
 
-// Span is a half-open x-interval (Lo, Hi], in points.
-//
-// Half-open on the left so that adjacent bands partition the page without a
-// value ever belonging to two of them: a right edge landing exactly on a
-// boundary belongs to the band on the left, which is the band whose column the
-// figure is printed under.
+// Span is a half-open x-interval (Lo, Hi], in points, so adjacent bands
+// partition the page: a right edge on a boundary belongs to the band on the
+// left, the column the figure is printed under.
 type Span struct {
 	Lo, Hi float64
 }
@@ -18,34 +15,23 @@ type Span struct {
 // contains reports whether x falls in the span.
 func (s Span) contains(x float64) bool { return x > s.Lo && x <= s.Hi }
 
-// Grid is a page's column geometry: the x-band each column claims.
-//
-// A band runs from its header's left edge to the next header's left edge, the
-// first from the gutter and the last without bound. That is a claim about the
-// page's typesetting: these schedules right-align each figure under or past
-// the right edge of its header, so a figure's right edge falls right of its
-// own header's left edge and short of the next header's. Budget Book p187
-// and p207 overhang past the midpoint of a narrow gap, where a band ending at
-// that midpoint files a Transfers Out figure under Transfers Out to CIP.
-// Deciding that a right edge identifies a column is the judgment layer's, in
-// internal/mapping; this type only does the interval arithmetic.
+// Grid is a page's column geometry: the x-band each column claims, from its
+// header's left edge to the next header's left edge (the first from the
+// gutter, the last without bound). Figures right-align under or past their
+// header's right edge; Budget Book p187 and p207 overhang past the midpoint of
+// a narrow gap, so a band ending at the midpoint would misfile them. Deciding
+// that a right edge identifies a column is internal/mapping's judgment.
 type Grid struct {
 	bands  []Span
 	gutter float64
 }
 
 // NewGrid builds the band layout for one page from its column headers' x-extents
-// and a gutter.
-//
-// The gutter is the lower bound of the first band, and it is not optional:
-// column 0 has no natural left edge, and these pages print no header over the
-// row-label area at all -- Budget Book p167's leftmost header is "FY" at
-// x0=265.75 while its row labels run out to 250.5. Without an explicit lower
-// bound every row label would file into column 0.
-//
-// Headers must be in printed order and must not overlap, because the caller's
-// list is a claim about column ORDER: a page that dropped a column has to fail
-// rather than shift every figure one place.
+// and a gutter, the first band's lower bound: no header sits over the
+// row-label area (Budget Book p167's labels run to 250.5, its first header at
+// 265.75), so without it every row label files into column 0. Headers must be
+// in printed order and not overlap, so a page that dropped a column fails
+// rather than shifting every figure one place.
 func NewGrid(headers []Span, gutter float64) (*Grid, error) {
 	if len(headers) == 0 {
 		return nil, fmt.Errorf("a grid needs at least one column header")
@@ -63,11 +49,8 @@ func NewGrid(headers []Span, gutter float64) (*Grid, error) {
 		}
 		prev = h
 	}
-	// Both bounds are checked, and the lower one is the important half: a zero
-	// gutter is the Go zero value, it would make band 0 start at the page's left
-	// edge, and Index could then never return -1 at all -- silently disabling
-	// the one guard that keeps row labels out of column 0. A caller that has no
-	// label area has to say so with a real coordinate.
+	// A zero gutter, the Go zero value, would mean Index never returns -1 and
+	// row labels file into column 0.
 	if gutter <= 0 {
 		return nil, fmt.Errorf("gutter is %g; it must be a positive x-coordinate, "+
 			"because it is the lower bound of the first column and the right edge "+
@@ -78,8 +61,7 @@ func NewGrid(headers []Span, gutter float64) (*Grid, error) {
 			gutter, headers[0].Lo)
 	}
 
-	// Each band ends where the next begins, so the bands partition the page
-	// right of the gutter with no gap a value could fall into.
+	// Each band ends where the next begins: no gap a value could fall into.
 	bands := make([]Span, len(headers))
 	lo := gutter
 	for i := range headers {
@@ -97,12 +79,8 @@ func NewGrid(headers []Span, gutter float64) (*Grid, error) {
 func (g *Grid) Len() int { return len(g.bands) }
 
 // Index is the column an x-position falls in, or -1 for a position at or left of
-// the gutter, which is the row-label area and belongs to no column.
-//
-// The LAST band has no upper bound, which is a real limit and not an oversight:
-// nothing in the geometry says where a table stops, so a running footer's page
-// number files into the last column exactly as a figure would. Excluding the
-// footer remains the rule's stop_at anchor's job.
+// the gutter (the row-label area). The LAST band is unbounded, so a footer's
+// page number files into it; excluding the footer is the rule's stop_at job.
 func (g *Grid) Index(x float64) int {
 	if x <= g.gutter {
 		return -1
