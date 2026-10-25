@@ -2,7 +2,6 @@ package export
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"maps"
@@ -86,19 +85,6 @@ func buildClientSubset(repoRoot string) (result, error) {
 		return result{}, err
 	}
 	return buildFrom(repoRoot, raw.Bytes(), subset)
-}
-
-// clientExport writes the site the client fixtures are taken from.
-func clientExport(t *testing.T) string {
-	t.Helper()
-	opts, _, _, _ := testOptions(t)
-	root := repoRootForTest(t)
-	opts.RepoRoot = func() (string, error) { return root, nil }
-	opts.Build = buildClientSubset
-	if err := exportRun(context.Background(), opts); err != nil {
-		t.Fatalf("exportRun over the client subset: %v", err)
-	}
-	return opts.OutputDir
 }
 
 // packagedBy is the footer's build stamp, blanked before markup is compared.
@@ -941,15 +927,4 @@ func servedColumn(t *testing.T, dir, stem string) export.ColumnDoc {
 		t.Fatal(err)
 	}
 	return col
-}
-
-// buildProjections is the projection half of buildAll over the committed
-// fact store, for tests that ask what the projections produce without an
-// export around them.
-func buildProjections(repoRoot string) (map[string][]byte, error) {
-	_, facts, err := readFactStore(repoRoot)
-	if err != nil {
-		return nil, err
-	}
-	return buildProjectionsFrom(repoRoot, facts)
 }

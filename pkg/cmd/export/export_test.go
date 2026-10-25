@@ -1847,7 +1847,7 @@ func TestEveryPageALinkCitesHasItsLinksInTheConfig(t *testing.T) {
 	opts.RepoRoot = func() (string, error) { return root, nil }
 	var built result
 	opts.Build = func(root string) (result, error) {
-		r, buildErr := buildAll(root)
+		r, buildErr := cachedBuildAll(root)
 		built = r
 		return r, buildErr
 	}

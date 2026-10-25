@@ -476,7 +476,7 @@ func TestEveryShardedPageHasItsExtractedText(t *testing.T) {
 // page index or an offered download, so no shipped byte is unreachable.
 func TestTheSiteLinksEveryShardItShips(t *testing.T) {
 	root := repoRootForTest(t)
-	built, err := buildAll(root)
+	built, err := cachedBuildAll(root)
 	if err != nil {
 		t.Fatalf("buildAll: %v", err)
 	}
@@ -517,7 +517,7 @@ func TestTheSiteLinksEveryShardItShips(t *testing.T) {
 // deliberately does not (it passes a Result with no page index).
 func TestTheProvenanceViewIsPublishedWhenThereIsAStore(t *testing.T) {
 	root := repoRootForTest(t)
-	built, err := buildAll(root)
+	built, err := cachedBuildAll(root)
 	if err != nil {
 		t.Fatalf("buildAll: %v", err)
 	}
@@ -687,7 +687,7 @@ const budgetDocIDForTest = "livermore-budget-fy2026-2027"
 // empty, so this is where the real export failing to wire it is caught.
 func TestEveryShippedDocumentCanResolveItsRecords(t *testing.T) {
 	root := repoRootForTest(t)
-	built, err := buildAll(root)
+	built, err := cachedBuildAll(root)
 	if err != nil {
 		t.Fatalf("buildAll: %v", err)
 	}
@@ -710,7 +710,7 @@ func TestEveryShippedDocumentCanResolveItsRecords(t *testing.T) {
 // suffix compose to shardPath for every published page.
 func TestTheRecordsBaseComposesBackToTheShardPath(t *testing.T) {
 	root := repoRootForTest(t)
-	built, err := buildAll(root)
+	built, err := cachedBuildAll(root)
 	if err != nil {
 		t.Fatalf("buildAll: %v", err)
 	}

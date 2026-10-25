@@ -1,7 +1,6 @@
 package export
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"maps"
@@ -28,7 +27,7 @@ func repoRootForTest(t *testing.T) string {
 // exactly its fund_group nodes. site/app.js orders by the list with no
 // fallback, so an omitted group would sort at -1.
 func TestEveryFundGroupNodeHasAPlaceInItsColumnsOrder(t *testing.T) {
-	built, err := buildAll(repoRootForTest(t))
+	built, err := cachedBuildAll(repoRootForTest(t))
 	if err != nil {
 		t.Fatalf("buildAll: %v", err)
 	}
@@ -69,19 +68,6 @@ func TestEveryFundGroupNodeHasAPlaceInItsColumnsOrder(t *testing.T) {
 	}
 }
 
-// exportedSite runs `fisc export` over the committed store into a temp dir.
-func exportedSite(t *testing.T) string {
-	t.Helper()
-	opts, _, _, _ := testOptions(t)
-	root := repoRootForTest(t)
-	opts.RepoRoot = func() (string, error) { return root, nil }
-	opts.Build = buildAll
-	if err := exportRun(context.Background(), opts); err != nil {
-		t.Fatalf("exportRun: %v", err)
-	}
-	return opts.OutputDir
-}
-
 // TestEveryServedColumnIsTheScheduleItFolds holds every column file the export
 // writes to facts/facts.jsonl: indices resolve, links' ends are the projection's,
 // and facts match year and basis, sum to the value and are the pages cited.
@@ -89,7 +75,7 @@ func TestEveryServedColumnIsTheScheduleItFolds(t *testing.T) {
 	dir := exportedSite(t)
 	root := repoRootForTest(t)
 	byID := storeByID(t)
-	built, err := buildAll(root)
+	built, err := cachedBuildAll(root)
 	if err != nil {
 		t.Fatalf("buildAll: %v", err)
 	}
