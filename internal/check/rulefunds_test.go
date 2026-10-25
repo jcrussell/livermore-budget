@@ -222,7 +222,7 @@ func TestAWrappedTotalNamesItsFundWithItsTail(t *testing.T) {
 	t.Parallel()
 	s := isolated(t)
 	const id = "fund-exp-county-meas-bb-bike-pedestrian"
-	res := resultFor(t, runOne(t, s, &ruleFundsMatchTheirHeadings{}), "rule-funds-match-their-headings")
+	res := runCheck(t, &ruleFundsMatchTheirHeadings{}, s)
 	if res.Status != StatusPass {
 		t.Fatalf("status = %s over the committed corpus, findings:\n  %v", res.Status, res.Findings)
 	}
@@ -243,7 +243,7 @@ func TestAWrappedTotalNamesItsFundWithItsTail(t *testing.T) {
 	}
 	// Two findings, one per clause: the rule is anchored to nothing, and the
 	// whole printed total is claimed by nothing.
-	res = resultFor(t, runOne(t, s, &ruleFundsMatchTheirHeadings{}), "rule-funds-match-their-headings")
+	res = runCheck(t, &ruleFundsMatchTheirHeadings{}, s)
 	if len(res.Findings) != 2 || res.Findings[0].Subject != id || !strings.Contains(res.Findings[1].Subject, "p175") {
 		t.Fatalf("findings = %v, want %s's and p175's", res.Findings, id)
 	}
@@ -272,7 +272,7 @@ func TestAWrappedTotalNobodyMapsIsReported(t *testing.T) {
 	if !removed {
 		t.Fatalf("no rule %s in the committed mappings", id)
 	}
-	res := resultFor(t, runOne(t, s, &ruleFundsMatchTheirHeadings{}), "rule-funds-match-their-headings")
+	res := runCheck(t, &ruleFundsMatchTheirHeadings{}, s)
 	if len(res.Findings) != 1 {
 		t.Fatalf("findings = %v, want exactly p181's unclaimed wrapped total", res.Findings)
 	}

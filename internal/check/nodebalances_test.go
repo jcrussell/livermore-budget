@@ -36,11 +36,7 @@ func TestFundChangesAndBalancesAreFailable(t *testing.T) {
 	}
 	run := func(t *testing.T, c local) Result {
 		t.Helper()
-		res, err := c.Run(t.Context(), s)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return res
+		return runCheck(t, c, s)
 	}
 	for _, c := range []local{&linkValuesTieToFacts{}, &nodeBalancesTieToFacts{}} {
 		if res := run(t, c); res.Status != StatusPass {
@@ -59,7 +55,7 @@ func TestFundChangesAndBalancesAreFailable(t *testing.T) {
 			l.ValueCents = 249907200
 			t.Cleanup(func() { l.ValueCents = was })
 			res := run(t, &linkValuesTieToFacts{})
-			if res.Status != StatusFail || !strings.Contains(findingDetails(res), "facts come to $1,034,154.00") {
+			if res.Status != StatusFail || !hasFinding(res, "facts come to $1,034,154.00") {
 				t.Fatalf("status %s, findings %v; want the General Fund's draw refused", res.Status, res.Findings)
 			}
 			return
@@ -100,7 +96,7 @@ func TestFundChangesAndBalancesAreFailable(t *testing.T) {
 			t.Fatalf("link-values-tie-to-facts is %s; the plant must tie its value so only the ends can see it", res.Status)
 		}
 		res := run(t, &linkEndsMatchTheirFacts{})
-		if res.Status != StatusFail || !strings.Contains(findingDetails(res), "exactly one") {
+		if res.Status != StatusFail || !hasFinding(res, "exactly one") {
 			t.Fatalf("status %s, findings %v; want the draw refused for citing one balance", res.Status, res.Findings)
 		}
 	})
@@ -111,7 +107,7 @@ func TestFundChangesAndBalancesAreFailable(t *testing.T) {
 		n.Balances = &project.NodeBalances{Beginning: was.Beginning}
 		t.Cleanup(func() { n.Balances = &was })
 		res := run(t, &nodeBalancesTieToFacts{})
-		if res.Status != StatusFail || !strings.Contains(findingDetails(res), "the fund's node does not publish it") {
+		if res.Status != StatusFail || !hasFinding(res, "the fund's node does not publish it") {
 			t.Fatalf("status %s, findings %v; want the General Fund's dropped ending named", res.Status, res.Findings)
 		}
 	})
@@ -178,7 +174,7 @@ func TestFundChangesAndBalancesAreFailable(t *testing.T) {
 			general.Balances = &planted
 			t.Cleanup(func() { general.Balances = &was })
 			res := run(t, &nodeBalancesTieToFacts{})
-			if res.Status != StatusFail || !strings.Contains(findingDetails(res), tc.want) {
+			if res.Status != StatusFail || !hasFinding(res, tc.want) {
 				t.Fatalf("status %s, findings %v; want a fail saying %q", res.Status, res.Findings, tc.want)
 			}
 		})
@@ -217,11 +213,7 @@ func TestTheExpansionsFundBalancesAreFailable(t *testing.T) {
 	}
 	run := func(t *testing.T) Result {
 		t.Helper()
-		res, err := (&nodeBalancesTieToFacts{}).Run(t.Context(), s)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return res
+		return runCheck(t, &nodeBalancesTieToFacts{}, s)
 	}
 	if res := run(t); res.Status != StatusPass {
 		t.Fatalf("over the committed corpus: %s %v", res.Status, res.Findings)
@@ -232,7 +224,7 @@ func TestTheExpansionsFundBalancesAreFailable(t *testing.T) {
 		t.Cleanup(func() { node.Balances = was })
 		res := run(t)
 		if res.Status != StatusFail || len(res.Findings) != 2 ||
-			!strings.Contains(findingDetails(res), "the fund's node does not publish it") {
+			!hasFinding(res, "the fund's node does not publish it") {
 			t.Fatalf("status %s, findings %v; want %s's two balances named unpublished", res.Status, res.Findings, node.ID)
 		}
 	})

@@ -1,7 +1,6 @@
 package check
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -549,7 +548,7 @@ func TestDepartmentsResolveAgainstTheRegistry(t *testing.T) {
 			if res.Subjects != 2 {
 				t.Errorf("subjects = %d, want the 2 facts carrying a department", res.Subjects)
 			}
-			if tt.want != "" && !strings.Contains(findingDetails(res), tt.want) {
+			if tt.want != "" && !hasFinding(res, tt.want) {
 				t.Errorf("findings %v do not contain %q", res.Findings, tt.want)
 			}
 			// A category typo and an unresolved department must not share a
@@ -576,12 +575,12 @@ func TestAMalformedDepartmentIsNotAlsoReportedAsUnlisted(t *testing.T) {
 		t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
 	}
 	if got := len(res.Findings); got != 1 {
-		t.Fatalf("findings = %d, want 1:\n%s", got, findingDetails(res))
+		t.Fatalf("findings = %d, want 1:\n%s", got, said(res))
 	}
-	if !strings.Contains(findingDetails(res), "is not a slug") {
+	if !hasFinding(res, "is not a slug") {
 		t.Errorf("finding %v is not the shape diagnosis", res.Findings)
 	}
-	if strings.Contains(findingDetails(res), "is not a division") {
+	if hasFinding(res, "is not a division") {
 		t.Error("the shape failure is also reported as an unlisted division; " +
 			"one fact with one fix must not produce two findings")
 	}
@@ -619,7 +618,7 @@ func TestDepartmentsAreCheckedForWhatIsCheckable(t *testing.T) {
 			if res.Subjects != 2 {
 				t.Errorf("subjects = %d, want the 2 facts carrying a department", res.Subjects)
 			}
-			if !strings.Contains(findingDetails(res), tt.want) {
+			if !hasFinding(res, tt.want) {
 				t.Errorf("findings %v do not contain %q", res.Findings, tt.want)
 			}
 		})
@@ -657,7 +656,7 @@ func TestFundNumbersResolveAgainstTheRegistry(t *testing.T) {
 			if res.Subjects != 1 {
 				t.Errorf("subjects = %d, want the 1 fact naming a fund", res.Subjects)
 			}
-			if tt.want != "" && !strings.Contains(findingDetails(res), tt.want) {
+			if tt.want != "" && !hasFinding(res, tt.want) {
 				t.Errorf("findings %v do not contain %q", res.Findings, tt.want)
 			}
 		})
@@ -707,11 +706,8 @@ func TestLinkFactIDsMustAscend(t *testing.T) {
 		t.Fatal("no link in the committed corpus cites two facts")
 	}
 	slices.Reverse(link.FactIDs)
-	res, err := (&linkValuesTieToFacts{}).Run(t.Context(), s)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if res.Status != StatusFail || !strings.Contains(findingDetails(res), "not strictly ascending") {
+	res := runCheck(t, &linkValuesTieToFacts{}, s)
+	if res.Status != StatusFail || !hasFinding(res, "not strictly ascending") {
 		t.Fatalf("status = %s, findings %v; want the reversed fact_ids refused", res.Status, res.Findings)
 	}
 	if strictlyAscending([]string{"a", "a"}) {
@@ -922,7 +918,7 @@ func TestCountsMustAccountForEveryFact(t *testing.T) {
 			if res.Status != StatusFail {
 				t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
 			}
-			if !strings.Contains(findingDetails(res), tt.want) {
+			if !hasFinding(res, tt.want) {
 				t.Errorf("findings %v do not report %q", res.Findings, tt.want)
 			}
 		})
@@ -955,7 +951,7 @@ func TestTransferHeadlineIsTheLinks(t *testing.T) {
 	if res.Status != StatusFail {
 		t.Fatalf("status = %s, want fail for a transfer-out figure the links do not draw", res.Status)
 	}
-	if !strings.Contains(findingDetails(res), "internal_transfer_out_cents is $0.00") {
+	if !hasFinding(res, "internal_transfer_out_cents is $0.00") {
 		t.Errorf("findings %v do not state the figure that was published", res.Findings)
 	}
 }
@@ -976,7 +972,7 @@ func TestNaiveExpenditureMustStayWrong(t *testing.T) {
 	if res.Status != StatusFail {
 		t.Fatalf("status = %s, want fail", res.Status)
 	}
-	if !strings.Contains(findingDetails(res), "no longer netting out the double count") {
+	if !hasFinding(res, "no longer netting out the double count") {
 		t.Errorf("findings %v do not say what agreement would mean", res.Findings)
 	}
 }
@@ -1061,7 +1057,7 @@ func TestTransferLegsPairWhenLegsExist(t *testing.T) {
 			if res.Subjects != 1 {
 				t.Errorf("subjects = %d, want 1 transfer id", res.Subjects)
 			}
-			if tt.want != "" && !strings.Contains(findingDetails(res), tt.want) {
+			if tt.want != "" && !hasFinding(res, tt.want) {
 				t.Errorf("findings %v do not contain %q", res.Findings, tt.want)
 			}
 		})
@@ -1073,11 +1069,8 @@ func TestTransferLegsPairWhenLegsExist(t *testing.T) {
 // otherwise skip, leaving the check vacuous over a document that drew legs.
 func TestTransferLegsPairSeesALegWithNoID(t *testing.T) {
 	t.Parallel()
-	res, err := (&transferLegsPair{}).Run(t.Context(), scheduleSubject())
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
-	if res.Status != StatusFail || !strings.Contains(findingDetails(res), "carries no transfer_id") {
+	res := runCheck(t, &transferLegsPair{}, scheduleSubject())
+	if res.Status != StatusFail || !hasFinding(res, "carries no transfer_id") {
 		t.Fatalf("status = %s (%s), findings %v; want a fail naming the leg with no transfer_id",
 			res.Status, res.Summary, res.Findings)
 	}
@@ -1215,7 +1208,7 @@ func TestNodeHierarchyWellFormedIsFailable(t *testing.T) {
 			if res.Status != StatusFail {
 				t.Fatalf("status = %s, want fail", res.Status)
 			}
-			if !strings.Contains(findingDetails(res), c.want) {
+			if !hasFinding(res, c.want) {
 				t.Errorf("findings %v do not mention %q", res.Findings, c.want)
 			}
 		})
@@ -1353,7 +1346,7 @@ func TestAConstraintTierWithoutItsDisclosureIsAFinding(t *testing.T) {
 			if res.Status != StatusFail {
 				t.Fatalf("status = %s, want fail: %s", res.Status, res.Summary)
 			}
-			if !strings.Contains(findingDetails(res), c.want) {
+			if !hasFinding(res, c.want) {
 				t.Errorf("findings %v do not mention %q", res.Findings, c.want)
 			}
 		})
@@ -1419,14 +1412,6 @@ func stockFactID(g *project.Document) string {
 	return ""
 }
 
-func findingDetails(res Result) string {
-	out := make([]string, 0, len(res.Findings))
-	for _, f := range res.Findings {
-		out = append(out, f.Detail)
-	}
-	return strings.Join(out, "\n")
-}
-
 // internalServiceCells is a schedule with an internal-service column, which the
 // main fixture deliberately does not have: an Internal Service Fund charge is
 // billed by one city department to another, so it is inside the city and the
@@ -1489,12 +1474,12 @@ func TestEveryHeadlineFigureIsTiedToTheFacts(t *testing.T) {
 			if res.Status != StatusFail {
 				t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
 			}
-			if !strings.Contains(findingDetails(res), tt.key) {
+			if !hasFinding(res, tt.key) {
 				t.Errorf("findings %v do not name %s", res.Findings, tt.key)
 			}
 			// The sign of the difference is part of the message: the last case
 			// shifts the figure down rather than up.
-			if !strings.Contains(findingDetails(res), "999.00)") {
+			if !hasFinding(res, "999.00)") {
 				t.Errorf("findings %v do not state the difference", res.Findings)
 			}
 		})
@@ -1548,7 +1533,7 @@ func TestALinkMayOnlyCiteItsOwnSlice(t *testing.T) {
 	if res.Status != StatusFail {
 		t.Fatalf("status = %s, want fail", res.Status)
 	}
-	detail := findingDetails(res)
+	detail := said(res)
 	if !strings.Contains(detail, "not this projection's slice") {
 		t.Errorf("findings %v do not say the citation is out of slice", res.Findings)
 	}
@@ -1569,7 +1554,7 @@ func TestALinkCitingNothingInTheStoreIsADifferentProblem(t *testing.T) {
 	if res.Status != StatusFail {
 		t.Fatalf("status = %s, want fail", res.Status)
 	}
-	if !strings.Contains(findingDetails(res), "not in facts/facts.jsonl") {
+	if !hasFinding(res, "not in facts/facts.jsonl") {
 		t.Errorf("findings %v do not say the fact is absent from the store", res.Findings)
 	}
 }
@@ -1602,7 +1587,7 @@ func TestARefusedProjectionIsReportedAndNotFatal(t *testing.T) {
 	if res.Status != StatusFail {
 		t.Fatalf("projections-build = %s (%s), want fail", res.Status, res.Summary)
 	}
-	if !strings.Contains(findingDetails(res), `carries department "patrol"`) {
+	if !hasFinding(res, `carries department "patrol"`) {
 		t.Errorf("finding %v does not carry internal/project's own refusal", res.Findings)
 	}
 	// The checks that read the fact store rather than a graph are unaffected,
@@ -1654,10 +1639,7 @@ func TestProjectionsBuildCountsSlicesNotProjections(t *testing.T) {
 			Scopes: []string{spineScope},
 		},
 	}}}
-	res, err := (&projectionsBuild{}).Run(context.Background(), s)
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
+	res := runCheck(t, &projectionsBuild{}, s)
 	if !strings.Contains(res.Summary, "4 projection slices built") {
 		t.Errorf("summary %q does not count the four slices the one projection covers",
 			res.Summary)
@@ -1737,7 +1719,7 @@ func TestRuleFundsMatchTheirHeadings(t *testing.T) {
 		if res.Status != StatusFail {
 			t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
 		}
-		if !strings.Contains(findingDetails(res), "mis-assigned inside its own type") {
+		if !hasFinding(res, "mis-assigned inside its own type") {
 			t.Errorf("findings %v do not name the hazard", res.Findings)
 		}
 	})
@@ -1750,7 +1732,7 @@ func TestRuleFundsMatchTheirHeadings(t *testing.T) {
 		if res.Status != StatusFail {
 			t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
 		}
-		if !strings.Contains(findingDetails(res), "anchored to nothing on the page") {
+		if !hasFinding(res, "anchored to nothing on the page") {
 			t.Errorf("findings %v do not say the number is unanchored", res.Findings)
 		}
 	})
@@ -1767,7 +1749,7 @@ func TestRuleFundsMatchTheirHeadings(t *testing.T) {
 			t.Fatalf("status = %s (%s), want fail: the page prints an Information "+
 				"Technology total and no rule reads it", res.Status, res.Summary)
 		}
-		if !strings.Contains(findingDetails(res), "no rule or rollup declares that total") {
+		if !hasFinding(res, "no rule or rollup declares that total") {
 			t.Errorf("findings %v do not name the unmapped section", res.Findings)
 		}
 	})
@@ -1789,9 +1771,9 @@ func TestRuleFundsMatchTheirHeadings(t *testing.T) {
 			t.Fatalf("status = %s (%s), want pass: both printed totals are mapped",
 				res.Status, res.Summary)
 		}
-		if strings.Contains(findingDetails(res), "no rule or rollup declares that total") {
+		if hasFinding(res, "no rule or rollup declares that total") {
 			t.Errorf("a section a rule maps is reported as unclaimed:\n%s",
-				findingDetails(res))
+				said(res))
 		}
 	})
 
@@ -1816,11 +1798,11 @@ func TestRuleFundsMatchTheirHeadings(t *testing.T) {
 		if mismatches != 1 {
 			t.Errorf("rule \"water\" has %d findings, want 1: the mismatch and the "+
 				"unanchored arm are two answers to one question\n%s",
-				mismatches, findingDetails(res))
+				mismatches, said(res))
 		}
-		if strings.Contains(findingDetails(res), "anchored to nothing on the page") {
+		if hasFinding(res, "anchored to nothing on the page") {
 			t.Errorf("a rule whose anchor resolved is reported as anchored to nothing:\n%s",
-				findingDetails(res))
+				said(res))
 		}
 	})
 
@@ -1875,13 +1857,13 @@ func TestRuleFundsMatchTheirHeadings(t *testing.T) {
 	}
 	t.Run("a rule whose columns declare two funds its page heads in order passes", func(t *testing.T) {
 		if res := mixed("      Water Utility Fund     Information Technology Fund\n"); res.Status != StatusPass &&
-			strings.Contains(findingDetails(res), "more than one fund") {
+			hasFinding(res, "more than one fund") {
 			t.Fatalf("status = %s, findings %v", res.Status, res.Findings)
 		}
 	})
 	t.Run("a rule whose columns declare two funds in the other order fails", func(t *testing.T) {
 		res := mixed("      Information Technology Fund     Water Utility Fund\n")
-		if res.Status != StatusFail || !strings.Contains(findingDetails(res), "more than one fund") {
+		if res.Status != StatusFail || !hasFinding(res, "more than one fund") {
 			t.Errorf("status = %s, findings %v; want the mixed columns named", res.Status, res.Findings)
 		}
 	})
@@ -1938,7 +1920,7 @@ func TestAnEndpointCarryingNoFlowMayBeAParent(t *testing.T) {
 	}
 	if res := resultFor(t, runChecks(t, s), id); res.Status != StatusPass {
 		t.Fatalf("status = %s over the committed corpus, want pass: %s",
-			res.Status, findingDetails(res))
+			res.Status, said(res))
 	}
 
 	// THE MUTATION: one link at the endpoint, and each folded node is refused.
@@ -1949,9 +1931,9 @@ func TestAnEndpointCarryingNoFlowMayBeAParent(t *testing.T) {
 	if res.Status != StatusFail {
 		t.Fatalf("status = %s with a link drawn at %q, want fail", res.Status, endpoint)
 	}
-	if got := strings.Count(findingDetails(res), "a flow endpoint this document draws a flow at"); got != folded {
+	if got := strings.Count(said(res), "a flow endpoint this document draws a flow at"); got != folded {
 		t.Errorf("%d findings name the endpoint, want one per folded node (%d): %s",
-			got, folded, findingDetails(res))
+			got, folded, said(res))
 	}
 }
 

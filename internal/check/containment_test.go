@@ -56,7 +56,7 @@ func TestTheCutsCheckGoesRed(t *testing.T) {
 		t.Helper()
 		mutated := *s
 		mutated.Facts = facts
-		return resultFor(t, runOne(t, &mutated, &cutsTieAlongTheLattice{}), "cuts-tie-along-the-lattice")
+		return runCheck(t, &cutsTieAlongTheLattice{}, &mutated)
 	}
 
 	t.Run("a figure that moves is named with its difference", func(t *testing.T) {
@@ -132,17 +132,11 @@ func TestTheCutsCheckGoesRed(t *testing.T) {
 			mutated.Exceptions = slices.DeleteFunc(slices.Clone(s.Exceptions), func(e structure.Exception) bool {
 				return e.Cut == structure.CutFundBalanceFlows && e.Against == structure.CutSpine
 			})
-			res := resultFor(t, runOne(t, &mutated, &cutsTieAlongTheLattice{}), "cuts-tie-along-the-lattice")
+			res := runCheck(t, &cutsTieAlongTheLattice{}, &mutated)
 			if res.Status != StatusFail {
 				t.Fatalf("status = %s, want a failure; summary: %s", res.Status, res.Summary)
 			}
-			var named bool
-			for _, f := range res.Findings {
-				if f.Subject == "spine ~ fund-balance-flows" && strings.Contains(f.Detail, tc.want) {
-					named = true
-				}
-			}
-			if !named {
+			if !hasFinding(res, "spine ~ fund-balance-flows: ", tc.want) {
 				t.Errorf("no finding on spine ~ fund-balance-flows says %q:\n  %v", tc.want, res.Findings)
 			}
 		})
@@ -162,14 +156,7 @@ func TestTheCutsCheckGoesRed(t *testing.T) {
 		if res.Status != StatusFail {
 			t.Fatalf("status = %s, want a failure", res.Status)
 		}
-		var named bool
-		for _, f := range res.Findings {
-			if strings.Contains(f.Detail, "pp.127-130-print-no-general-fund-transfer-in-2026") &&
-				strings.Contains(f.Detail, "excuses nothing") {
-				named = true
-			}
-		}
-		if !named {
+		if !hasFinding(res, "pp.127-130-print-no-general-fund-transfer-in-2026", "excuses nothing") {
 			t.Errorf("no finding refuses the exception by name:\n  %v", res.Findings)
 		}
 	})
@@ -232,7 +219,7 @@ func TestTheCutsCheckGoesRed(t *testing.T) {
 		mutated := *s
 		mutated.Facts = kept
 		mutated.Files = files
-		res := resultFor(t, runOne(t, &mutated, &cutsTieAlongTheLattice{}), "cuts-tie-along-the-lattice")
+		res := runCheck(t, &cutsTieAlongTheLattice{}, &mutated)
 		if diff := cmp.Diff(StatusFail, res.Status); diff != "" {
 			t.Fatalf("status (-want +got):\n%s", diff)
 		}
@@ -245,25 +232,11 @@ func TestTheCutsCheckGoesRed(t *testing.T) {
 	})
 }
 
-// runOne runs a single check over a subject.
-func runOne(t *testing.T, s *Subject, c local) *Report {
-	t.Helper()
-	return Run(t.Context(), s, publish(c), ReportOptions{GeneratedBy: testVersion})
-}
-
 // TestTheCutsCheckHoldsTheStoreToEveryCut plants what each arm beyond the
 // comparison exists for.
 func TestTheCutsCheckHoldsTheStoreToEveryCut(t *testing.T) {
 	t.Parallel()
 	s := mutable(t)
-	subjectsNamed := func(res Result, subject, want string) bool {
-		for _, f := range res.Findings {
-			if f.Subject == subject && strings.Contains(f.Detail, want) {
-				return true
-			}
-		}
-		return false
-	}
 
 	t.Run("a cut whose every rule left the mapping with its facts is refused", func(t *testing.T) {
 		const prefix = "acfr-p0041-"
@@ -288,8 +261,8 @@ func TestTheCutsCheckHoldsTheStoreToEveryCut(t *testing.T) {
 			}
 			mutated.Files = append(mutated.Files, &c)
 		}
-		res := resultFor(t, runOne(t, &mutated, &cutsTieAlongTheLattice{}), "cuts-tie-along-the-lattice")
-		if res.Status != StatusFail || !subjectsNamed(res, "cuts", `cut "acfr-general-fund-summary" carries no fact`) {
+		res := runCheck(t, &cutsTieAlongTheLattice{}, &mutated)
+		if res.Status != StatusFail || !hasFinding(res, "cuts: ", `cut "acfr-general-fund-summary" carries no fact`) {
 			t.Fatalf("status %s, want the empty cut refused by name:\n  %v", res.Status, res.Findings)
 		}
 	})
@@ -313,9 +286,9 @@ func TestTheCutsCheckHoldsTheStoreToEveryCut(t *testing.T) {
 			if moved == 0 {
 				t.Fatalf("no %s fact in %s", tc.from, tc.scope)
 			}
-			res := resultFor(t, runOne(t, &mutated, &cutsTieAlongTheLattice{}), "cuts-tie-along-the-lattice")
-			if !subjectsNamed(res, "tier", fmt.Sprintf(`cut %q names departments`, tc.cut)) ||
-				!subjectsNamed(res, "tier", fmt.Sprintf("%q", tc.to)) {
+			res := runCheck(t, &cutsTieAlongTheLattice{}, &mutated)
+			if !hasFinding(res, "tier: ", fmt.Sprintf(`cut %q names departments`, tc.cut)) ||
+				!hasFinding(res, "tier: ", fmt.Sprintf("%q", tc.to)) {
 				t.Fatalf("status %s, want the tier arm naming %s in %s:\n  %v", res.Status, tc.to, tc.cut, res.Findings)
 			}
 		})
@@ -325,8 +298,8 @@ func TestTheCutsCheckHoldsTheStoreToEveryCut(t *testing.T) {
 		withExceptions(t, s, append(structure.BudgetBookExceptions(), structure.Exception{
 			Name: "invalid", Cut: "revenue-detail", Against: "spine", At: structure.LevelFundGroupByCategory,
 		}))
-		res := resultFor(t, runOne(t, s, &cutsTieAlongTheLattice{}), "cuts-tie-along-the-lattice")
-		if !subjectsNamed(res, "exceptions", `exception "invalid"`) {
+		res := runCheck(t, &cutsTieAlongTheLattice{}, s)
+		if !hasFinding(res, "exceptions: ", `exception "invalid"`) {
 			t.Fatalf("status %s, want the exceptions arm:\n  %v", res.Status, res.Findings)
 		}
 	})
@@ -339,7 +312,7 @@ func TestTheCutsCheckHoldsTheStoreToEveryCut(t *testing.T) {
 			Name: "inert", Cut: "revenue-detail", Against: "departmentwide", At: structure.LevelCategory,
 			Cells: []structure.Pin{pin}, Residual: 1, Printed: "nowhere", Reason: "a plant", Bead: "none",
 		}))
-		res := resultFor(t, runOne(t, s, &cutsTieAlongTheLattice{}), "cuts-tie-along-the-lattice")
+		res := runCheck(t, &cutsTieAlongTheLattice{}, s)
 		if len(res.Findings) != 1 || res.Findings[0].Subject != "inert" ||
 			!strings.Contains(res.Findings[0].Detail, "no comparison relates that pair") {
 			t.Fatalf("status %s, want exactly the inert arm:\n  %v", res.Status, res.Findings)
@@ -406,13 +379,10 @@ func TestTheDepartmentSchedulesTieInEveryColumn(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mutated := *s
 			mutated.Facts = tc.plant(slices.Clone(s.Facts))
-			res := resultFor(t, runOne(t, &mutated, &cutsTieAlongTheLattice{}), "cuts-tie-along-the-lattice")
-			for _, f := range res.Findings {
-				if f.Subject == tc.pair && strings.Contains(f.Detail, tc.cell) {
-					return
-				}
+			res := runCheck(t, &cutsTieAlongTheLattice{}, &mutated)
+			if !hasFinding(res, tc.pair+": ", tc.cell) {
+				t.Fatalf("status %s, want %s refusing %s:\n  %v", res.Status, tc.pair, tc.cell, res.Findings)
 			}
-			t.Fatalf("status %s, want %s refusing %s:\n  %v", res.Status, tc.pair, tc.cell, res.Findings)
 		})
 	}
 }
@@ -430,17 +400,11 @@ func TestASplitWithAnEmptySideLeavesItsPairsToTheLattice(t *testing.T) {
 		}
 	}
 	s.Facts = kept
-	res, err := (&cutsTieAlongTheLattice{}).Run(t.Context(), s)
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
-	var b strings.Builder
-	for _, f := range res.Findings {
-		b.WriteString(f.Subject + ": " + f.Detail + "\n")
-	}
+	res := runCheck(t, &cutsTieAlongTheLattice{}, s)
+	b := said(res)
 	for _, want := range []string{"transfers-detail -> spine", "category=transfers/out fund_group=capital"} {
-		if !strings.Contains(b.String(), want) {
-			t.Errorf("no finding says %q:\n%s", want, b.String())
+		if !strings.Contains(b, want) {
+			t.Errorf("no finding says %q:\n%s", want, b)
 		}
 	}
 	if strings.Contains(res.Summary, "held only by a split") {

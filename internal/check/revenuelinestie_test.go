@@ -115,16 +115,6 @@ func lineTieSubject(t *testing.T) *Subject {
 	}
 }
 
-// findingLines renders findings one per line, subject then detail, for a
-// failure message a reader can grep.
-func findingLines(res Result) []string {
-	out := make([]string, 0, len(res.Findings))
-	for _, f := range res.Findings {
-		out = append(out, f.Subject+": "+f.Detail)
-	}
-	return out
-}
-
 // generalTransferInException is the declared exception for the General Fund
 // transfer in pp.127-130 do not print, in one budget year, read off the
 // structure rather than restated here.
@@ -176,10 +166,7 @@ func lineLink(t *testing.T, s *Subject, source, target string) *project.Link {
 
 func TestRevenueLinesTieOverTheFixture(t *testing.T) {
 	t.Parallel()
-	res, err := (&revenueLinesTieToTheirCategories{}).Run(t.Context(), lineTieSubject(t))
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
+	res := runCheck(t, &revenueLinesTieToTheirCategories{}, lineTieSubject(t))
 	type verdict struct {
 		Status   Status
 		Subjects int
@@ -379,10 +366,7 @@ func TestRevenueLinesTieIsFailable(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			s := lineTieSubject(t)
 			tt.damage(t, s)
-			res, err := (&revenueLinesTieToTheirCategories{}).Run(t.Context(), s)
-			if err != nil {
-				t.Fatalf("Run: %v", err)
-			}
+			res := runCheck(t, &revenueLinesTieToTheirCategories{}, s)
 			if res.Status != tt.wantStatus || res.Subjects != tt.wantSubjects {
 				t.Errorf("status %s over %d subjects, want %s over %d",
 					res.Status, res.Subjects, tt.wantStatus, tt.wantSubjects)
@@ -407,10 +391,7 @@ func TestRevenueLinesTieIsVacuousWithoutADrillDown(t *testing.T) {
 	t.Parallel()
 	s := lineTieSubject(t)
 	s.Projections = nil
-	res, err := (&revenueLinesTieToTheirCategories{}).Run(t.Context(), s)
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
+	res := runCheck(t, &revenueLinesTieToTheirCategories{}, s)
 	if res.Status != StatusVacuous || res.Subjects != 0 {
 		t.Errorf("status %s over %d subjects, want vacuous over 0", res.Status, res.Subjects)
 	}
@@ -428,10 +409,7 @@ func TestRevenueLinesTieRefusesATwoColumnDrillDown(t *testing.T) {
 		{FiscalYear: testYear, Basis: testBasis},
 		{FiscalYear: 2027, Basis: testBasis},
 	}
-	res, err := (&revenueLinesTieToTheirCategories{}).Run(t.Context(), s)
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
+	res := runCheck(t, &revenueLinesTieToTheirCategories{}, s)
 	want := "this document is of 2 columns and a flow diagram is of one"
 	got := findingLines(res)
 	if res.Status != StatusFail || len(got) == 0 || !strings.Contains(got[0], want) {
@@ -449,10 +427,7 @@ func TestRevenueLinesTieReadsTheFactsItIsGiven(t *testing.T) {
 		return f.Kind == vocab.KindRevenue && f.Category == "taxes/property" &&
 			f.FundGroup == "general"
 	})
-	res, err := (&revenueLinesTieToTheirCategories{}).Run(t.Context(), s)
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
+	res := runCheck(t, &revenueLinesTieToTheirCategories{}, s)
 	if res.Status != StatusFail {
 		t.Fatalf("status %s, want fail", res.Status)
 	}

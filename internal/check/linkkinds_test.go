@@ -59,7 +59,7 @@ func TestLinkKindsMatchTheirFactsIsFailable(t *testing.T) {
 			if res.Status != StatusFail {
 				t.Fatalf("status = %s, want fail", res.Status)
 			}
-			if !strings.Contains(findingDetails(res), c.want) {
+			if !hasFinding(res, c.want) {
 				t.Errorf("findings %v do not mention %q", res.Findings, c.want)
 			}
 		})

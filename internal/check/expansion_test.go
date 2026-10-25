@@ -567,10 +567,7 @@ func TestTheExpansionChecksCanFail(t *testing.T) {
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			green, err := c.check.Run(t.Context(), committed(t))
-			if err != nil {
-				t.Fatal(err)
-			}
+			green := runCheck(t, c.check, committed(t))
 			if green.Status != StatusPass {
 				t.Fatalf("%s over the committed corpus is %s: %v", c.check.meta().id, green.Status, green.Findings)
 			}
@@ -578,14 +575,10 @@ func TestTheExpansionChecksCanFail(t *testing.T) {
 			if c.bare != nil {
 				c.bare(s)
 			}
-			red, err := c.check.Run(t.Context(), s)
-			if err != nil {
-				t.Fatal(err)
-			}
-			named := false
-			for _, f := range red.Findings {
-				named = named || strings.Contains(f.Subject+" "+f.Detail, c.want)
-			}
+			red := runCheck(t, c.check, s)
+			named := slices.ContainsFunc(red.Findings, func(f Finding) bool {
+				return strings.Contains(f.Subject+" "+f.Detail, c.want)
+			})
 			if red.Status != StatusFail || !named {
 				t.Errorf("%s is %s with findings %v, want a failure naming %q", c.check.meta().id, red.Status, red.Findings, c.want)
 			}
@@ -615,10 +608,7 @@ func TestAFlowBetweenAHubsMembersIsALeaf(t *testing.T) {
 		i := leafAt(t, d, line, "fund/600")
 		d.Links[i].Source, d.Links[i].Target, d.Links[i].Repeats = "fund/610", group, flow
 	})
-	res, err := (&expansionSplitsTie{}).Run(t.Context(), s)
-	if err != nil {
-		t.Fatal(err)
-	}
+	res := runCheck(t, &expansionSplitsTie{}, s)
 	against := false
 	for _, f := range res.Findings {
 		if strings.Contains(f.Detail, "the leg fund/610 -> "+group) || strings.Contains(f.Detail, "the leaf fund/610 -> "+group) {
@@ -661,12 +651,9 @@ func TestRepeatsAndRestatesAreTheExpansionsAlone(t *testing.T) {
 			if !planted {
 				t.Fatal("no fund-flows document draws a link")
 			}
-			res, err := (&linkValuesTieToFacts{}).Run(t.Context(), s)
-			if err != nil {
-				t.Fatal(err)
-			}
+			res := runCheck(t, &linkValuesTieToFacts{}, s)
 			want := "which only the expansion schedule's links carry"
-			if res.Status != StatusFail || !strings.Contains(findingDetails(res), want) {
+			if res.Status != StatusFail || !hasFinding(res, want) {
 				t.Errorf("link-values-tie-to-facts is %s with findings %v, want a failure naming %q", res.Status, res.Findings, want)
 			}
 		})

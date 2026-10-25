@@ -2,7 +2,6 @@ package check
 
 import (
 	"slices"
-	"strings"
 	"testing"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
@@ -15,10 +14,7 @@ func TestFundGroupSourcesEqualUsesIsFailable(t *testing.T) {
 	t.Parallel()
 	s := mutable(t)
 	c := &fundGroupSourcesEqualUses{}
-	res, err := c.Run(t.Context(), s)
-	if err != nil {
-		t.Fatal(err)
-	}
+	res := runCheck(t, c, s)
 	if res.Status != StatusPass {
 		t.Fatalf("the committed corpus is %s: %v", res.Status, res.Findings)
 	}
@@ -83,15 +79,8 @@ func TestFundGroupSourcesEqualUsesIsFailable(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			s.Facts = tc.facts()
-			res, err := c.Run(t.Context(), s)
-			if err != nil {
-				t.Fatal(err)
-			}
-			var said []string
-			for _, f := range res.Findings {
-				said = append(said, f.Subject+": "+f.Detail)
-			}
-			if res.Status != StatusFail || !strings.Contains(strings.Join(said, "\n"), tc.want) {
+			res := runCheck(t, c, s)
+			if res.Status != StatusFail || !hasFinding(res, tc.want) {
 				t.Fatalf("status %s, findings %v; want a fail saying %q", res.Status, res.Findings, tc.want)
 			}
 		})

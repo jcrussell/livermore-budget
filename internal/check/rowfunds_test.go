@@ -73,21 +73,15 @@ func TestRowFundsCatchesTheTwinSwapNothingElseSees(t *testing.T) {
 				t.Fatalf("swapped %d rows, want 1; the mutation missed its target", swapped)
 			}
 
-			res, err := (&rowFundsMatchTheirAnchors{}).Run(t.Context(), s)
-			if err != nil {
-				t.Fatalf("Run: %v", err)
-			}
+			res := runCheck(t, &rowFundsMatchTheirAnchors{}, s)
 			if res.Status != StatusFail {
 				t.Fatalf("swapping fund %d for its twin %d reported %s: %s",
 					tt.from, tt.to, res.Status, res.Summary)
 			}
-			var b strings.Builder
-			for _, f := range res.Findings {
-				b.WriteString(f.Subject + ": " + f.Detail + "\n")
-			}
+			b := said(res)
 			for _, want := range []string{tt.anchor, "fund", "no other check sees it"} {
-				if !strings.Contains(b.String(), want) {
-					t.Errorf("no finding mentions %q:\n%s", want, b.String())
+				if !strings.Contains(b, want) {
+					t.Errorf("no finding mentions %q:\n%s", want, b)
 				}
 			}
 		})
@@ -114,10 +108,7 @@ func TestThePassLineKeepsTheTwoArmsApart(t *testing.T) {
 		}
 		s.Files = append(s.Files, &cut)
 	}
-	res, err := (&rowFundsMatchTheirAnchors{}).Run(t.Context(), &s)
-	if err != nil {
-		t.Fatal(err)
-	}
+	res := runCheck(t, &rowFundsMatchTheirAnchors{}, &s)
 	if res.Status != StatusPass {
 		t.Fatalf("%s: %s", res.Status, res.Summary)
 	}
@@ -141,10 +132,7 @@ func TestTheBareLabelArmIsWhatTheDeclarationTurnsOn(t *testing.T) {
 	t.Parallel()
 	base := committed(t)
 	s := withoutRowLabelFunds(base)
-	res, err := (&rowFundsMatchTheirAnchors{}).Run(t.Context(), s)
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
+	res := runCheck(t, &rowFundsMatchTheirAnchors{}, s)
 	if res.Subjects != 312 {
 		t.Errorf("with the declaration cleared the check resolves %d row anchors, "+
 			"want 312 -- the p76 anchors and the fund numbers of p222 and pp.224-235 "+
@@ -228,10 +216,7 @@ func TestAVacuousRowFundsSummaryCannotDenyTheRowsItSaw(t *testing.T) {
 		s.Files = append(s.Files, &cut)
 	}
 
-	res, err := (&rowFundsMatchTheirAnchors{}).Run(t.Context(), &s)
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
+	res := runCheck(t, &rowFundsMatchTheirAnchors{}, &s)
 	if res.Status != StatusVacuous {
 		t.Fatalf("over a corpus of bare-label rows the check reported %s: %s",
 			res.Status, res.Summary)
@@ -283,10 +268,7 @@ func TestABareFundLabelIsNotReportedAsAnUnprintedAnchor(t *testing.T) {
 // dimension is per column.
 func TestRowFundsIsVacuousWithoutAPerRowSchedule(t *testing.T) {
 	t.Parallel()
-	res, err := (&rowFundsMatchTheirAnchors{}).Run(t.Context(), testSubject(t))
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
+	res := runCheck(t, &rowFundsMatchTheirAnchors{}, testSubject(t))
 	if res.Status != StatusVacuous {
 		t.Errorf("over a corpus whose funds are all per column the check reported %s: %s",
 			res.Status, res.Summary)
@@ -321,10 +303,7 @@ func TestRowFundsCatchesASameGroupEndSwap(t *testing.T) {
 		t.Fatalf("swapped %d rows, want 1", swapped)
 	}
 
-	res, err := (&rowFundsMatchTheirAnchors{}).Run(t.Context(), s)
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
+	res := runCheck(t, &rowFundsMatchTheirAnchors{}, s)
 	if res.Status != StatusFail {
 		t.Fatalf("inverting a transfer's two ends within one fund group reported %s: %s",
 			res.Status, res.Summary)
@@ -334,14 +313,11 @@ func TestRowFundsCatchesASameGroupEndSwap(t *testing.T) {
 		t.Errorf("got %d findings, want 2 (the payer anchor and the payee anchor)",
 			len(res.Findings))
 	}
-	var b strings.Builder
-	for _, f := range res.Findings {
-		b.WriteString(f.Detail + "\n")
-	}
+	b := said(res)
 	for _, want := range []string{"the fund which pays", "the fund which receives"} {
-		if !strings.Contains(b.String(), want) {
+		if !strings.Contains(b, want) {
 			t.Errorf("no finding says %q; a direction failure that does not name the "+
-				"direction is not actionable:\n%s", want, b.String())
+				"direction is not actionable:\n%s", want, b)
 		}
 	}
 }
@@ -389,20 +365,14 @@ func TestRowFundsCatchesABareLabelTwin(t *testing.T) {
 		t.Fatalf("swapped %d rows, want 1; the mutation missed its target", swapped)
 	}
 
-	res, err := (&rowFundsMatchTheirAnchors{}).Run(t.Context(), s)
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
+	res := runCheck(t, &rowFundsMatchTheirAnchors{}, s)
 	if res.Status != StatusFail {
 		t.Fatalf("Water 640 -> 641 reported %s: %s", res.Status, res.Summary)
 	}
-	var b strings.Builder
-	for _, f := range res.Findings {
-		b.WriteString(f.Subject + ": " + f.Detail + "\n")
-	}
+	b := said(res)
 	for _, want := range []string{`funding-public-works "Water"`, "fund 640", "fund 642"} {
-		if !strings.Contains(b.String(), want) {
-			t.Errorf("no finding mentions %q:\n%s", want, b.String())
+		if !strings.Contains(b, want) {
+			t.Errorf("no finding mentions %q:\n%s", want, b)
 		}
 	}
 
@@ -428,17 +398,11 @@ func TestRowFundsCatchesABareLabelTwin(t *testing.T) {
 		t.Fatal("no fact carries funding-public-works fund 640; the green half would " +
 			"pass over an unmutated store, which is what it exists to refuse")
 	}
-	got, err := (&factFundsResolve{}).Run(t.Context(), s)
-	if err != nil {
-		t.Fatalf("fact-funds-resolve: %v", err)
-	}
+	got := runCheck(t, &factFundsResolve{}, s)
 	if got.Status != StatusPass {
 		t.Errorf("fact-funds-resolve reported %s over the same-type swap: %s", got.Status, got.Summary)
 	}
-	got, err = (&cutsTieAlongTheLattice{}).Run(t.Context(), s)
-	if err != nil {
-		t.Fatalf("cuts-tie-along-the-lattice: %v", err)
-	}
+	got = runCheck(t, &cutsTieAlongTheLattice{}, s)
 	perFund := 0
 	for _, f := range got.Findings {
 		if f.Subject == "funding-sources -> fund-balance-expenses" &&
@@ -459,18 +423,12 @@ func TestRowFundsCatchesABareLabelTwin(t *testing.T) {
 				f.Fund = fact.FundNumber(641)
 			}
 		}
-		got, err := (&cutsTieAlongTheLattice{}).Run(t.Context(), s)
-		if err != nil {
-			t.Fatalf("Run: %v", err)
-		}
-		var b strings.Builder
-		for _, f := range got.Findings {
-			b.WriteString(f.Subject + ": " + f.Detail + "\n")
-		}
-		if got.Status != StatusFail || !strings.Contains(b.String(), "fund 641") ||
-			!strings.Contains(b.String(), "funding-sources") {
+		got := runCheck(t, &cutsTieAlongTheLattice{}, s)
+		b := said(got)
+		if got.Status != StatusFail || !strings.Contains(b, "fund 641") ||
+			!strings.Contains(b, "funding-sources") {
 			t.Fatalf("Water 640 -> CIP Water 641 reported %s, want a finding naming fund 641 "+
-				"and the cut that now carries it:\n%s", got.Status, b.String())
+				"and the cut that now carries it:\n%s", got.Status, b)
 		}
 	})
 }
@@ -510,10 +468,7 @@ func TestTheFundNumberArmHoldsBothEndsOfAP222Row(t *testing.T) {
 			if hit != 1 {
 				t.Fatalf("mutated %d rows, want 1", hit)
 			}
-			res, err := (&rowFundsMatchTheirAnchors{}).Run(t.Context(), s)
-			if err != nil {
-				t.Fatalf("Run: %v", err)
-			}
+			res := runCheck(t, &rowFundsMatchTheirAnchors{}, s)
 			if res.Status != StatusFail || len(res.Findings) != 1 ||
 				!strings.Contains(res.Findings[0].Detail, tc.want) {
 				t.Fatalf("reported %s with %v, want one finding saying %q", res.Status, res.Findings, tc.want)
@@ -556,22 +511,16 @@ func TestABareLabelThatResolvesToNoFundIsAFinding(t *testing.T) {
 		t.Fatalf("renamed %d rows, want 1; the mutation missed its target", renamed)
 	}
 
-	res, err := (&rowFundsMatchTheirAnchors{}).Run(t.Context(), s)
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
+	res := runCheck(t, &rowFundsMatchTheirAnchors{}, s)
 	if res.Status != StatusFail {
 		t.Fatalf("a declared row label naming no fund reported %s: %s",
 			res.Status, res.Summary)
 	}
-	var b strings.Builder
-	for _, f := range res.Findings {
-		b.WriteString(f.Subject + ": " + f.Detail + "\n")
-	}
+	b := said(res)
 	// The finding is one line, so the assertion is the line.
 	for _, want := range []string{"No Such Fund", "checked against nothing"} {
-		if !strings.Contains(b.String(), want) {
-			t.Errorf("the finding does not contain %q:\n%s", want, b.String())
+		if !strings.Contains(b, want) {
+			t.Errorf("the finding does not contain %q:\n%s", want, b)
 		}
 	}
 }
@@ -592,10 +541,7 @@ func TestABareLabelThatResolvesToNoFundIsAFinding(t *testing.T) {
 func TestASkippedRowIsInvisibleToThisCheck(t *testing.T) {
 	t.Parallel()
 	base := isolated(t)
-	before, err := (&rowFundsMatchTheirAnchors{}).Run(t.Context(), base)
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
+	before := runCheck(t, &rowFundsMatchTheirAnchors{}, base)
 
 	s := isolated(t)
 	// A skipped row carrying a fund, inside a rule that declares
@@ -618,10 +564,7 @@ func TestASkippedRowIsInvisibleToThisCheck(t *testing.T) {
 		t.Fatalf("added %d rows, want 1", added)
 	}
 
-	got, err := (&rowFundsMatchTheirAnchors{}).Run(t.Context(), s)
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
+	got := runCheck(t, &rowFundsMatchTheirAnchors{}, s)
 	if got.Status != StatusPass {
 		t.Fatalf("a skipped row made the check %s: %s", got.Status, got.Summary)
 	}
@@ -716,10 +659,7 @@ func TestTheHeldLineNeverReportsAnEmptyArm(t *testing.T) {
 func TestAVerbPhrasedLabelUnderTheDeclarationIsRefused(t *testing.T) {
 	t.Parallel()
 	base := isolated(t)
-	before, err := (&rowFundsMatchTheirAnchors{}).Run(t.Context(), base)
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
+	before := runCheck(t, &rowFundsMatchTheirAnchors{}, base)
 
 	s := isolated(t)
 	flagged := 0
@@ -735,22 +675,16 @@ func TestAVerbPhrasedLabelUnderTheDeclarationIsRefused(t *testing.T) {
 		t.Fatalf("flagged %d rules, want 1", flagged)
 	}
 
-	got, err := (&rowFundsMatchTheirAnchors{}).Run(t.Context(), s)
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
+	got := runCheck(t, &rowFundsMatchTheirAnchors{}, s)
 	if got.Status != StatusFail {
 		t.Fatalf("declaring row_labels_name_funds over verb-phrased labels reported "+
 			"%s: %s", got.Status, got.Summary)
 	}
-	var b strings.Builder
-	for _, f := range got.Findings {
-		b.WriteString(f.Subject + ": " + f.Detail + "\n")
-	}
+	b := said(got)
 	for _, want := range []string{"opens with a verb phrase", "names a movement"} {
-		if !strings.Contains(b.String(), want) {
+		if !strings.Contains(b, want) {
 			t.Errorf("no finding says the label names a movement rather than a fund:\n%s",
-				b.String())
+				b)
 		}
 	}
 	// THE SUBJECT COUNT MUST NOT MOVE, which is the half that catches both
@@ -801,20 +735,14 @@ func TestAVerbPhrasedAnchorThatResolvesToNoFundIsAFinding(t *testing.T) {
 		t.Fatalf("renamed %d rows, want 1; the mutation missed its target", renamed)
 	}
 
-	res, err := (&rowFundsMatchTheirAnchors{}).Run(t.Context(), s)
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
+	res := runCheck(t, &rowFundsMatchTheirAnchors{}, s)
 	if res.Status != StatusFail {
 		t.Fatalf("a verb-phrased anchor naming no fund reported %s: %s", res.Status, res.Summary)
 	}
-	var b strings.Builder
-	for _, f := range res.Findings {
-		b.WriteString(f.Subject + ": " + f.Detail + "\n")
-	}
+	b := said(res)
 	for _, want := range []string{"Transfer From No Such Fund", "the fund that pays", "fund 200", "checked against nothing"} {
-		if !strings.Contains(b.String(), want) {
-			t.Errorf("the finding does not contain %q:\n%s", want, b.String())
+		if !strings.Contains(b, want) {
+			t.Errorf("the finding does not contain %q:\n%s", want, b)
 		}
 	}
 	if strings.Contains(res.Summary, "Transfer From No Such Fund") {

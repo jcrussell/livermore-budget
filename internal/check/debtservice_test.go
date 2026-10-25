@@ -2,7 +2,6 @@ package check
 
 import (
 	"encoding/json"
-	"strings"
 	"testing"
 
 	"github.com/jcrussell/livermore-budget/internal/project"
@@ -19,8 +18,7 @@ import (
 // fund type with no total" and "a fund type with two totals" do.
 func TestDebtServiceTiesToFactsGoesRed(t *testing.T) {
 	t.Parallel()
-	const id = "debt-service-ties-to-facts"
-	if res := resultFor(t, runOne(t, committed(t), &debtServiceTiesToFacts{}), id); res.Status != StatusPass {
+	if res := runCheck(t, &debtServiceTiesToFacts{}, committed(t)); res.Status != StatusPass {
 		t.Fatalf("the committed document: status = %s, findings %v", res.Status, res.Findings)
 	}
 	for _, tt := range []struct {
@@ -109,8 +107,8 @@ func TestDebtServiceTiesToFactsGoesRed(t *testing.T) {
 			if !edited {
 				t.Fatal("the committed corpus builds no debt-service document")
 			}
-			res := resultFor(t, runOne(t, s, &debtServiceTiesToFacts{}), id)
-			if res.Status != StatusFail || !strings.Contains(findingDetails(res), tt.want) {
+			res := runCheck(t, &debtServiceTiesToFacts{}, s)
+			if res.Status != StatusFail || !hasFinding(res, tt.want) {
 				t.Errorf("status = %s, findings %v; want one containing %q", res.Status, res.Findings, tt.want)
 			}
 		})

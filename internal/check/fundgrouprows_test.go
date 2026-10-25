@@ -1,7 +1,6 @@
 package check
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/jcrussell/livermore-budget/internal/project"
@@ -15,7 +14,7 @@ import (
 func TestFundGroupsAreTheirPrintedRowsCanFail(t *testing.T) {
 	t.Parallel()
 	s := committed(t)
-	res := resultFor(t, runOne(t, s, &fundGroupsAreTheirPrintedRows{}), "fund-groups-are-their-printed-rows")
+	res := runCheck(t, &fundGroupsAreTheirPrintedRows{}, s)
 	if res.Status != StatusPass || res.Subjects != 4*7*8 {
 		t.Fatalf("status %s over %d cells (%s), want a pass over 4 columns x 7 groups x 8 lines",
 			res.Status, res.Subjects, res.Summary)
@@ -28,7 +27,7 @@ func TestFundGroupsAreTheirPrintedRowsCanFail(t *testing.T) {
 				s.Projections[i].Options.ThroughCuts = false
 			}
 		}
-		res := resultFor(t, runOne(t, s, &fundGroupsAreTheirPrintedRows{}), "fund-groups-are-their-printed-rows")
+		res := runCheck(t, &fundGroupsAreTheirPrintedRows{}, s)
 		want := "FY2026 adopted enterprise revenues: the document's enterprise funds sum to $71,573,173.00 " +
 			"and pp.186-209 print $67,514,261.00"
 		if res.Status != StatusFail || !hasFinding(res, want) {
@@ -56,7 +55,7 @@ func TestFundGroupsAreTheirPrintedRowsCanFail(t *testing.T) {
 		if !dropped {
 			t.Fatal("fund-balances-fy2026-p0200 declares no delta on Total Capital Funds; the mutation changes nothing")
 		}
-		res := resultFor(t, runOne(t, s, &fundGroupsAreTheirPrintedRows{}), "fund-groups-are-their-printed-rows")
+		res := runCheck(t, &fundGroupsAreTheirPrintedRows{}, s)
 		if res.Status != StatusFail || !hasFinding(res, "FY2026 adopted capital fund-balance/beginning") {
 			t.Errorf("status %s, findings %v; want FY2026 capital's beginning named", res.Status, res.Findings)
 		}
@@ -72,7 +71,7 @@ func TestAFundGroupFoldIsHeldToItsParentAndEveryLine(t *testing.T) {
 		t.Helper()
 		s := isolated(t)
 		plant(s)
-		return resultFor(t, runOne(t, s, &fundGroupsAreTheirPrintedRows{}), "fund-groups-are-their-printed-rows")
+		return runCheck(t, &fundGroupsAreTheirPrintedRows{}, s)
 	}
 	t.Run("a fund parented to another group", func(t *testing.T) {
 		res := run(t, func(s *Subject) {
@@ -87,7 +86,7 @@ func TestAFundGroupFoldIsHeldToItsParentAndEveryLine(t *testing.T) {
 				}
 			}
 		})
-		if res.Status != StatusFail || !strings.Contains(findingDetails(res), "fund/200 is parented to") {
+		if res.Status != StatusFail || !hasFinding(res, "fund/200 is parented to") {
 			t.Errorf("status %s, findings %v; want fund/200's parent refused", res.Status, res.Findings)
 		}
 	})
@@ -106,13 +105,4 @@ func TestAFundGroupFoldIsHeldToItsParentAndEveryLine(t *testing.T) {
 			t.Errorf("status %s, findings %v; want the unprinted line named", res.Status, res.Findings)
 		}
 	})
-}
-
-func hasFinding(res Result, prefix string) bool {
-	for _, f := range res.Findings {
-		if strings.HasPrefix(f.Subject+": "+f.Detail, prefix) {
-			return true
-		}
-	}
-	return false
 }

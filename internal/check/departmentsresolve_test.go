@@ -1,7 +1,6 @@
 package check
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -18,12 +17,7 @@ func departmentFact(id, department string) fact.Fact {
 
 func runDepartments(t *testing.T, facts ...fact.Fact) Result {
 	t.Helper()
-	res, err := (&factDepartmentsResolve{}).Run(context.Background(),
-		&Subject{Facts: facts, Vocabulary: testVocabulary(t)})
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
-	return res
+	return runCheck(t, &factDepartmentsResolve{}, &Subject{Facts: facts, Vocabulary: testVocabulary(t)})
 }
 
 // TestDepartmentsResolveAcceptsEitherTier: pp.85-125's Department Funding
@@ -69,12 +63,8 @@ func TestDepartmentsResolveArmsAreEachReachable(t *testing.T) {
 			if res.Status != StatusFail {
 				t.Fatalf("Status = %s (%s), want fail", res.Status, res.Summary)
 			}
-			var got []string
-			for _, f := range res.Findings {
-				got = append(got, f.Detail)
-			}
-			if !strings.Contains(strings.Join(got, "\n"), tc.want) {
-				t.Errorf("findings %v do not say %q", got, tc.want)
+			if !hasFinding(res, tc.want) {
+				t.Errorf("findings %s do not say %q", said(res), tc.want)
 			}
 		})
 	}

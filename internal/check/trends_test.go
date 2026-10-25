@@ -1,7 +1,6 @@
 package check
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
@@ -81,7 +80,7 @@ func trendsTestFacts(t *testing.T) []fact.Fact {
 // clean store reports every point examined and nothing wrong.
 func TestTrendPointsTieToFactsPasses(t *testing.T) {
 	t.Parallel()
-	res := runTrendPoints(t, trendsSubject(t, trendsTestFacts(t)))
+	res := runCheck(t, &trendPointsTieToFacts{}, trendsSubject(t, trendsTestFacts(t)))
 	if res.Status != StatusPass {
 		t.Fatalf("trend-points-tie-to-facts = %s: %s (%v)", res.Status, res.Summary, res.Findings)
 	}
@@ -115,12 +114,12 @@ func TestAMutatedPointIsCaught(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			s := trendsSubject(t, trendsTestFacts(t))
 			c.bend(&s.Projections[0].Trends.Series[0].Points[0])
-			res := runTrendPoints(t, s)
+			res := runCheck(t, &trendPointsTieToFacts{}, s)
 			if res.Status != StatusFail {
 				t.Fatalf("a mutated %s reported %s: %s", c.name, res.Status, res.Summary)
 			}
-			if !strings.Contains(findingDetails(res), c.want) {
-				t.Errorf("findings do not name %q: %s", c.want, findingDetails(res))
+			if !hasFinding(res, c.want) {
+				t.Errorf("findings do not name %q: %s", c.want, said(res))
 			}
 		})
 	}
@@ -136,12 +135,12 @@ func TestAFactNoPointPublishesIsCaught(t *testing.T) {
 	// Drop a whole series from the published document while leaving its facts in
 	// the store: exactly what a resolver that stopped emitting a row looks like.
 	s.Projections[0].Trends.Series = s.Projections[0].Trends.Series[:1]
-	res := runTrendPoints(t, s)
+	res := runCheck(t, &trendPointsTieToFacts{}, s)
 	if res.Status != StatusFail {
 		t.Fatalf("a dropped series reported %s: %s", res.Status, res.Summary)
 	}
-	if !strings.Contains(findingDetails(res), "no point publishes it") {
-		t.Errorf("findings do not name the unpublished facts: %s", findingDetails(res))
+	if !hasFinding(res, "no point publishes it") {
+		t.Errorf("findings do not name the unpublished facts: %s", said(res))
 	}
 }
 
@@ -152,12 +151,12 @@ func TestAFactPublishedTwiceIsCaught(t *testing.T) {
 	s := trendsSubject(t, trendsTestFacts(t))
 	series := &s.Projections[0].Trends.Series[0]
 	series.Points = append(series.Points, series.Points[0])
-	res := runTrendPoints(t, s)
+	res := runCheck(t, &trendPointsTieToFacts{}, s)
 	if res.Status != StatusFail {
 		t.Fatalf("a duplicated point reported %s: %s", res.Status, res.Summary)
 	}
-	if !strings.Contains(findingDetails(res), "more than one point") {
-		t.Errorf("findings do not name the duplicate: %s", findingDetails(res))
+	if !hasFinding(res, "more than one point") {
+		t.Errorf("findings do not name the duplicate: %s", said(res))
 	}
 }
 
@@ -173,12 +172,12 @@ func TestAPointFiledUnderTheWrongSeriesIsCaught(t *testing.T) {
 		t.Fatalf("fixture built %d series, want 2", len(series))
 	}
 	series[0].Points[0], series[1].Points[0] = series[1].Points[0], series[0].Points[0]
-	res := runTrendPoints(t, s)
+	res := runCheck(t, &trendPointsTieToFacts{}, s)
 	if res.Status != StatusFail {
 		t.Fatalf("two points swapped between series reported %s: %s", res.Status, res.Summary)
 	}
-	if !strings.Contains(findingDetails(res), "different printed row") {
-		t.Errorf("findings do not name the misfiling: %s", findingDetails(res))
+	if !hasFinding(res, "different printed row") {
+		t.Errorf("findings do not name the misfiling: %s", said(res))
 	}
 }
 
@@ -188,13 +187,10 @@ func TestAPointFiledUnderTheWrongSeriesIsCaught(t *testing.T) {
 func TestTrendChecksAreVacuousWithoutADocument(t *testing.T) {
 	t.Parallel()
 	s := &Subject{}
-	if res := runTrendPoints(t, s); res.Status != StatusVacuous {
+	if res := runCheck(t, &trendPointsTieToFacts{}, s); res.Status != StatusVacuous {
 		t.Errorf("trend-points-tie-to-facts = %s over no document, want vacuous", res.Status)
 	}
-	res, err := (&trendSeriesAreComplete{}).Run(t.Context(), s)
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
+	res := runCheck(t, &trendSeriesAreComplete{}, s)
 	if res.Status != StatusVacuous {
 		t.Errorf("trend-series-are-complete = %s over no document, want vacuous", res.Status)
 	}
@@ -222,26 +218,23 @@ func TestASeriesShortAColumnIsCaught(t *testing.T) {
 	// division of labour, and it is very likely the right answer -- two
 	// independent statements about one corruption is what makes a check set
 	// hard to fool.
-	points := runTrendPoints(t, s)
+	points := runCheck(t, &trendPointsTieToFacts{}, s)
 	if points.Status != StatusFail {
 		t.Errorf("trend-points-tie-to-facts = %s on a dropped point, want fail: %s",
 			points.Status, points.Summary)
 	}
-	if !strings.Contains(findingDetails(points), "no point publishes it") {
+	if !hasFinding(points, "no point publishes it") {
 		t.Errorf("trend-points-tie-to-facts did not report the unpublished fact: %s",
-			findingDetails(points))
+			said(points))
 	}
 
-	res, err := (&trendSeriesAreComplete{}).Run(t.Context(), s)
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
+	res := runCheck(t, &trendSeriesAreComplete{}, s)
 	if res.Status != StatusFail {
 		t.Fatalf("a series missing FY%d reported %s: %s",
 			dropped.FiscalYear, res.Status, res.Summary)
 	}
-	if !strings.Contains(findingDetails(res), "FY2027 adopted") {
-		t.Errorf("findings do not name the missing column: %s", findingDetails(res))
+	if !hasFinding(res, "FY2027 adopted") {
+		t.Errorf("findings do not name the missing column: %s", said(res))
 	}
 }
 
@@ -255,27 +248,21 @@ func TestAStaleIncompleteSeriesDeclarationIsCaught(t *testing.T) {
 
 	t.Run("the series is complete after all", func(t *testing.T) {
 		withIncompleteSeries(t, s, map[string]string{id: "declared, but nothing is missing"})
-		res, err := (&trendSeriesAreComplete{}).Run(t.Context(), s)
-		if err != nil {
-			t.Fatalf("Run: %v", err)
-		}
+		res := runCheck(t, &trendSeriesAreComplete{}, s)
 		if res.Status != StatusFail ||
-			!strings.Contains(findingDetails(res), "exempting nothing") {
+			!hasFinding(res, "exempting nothing") {
 			t.Errorf("a declaration over a complete series reported %s: %s",
-				res.Status, findingDetails(res))
+				res.Status, said(res))
 		}
 	})
 
 	t.Run("no such series", func(t *testing.T) {
 		withIncompleteSeries(t, s, map[string]string{"fisc-s-000000000000": "typo'd or removed"})
-		res, err := (&trendSeriesAreComplete{}).Run(t.Context(), s)
-		if err != nil {
-			t.Fatalf("Run: %v", err)
-		}
+		res := runCheck(t, &trendSeriesAreComplete{}, s)
 		if res.Status != StatusFail ||
-			!strings.Contains(findingDetails(res), "no trends document publishes a series") {
+			!hasFinding(res, "no trends document publishes a series") {
 			t.Errorf("a declaration naming no series reported %s: %s",
-				res.Status, findingDetails(res))
+				res.Status, said(res))
 		}
 	})
 }
@@ -297,15 +284,6 @@ func withIncompleteSeries(t *testing.T, s *Subject, m map[string]string) {
 	prev := s.IncompleteSeries
 	s.IncompleteSeries = m
 	t.Cleanup(func() { s.IncompleteSeries = prev })
-}
-
-func runTrendPoints(t *testing.T, s *Subject) Result {
-	t.Helper()
-	res, err := (&trendPointsTieToFacts{}).Run(t.Context(), s)
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
-	return res
 }
 
 // TestAPointInAnUndeclaredColumnIsCaught is fisc-4j5's check-side half, and the
@@ -341,7 +319,7 @@ func TestAPointInAnUndeclaredColumnIsCaught(t *testing.T) {
 
 	// Before the mutation the one-column document is clean, which is what makes
 	// the assertions below about the mutation rather than about the fixture.
-	if got := runTrendPoints(t, s).Status; got != StatusPass {
+	if got := runCheck(t, &trendPointsTieToFacts{}, s).Status; got != StatusPass {
 		t.Fatalf("the unmutated one-column document reported %s, want pass", got)
 	}
 
@@ -365,22 +343,19 @@ func TestAPointInAnUndeclaredColumnIsCaught(t *testing.T) {
 	}
 	series.Points = append(series.Points, extra)
 
-	res := runTrendPoints(t, s)
+	res := runCheck(t, &trendPointsTieToFacts{}, s)
 	if res.Status != StatusFail {
 		t.Fatalf("a point in an undeclared column reported %s: %s", res.Status, res.Summary)
 	}
 	for _, want := range []string{"FY2027 adopted", "not one of the 1 columns"} {
-		if !strings.Contains(findingDetails(res), want) {
-			t.Errorf("findings do not name %q: %s", want, findingDetails(res))
+		if !hasFinding(res, want) {
+			t.Errorf("findings do not name %q: %s", want, said(res))
 		}
 	}
 
 	// AND THE OTHER TWO STAY GREEN: this corruption is caught HERE and by
 	// nothing else.
-	complete, err := (&trendSeriesAreComplete{}).Run(t.Context(), s)
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
+	complete := runCheck(t, &trendSeriesAreComplete{}, s)
 	if complete.Status != StatusPass {
 		t.Errorf("trend-series-are-complete = %s on an EXTRA point, want pass: %s",
 			complete.Status, complete.Summary)

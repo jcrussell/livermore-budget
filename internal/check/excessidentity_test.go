@@ -1,7 +1,6 @@
 package check
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -40,11 +39,7 @@ func excessBaseline() []fact.Fact {
 
 func runExcessIdentity(t *testing.T, facts []fact.Fact) Result {
 	t.Helper()
-	res, err := (&excessOfRevenuesIdentity{}).Run(context.Background(), &Subject{Facts: facts})
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
-	return res
+	return runCheck(t, &excessOfRevenuesIdentity{}, &Subject{Facts: facts})
 }
 
 // p121Fact is a fact of ACFR p121's FY2025 actual column.
@@ -250,7 +245,7 @@ func TestExcessIdentityCatchesADroppedSide(t *testing.T) {
 			if res.Status != StatusFail {
 				t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
 			}
-			if !strings.Contains(findingDetails(res), tc.want) {
+			if !hasFinding(res, tc.want) {
 				t.Errorf("findings %v do not say %q", res.Findings, tc.want)
 			}
 		})
@@ -268,7 +263,7 @@ func TestExcessIdentityRefusesADuplicatedExcessLine(t *testing.T) {
 	if res.Status != StatusFail {
 		t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
 	}
-	if !strings.Contains(findingDetails(res), "twice") {
+	if !hasFinding(res, "twice") {
 		t.Errorf("findings %v do not name the duplicate", res.Findings)
 	}
 
@@ -279,7 +274,7 @@ func TestExcessIdentityRefusesADuplicatedExcessLine(t *testing.T) {
 		excessFact("x-2016-dup", vocab.KindFundBalance, categoryExcessOfRevenues, 2016, 601),
 	}, excessBaseline()...)
 	res = runExcessIdentity(t, wrongFirst)
-	if res.Status != StatusFail || len(res.Findings) != 1 || !strings.Contains(findingDetails(res), "twice") {
+	if res.Status != StatusFail || len(res.Findings) != 1 || !hasFinding(res, "twice") {
 		t.Errorf("status %s, findings %v; want the duplicate alone, its column held to nothing",
 			res.Status, res.Findings)
 	}
@@ -295,7 +290,7 @@ func TestExcessIdentityRefusesADuplicatedExcessLine(t *testing.T) {
 	noRevenue = append(noRevenue,
 		excessFact("x-2016-dup", vocab.KindFundBalance, categoryExcessOfRevenues, 2016, 601))
 	res = runExcessIdentity(t, noRevenue)
-	if !strings.Contains(findingDetails(res), "missing revenue rows") {
+	if !hasFinding(res, "missing revenue rows") {
 		t.Errorf("findings %v do not name the duplicated column's missing revenue rows", res.Findings)
 	}
 }

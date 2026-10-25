@@ -348,11 +348,11 @@ func TestAnArtifactForNoPageFails(t *testing.T) {
 	if res.Status != StatusFail {
 		t.Fatalf("extraction-emitted-every-page = %s (%s), want fail", res.Status, res.Summary)
 	}
-	if !strings.Contains(findingDetails(res),
+	if !strings.Contains(said(res),
 		fmt.Sprintf("1 artifact for no page of a %d-page document", pagesOfDocWithout(t))) {
 		t.Errorf("findings %v do not report the artifact as belonging to no page", res.Findings)
 	}
-	if !strings.Contains(findingDetails(res), stray) {
+	if !hasFinding(res, stray) {
 		t.Errorf("findings %v do not name the artifact", res.Findings)
 	}
 }
@@ -385,7 +385,7 @@ func TestZeroingThePageCountIsCaughtByTheRegistry(t *testing.T) {
 	if res.Status != StatusFail {
 		t.Fatalf("manifest-matches-source-registry = %s (%s), want fail", res.Status, res.Summary)
 	}
-	if !strings.Contains(findingDetails(res), fmt.Sprintf(
+	if !hasFinding(res, fmt.Sprintf(
 		"the extractor found 0 pages and the registry records %d", pagesOfDocWithout(t))) {
 		t.Errorf("findings %v do not report the page count disagreement", res.Findings)
 	}
@@ -598,7 +598,7 @@ func TestAnEditedManifestHashFails(t *testing.T) {
 	if res.Status != StatusFail {
 		t.Fatalf("artifacts-match-manifest = %s (%s), want fail", res.Status, res.Summary)
 	}
-	detail := findingDetails(res)
+	detail := said(res)
 	for _, s := range []string{short(want.SHA256), short(wrong)} {
 		if !strings.Contains(detail, s) {
 			t.Errorf("findings %v do not name %s", res.Findings, s)

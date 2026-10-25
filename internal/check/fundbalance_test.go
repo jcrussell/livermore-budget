@@ -9,16 +9,6 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
-// fundBalanceResult runs the whole suite over a fixture whose cells have been
-// altered and returns this check's verdict.
-//
-// cellsSubject leaves other checks red on the unmutated baseline, so only this
-// check's verdict is evidence.
-func fundBalanceResult(t *testing.T, cells []testCell) Result {
-	t.Helper()
-	return resultFor(t, runChecks(t, cellsSubject(t, cells)), "fund-balance-identity")
-}
-
 // TestFundBalanceIdentityCatchesAnEndingThatDoesNotFollow is the mutation the
 // check exists for: a balance whose three published lines do not agree.
 //
@@ -35,7 +25,7 @@ func TestFundBalanceIdentityCatchesAnEndingThatDoesNotFollow(t *testing.T) {
 		}
 	}
 
-	res := fundBalanceResult(t, cells)
+	res := runCheck(t, &fundBalanceIdentity{}, cellsSubject(t, cells))
 	if res.Status != StatusFail {
 		t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
 	}
@@ -76,7 +66,7 @@ func TestFundBalanceIdentityCatchesADroppedLine(t *testing.T) {
 		cells = append(cells, c)
 	}
 
-	res := fundBalanceResult(t, cells)
+	res := runCheck(t, &fundBalanceIdentity{}, cellsSubject(t, cells))
 	if res.Status != StatusFail {
 		t.Fatalf("status = %s (%s), want fail; a balance missing a line must not "+
 			"pass by having nothing to violate", res.Status, res.Summary)
@@ -112,7 +102,7 @@ func TestFundBalanceIdentityIgnoresReserveIncrease(t *testing.T) {
 		vocab.KindFundBalance, "fund-balance/reserve-increase", "general", 33_000,
 	})
 
-	res := fundBalanceResult(t, cells)
+	res := runCheck(t, &fundBalanceIdentity{}, cellsSubject(t, cells))
 	if res.Status != StatusPass {
 		t.Fatalf("status = %s (%s), want pass: a reserve increase is not a term of "+
 			"beginning + change == ending", res.Status, res.Summary)
@@ -146,7 +136,7 @@ func TestFundBalanceIdentityReportsADuplicateWithoutAbandoningTheRest(t *testing
 		}
 	}
 
-	res := fundBalanceResult(t, cells)
+	res := runCheck(t, &fundBalanceIdentity{}, cellsSubject(t, cells))
 	// want fail and specifically NOT error: the store is wrong, the checker is
 	// not, and the report distinguishes them.
 	if res.Status != StatusFail {
@@ -224,7 +214,7 @@ func TestFundBalanceFindingsAlwaysNameASubject(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			res := fundBalanceResult(t, tt.cells())
+			res := runCheck(t, &fundBalanceIdentity{}, cellsSubject(t, tt.cells()))
 			if res.Status != StatusFail {
 				t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
 			}

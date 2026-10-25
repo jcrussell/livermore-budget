@@ -3,6 +3,7 @@ package check
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -450,4 +451,36 @@ func statuses(rep *Report) map[string]string {
 		out[res.CheckID] = fmt.Sprintf("%s over %d", res.Status, res.Subjects)
 	}
 	return out
+}
+
+// runCheck runs one check over s; an error from the harness fails the test.
+func runCheck(t *testing.T, c local, s *Subject) Result {
+	t.Helper()
+	res, err := c.Run(t.Context(), s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return res
+}
+
+// findingLines renders findings one per line, subject then detail.
+func findingLines(res Result) []string {
+	out := make([]string, 0, len(res.Findings))
+	for _, f := range res.Findings {
+		out = append(out, f.Subject+": "+f.Detail)
+	}
+	return out
+}
+
+// said is a result's findings as one string, for a test asserting on prose.
+func said(res Result) string { return strings.Join(findingLines(res), "\n") }
+
+// hasFinding reports whether one finding's line contains every part.
+func hasFinding(res Result, parts ...string) bool {
+	for _, line := range findingLines(res) {
+		if !slices.ContainsFunc(parts, func(p string) bool { return !strings.Contains(line, p) }) {
+			return true
+		}
+	}
+	return false
 }

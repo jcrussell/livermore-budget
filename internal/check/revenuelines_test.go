@@ -155,10 +155,7 @@ func TestRevenueRowsAndLinesAreOneSet(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := revenueLinesSubject(t, tt.taxonomy, tt.rows...)
-			res, err := (&factRevenueLinesResolve{}).Run(t.Context(), s)
-			if err != nil {
-				t.Fatalf("Run: %v", err)
-			}
+			res := runCheck(t, &factRevenueLinesResolve{}, s)
 			if res.Status != tt.status {
 				t.Fatalf("status = %s (%s), want %s", res.Status, res.Summary, tt.status)
 			}
@@ -166,11 +163,11 @@ func TestRevenueRowsAndLinesAreOneSet(t *testing.T) {
 				t.Errorf("subjects = %d, want %d (rows plus lines)", res.Subjects, tt.subjects)
 			}
 			if got := len(res.Findings); got != len(tt.want) {
-				t.Errorf("findings = %d, want %d:\n%s", got, len(tt.want), findingDetails(res))
+				t.Errorf("findings = %d, want %d:\n%s", got, len(tt.want), said(res))
 			}
 			for _, w := range tt.want {
-				if !strings.Contains(findingDetails(res), w) {
-					t.Errorf("findings do not contain %q:\n%s", w, findingDetails(res))
+				if !hasFinding(res, w) {
+					t.Errorf("findings do not contain %q:\n%s", w, said(res))
 				}
 			}
 			if tt.summary != "" && !strings.Contains(res.Summary, tt.summary) {
@@ -178,13 +175,10 @@ func TestRevenueRowsAndLinesAreOneSet(t *testing.T) {
 			}
 			// fact-vocabulary is green over the same subject, so no earlier
 			// gate hides this one.
-			voc, err := (&factVocabulary{}).Run(t.Context(), s)
-			if err != nil {
-				t.Fatalf("fact-vocabulary: %v", err)
-			}
+			voc := runCheck(t, &factVocabulary{}, s)
 			if voc.Status == StatusFail {
 				t.Errorf("fact-vocabulary = fail over the same rows; the finding above is not this check's alone:\n%s",
-					findingDetails(voc))
+					said(voc))
 			}
 		})
 	}

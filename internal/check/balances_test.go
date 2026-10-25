@@ -96,15 +96,8 @@ func runBalanceExcepting(t *testing.T, c local, exceptions []structure.BalanceEx
 	if err := structure.ValidateBalanceExceptions(structure.FundBalances(), exceptions); err != nil {
 		t.Fatal(err)
 	}
-	res, err := c.Run(t.Context(), &Subject{Facts: facts, Files: files, BalanceExceptions: exceptions})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return res
+	return runCheck(t, c, &Subject{Facts: facts, Files: files, BalanceExceptions: exceptions})
 }
-
-// said is a result's findings as one string, for a test asserting on prose.
-func said(res Result) string { return strings.Join(findingLines(res), "\n") }
 
 func wantPass(t *testing.T, res Result, subjects int) {
 	t.Helper()
@@ -795,10 +788,7 @@ func TestTwoFactsOnOneLineOfSourcesUsesFail(t *testing.T) {
 func TestASubjectBuiltByHandCarriesNoException(t *testing.T) {
 	t.Parallel()
 	for _, c := range []local{&fundBalanceIdentity{}, &fundGroupSourcesEqualUses{}} {
-		res, err := c.Run(t.Context(), &Subject{Facts: testFacts()})
-		if err != nil {
-			t.Fatal(err)
-		}
+		res := runCheck(t, c, &Subject{Facts: testFacts()})
 		if res.Status != StatusPass {
 			t.Errorf("%s over a hand-built subject: %s, findings %s", c.meta().id, res.Status, said(res))
 		}

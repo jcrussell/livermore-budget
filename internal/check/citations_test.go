@@ -103,10 +103,7 @@ func TestOnePrintedFigureIsTwoFactsOnlyWhenARowDeclaresIt(t *testing.T) {
 		wantText: "for one printed token",
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			res, err := (&factCitationsAreDeclared{}).Run(t.Context(), citationSubject(tc.rules, tc.facts))
-			if err != nil {
-				t.Fatal(err)
-			}
+			res := runCheck(t, &factCitationsAreDeclared{}, citationSubject(tc.rules, tc.facts))
 			failed := len(res.Findings) > 0
 			if failed != tc.wantFail {
 				t.Fatalf("findings = %v, want failure %v (summary: %s)", res.Findings, tc.wantFail, res.Summary)
@@ -114,12 +111,8 @@ func TestOnePrintedFigureIsTwoFactsOnlyWhenARowDeclaresIt(t *testing.T) {
 			if !tc.wantFail {
 				return
 			}
-			var got []string
-			for _, f := range res.Findings {
-				got = append(got, f.Detail)
-			}
-			if !strings.Contains(strings.Join(got, "\n"), tc.wantText) {
-				t.Errorf("findings = %v\nwant one containing %q", got, tc.wantText)
+			if !hasFinding(res, tc.wantText) {
+				t.Errorf("findings = %s\nwant one containing %q", said(res), tc.wantText)
 			}
 		})
 	}

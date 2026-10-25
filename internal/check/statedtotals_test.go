@@ -9,15 +9,6 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 )
 
-func runStatedTotals(t *testing.T, s *Subject) Result {
-	t.Helper()
-	res, err := (&factOffsetIsNotAStatedTotal{}).Run(t.Context(), s)
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
-	return res
-}
-
 // aStatedTotalLine returns one resolved stated-total span from the committed
 // rules, chosen by a predicate, so a test can plant a fact on a real printed
 // total instead of inventing an offset that no page backs.
@@ -77,12 +68,12 @@ func TestARepublishedTotalIsCaught(t *testing.T) {
 		RuleID: "some-other-rule", RowLabel: "A Row That Is Really A Total",
 	})
 
-	res := runStatedTotals(t, s)
+	res := runCheck(t, &factOffsetIsNotAStatedTotal{}, s)
 	if res.Status != StatusFail {
 		t.Fatalf("a fact citing rule %q's stated total reported %s: %s",
 			ruleID, res.Status, res.Summary)
 	}
-	got := findingDetails(res)
+	got := said(res)
 	for _, want := range []string{ruleID, "some-other-rule", "stated-total line"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("the finding does not name %q: %s", want, got)
@@ -141,12 +132,12 @@ func TestARepublishedRollupTotalIsCaught(t *testing.T) {
 		RuleID: "some-other-rule", RowLabel: "A Row That Is Really A Rollup Total",
 	})
 
-	res := runStatedTotals(t, s)
+	res := runCheck(t, &factOffsetIsNotAStatedTotal{}, s)
 	if res.Status != StatusFail {
 		t.Fatalf("a fact citing rollup %q's printed total reported %s: %s",
 			id, res.Status, res.Summary)
 	}
-	got := findingDetails(res)
+	got := said(res)
 	if !strings.Contains(got, id) {
 		t.Errorf("the finding does not name the rollup %q: %s", id, got)
 	}
@@ -171,7 +162,7 @@ func TestARepublishedRollupTotalIsCaught(t *testing.T) {
 func TestLosingASpanningRulesTotalIsCaught(t *testing.T) {
 	t.Parallel()
 	s := isolated(t)
-	if res := runStatedTotals(t, s); res.Status != StatusPass {
+	if res := runCheck(t, &factOffsetIsNotAStatedTotal{}, s); res.Status != StatusPass {
 		t.Fatalf("the unbent corpus reported %s: %s", res.Status, res.Summary)
 	}
 	bent := 0
@@ -184,14 +175,14 @@ func TestLosingASpanningRulesTotalIsCaught(t *testing.T) {
 			bent++
 			was := rule.TotalRow
 			rule.TotalRow = "No Page Prints This Row"
-			res := runStatedTotals(t, s)
+			res := runCheck(t, &factOffsetIsNotAStatedTotal{}, s)
 			rule.TotalRow = was
 			if res.Status != StatusFail {
 				t.Errorf("spanning rule %q lost its only stated-total line and the check "+
 					"reported %s: %s", rule.ID, res.Status, res.Summary)
 				continue
 			}
-			got := findingDetails(res)
+			got := said(res)
 			for _, want := range []string{rule.ID, "resolves it on no page", "No Page Prints This Row"} {
 				if !strings.Contains(got, want) {
 					t.Errorf("the finding for %q does not name %q: %s", rule.ID, want, got)
@@ -260,17 +251,17 @@ func TestALabelLessPartThatLosesItsTotalLineIsCaught(t *testing.T) {
 		t.Fatal("no committed label-less part of a total_row rule resolves a stated total, " +
 			"so this test asserts nothing")
 	}
-	if res := runStatedTotals(t, s); res.Status != StatusPass {
+	if res := runCheck(t, &factOffsetIsNotAStatedTotal{}, s); res.Status != StatusPass {
 		t.Fatalf("the unbent corpus reported %s: %s", res.Status, res.Summary)
 	}
 
 	bentPart.StopAt, bentPart.StopAtOrdinal = footer, 0
-	res := runStatedTotals(t, s)
+	res := runCheck(t, &factOffsetIsNotAStatedTotal{}, s)
 	if res.Status != StatusFail {
 		t.Fatalf("rule %q's p%d part stops at %q, a line printing no totals, and the check "+
 			"reported %s: %s", bentRule.ID, bentPart.Page, footer, res.Status, res.Summary)
 	}
-	got := findingDetails(res)
+	got := said(res)
 	for _, want := range []string{bentRule.ID, fmt.Sprintf("p%d", bentPart.Page), "no run of"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("the finding does not name %q: %s", want, got)
@@ -336,17 +327,17 @@ func TestOneLostPartIsCaughtEvenWhenOthersResolve(t *testing.T) {
 	}
 	id := bent.ID
 
-	if res := runStatedTotals(t, s); res.Status != StatusPass {
+	if res := runCheck(t, &factOffsetIsNotAStatedTotal{}, s); res.Status != StatusPass {
 		t.Fatalf("the unbent corpus reported %s: %s", res.Status, res.Summary)
 	}
 
 	bent.TotalRow = "No Page Prints This Row"
-	res := runStatedTotals(t, s)
+	res := runCheck(t, &factOffsetIsNotAStatedTotal{}, s)
 	if res.Status != StatusFail {
 		t.Fatalf("rule %q went from %d resolved spans to %d and the check reported %s: %s",
 			id, before, after, res.Status, res.Summary)
 	}
-	got := findingDetails(res)
+	got := said(res)
 	for _, want := range []string{id, "fails to resolve it on"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("the finding does not name %q: %s", want, got)
@@ -455,11 +446,11 @@ func TestALabelLessPartWithATotalRowNamesItsRealAnchor(t *testing.T) {
 		DocID: doc, Page: page, Offset: off, Token: "1,234",
 		RuleID: "some-other-rule", RowLabel: "A Row That Is Really A Total",
 	})
-	res := runStatedTotals(t, s)
+	res := runCheck(t, &factOffsetIsNotAStatedTotal{}, s)
 	if res.Status != StatusFail {
 		t.Fatalf("a fact citing %q's stop_at total reported %s: %s", ruleID, res.Status, res.Summary)
 	}
-	got := findingDetails(res)
+	got := said(res)
 	if strings.Contains(got, declared) {
 		t.Errorf("the finding names %q as the printed stated-total line, and p%d does not print it: %s",
 			declared, page, got)
@@ -495,11 +486,11 @@ func TestARuleWhoseTotalResolvesNowhereIsCaught(t *testing.T) {
 	id := bent.ID
 	bent.TotalRow = "No Page Prints This Row"
 
-	res := runStatedTotals(t, s)
+	res := runCheck(t, &factOffsetIsNotAStatedTotal{}, s)
 	if res.Status != StatusFail {
 		t.Fatalf("a rule whose total_row resolves nowhere reported %s: %s", res.Status, res.Summary)
 	}
-	got := findingDetails(res)
+	got := said(res)
 	for _, want := range []string{id, "fails to resolve it on", "No Page Prints This Row"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("the finding does not name %q: %s", want, got)
@@ -523,11 +514,11 @@ func TestALineFoundByOrdinalIsNamedWithIt(t *testing.T) {
 		DocID: doc, Page: page, Offset: off, Token: "5,548,908.00",
 		RuleID: "some-other-rule", RowLabel: "A Row That Is Really A Total",
 	})
-	res := runStatedTotals(t, s)
+	res := runCheck(t, &factOffsetIsNotAStatedTotal{}, s)
 	if res.Status != StatusFail {
 		t.Fatalf("a fact on rule %q's ordinal-anchored total reported %s", ruleID, res.Status)
 	}
-	if got := findingDetails(res); !strings.Contains(got, "occurrence 19 after the block's start") {
+	if got := said(res); !strings.Contains(got, "occurrence 19 after the block's start") {
 		t.Errorf("the finding does not name the line by its ordinal: %s", got)
 	}
 }
@@ -561,8 +552,8 @@ func TestAnOrdinalWithNoSectionCountsFromThePage(t *testing.T) {
 		DocID: doc, Page: page, Offset: off, Token: "5,548,908.00",
 		RuleID: "some-other-rule", RowLabel: "A Row That Is Really A Total",
 	})
-	res := runStatedTotals(t, s)
-	if got := findingDetails(res); !strings.Contains(got, "occurrence 19 on the page") {
+	res := runCheck(t, &factOffsetIsNotAStatedTotal{}, s)
+	if got := said(res); !strings.Contains(got, "occurrence 19 on the page") {
 		t.Errorf("the finding does not count the ordinal from the page: %s", got)
 	}
 }

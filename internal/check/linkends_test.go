@@ -3,7 +3,6 @@ package check
 import (
 	"maps"
 	"slices"
-	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -27,10 +26,7 @@ func TestLinkEndsMatchTheirFactsIsFailable(t *testing.T) {
 	t.Parallel()
 	s := isolated(t)
 	c := &linkEndsMatchTheirFacts{}
-	res, err := c.Run(t.Context(), s)
-	if err != nil {
-		t.Fatal(err)
-	}
+	res := runCheck(t, c, s)
 	if res.Status != StatusPass {
 		t.Fatalf("the committed corpus is %s: %v", res.Status, res.Findings)
 	}
@@ -169,11 +165,8 @@ func TestLinkEndsMatchTheirFactsIsFailable(t *testing.T) {
 				e.fn(at[i])
 				t.Cleanup(func() { *at[i] = was })
 			}
-			res, err := c.Run(t.Context(), s)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if res.Status != StatusFail || !strings.Contains(findingDetails(res), tc.want) {
+			res := runCheck(t, c, s)
+			if res.Status != StatusFail || !hasFinding(res, tc.want) {
 				t.Fatalf("status %s, findings %v; want a fail saying %q", res.Status, res.Findings, tc.want)
 			}
 		})
@@ -188,10 +181,7 @@ func TestLinkEndsMatchTheirFactsIsFailable(t *testing.T) {
 				t.Cleanup(func() { p.Links[i].FactIDs = was })
 			}
 		}
-		res, err := c.Run(t.Context(), s)
-		if err != nil {
-			t.Fatal(err)
-		}
+		res := runCheck(t, c, s)
 		if res.Status != StatusVacuous {
 			t.Fatalf("status %s (%s), want vacuous", res.Status, res.Summary)
 		}
@@ -213,11 +203,8 @@ func TestLinkEndsMatchTheirFactsIsFailable(t *testing.T) {
 					facts[j].AmountCents = 0
 				}
 			}
-			res, err := c.Run(t.Context(), s)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if res.Status != StatusFail || !strings.Contains(findingDetails(res), "cites facts summing to 0 cents") {
+			res := runCheck(t, c, s)
+			if res.Status != StatusFail || !hasFinding(res, "cites facts summing to 0 cents") {
 				t.Fatalf("status %s, findings %v; want a fail on the zero sum", res.Status, res.Findings)
 			}
 		})
@@ -245,12 +232,9 @@ func TestLinkEndsMatchTheirFactsIsFailable(t *testing.T) {
 			}
 		}
 		t.Cleanup(func() { links[i] = was })
-		res, err := c.Run(t.Context(), s)
-		if err != nil {
-			t.Fatal(err)
-		}
+		res := runCheck(t, c, s)
 		if res.Status != StatusFail || len(res.Findings) != 1 ||
-			!strings.Contains(findingDetails(res), `puts fund 510 in "capital", not "special-revenue"`) {
+			!hasFinding(res, `puts fund 510 in "capital", not "special-revenue"`) {
 			t.Fatalf("status %s, findings %v; want one fail naming the registry's group", res.Status, res.Findings)
 		}
 	})

@@ -28,15 +28,6 @@ func spineGraph(t *testing.T, s *Subject) *project.Document {
 	return docs[0].Graph
 }
 
-func runNodeTiers(t *testing.T, s *Subject) Result {
-	t.Helper()
-	res, err := (&nodeTiersAreDeclared{}).Run(t.Context(), s)
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
-	return res
-}
-
 // nodeIndex is the position of a node with the given id prefix, so a test can
 // damage one without hard-coding which of the fixture's nodes it is.
 func nodeIndex(t *testing.T, g *project.Document, prefix string) int {
@@ -60,7 +51,7 @@ func nodeIndex(t *testing.T, g *project.Document, prefix string) int {
 func TestNodeTiersAreDeclaredIsFailable(t *testing.T) {
 	t.Parallel()
 	// The undamaged fixture passes, or the cases below prove nothing.
-	if res := runNodeTiers(t, tieredSubject(t)); res.Status != StatusPass {
+	if res := runCheck(t, &nodeTiersAreDeclared{}, tieredSubject(t)); res.Status != StatusPass {
 		t.Fatalf("the undamaged fixture is %s, want PASS: %v", res.Status, res.Findings)
 	}
 
@@ -146,17 +137,11 @@ func TestNodeTiersAreDeclaredIsFailable(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			s := tieredSubject(t)
 			c.damage(t, spineGraph(t, s))
-			res := runNodeTiers(t, s)
+			res := runCheck(t, &nodeTiersAreDeclared{}, s)
 			if res.Status != StatusFail {
 				t.Fatalf("status = %s, want FAIL", res.Status)
 			}
-			var saw bool
-			for _, f := range res.Findings {
-				if strings.Contains(f.Detail, c.want) {
-					saw = true
-				}
-			}
-			if !saw {
+			if !hasFinding(res, c.want) {
 				t.Errorf("no finding mentions %q; got %v", c.want, res.Findings)
 			}
 		})
@@ -184,24 +169,18 @@ func TestARollupIsTheOnlyDescendingLinkAllowed(t *testing.T) {
 		return s
 	}
 
-	if res := runNodeTiers(t, rolled(t, "")); res.Status != StatusPass {
+	if res := runCheck(t, &nodeTiersAreDeclared{}, rolled(t, "")); res.Status != StatusPass {
 		t.Errorf("a line rolled up into its own category is %s, want PASS: %v",
 			res.Status, res.Findings)
 	}
 
 	// A mis-pointed rollup: transfers/in is tier 0 and nobody's parent.
-	res := runNodeTiers(t, rolled(t, "transfers/in"))
+	res := runCheck(t, &nodeTiersAreDeclared{}, rolled(t, "transfers/in"))
 	if res.Status != StatusFail {
 		t.Fatalf("a line pointing at a tier-0 node that is not its parent is %s, want FAIL",
 			res.Status)
 	}
-	var saw bool
-	for _, f := range res.Findings {
-		if strings.Contains(f.Detail, "is not a revenue line rolled up into its own category") {
-			saw = true
-		}
-	}
-	if !saw {
+	if !hasFinding(res, "is not a revenue line rolled up into its own category") {
 		t.Errorf("no finding says the target is not the source's own parent; got %v",
 			res.Findings)
 	}
@@ -219,7 +198,7 @@ func TestARollupIsTheOnlyDescendingLinkAllowed(t *testing.T) {
 		g.Nodes = append(g.Nodes, rev.parent, rev.child)
 		g.Links = append(g.Links, project.Link{Source: rev.child.ID, Target: rev.parent.ID,
 			ValueCents: 1, Kind: project.KindExternal, FactIDs: []string{"x"}})
-		if res := runNodeTiers(t, s); res.Status != StatusFail {
+		if res := runCheck(t, &nodeTiersAreDeclared{}, s); res.Status != StatusFail {
 			t.Errorf("%s -> its own parent %s is %s, want FAIL", rev.child.ID, rev.parent.ID,
 				res.Status)
 		}
@@ -259,23 +238,16 @@ func TestAPartitionIsTheOTHERDescendingLinkAllowed(t *testing.T) {
 		}}}
 	}
 
-	if res := runNodeTiers(t, crossTab(t, true)); res.Status != StatusPass {
+	if res := runCheck(t, &nodeTiersAreDeclared{}, crossTab(t, true)); res.Status != StatusPass {
 		t.Errorf("a declared partition running 5 -> 4 is %s, want PASS: %v",
 			res.Status, res.Findings)
 	}
 
-	res := runNodeTiers(t, crossTab(t, false))
+	res := runCheck(t, &nodeTiersAreDeclared{}, crossTab(t, false))
 	if res.Status != StatusFail {
 		t.Fatalf("the same link with partition cleared is %s, want FAIL", res.Status)
 	}
-	var saw bool
-	for _, f := range res.Findings {
-		if strings.Contains(f.Detail, "declares no partition") &&
-			strings.Contains(f.Detail, "rolled up into its own category") {
-			saw = true
-		}
-	}
-	if !saw {
+	if !hasFinding(res, "declares no partition", "rolled up into its own category") {
 		t.Errorf("no finding names both the missing parent edge and the missing partition "+
 			"declaration; got %v", res.Findings)
 	}
@@ -286,7 +258,7 @@ func TestAPartitionIsTheOTHERDescendingLinkAllowed(t *testing.T) {
 func TestAReversedRollupIsRefused(t *testing.T) {
 	t.Parallel()
 	s := isolated(t)
-	if res := runNodeTiers(t, s); res.Status != StatusPass {
+	if res := runCheck(t, &nodeTiersAreDeclared{}, s); res.Status != StatusPass {
 		t.Fatalf("the committed corpus is %s: %v", res.Status, res.Findings)
 	}
 	reversed := 0
@@ -305,7 +277,7 @@ func TestAReversedRollupIsRefused(t *testing.T) {
 	if reversed == 0 {
 		t.Fatal("no document draws a rollup, so nothing was reversed")
 	}
-	res := runNodeTiers(t, s)
+	res := runCheck(t, &nodeTiersAreDeclared{}, s)
 	got := 0
 	for _, f := range res.Findings {
 		if strings.Contains(f.Detail, "runs from a revenue category into its own line") {
@@ -347,7 +319,7 @@ func TestEachRollupClauseIsNeeded(t *testing.T) {
 			}
 			g.Links = append(g.Links, project.Link{Source: tc.source.ID, Target: tc.target.ID,
 				ValueCents: 1, Kind: project.KindExternal, FactIDs: []string{"x"}})
-			if res := runNodeTiers(t, s); res.Status != StatusFail {
+			if res := runCheck(t, &nodeTiersAreDeclared{}, s); res.Status != StatusFail {
 				t.Errorf("%s -> %s is %s, want FAIL", tc.source.ID, tc.target.ID, res.Status)
 			}
 		})

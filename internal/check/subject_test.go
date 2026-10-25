@@ -510,7 +510,7 @@ func TestACentsValueUnderADollarsUnitFails(t *testing.T) {
 	if res.Status != StatusFail {
 		t.Errorf("fact-token-reparses = %s (%s), want fail", res.Status, res.Summary)
 	}
-	if !strings.Contains(findingDetails(res), "off by $0.69") {
+	if !hasFinding(res, "off by $0.69") {
 		t.Errorf("findings %v do not state the 69-cent difference", res.Findings)
 	}
 }
@@ -530,7 +530,7 @@ func TestACorruptedTokenFails(t *testing.T) {
 	if res.Status != StatusFail {
 		t.Fatalf("fact-token-reparses = %s, want fail", res.Status)
 	}
-	if !strings.Contains(findingDetails(res), `token "1,234"`) {
+	if !hasFinding(res, `token "1,234"`) {
 		t.Errorf("findings %v do not name the token", res.Findings)
 	}
 	// And the page no longer says what the fact says it says, which is a second,
@@ -624,7 +624,7 @@ func TestAnOffsetPastTheEndOfThePageFails(t *testing.T) {
 			if res.Status != StatusFail {
 				t.Fatalf("fact-offset-points-at-token = %s, want fail", res.Status)
 			}
-			if !strings.Contains(findingDetails(res), "runs past the end of") {
+			if !hasFinding(res, "runs past the end of") {
 				t.Errorf("findings %v do not report the offset as out of bounds", res.Findings)
 			}
 		})
@@ -736,7 +736,7 @@ func TestTheYearTheSitePublishesMustBeBuilt(t *testing.T) {
 	if res.Status != StatusFail {
 		t.Fatalf("published-projection-built = %s (%s), want fail", res.Status, res.Summary)
 	}
-	detail := findingDetails(res)
+	detail := said(res)
 	for _, want := range []string{"unexamined", "FY2027"} {
 		if !strings.Contains(detail, want) {
 			t.Errorf("findings %v do not contain %q", res.Findings, want)

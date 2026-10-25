@@ -113,10 +113,7 @@ func TestAnUncheckedDocumentIsReported(t *testing.T) {
 		{Name: "sankey", Graph: &project.Document{}},
 		{Name: "series-only"},
 	}}
-	res, err := (&documentsAreChecked{}).Run(t.Context(), s)
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
+	res := runCheck(t, &documentsAreChecked{}, s)
 	if res.Status != StatusFail {
 		t.Fatalf("documents-are-checked = %s over an unchecked document, want fail", res.Status)
 	}
@@ -173,10 +170,7 @@ func TestAProjectionThatProducesNothingIsNotADefect(t *testing.T) {
 	}
 
 	s := &Subject{}
-	res, err := (&documentsAreChecked{}).Run(t.Context(), s)
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
+	res := runCheck(t, &documentsAreChecked{}, s)
 	// Vacuous rather than pass: nothing was built, so nothing was examined, and
 	// a pass over zero subjects is the one thing this package exists to prevent.
 	if res.Status != StatusVacuous {
@@ -205,10 +199,7 @@ func TestAPublishedYearNothingBuiltIsReported(t *testing.T) {
 			},
 		}},
 	}
-	res, err := (&publishedProjectionBuilt{}).Run(t.Context(), s)
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
+	res := runCheck(t, &publishedProjectionBuilt{}, s)
 	if res.Status != StatusFail {
 		t.Fatalf("published-projection-built = %s with FY2027 published and unbuilt, want fail",
 			res.Status)
@@ -233,10 +224,7 @@ func TestAPublishedYearBuiltByAnotherProjectionIsNotEnough(t *testing.T) {
 			},
 		}},
 	}
-	res, err := (&publishedProjectionBuilt{}).Run(t.Context(), s)
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
+	res := runCheck(t, &publishedProjectionBuilt{}, s)
 	if res.Status != StatusFail {
 		t.Errorf("published-projection-built = %s when only another projection covered the "+
 			"published slice, want fail", res.Status)
@@ -265,10 +253,7 @@ func TestADeclaredDocumentIsNotCountedAsExamined(t *testing.T) {
 		UncheckedDocuments: map[string]string{"blob": "no checks yet (bead id goes here)"},
 	}
 
-	res, err := (&documentsAreChecked{}).Run(t.Context(), s)
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
+	res := runCheck(t, &documentsAreChecked{}, s)
 	if res.Status != StatusVacuous {
 		t.Fatalf("documents-are-checked = %s with every projection declared unchecked, "+
 			"want vacuous: nothing was examined", res.Status)
@@ -293,10 +278,7 @@ func TestAnUnreadProjectionIsInItsOwnDenominator(t *testing.T) {
 	t.Parallel()
 	s := &Subject{Projections: []projection{{Name: "blob"}, {Name: "blob-two"}}}
 
-	res, err := (&documentsAreChecked{}).Run(t.Context(), s)
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
+	res := runCheck(t, &documentsAreChecked{}, s)
 	if res.Status != StatusFail {
 		t.Fatalf("documents-are-checked = %s over two unread projections, want fail",
 			res.Status)
@@ -320,10 +302,7 @@ func TestADeclaredDocumentDoesNotHideAnExaminedOne(t *testing.T) {
 		UncheckedDocuments: map[string]string{"blob": "no checks yet (bead id goes here)"},
 	}
 
-	res, err := (&documentsAreChecked{}).Run(t.Context(), s)
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
+	res := runCheck(t, &documentsAreChecked{}, s)
 	if res.Status != StatusPass {
 		t.Fatalf("documents-are-checked = %s, want pass: one projection was examined",
 			res.Status)
@@ -346,14 +325,11 @@ func TestAStaleUncheckedDocumentDeclarationIsCaught(t *testing.T) {
 			UncheckedDocuments: map[string]string{"gone": "removed or typo'd"},
 		}
 
-		res, err := (&documentsAreChecked{}).Run(t.Context(), s)
-		if err != nil {
-			t.Fatalf("Run: %v", err)
-		}
+		res := runCheck(t, &documentsAreChecked{}, s)
 		if res.Status != StatusFail ||
-			!strings.Contains(findingDetails(res), "no projection of that name was built") {
+			!hasFinding(res, "no projection of that name was built") {
 			t.Errorf("a declaration naming nothing reported %s: %s",
-				res.Status, findingDetails(res))
+				res.Status, said(res))
 		}
 	})
 
@@ -365,14 +341,11 @@ func TestAStaleUncheckedDocumentDeclarationIsCaught(t *testing.T) {
 			UncheckedDocuments: map[string]string{"revenue-trends": "no checks yet"},
 		}
 
-		res, err := (&documentsAreChecked{}).Run(t.Context(), s)
-		if err != nil {
-			t.Fatalf("Run: %v", err)
-		}
+		res := runCheck(t, &documentsAreChecked{}, s)
 		if res.Status != StatusFail {
 			t.Fatalf("a declaration over a checked projection reported %s", res.Status)
 		}
-		got := findingDetails(res)
+		got := said(res)
 		if !strings.Contains(got, "series") {
 			t.Errorf("the finding does not name the shape the projection carries: %s", got)
 		}

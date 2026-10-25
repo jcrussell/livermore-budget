@@ -55,7 +55,7 @@ func TestThePeerCheckGoesRed(t *testing.T) {
 	}
 	mutated := *s
 	mutated.Facts = planted
-	res := resultFor(t, runOne(t, &mutated, &peersOverlapOnlyByDeclaredIdentity{}), "peers-overlap-only-by-declared-identity")
+	res := runCheck(t, &peersOverlapOnlyByDeclaredIdentity{}, &mutated)
 	// The moved p76 figure disagrees with both other readings of it:
 	// pp.127-140's and pp.204-209's.
 	if res.Status != StatusFail || len(res.Findings) != 2 {
@@ -95,7 +95,7 @@ func TestADocumentSelectingBothReadingsIsAFinding(t *testing.T) {
 			Version: testVersion,
 		},
 	}}, s.Projections...)
-	res := resultFor(t, runOne(t, &mutated, &peersOverlapOnlyByDeclaredIdentity{}), "peers-overlap-only-by-declared-identity")
+	res := runCheck(t, &peersOverlapOnlyByDeclaredIdentity{}, &mutated)
 	if res.Status != StatusFail || len(res.Findings) != 2 {
 		t.Fatalf("status %s with %d findings, want two failures:\n  %v", res.Status, len(res.Findings), res.Findings)
 	}
@@ -117,7 +117,7 @@ func TestThePeerCheckReportsItsDeclarations(t *testing.T) {
 		prev := s.Identities
 		s.Identities = ids
 		t.Cleanup(func() { s.Identities = prev })
-		return resultFor(t, runOne(t, s, &peersOverlapOnlyByDeclaredIdentity{}), "peers-overlap-only-by-declared-identity")
+		return runCheck(t, &peersOverlapOnlyByDeclaredIdentity{}, s)
 	}
 
 	t.Run("an identity ValidateIdentities refuses is reported", func(t *testing.T) {
@@ -125,13 +125,7 @@ func TestThePeerCheckReportsItsDeclarations(t *testing.T) {
 			Name: "unnamed-cut", A: "no-such-cut", B: "spine",
 			Kinds: []vocab.Kind{vocab.KindRevenue}, Reason: "a plant",
 		}))
-		var reported bool
-		for _, f := range res.Findings {
-			if f.Subject == "identities" && strings.Contains(f.Detail, `names cut "no-such-cut"`) {
-				reported = true
-			}
-		}
-		if !reported {
+		if !hasFinding(res, "identities: ", `names cut "no-such-cut"`) {
 			t.Fatalf("status %s, want the identities arm:\n  %v", res.Status, res.Findings)
 		}
 	})
@@ -168,13 +162,9 @@ func TestAOneSidedCellUnderAnIdentityGoesRed(t *testing.T) {
 	if moved == 0 {
 		t.Fatal("no pp.127-140 transfer into fund 610 to move")
 	}
-	res := resultFor(t, runOne(t, &mutated, &peersOverlapOnlyByDeclaredIdentity{}), "peers-overlap-only-by-declared-identity")
-	var one, other bool
-	for _, f := range res.Findings {
-		one = one || strings.Contains(f.Detail, "fund=610") && strings.Contains(f.Detail, "no exception declares the absence")
-		other = other || strings.Contains(f.Detail, "fund=621") && strings.Contains(f.Detail, "no exception declares the absence")
-	}
-	if res.Status != StatusFail || !one || !other {
+	res := runCheck(t, &peersOverlapOnlyByDeclaredIdentity{}, &mutated)
+	const absent = "no exception declares the absence"
+	if res.Status != StatusFail || !hasFinding(res, "fund=610", absent) || !hasFinding(res, "fund=621", absent) {
 		t.Fatalf("status %s, want both ends of the move named:\n  %v", res.Status, res.Findings)
 	}
 }
@@ -196,7 +186,7 @@ func TestAnExceptionBetweenPeersIsThePeerChecks(t *testing.T) {
 	}
 	withExceptions(t, s, append(structure.BudgetBookExceptions(), stale))
 
-	res := resultFor(t, runOne(t, s, &peersOverlapOnlyByDeclaredIdentity{}), "peers-overlap-only-by-declared-identity")
+	res := runCheck(t, &peersOverlapOnlyByDeclaredIdentity{}, s)
 	if res.Status != StatusFail || len(res.Findings) != 1 || res.Findings[0].Subject != stale.Name ||
 		!strings.Contains(res.Findings[0].Detail, "meets no absence the pair produces") {
 		t.Fatalf("status %s, want exactly the stale exception named:\n  %v", res.Status, res.Findings)
@@ -208,12 +198,12 @@ func TestAnExceptionBetweenPeersIsThePeerChecks(t *testing.T) {
 			Coords:  map[structure.Axis]string{structure.AxisFundGroup: "general", structure.AxisCategory: "transfers/in"},
 			Against: structure.Sum{Cents: 100, Present: true}}}
 		withExceptions(t, s, append(structure.BudgetBookExceptions(), coarse))
-		res := resultFor(t, runOne(t, s, &peersOverlapOnlyByDeclaredIdentity{}), "peers-overlap-only-by-declared-identity")
+		res := runCheck(t, &peersOverlapOnlyByDeclaredIdentity{}, s)
 		if len(res.Findings) != 1 || !strings.Contains(res.Findings[0].Detail, "pinned at their own level") {
 			t.Fatalf("status %s, want the level refused:\n  %v", res.Status, res.Findings)
 		}
 	})
-	lattice := resultFor(t, runOne(t, s, &cutsTieAlongTheLattice{}), "cuts-tie-along-the-lattice")
+	lattice := runCheck(t, &cutsTieAlongTheLattice{}, s)
 	for _, f := range lattice.Findings {
 		if f.Subject == stale.Name {
 			t.Errorf("the lattice check names an exception between peers: %s", f.Detail)
@@ -262,7 +252,7 @@ func TestAPeerComparisonThatFailsOnItsDeclarationsIsAFinding(t *testing.T) {
 		t.Fatalf("Peers(x, y) = %v, want an error that is not structure.ErrNotComparable", err)
 	}
 
-	res := resultFor(t, runOne(t, s, &peersOver{cuts: cuts}), "peers-overlap-only-by-declared-identity")
+	res := runCheck(t, &peersOver{cuts: cuts}, s)
 	if res.Status != StatusFail || len(res.Findings) != 1 {
 		t.Fatalf("status %s with %d findings, want one failure:\n  %v", res.Status, len(res.Findings), res.Findings)
 	}

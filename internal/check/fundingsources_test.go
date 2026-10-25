@@ -461,15 +461,12 @@ func TestTheScopeIsWhatStopsTheDoubling(t *testing.T) {
 		t.Fatalf("moved %d facts, want 312", moved)
 	}
 
-	res, err := (&cutsTieAlongTheLattice{}).Run(t.Context(), &s)
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
+	res := runCheck(t, &cutsTieAlongTheLattice{}, &s)
 	if res.Status != StatusFail {
 		t.Fatalf("with pp.85-125's lower block re-scoped to the spine the cut check reported "+
 			"%s, not fail: %s", res.Status, res.Summary)
 	}
-	details := findingDetails(res)
+	details := said(res)
 	for _, want := range []string{`cut "spine"`, "no single level"} {
 		if !strings.Contains(details, want) {
 			t.Errorf("no finding says %s; the refusal should name the cut and its grain:\n%s",
