@@ -41,13 +41,8 @@ Ordinary **bold** mid-sentence is not an anchor.
 	}
 }
 
-// Bold anchors are paired over the whole file, and the body must be able to
-// cross a LONE asterisk. The fixture carries `byob-*` for that reason: without
-// it this test passes under a `[^*]+` body, which desynchronises every pair
-// after the first stray `*`. The 14-invented-anchor figure that first justified
-// this was measured BEFORE boldPattern was anchored to a lead position; anchored,
-// the same mutation loses one anchor and invents none. The body must still cross
-// the asterisk, and that is what this pins.
+// Bold anchors pair over the whole file and the body crosses a lone asterisk.
+// Mutation: a `[^*]+` body loses the anchor after the fixture's `byob-*`.
 func TestBoldAnchorsPairAcrossLinesAndAcrossALoneAsterisk(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "AGENTS.md")
@@ -65,11 +60,8 @@ func TestBoldAnchorsPairAcrossLinesAndAcrossALoneAsterisk(t *testing.T) {
 	}
 	want := map[string]bool{
 		"t": true,
-		// fold treats `*` as furniture, so the anchor normalises to a space.
-		// Harmless because a citation of it folds identically; what matters is
-		// that the run PAIRED correctly and the two wrapped anchors after it
-		// survived. Both of those open their own bullet, because only a LEAD
-		// phrase is an anchor now.
+		// fold treats `*` as furniture, so the anchor normalises to a space;
+		// what matters is that the run paired and the anchors after it survive.
 		"never claim or close a `byob- ` bead": true,
 		"a count against the documents":        true,
 		"a count that is the evidence":         true,
@@ -79,11 +71,8 @@ func TestBoldAnchorsPairAcrossLinesAndAcrossALoneAsterisk(t *testing.T) {
 	}
 }
 
-// Only a bold LEAD phrase is an anchor -- opening a line, a bullet or a NUMBERED
-// item. Accepting bold anywhere made one-word inline emphasis resolve, so a
-// citation naming no section of AGENTS.md passed the gate. Dropping the ordered
-// arm is the opposite error and just as real: it took the generated block's
-// seven numbered rules out of the set, so a citation of one read as dead.
+// Only a bold lead phrase is an anchor: opening a line, a bullet or a numbered
+// item. Inline emphasis is not, and numbered items are.
 func TestInlineEmphasisIsNotAnAnchor(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "AGENTS.md")
@@ -244,11 +233,9 @@ func TestFoldDropsFurnitureAndTrailingPunctuation(t *testing.T) {
 	}
 }
 
-// The near-misses citePattern cannot see are REFUSED when their quoted title
-// resolves: a verb between the anchor and the quote, and an anchor wrapped in
-// backticks. Both shapes survived a section rename in the tree with every gate
-// green. The canonical citation in the same fixture must not be reported
-// beside them.
+// The near-misses citePattern cannot see are refused when their quoted title
+// resolves: a verb between anchor and quote, and a backticked anchor. The
+// canonical citation beside them is not reported.
 func TestANearMissCitationIsRefusedAndACanonicalOneIsNot(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "x.go")
@@ -348,13 +335,9 @@ func TestAMentionBeforeACanonicalCitationIsNotMalformed(t *testing.T) {
 	}
 }
 
-// A true sentence that merely ends with the anchor is not a finding when the
-// next statement opens with a string literal. A gap crossing any newline
-// stitches the sentence to the literal below it and makes a required gate
-// refuse prose that cites nothing -- the refuses-true-sentences failure the
-// package comment promises to avoid. The second line opens with neither
-// citation furniture nor the quote itself, so it is outside the gap by the
-// rule loosePattern states.
+// A true sentence ending with the anchor is not a finding when the next
+// statement opens with a string literal: that line has neither citation
+// furniture nor the quote, so it is outside loosePattern's gap.
 func TestATrueSentenceAboveAStringLiteralIsNotMalformed(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "x.go")
@@ -371,11 +354,8 @@ func TestATrueSentenceAboveAStringLiteralIsNotMalformed(t *testing.T) {
 	}
 }
 
-// What a near-miss IS, in both directions on one line: a quoted run that
-// resolves against the anchors is a citation written outside the canonical
-// form, and one that resolves against nothing is a sentence. No rule about
-// WHERE the quote may sit can tell these two apart, so the first shape here
-// is out of the net by resolution, not by distance.
+// A quoted run resolving against the anchors is a near-miss citation; one
+// resolving against nothing is a sentence. Resolution, not distance, decides.
 func TestProseQuotingANonSectionWordIsNotMalformed(t *testing.T) {
 	dir := t.TempDir()
 	anchors := map[string]bool{"the node boundary": true}
@@ -466,12 +446,9 @@ func TestANearMisspelledTitleEscapesBothArms(t *testing.T) {
 	}
 }
 
-// The wrap shape the gap rule keeps, and the one it gives up. A near-miss
-// wrapping into comment furniture is netted in any file; one wrapping into a
-// bare quote-led line is out of reach EVERYWHERE, which loosePattern's doc
-// comment declares -- crossing a bare newline reads whatever opens the next
-// line, a string literal or a fresh sentence of prose alike, as the tail of
-// the sentence above it, and a required gate must not refuse true sentences.
+// A near-miss wrapping into comment furniture is netted in any file; one
+// wrapping into a bare quote-led line is out of reach everywhere, as
+// loosePattern's doc comment declares.
 func TestAWrappedNearMissIsStillRefused(t *testing.T) {
 	dir := t.TempDir()
 
@@ -508,12 +485,8 @@ func TestAWrappedNearMissIsStillRefused(t *testing.T) {
 	}
 }
 
-// A true markdown sentence that ends with the anchor, above a fresh sentence
-// that opens with a quoted phrase, is prose citing nothing. A gap crossing the
-// bare newline stitched the two sentences together and made a required gate
-// report ordinary writing as a malformed citation -- the refuses-true-sentences
-// failure, this time on the markdown side of the extension switch that was
-// supposed to confine it.
+// A markdown sentence ending with the anchor, above a sentence opening with a
+// quoted phrase, cites nothing; the gap must not cross the bare newline.
 func TestProseEndingWithTheAnchorAboveAQuoteLedSentenceIsNotMalformed(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "x.md")
@@ -530,11 +503,8 @@ func TestProseEndingWithTheAnchorAboveAQuoteLedSentenceIsNotMalformed(t *testing
 	}
 }
 
-// The sibling the un-indented fixture hid: a comment ending with the anchor
-// inside a composite literal, with an INDENTED string element on the next line.
-// The bare-newline branch stitched the comment to the element and reported a
-// file carrying no citation at all, which took the required gate red on true
-// prose.
+// A comment ending with the anchor above an indented string element in a
+// composite literal is not stitched to it.
 func TestACommentAboveAnIndentedLiteralElementIsNotMalformed(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "x.go")
@@ -551,16 +521,9 @@ func TestACommentAboveAnIndentedLiteralElementIsNotMalformed(t *testing.T) {
 	}
 }
 
-// The scan resolves against the tree holding the AGENTS.md argument, not
-// against the process's working directory: with a hardcoded ".", a run from
-// anywhere else reports every cited docs/ path dead and every exemption's
-// file missing.
-//
-// The exempt file must be a real fixture, not an empty placeholder, and the
-// scan must be pointed AT it with absolute paths: its citation names no
-// section and its docs/ path names no file, so the run stays green only if
-// the exempt lookup actually skipped it. A placeholder outside the scanned
-// paths leaves the lookup unexercised -- green because nothing was examined.
+// The scan resolves against the tree holding the AGENTS.md argument, not the
+// working directory. The exempt file is a real fixture scanned by absolute
+// path, so the run stays green only if the exempt lookup skipped it.
 func TestTheScanRunsFromAnyWorkingDirectory(t *testing.T) {
 	root := t.TempDir()
 	// Every exempted file must exist, or the run fails on checkExemptions.
@@ -590,10 +553,7 @@ func TestTheScanRunsFromAnyWorkingDirectory(t *testing.T) {
 }
 
 // A docs/ path is found in a markdown link, in backticks, opening a line, and
-// behind the ./ and ../ a link written from a subdirectory carries -- the
-// tree's own README under testdata/ reaches docs/ that way, and a guard that
-// refused every dot and slash never collected those links at all. A URL naming
-// some other repository's docs directory is still not a claim about this tree.
+// behind ./ and ../; a URL naming another repository's docs is not.
 func TestDocRefsInFindsCitedPathsAndSkipsURLs(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "x.md")
@@ -647,11 +607,9 @@ func TestAMissingDocPathReddens(t *testing.T) {
 	}
 }
 
-// A ./ or ../ path resolves against the CITING FILE'S directory, as a reader
-// following the link would, and only a bare docs/ path is a root-relative
-// claim. Resolving the relative ones against root would report the tree's own
-// working links as dead: the third ref here is the same path as the first but
-// written from root, and it must redden while the first stays green.
+// A ./ or ../ path resolves against the citing file's directory and a bare
+// docs/ path against root: the third ref is the first written from root, and
+// it must redden while the first stays green.
 func TestARelativeDocPathResolvesAgainstTheCitingFile(t *testing.T) {
 	root := t.TempDir()
 	for _, d := range []string{"docs", "testdata"} {

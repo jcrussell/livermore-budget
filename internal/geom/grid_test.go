@@ -8,11 +8,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-// spineGrid is Budget Book p67's own layout, to the hundredth of a point: the
-// eight "FY 2025-26 / FY 2026-27" headers and the gutter this project derives
-// from the first of them. Using the real numbers rather than round ones keeps
-// the boundary cases honest -- the boundaries below are the ones the resolver
-// will actually compute.
+// spineGrid is Budget Book p67's own header layout to the hundredth of a
+// point, so the boundaries below are the ones the resolver computes.
 func spineGrid(t *testing.T) *Grid {
 	t.Helper()
 	headers := []Span{
@@ -83,12 +80,8 @@ func TestGridIndexBoundaries(t *testing.T) {
 	}
 }
 
-// TestGridIndexPlacesARightAlignedColumn states the measurement the whole guard
-// rests on, in miniature. Budget Book p167 prints its "FY 2025-26" header at
-// 421.99-469.01 while every figure under it ends at 477.8-477.9 -- a consistent
-// +8.8 to +9.0pt, because the figures are right-aligned to a grid offset RIGHT
-// of the header text. A rule that filed a value by whether it OVERLAPPED its
-// header would place none of these.
+// TestGridIndexPlacesARightAlignedColumn: p167's figures end about 9pt right
+// of their header, so filing by overlap with the header would place none.
 func TestGridIndexPlacesARightAlignedColumn(t *testing.T) {
 	headers := []Span{{Lo: 343.87, Hi: 391.02}, {Lo: 421.99, Hi: 469.01}}
 	g, err := NewGrid(headers, headers[0].Lo)

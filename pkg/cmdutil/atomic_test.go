@@ -145,12 +145,9 @@ func TestWriteFileWithAnUnwritableParent(t *testing.T) {
 	}
 }
 
-// IsTempName recognises exactly the names os.CreateTemp makes of tempPattern
-// and nothing else beginning with TempPrefix, since a sweep acting on it
-// removes the file.
-//
-// Mutation: accept any suffix after TempPrefix and the refused names
-// ".fisc-tmp-", ".fisc-tmp-12a" and ".fisc-tmp-12345678901" go red.
+// IsTempName recognises exactly os.CreateTemp's names for tempPattern, since a
+// sweep removes what it matches. Mutation: accept any suffix after TempPrefix
+// and ".fisc-tmp-", ".fisc-tmp-12a" and ".fisc-tmp-12345678901" go red.
 func TestIsTempName(t *testing.T) {
 	for name, want := range map[string]bool{
 		".fisc-tmp-0":           true,

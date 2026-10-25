@@ -34,14 +34,9 @@ func Old() string { return "kept" }
 	}
 }
 
-// TestAStringLiteralMovesTheHash is the mutation proof. It is written with the
-// literal inside a raw string, spelled so that it reads as a comment line,
-// because that is the case this command exists for: a textual "every changed
-// line starts with //" filter over git diff cannot see this edit, and thirteen
-// such lines are live in the tree.
-//
-// Deleting the `lit` argument from the Fprintf in hashSource makes this test
-// fail while TestCommentsDoNotMoveTheHash still passes.
+// TestAStringLiteralMovesTheHash: a raw-string literal spelled like a comment
+// line moves the hash. Mutation: delete the `lit` argument from hashSource's
+// Fprintf and this fails while TestCommentsDoNotMoveTheHash passes.
 func TestAStringLiteralMovesTheHash(t *testing.T) {
 	before := []byte("package p\n\nconst usage = `\n// verify\n`\n")
 	after := []byte("package p\n\nconst usage = `\n// verifyy\n`\n")

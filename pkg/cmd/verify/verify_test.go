@@ -20,13 +20,9 @@ import (
 	"github.com/jcrussell/livermore-budget/pkg/iostreams"
 )
 
-// These tests are about this command and nothing else: the exit code it returns for
-// each mix of verdicts, the two output shapes, and the flags it passes down. Both
-// seams are used — a loader that hands back a subject nothing reads, and a check set
-// the test chooses — because the alternative is contriving a corpus that produces a
-// failure, an error and a skip, and internal/check already owns testing verdicts
-// against real inputs (including a fact store this suite could not build: see the
-// input-mutation tests there).
+// These tests cover this command only: exit codes per verdict mix, both output
+// shapes and the flags passed down, through a stub loader and a chosen check
+// set; internal/check tests verdicts against real inputs.
 
 // noVocabulary is the registry view of an empty corpus. check.Subject documents
 // Vocabulary as required, and the checks read it without a nil guard, so a test that
@@ -137,16 +133,9 @@ func TestACleanReportExitsZero(t *testing.T) {
 	}
 }
 
-// TestVacuousExitsZeroAndThreeUnderStrict is the exit-code contract for checks that
-// had nothing to look at. It exits 0, because a gate that cannot go green until
-// mapping finishes is a gate that gets commented out — and it says on its own output
-// that those checks were not passes.
-//
-// THE ID HERE MUST NOT BE A DECLARED ONE. This test used "transfer-legs-pair",
-// which check.declaredVacuous now names, so --strict passed and the test's own
-// subject vanished. What --strict fails on is an UNDECLARED vacancy; the
-// declared case is TestADeclaredVacancyPassesStrictAndAnUndeclaredOneDoesNot,
-// and the stale one is check.TestAStaleDeclarationFailsWithOrWithoutStrict.
+// TestVacuousExitsZeroAndThreeUnderStrict: a vacuous check exits 0 and says it
+// was not a pass; --strict fails an undeclared vacancy, so the id here must not
+// be one check.declaredVacuous names.
 func TestVacuousExitsZeroAndThreeUnderStrict(t *testing.T) {
 	checks := []check.Check{passing("facts-sorted"), vacuous("nothing-declares-this")}
 
@@ -546,15 +535,9 @@ func TestReportColumnsLineUp(t *testing.T) {
 	}
 }
 
-// TestTheHelpDescribesTheExitCodeContractItActuallyHas is a test on prose,
-// which is unusual and is justified by what this particular prose is.
-//
-// The exit code IS this command's contract -- ci.yml's --strict step is what a
-// contributor's commit meets -- and the help is where that contract is stated
-// in words, so a reader predicting CI from the help must not be wrong.
-//
-// So this asserts the two halves that are easy to state and easy to get wrong,
-// and deliberately does not assert the wording around them.
+// TestTheHelpDescribesTheExitCodeContractItActuallyHas: the help states the
+// exit-code contract CI's --strict step enforces, so this asserts its two
+// halves and not the wording around them.
 func TestTheHelpDescribesTheExitCodeContractItActuallyHas(t *testing.T) {
 	ios, _, _, _ := iostreams.Test()
 	cmd := NewCmdVerify(&cmdutil.Factory{

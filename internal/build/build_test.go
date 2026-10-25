@@ -7,17 +7,9 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-// TestFromSettingsReadsTheDirtyMarker: a binary built from a working tree with
-// uncommitted changes says so, rather than reporting the last commit's hash as
-// though it were the source of the running code.
-//
-// That hash is not decoration here. It reaches published output through
-// check.Report.GeneratedBy and export's document GeneratedBy, so a dirty build
-// broke the provenance chain silently -- the hash was well-formed, it just
-// described code that was not what ran.
-//
-// The settings are synthetic because Get reads the running binary's own
-// metadata: a test cannot dirty the tree and rebuild itself.
+// TestFromSettingsReadsTheDirtyMarker: a binary built from a dirty tree says
+// so; the hash reaches published output through GeneratedBy. The settings are
+// synthetic because Get reads the running binary's own metadata.
 func TestFromSettingsReadsTheDirtyMarker(t *testing.T) {
 	const rev = "44d173a10e6f382e3c42181825df1cd395f4a269"
 
@@ -87,18 +79,9 @@ func TestFromSettingsReadsTheDirtyMarker(t *testing.T) {
 	}
 }
 
-// TestTheBuildMetadataIsReadEvenWhenTheLinkerSuppliedEverything: the
-// vcs.modified arm is reached when Commit and Date are both set from ldflags,
-// as in every binary `make build` produces.
-//
-// THE PRE-EXISTING `git describe --dirty` DOES NOT COVER THAT GAP, which is why
-// this is not merely redundant plumbing. Measured on this repository: with an
-// untracked file in the tree, `git describe --tags --always --dirty` prints a
-// bare hash with no marker, while Go's own vcs.modified prints true. So the
-// ldflags path had NO dirty signal for the commonest way to dirty a tree.
-//
-// It asserts on the metadata being CONSULTED, not on a call count: a reader
-// that is never called cannot make the tree's state reach the version line.
+// TestTheBuildMetadataIsReadEvenWhenTheLinkerSuppliedEverything: vcs.modified
+// is consulted even when ldflags set Commit and Date, since `git describe
+// --dirty` does not mark a tree dirtied only by an untracked file.
 func TestTheBuildMetadataIsReadEvenWhenTheLinkerSuppliedEverything(t *testing.T) {
 	const ld = "1111111111111111111111111111111111111111"
 
@@ -164,12 +147,8 @@ func TestStringSurvivesTruncation(t *testing.T) {
 	}
 }
 
-// TestStringDistinguishesUnknownFromClean is the guard on the second half of
-// fisc-qz2w: Modified false means "clean" only when something measured it.
-//
-// A bare bool cannot tell "the tree was clean" from "nothing recorded whether
-// the tree was clean", and the second is reachable -- `-buildvcs=false` with
-// ldflags supplying a commit. All three renderings must differ.
+// TestStringDistinguishesUnknownFromClean: "clean", "dirty" and "not
+// measured" (`-buildvcs=false` with an ldflags commit) all render differently.
 func TestStringDistinguishesUnknownFromClean(t *testing.T) {
 	const rev = "44d173a10e6f382e3c42181825df1cd395f4a269"
 	base := Info{Version: "dev", Commit: rev}
@@ -195,14 +174,8 @@ func TestStringDistinguishesUnknownFromClean(t *testing.T) {
 	}
 }
 
-// TestStringMarksADirtyBuildWithNoCommit covers the arm the truncation branch
-// cannot reach: Modified true with Commit empty.
-//
-// THAT COMBINATION IS REACHABLE, and the branch is not dead code, but the
-// linker is not how you get there -- any vcs settings at all mean vcs.revision
-// has filled Commit. Measured: a `git init`-ed repository with no commits yet
-// emits vcs.modified=true and NO vcs.revision, so a binary built inside one
-// carries exactly this state.
+// TestStringMarksADirtyBuildWithNoCommit: Modified true with Commit empty, the
+// state a build inside a `git init`-ed repository with no commits carries.
 func TestStringMarksADirtyBuildWithNoCommit(t *testing.T) {
 	i := Info{Version: "dev", Modified: true}
 	if got, want := i.String(), "dev (dirty)"; got != want {

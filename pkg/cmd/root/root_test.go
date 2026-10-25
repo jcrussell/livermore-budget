@@ -59,12 +59,10 @@ func TestUnknownCommandExitsTwo(t *testing.T) {
 	}
 }
 
-// TestUnknownHelpTopicExitsTwo is the same class of defect one level down:
-// root's Find returns root for any leftover argument, so cobra's help command
-// printed root's help for a typo and exited 0.
-//
-// Mutation: drop refuseUnknownHelpTopics from NewCmdRoot and the typo cases
-// go red with exit 0 and root's help on stdout.
+// TestUnknownHelpTopicExitsTwo: root's Find returns root for any leftover
+// argument, so cobra's help would print root's help for a typo and exit 0.
+// Mutation: drop refuseUnknownHelpTopics from NewCmdRoot and the typo cases go
+// red with exit 0.
 func TestUnknownHelpTopicExitsTwo(t *testing.T) {
 	for _, args := range [][]string{{"help", "biuld"}, {"help", "export", "biuld"}} {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
@@ -118,12 +116,9 @@ func TestNoArgsPrintsHelp(t *testing.T) {
 	}
 }
 
-// TestUnknownFlagExitsTwo confirms an unknown flag exits 2 naming the flag,
-// and that root's flag error function types every parse error as a
-// FlagError: the runner's message match covers "unknown flag" without it, so
-// the exit code alone cannot witness SetFlagErrorFunc.
-//
-// MUTATION: delete root's SetFlagErrorFunc and the errors.As arm fails.
+// TestUnknownFlagExitsTwo: an unknown flag exits 2 naming the flag, and every
+// parse error is typed a FlagError, which the exit code alone cannot witness.
+// Mutation: delete root's SetFlagErrorFunc and the errors.As arm fails.
 func TestUnknownFlagExitsTwo(t *testing.T) {
 	ios, _, _, errOut := iostreams.Test()
 	root := NewCmdRoot(newTestFactory(t, ios))
@@ -139,13 +134,9 @@ func TestUnknownFlagExitsTwo(t *testing.T) {
 	}
 }
 
-// TestEveryCommandIsRegisteredInAGroup guards the two ways adding a command goes
-// wrong: leaving out the AddCommand line, so the command exists and cannot be
-// run, and naming a GroupID root does not define, which cobra reports by
-// dropping the command out of the grouped help rather than by failing.
-//
-// It names verify explicitly because `fisc verify` is the command CI runs, and a
-// tree that no longer has it would still pass every other test in this package.
+// TestEveryCommandIsRegisteredInAGroup: every command is added and names a
+// GroupID root defines (cobra drops one that does not from grouped help), and
+// verify, the command CI runs, exists.
 func TestEveryCommandIsRegisteredInAGroup(t *testing.T) {
 	ios, _, _, _ := iostreams.Test()
 	cmd := NewCmdRoot(newTestFactory(t, ios))

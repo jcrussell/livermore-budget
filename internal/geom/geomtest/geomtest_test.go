@@ -9,11 +9,8 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/geom/geomtest"
 )
 
-// TestMonospacedIsAPageTheParserAccepts holds Monospaced to geom.ParsePage,
-// whose validation includes the extractor's word order: a page whose words
-// came out of order would be refused here rather than read as nonsense by a
-// test that trusted it. Mutation: emit each line's words right to left, and
-// ParsePage refuses the page.
+// TestMonospacedIsAPageTheParserAccepts holds Monospaced to geom.ParsePage.
+// Mutation: emit each line's words right to left, and ParsePage refuses it.
 func TestMonospacedIsAPageTheParserAccepts(t *testing.T) {
 	p, err := geom.ParsePage([]byte(geomtest.Monospaced("doc", 7, "Total  $ 1,234\n  Fees      12")))
 	if err != nil {

@@ -13,10 +13,8 @@ import (
 )
 
 // realRoot is the repository root, and realDocID the Budget Book extraction
-// committed under it. Tests read them directly: the artifacts are checked in,
-// so this needs neither Python nor the PDF, and it is the only way to check
-// that this reader and tools/extract.py still agree about the artifact
-// contract.
+// committed under it; reading them holds this reader to tools/extract.py's
+// artifact contract.
 const (
 	realRoot  = "../.."
 	realDocID = "livermore-budget-fy2026-2027"
@@ -205,13 +203,8 @@ func TestReadsTheCommittedExtraction(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Page(66): %v", err)
 	}
-	// The schedule's title is printed on TWO lines — the geometry puts
-	// "CITYWIDE REVENUES, EXPENDITURES, AND" at y=74.36 and
-	// "FUND BALANCE/WORKING CAPITAL" at y=87.92 — and `pdftotext -layout`
-	// reproduces the break. Asserting the joined single line would be asserting
-	// that the reader reflows the page, which is precisely what this substrate
-	// must not do: the runs of spaces between these lines ARE the column grid
-	// every positional read on p67 depends on.
+	// The title prints on two lines and `pdftotext -layout` keeps the break;
+	// the reader must not reflow the page, whose spacing is p67's column grid.
 	for _, want := range []string{
 		"CITYWIDE REVENUES, EXPENDITURES, AND\n",
 		"FUND BALANCE/WORKING CAPITAL\n",
@@ -222,12 +215,9 @@ func TestReadsTheCommittedExtraction(t *testing.T) {
 	}
 }
 
-// TestOpenDocRefusesAPathForADocumentID guards the one input to OpenDoc that
-// does not come from this repository: doc_id is whatever a mapping rule file
-// declares, and internal/mapping only checks that it is non-empty. A traversal
-// escapes the repository entirely, and the doc_id-agreement check cannot catch
-// it — an extraction sitting outside the tree declares its own doc_id and so
-// agrees with itself.
+// TestOpenDocRefusesAPathForADocumentID: doc_id comes from a mapping file, and
+// a traversal would escape the repository to an extraction that agrees with
+// itself.
 func TestOpenDocRefusesAPathForADocumentID(t *testing.T) {
 	for _, docID := range []string{
 		"../../../../tmp/evil",
@@ -245,13 +235,8 @@ func TestOpenDocRefusesAPathForADocumentID(t *testing.T) {
 	}
 }
 
-// TestReadsTheCommittedProvenance is the other half of "this reader and
-// tools/extract.py still agree": the manifest keys that are not artifacts.
-//
-// It pins the pinned versions against a real manifest, which is what makes the
-// pin a fact about this corpus rather than a constant nobody compares. A
-// re-extraction changes these numbers, and the change has to be a deliberate
-// edit here in the same commit — that is the whole mechanism.
+// TestReadsTheCommittedProvenance pins the manifest's non-artifact keys against
+// a real manifest, so a re-extraction must edit them here in the same commit.
 func TestReadsTheCommittedProvenance(t *testing.T) {
 	d, err := Open(os.DirFS(realDoc))
 	if err != nil {

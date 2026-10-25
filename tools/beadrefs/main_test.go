@@ -45,12 +45,8 @@ func TestKnownIDsRefusesAnExportWithNoIDs(t *testing.T) {
 }
 
 func TestUnrecognisableFlagsAnIDTheScannerWouldSilentlyDrop(t *testing.T) {
-	// bd chooses the token and this repo does not. A two-hyphen id like
-	// fisc-drill-down is real in the export and invisible to beadid.Cited, whose
-	// boundary refuses a match a hyphen runs into -- so every citation to it
-	// would be dropped with no report, inside the gate meant to report exactly
-	// that. This assertion is what turns the arrival of such an id into a red
-	// run instead of a blind spot.
+	// A two-hyphen id like fisc-drill-down is invisible to beadid.Cited, so
+	// its arrival in the export must turn this run red.
 	known := map[string]bool{
 		"fisc-abc":        true,
 		"fisc-abc.1":      true,
@@ -166,12 +162,8 @@ func TestResolveWithNoSecondOpinionDecidesOnTheExportAlone(t *testing.T) {
 }
 
 func TestAnExemptionIsKeptAliveOnlyByITSOWNFile(t *testing.T) {
-	// A sighting anywhere else must not count. It did once, and the consequence
-	// is that the token could vanish from the file the declaration names while
-	// any other occurrence -- including this command's own declaration of it --
-	// kept the exemption alive. Measured on the tree at the time: fisc-year was
-	// declared as living in site/app.js and actually lives in the templates, and
-	// nothing said so until this rule tightened.
+	// Only a sighting in the declared file counts, or the token could leave
+	// that file while another occurrence kept the exemption alive.
 	scanned := map[string]bool{}
 	var elsewhere []ref
 	for id, e := range exemptIDs {
@@ -374,11 +366,9 @@ func TestRefsUnderWalksAndFiltersByExtension(t *testing.T) {
 }
 
 func TestCheckExemptionsCoversTheIDDeclarationsToo(t *testing.T) {
-	// The file arm and the id arm are separate loops over separate maps, and the
-	// id arm could be deleted with every other test still green. It is
-	// load-bearing: a renamed file under an id exemption is caught by nothing
-	// else, because dropExemptIDs keys on scanned[e.file] and a path that has
-	// gone is never in that set.
+	// The id arm, separate from the file arm: dropExemptIDs keys on
+	// scanned[e.file], so a renamed file under an id exemption is caught only
+	// here.
 	if err := checkExemptions(t.TempDir()); err == nil {
 		t.Fatal("checkExemptions(empty dir) = nil, want a refusal")
 	}

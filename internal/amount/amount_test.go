@@ -152,26 +152,10 @@ func TestParseRejects(t *testing.T) {
 	}
 }
 
-// TestBareCurrencyMarkStaysARejection pins the one rejection this package has
-// been under pressure to give up.
-//
-// 236 of the corpus's 786 pages print a marked figure as two whitespace-
-// delimited tokens — "Total Uses 6/30/24 $ 123,228,190" — so a reader that
-// takes the next N tokens after a row label took marks where it wanted figures
-// and failed. internal/mapping's dropCurrencyMarks now drops the mark in the
-// resolver, where the caller knows it is looking for N amounts; this package's
-// rejection is what makes that the only place the mark can be handled. Accepting a bare "$" as something — zero, absent,
-// a token to skip — is the obvious way to make that go away and the wrong one:
-// it would mean a cell whose figure the extractor lost, leaving only the mark
-// it was printed with, reads as a value rather than as the failure it is.
-//
-// The fix for fisc-yun DID land in the reader, which knows how many amounts it
-// is looking for and can see a whole line: mapping.dropCurrencyMarks drops a
-// token that is a currency mark and nothing else, in the labelled read. This
-// paragraph read "whatever eventually fixes fisc-yun belongs in the reader"
-// until the ACFR lane found several such sentences outliving that bead's close.
-// The rule here is unchanged and is what made that fix possible: this parser
-// sees one token and must keep refusing this one.
+// TestBareCurrencyMarkStaysARejection: a bare "$" is refused, not read as zero
+// or absent. 236 of the corpus's 786 pages print "$" as its own token;
+// mapping.dropCurrencyMarks drops it in the reader, so a cell whose figure the
+// extractor lost, leaving only its mark, fails rather than reads as a value.
 func TestBareCurrencyMarkStaysARejection(t *testing.T) {
 	for _, token := range []string{"$", "$$", " $ "} {
 		if got, err := Parse(token, Dollars); err == nil {
@@ -249,28 +233,14 @@ func TestCentsString(t *testing.T) {
 	}
 }
 
-// TestLeadingMinusIsReallyPositive is the arithmetic proof behind rejecting a
-// leading minus sign, taken from ACFR p177 (a ten-year debt schedule):
+// TestLeadingMinusIsReallyPositive: a glued leading minus is refused. In the
+// ACFR p177 row the dash is a neighbouring column's zero, and only the positive
+// reading reconciles to the printed total:
 //
 //	['2017','56,386,950','2,440,343','','10,300,691','13,003,050','','','-512,946','','82,643,980',...]
 //
-// Two columns before the "-512,946" are empty. The dash belongs to one of
-// them as a zero and glued onto the next value during extraction. Summing the
-// row proves the sign: only the POSITIVE reading reconciles to the printed
-// total. A parser that accepted the token at face value would be off by
-// twice the value and would still tie to nothing, silently.
-//
-// THE ROW ABOVE IS A TRANSCRIPTION, AND IT IS XBERG'S. The committed corpus
-// holds no token of that shape -- a leading minus on a grouped number occurs
-// zero times across all 786 extracted pages, and poppler reads this row with
-// the two dashes standing alone as the published zeros they are. The rule this
-// test defends is unchanged and still earns its place: fail closed, because the
-// glued form is unreadable rather than merely unusual, and a re-extraction
-// could produce it again. What changed is where the evidence lives.
-// internal/mapping.TestACFRDebtRowIsNotCorruptedInTheCommittedCorpus reads the
-// same row off the committed page, and its companion reconciles all ten rows of
-// the schedule against the city's own totals. This package stays corpus-free on
-// purpose; the transcription below is the input shape, not a claim about a file.
+// The row is a transcription of the input shape; the committed corpus holds no
+// such token (internal/mapping reads the real row).
 func TestLeadingMinusIsReallyPositive(t *testing.T) {
 	row := []string{"56,386,950", "2,440,343", "10,300,691", "13,003,050", "512,946"}
 	var sum Cents
@@ -337,12 +307,6 @@ func TestNormalizeUnifiesDashes(t *testing.T) {
 }
 
 // The three helpers a document-derived tolerance is built from.
-//
-// THEY ARE TESTED HERE AND NOT ONLY THROUGH internal/mapping, because review
-// found them at 0.0% coverage from this package: every assertion about them was
-// an assertion about one page of one document, so deleting Decimals' dash-skip
-// arms left the whole suite green. A helper whose only witness is one caller's
-// happy path is a helper nobody can change safely.
 
 func TestMaxDecimals(t *testing.T) {
 	for _, tc := range []struct {
@@ -392,13 +356,8 @@ func TestDigitCents(t *testing.T) {
 	}
 }
 
-// TestDecimals covers the arms a tolerance rests on, and two of them are the
-// reason it is not just strings.Cut on a dot.
-//
-// THE DASH ARMS ARE THE LOAD-BEARING ONES. These documents spell a zero cell
-// "-", which says nothing about how finely the page prints. Counting one as
-// zero decimals would let a single dash in a column of hundredths claim the
-// page prints whole units, and at millions that is a hundredfold wider bound.
+// TestDecimals covers the arms a tolerance rests on. A "-" zero cell says
+// nothing about printed precision, so a dash must not count as zero decimals.
 func TestDecimals(t *testing.T) {
 	for _, tc := range []struct {
 		token string
@@ -439,11 +398,9 @@ func TestDecimals(t *testing.T) {
 	}
 }
 
-// TestDecimalsAgreesWithParseOnPrecision is the property the two share, asserted
-// as a property rather than case by case: whenever Parse accepts a token at some
-// units, Decimals reports a count no finer than those units can hold -- and
-// whenever Decimals reports one, Parse does not reject the token FOR ITS
-// PRECISION.
+// TestDecimalsAgreesWithParseOnPrecision: whenever Parse accepts a token at
+// some units, Decimals reports a count no finer than those units hold, and
+// Parse never rejects a token Decimals counts for its precision.
 func TestDecimalsAgreesWithParseOnPrecision(t *testing.T) {
 	tokens := []string{"0.22", "18.45", "1", "-", "--", "(25.72)", "$ 60.42",
 		"1,234.5", "1.234", "1.234567891", "", "$", "2.5%"}

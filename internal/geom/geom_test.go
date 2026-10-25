@@ -118,13 +118,9 @@ func TestParsePageRefusals(t *testing.T) {
 			want: "text is null",
 		},
 		{
-			// The remaining three arms of the reading-order comparison. They are
-			// easy to transpose, because the wire row is [x0,y0,x1,y1] while the
-			// sort key is (y0,x0,y1,x1) -- and this check is the only thing
-			// standing between a hand-written fixture and Lines() returning
-			// confident nonsense.
-			// x1 runs the OTHER way here on purpose, so the case fails if the
-			// y1 and x1 arms are transposed rather than merely if one is absent.
+			// The remaining reading-order arms; the wire row is [x0,y0,x1,y1]
+			// but the sort key is (y0,x0,y1,x1). x1 runs the other way so the
+			// case fails if the y1 and x1 arms are transposed.
 			name: "words out of order on the y1 tie-break",
 			body: string(page(t, []string{
 				`[216.84,2.88,293.18,30.27,"TALL"]`,
@@ -205,11 +201,9 @@ func TestMedianWordHeightIgnoresTheOutlyingTitle(t *testing.T) {
 	}
 }
 
-// TestLinesGroupsByTheMeasuredMargins uses Budget Book p66's own numbers: a
-// 9.09pt median word height gives a 4.545pt tolerance, the worst intra-line y0
-// spread on that page is 0.96pt, and the tightest inter-line gap is 11.52pt.
-// The tolerance therefore sits 4.7x above what it must tolerate and 2.5x below
-// what it must separate.
+// TestLinesGroupsByTheMeasuredMargins uses Budget Book p66: a 4.545pt
+// tolerance against a 0.96pt worst intra-line spread and an 11.52pt tightest
+// inter-line gap.
 func TestLinesGroupsByTheMeasuredMargins(t *testing.T) {
 	p, err := ParsePage(page(t, []string{
 		`[56.00,194.23,120.00,203.32,"Property"]`,
@@ -230,11 +224,8 @@ func TestLinesGroupsByTheMeasuredMargins(t *testing.T) {
 	}
 }
 
-// TestLinesSortsEachLineLeftToRight is not tidiness. The artifact is sorted
-// y0-major, so within a cluster whose members differ in y0 by less than the
-// tolerance -- which is the whole reason a tolerance exists -- file order is not
-// left-to-right order. A consumer comparing a line against the page text token
-// by token would disagree on exactly those lines.
+// TestLinesSortsEachLineLeftToRight: within a tolerance cluster the y0-major
+// file order is not left-to-right order.
 func TestLinesSortsEachLineLeftToRight(t *testing.T) {
 	p, err := ParsePage(page(t, []string{
 		// Sorted by y0, this right-hand word comes FIRST in the file.

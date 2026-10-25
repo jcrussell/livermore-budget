@@ -94,10 +94,8 @@ func TestTheSchemaAllowsDeclaredValuesTheCorpusHasNotReachedYet(t *testing.T) {
 }
 
 // The fields fact.FromValues never writes empty, and the fund it never writes
-// as 0, are refused here too, so a hand-edited facts.jsonl line carrying one
-// fails verify's schema arm rather than only CI's rebuild-and-cmp.
-// Removing any minLength or the fund minimum from fact.schema.json turns its
-// row red.
+// as 0, fail verify's schema arm. Mutation: remove any minLength or the fund
+// minimum from fact.schema.json and its row reds.
 func TestTheSchemaRefusesWhatTheFactConstructorNeverWrites(t *testing.T) {
 	resolved, err := schema.Load(schema.Fact)
 	if err != nil {

@@ -35,11 +35,9 @@ const docID = "livermore-budget-fy2026-2027"
 // produces for that year must add up to it.
 const allFundsFY2026Revenues = 299_969_007
 
-// The synthetic transfer schedule transfers.yaml maps. It is written here
-// rather than copied from data/extracted/ because the corpus contains no page
-// of this shape: a two-page schedule whose second page carries no labels and
-// whose totals the document never prints. Real pages are preferred wherever
-// one exercises the behaviour (see spinePages); this is a case where none does.
+// The synthetic transfer schedule transfers.yaml maps: a two-page schedule
+// whose second page has no labels and whose totals are unprinted, a shape the
+// corpus does not contain.
 const (
 	transfersOutPage = `TRANSFERS OUT:
 General Fund 10,037,797 10,146,598
@@ -164,12 +162,7 @@ func testRepoWithGeometry(t *testing.T, pages, geometry map[int]string, rules ..
 }
 
 // fixtureCopy is one committed fixture and the extraction artifact it must
-// equal byte for byte.
-//
-// There is no document column, unlike the table in internal/mapping: testRepo
-// stands up exactly one extraction directory, named for the single docID const
-// above, so this package is single-document by construction rather than by
-// omission.
+// equal byte for byte; testRepo stands up a single document, docID.
 type fixtureCopy struct{ fixture, artifact string }
 
 // pageCopy names the page-text fixture for one page.
@@ -209,11 +202,8 @@ func pageFixture(t *testing.T, n int) string {
 	return string(b)
 }
 
-// TestFixturesAreVerbatimCopies keeps the claim in pageFixture's comment
-// honest. These pages are a second copy of testdata/pages/, which is itself a
-// copy of data/extracted/, and nothing regenerates either: a build that passes
-// here only tells you about the committed corpus for as long as the copies
-// still match it. They silently stopped matching once already.
+// TestFixturesAreVerbatimCopies: these pages copy testdata/pages/, itself a
+// copy of data/extracted/, and nothing regenerates either.
 func TestFixturesAreVerbatimCopies(t *testing.T) {
 	copies := fixtureCopies()
 	if len(copies) == 0 {
@@ -356,11 +346,8 @@ func TestBuildReportsWhatItCouldNotCheck(t *testing.T) {
 			{RuleID: "transfers-out", Page: 77, Reason: reasonNoTotalRow},
 			{RuleID: "transfers-in", Page: 79, Reason: reasonNoStatedTotals},
 		},
-		// Empty rather than nil: a key that becomes null when a list is empty
-		// makes a consumer handle two shapes for one meaning, which is the
-		// contract newReport states. ToleranceSlack is here for the same
-		// reason -- no rule in this fixture declares printed_decimals, and the
-		// key must still round-trip as [] rather than null.
+		// Empty rather than nil, as newReport states; ToleranceSlack must
+		// round-trip as [] though no rule here declares printed_decimals.
 		ToleranceSlack:    []amount.Cents{},
 		RollupsUnasserted: []unassertedRollup{},
 		// Empty for the same reason: transfers-out places Enterprise Funds
@@ -378,11 +365,8 @@ func TestBuildReportsWhatItCouldNotCheck(t *testing.T) {
 	}
 }
 
-// TestBuildSeparatesColumnsThatTieOnlyToADeclaredDelta guards the claim the
-// report makes. "2 columns tie" and "2 tie, one of them only to a declared
-// dollar of the city's rounding" are different statements about the evidence,
-// and fisc-2sd exists precisely so the second is never silently written as the
-// first.
+// TestBuildSeparatesColumnsThatTieOnlyToADeclaredDelta: a column tying only to
+// a declared rounding delta is reported apart from one tying exactly.
 func TestBuildSeparatesColumnsThatTieOnlyToADeclaredDelta(t *testing.T) {
 	root := testRepo(t, map[int]string{80: roundedPage}, "rounding.yaml")
 	opts, out, errOut := testOptions(t, root)
@@ -493,15 +477,9 @@ func partOn(t *testing.T, r *mapping.Rule, page int) *mapping.Part {
 	return nil
 }
 
-// TestTheTotalsPolicyCannotBeWrittenAsAnErrorCheck pins the reason
-// Report.checkTotals asks the rule rather than the error it gets back.
-//
-// A part of a rule that declares no total_row does not report "no stated
-// totals": it has a stop_at anchor, StatedTotals looks for an amount run after
-// it, and finding none reports ErrNotFound — the very error a rule WITH a
-// total row produces when that row has moved, which must fail the build. If
-// this test ever fails, the policy in checkTotals has to be revisited, because
-// treating ErrNotFound as "unchecked" would silence real breakage.
+// TestTheTotalsPolicyCannotBeWrittenAsAnErrorCheck: a part with no total_row
+// gets ErrNotFound from StatedTotals, the same error a moved total row gives,
+// so checkTotals must ask the rule, not the error.
 func TestTheTotalsPolicyCannotBeWrittenAsAnErrorCheck(t *testing.T) {
 	root := testRepo(t, transferPages(), "transfers.yaml")
 	files, err := mapping.LoadDir(os.DirFS(root), defaultMappings)
@@ -716,15 +694,8 @@ func TestNewCmdBuildRejectsPositionalArgs(t *testing.T) {
 	}
 }
 
-// TestAStraddlingRuleCreditsEveryPartItCovers pins the build report's
-// accounting for a total that spans its parts.
-//
-// The load-bearing assertion is parts_unchecked being EMPTY. The report's whole
-// purpose is to separate figures the document corroborates from figures resting
-// on our arithmetic alone, and before fisc-w0o a straddling block could only be
-// reported as the second while actually being the first. Crediting one part and
-// listing the other as "the rule declares no total_row" would be a false
-// statement about the rule, printed by the thing whose job is to be believed.
+// TestAStraddlingRuleCreditsEveryPartItCovers: a total spanning a rule's parts
+// credits each, leaving parts_unchecked empty.
 func TestAStraddlingRuleCreditsEveryPartItCovers(t *testing.T) {
 	root := testRepo(t, map[int]string{81: straddleHead, 82: straddleTail}, "spanning.yaml")
 	opts, out, _ := testOptions(t, root)
@@ -764,18 +735,9 @@ func TestAStraddlingRuleCreditsEveryPartItCovers(t *testing.T) {
 	}
 }
 
-// TestAStraddlingRuleWhoseTotalMovedFailsTheBuild is the other half: the flag
-// is a declaration that one of the rule's pages prints the total, and a
-// declaration that has stopped being true must fail the build rather than
-// quietly downgrade itself to an unchecked part.
-//
-// Which guard catches it is deliberately not asserted. This fixture mirrors
-// production, where the block's stop_at IS the total line (Budget Book p170),
-// so moving the total trips the block boundary before the total lookup. Both
-// are fail-closed and the choice between them is not a promise this test should
-// freeze; that the build STOPS, and that nothing is written, is. The total
-// lookup's own two failure modes are pinned in internal/mapping, where the rule
-// can be mutated without moving the page.
+// TestAStraddlingRuleWhoseTotalMovedFailsTheBuild: a straddle whose total has
+// moved stops the build and writes nothing. Which guard fires is not asserted;
+// as on Budget Book p170 the stop_at is the total line.
 func TestAStraddlingRuleWhoseTotalMovedFailsTheBuild(t *testing.T) {
 	moved := strings.Replace(straddleTail, "Total Services", "Total Servcies", 1)
 	root := testRepo(t, map[int]string{81: straddleHead, 82: moved}, "spanning.yaml")
@@ -798,14 +760,9 @@ func TestAStraddlingRuleWhoseTotalMovedFailsTheBuild(t *testing.T) {
 	}
 }
 
-// TestARollupIsReportedAsItsOwnClaim pins the build report's account of a total
-// covering several rules.
-//
-// Two claims, kept apart. An ASSERTED rollup is the document checking work no
-// single rule's total_row could check; a DECLARED-UNASSERTABLE one is a total
-// the document prints that this structure cannot check, said out loud. Folding
-// the second into the first would overstate the evidence; dropping it would be
-// the silence fisc-3bl says is the one unacceptable answer.
+// TestARollupIsReportedAsItsOwnClaim: an asserted rollup and a
+// declared-unassertable one are reported as separate claims, neither folded
+// into the other nor dropped.
 func TestARollupIsReportedAsItsOwnClaim(t *testing.T) {
 	root := testRepo(t, map[int]string{90: rollupPage}, "rollup.yaml")
 	opts, out, _ := testOptions(t, root)
@@ -857,12 +814,9 @@ func TestARollupThatDoesNotTieFailsTheBuild(t *testing.T) {
 	}
 }
 
-// TestASubtotalIsReportedAndCreditsItsPart: the build runs the subtotal
-// chain, counts what it tied, and credits the part it checked rather than
-// naming it unchecked for want of a total_row.
-//
-// Mutation: drop the chain loop from resolve, and the subtotal counters stay
-// zero and the part is reported unchecked.
+// TestASubtotalIsReportedAndCreditsItsPart: the subtotal chain runs, is
+// counted, and credits the part it checked. Mutation: drop the chain loop from
+// resolve, and the counters stay zero and the part is reported unchecked.
 func TestASubtotalIsReportedAndCreditsItsPart(t *testing.T) {
 	root := testRepoWithGeometry(t, map[int]string{95: subtotalPage},
 		map[int]string{95: geomtest.Monospaced(docID, 95, subtotalPage)}, "subtotal.yaml")
@@ -931,11 +885,9 @@ func TestASubtotalTwoRulesCompareIsCountedOnce(t *testing.T) {
 	}
 }
 
-// TestASubtotalTiedByDeclarationIsReportedApart: a figure that ties only
-// through a declared delta is the document disagreeing with itself, said out
-// loud, and the report says so rather than folding it into the ties.
-//
-// Mutation: drop the declared count from resolve, and this reports 0.
+// TestASubtotalTiedByDeclarationIsReportedApart: a figure tying only through a
+// declared delta is reported apart from the ties. Mutation: drop the declared
+// count from resolve, and this reports 0.
 func TestASubtotalTiedByDeclarationIsReportedApart(t *testing.T) {
 	page := strings.Replace(subtotalPage, "SUBTOTAL  $ 30", "SUBTOTAL  $ 31", 1)
 	root := testRepoWithGeometry(t, map[int]string{95: page},
@@ -956,11 +908,8 @@ func TestASubtotalTiedByDeclarationIsReportedApart(t *testing.T) {
 	}
 }
 
-// A cancelled build leaves the fact store as it was and says it was
-// cancelled.
-//
-// Mutation: drop both ctx checks (resolve's and buildRun's) and this goes red
-// with "got nil error".
+// A cancelled build leaves the fact store as it was and says so. Mutation: drop
+// both ctx checks (resolve's and buildRun's) and this reds with "got nil error".
 func TestBuildStopsWhenCancelled(t *testing.T) {
 	root := testRepo(t, spinePages(t), "spine.yaml")
 	opts, out, _ := testOptions(t, root)
@@ -997,13 +946,10 @@ func (c *cancelFromCall) Err() error {
 	return nil
 }
 
-// A cancellation that lands after every rule file has resolved stops the
-// build before the fact store is written. The spine is one rule file, so
-// resolve's per-file check is the first Err() and buildRun's check before the
-// write is the second.
-//
-// Mutation: drop buildRun's ctx check before cmdutil.WriteFile and this goes
-// red with "got nil error".
+// A cancellation after every rule file resolved stops the build before the
+// write; the spine's one file makes buildRun's check the second Err(). Mutation:
+// drop buildRun's ctx check before cmdutil.WriteFile and this reds with "got nil
+// error".
 func TestBuildStopsWhenCancelledBeforeTheWrite(t *testing.T) {
 	root := testRepo(t, spinePages(t), "spine.yaml")
 	opts, out, _ := testOptions(t, root)

@@ -174,18 +174,13 @@ func TestCancelIsDistinctFromUsage(t *testing.T) {
 	}
 }
 
-// TestRunExitCodeComesFromTheCommandNotTheContext: a signal that lands after
-// a command has done its work must not report the work as cancelled, and a
-// command that failed while the context was cancelled must, whatever error
-// the interrupt produced.
-//
-// Mutations: make run return exitCancel whenever ctx.Err() is non-nil and the
-// "completes" case goes red with "got exit code 130, want 0"; drop the
-// cancelled-context arm and the ExitCodeError case goes red with "got exit
-// code 3, want 130". Map a wrapped context.Canceled to exitCancel in
-// classify and the child-context case goes red with "got exit code 130,
-// want 1". Print only "cancelled" for every error a cancelled run returns and
-// the raced-failure case goes red, its "disk on fire" dropped.
+// TestRunExitCodeComesFromTheCommandNotTheContext: a late signal does not mark
+// finished work cancelled; a command failing under cancellation does.
+// Mutations: exitCancel whenever ctx.Err() is set reds "completes" (130, want
+// 0); dropping the cancelled-context arm reds ExitCodeError (3, want 130);
+// mapping a wrapped context.Canceled to exitCancel in classify reds the
+// child-context case (130, want 1); printing only "cancelled" reds the
+// raced-failure case.
 func TestRunExitCodeComesFromTheCommandNotTheContext(t *testing.T) {
 	tests := []struct {
 		name      string
