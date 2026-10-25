@@ -512,40 +512,82 @@ func TestTheTotalsPolicyCannotBeWrittenAsAnErrorCheck(t *testing.T) {
 	}
 }
 
-// TestBuildFailsWhenAColumnDoesNotTie is the check the whole project leans on:
-// the document checking our work. A figure that has drifted must fail the
-// build, and must not replace the fact store on its way out.
-func TestBuildFailsWhenAColumnDoesNotTie(t *testing.T) {
-	pages := spinePages(t)
-	// Property Taxes, General Fund, FY2025-26, one dollar out. Everything else
-	// about the page is untouched, so the only thing that can fail is the tie.
-	const printed, drifted = "64,143,762", "64,143,763"
-	if !strings.Contains(pages[66], printed) {
-		t.Fatalf("page 66 fixture no longer prints %s", printed)
-	}
-	pages[66] = strings.Replace(pages[66], printed, drifted, 1)
+// TestBuildFailsOnATotalThatDoesNotTie is the check the whole project leans on:
+// the document checking our work. Each row drifts one printed figure a check
+// holds the rows to; the build must fail naming it, report nothing, and leave
+// the previous fact store in place.
+func TestBuildFailsOnATotalThatDoesNotTie(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		root func(t *testing.T) string
+		want []string
+	}{{
+		// Property Taxes, General Fund, FY2025-26, one dollar out. Everything
+		// else about the page is untouched, so the only thing that can fail is
+		// the tie.
+		name: "BuildFailsWhenAColumnDoesNotTie",
+		root: func(t *testing.T) string {
+			pages := spinePages(t)
+			const printed, drifted = "64,143,762", "64,143,763"
+			if !strings.Contains(pages[66], printed) {
+				t.Fatalf("page 66 fixture no longer prints %s", printed)
+			}
+			pages[66] = strings.Replace(pages[66], printed, drifted, 1)
+			return testRepo(t, pages, "spine.yaml")
+		},
+		want: []string{"spine-revenues", "off by"},
+	}, {
+		// A straddle whose total has moved. Which guard fires is not asserted;
+		// as on Budget Book p170 the stop_at is the total line.
+		name: "AStraddlingRuleWhoseTotalMovedFailsTheBuild",
+		root: func(t *testing.T) string {
+			moved := strings.Replace(straddleTail, "Total Services", "Total Servcies", 1)
+			return testRepo(t, map[int]string{81: straddleHead, 82: moved}, "spanning.yaml")
+		},
+		want: []string{"straddling-services"},
+	}, {
+		// The rollup is a gate rather than a note, the same way a rule's own
+		// total_row is one: the divisions state 1,000 and the page prints 1,001.
+		name: "ARollupThatDoesNotTieFailsTheBuild",
+		root: func(t *testing.T) string {
+			moved := strings.Replace(rollupPage, "DEPARTMENT TOTAL $1,000", "DEPARTMENT TOTAL $1,001", 1)
+			return testRepo(t, map[int]string{90: moved}, "rollup.yaml")
+		},
+		want: []string{"dept-total", "$1,000.00", "$1,001.00"},
+	}, {
+		// The subtotal is a gate, as a rule's total_row is one: the rows sum to
+		// 30 and the page prints 31.
+		name: "ASubtotalThatDoesNotTieFailsTheBuild",
+		root: func(t *testing.T) string {
+			moved := strings.Replace(subtotalPage, "SUBTOTAL  $ 30", "SUBTOTAL  $ 31", 1)
+			return testRepoWithGeometry(t, map[int]string{95: moved},
+				map[int]string{95: geomtest.Monospaced(docID, 95, moved)}, "subtotal.yaml")
+		},
+		want: []string{`"SUBTOTAL"`, "31", "$30.00"},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := tc.root(t)
+			opts, out, errOut := testOptions(t, root)
+			// A previous build's output must survive a failed one.
+			target := filepath.Join(root, defaultOutput)
+			writeRepoFile(t, target, "previous build\n")
 
-	root := testRepo(t, pages, "spine.yaml")
-	opts, _, errOut := testOptions(t, root)
-
-	// A previous build's output must survive a failed one.
-	target := filepath.Join(root, defaultOutput)
-	writeRepoFile(t, target, "previous build\n")
-
-	err := buildRun(context.Background(), opts)
-	if err == nil {
-		t.Fatal("buildRun = nil error, want the totals check to fail")
-	}
-	for _, want := range []string{"spine-revenues", "off by"} {
-		if !strings.Contains(err.Error(), want) {
-			t.Errorf("error %q does not contain %q", err, want)
-		}
-	}
-	if got, want := readFileString(t, target), "previous build\n"; got != want {
-		t.Errorf("fact store = %q, want the failed build to have left %q", got, want)
-	}
-	if got := errOut.String(); got != "" {
-		t.Errorf("got summary %q for a failed build, want none", got)
+			err := buildRun(context.Background(), opts)
+			if err == nil {
+				t.Fatal("buildRun = nil error, want the totals check to fail")
+			}
+			for _, want := range tc.want {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("error %q does not contain %q", err, want)
+				}
+			}
+			if got, want := readFileString(t, target), "previous build\n"; got != want {
+				t.Errorf("fact store = %q, want the failed build to have left %q", got, want)
+			}
+			if out.Len() != 0 || errOut.Len() != 0 {
+				t.Errorf("a failed build reported %q / %q; it must report nothing", out.String(), errOut.String())
+			}
+		})
 	}
 }
 
@@ -735,31 +777,6 @@ func TestAStraddlingRuleCreditsEveryPartItCovers(t *testing.T) {
 	}
 }
 
-// TestAStraddlingRuleWhoseTotalMovedFailsTheBuild: a straddle whose total has
-// moved stops the build and writes nothing. Which guard fires is not asserted;
-// as on Budget Book p170 the stop_at is the total line.
-func TestAStraddlingRuleWhoseTotalMovedFailsTheBuild(t *testing.T) {
-	moved := strings.Replace(straddleTail, "Total Services", "Total Servcies", 1)
-	root := testRepo(t, map[int]string{81: straddleHead, 82: moved}, "spanning.yaml")
-	opts, out, errOut := testOptions(t, root)
-
-	err := buildRun(context.Background(), opts)
-	if err == nil {
-		t.Fatal("buildRun succeeded; the page no longer prints the declared total row")
-	}
-	if !strings.Contains(err.Error(), "straddling-services") {
-		t.Errorf("error = %v, want it to name the rule", err)
-	}
-	if out.Len() != 0 || errOut.Len() != 0 {
-		t.Errorf("a failed build reported %q / %q; it must write nothing",
-			out.String(), errOut.String())
-	}
-	if _, err := os.Stat(filepath.Join(root, defaultOutput)); !os.IsNotExist(err) {
-		t.Errorf("the fact store exists after a failed build (%v); nothing is written "+
-			"when a rule fails to resolve", err)
-	}
-}
-
 // TestARollupIsReportedAsItsOwnClaim: an asserted rollup and a
 // declared-unassertable one are reported as separate claims, neither folded
 // into the other nor dropped.
@@ -796,24 +813,6 @@ func TestARollupIsReportedAsItsOwnClaim(t *testing.T) {
 	}
 }
 
-// TestARollupThatDoesNotTieFailsTheBuild keeps the rollup a gate rather than a
-// note, the same way a rule's own total_row is one.
-func TestARollupThatDoesNotTieFailsTheBuild(t *testing.T) {
-	moved := strings.Replace(rollupPage, "DEPARTMENT TOTAL $1,000", "DEPARTMENT TOTAL $1,001", 1)
-	root := testRepo(t, map[int]string{90: moved}, "rollup.yaml")
-	opts, _, _ := testOptions(t, root)
-
-	err := buildRun(context.Background(), opts)
-	if err == nil {
-		t.Fatal("buildRun succeeded; the divisions state 1,000 and the page now prints 1,001")
-	}
-	for _, want := range []string{"dept-total", "$1,000.00", "$1,001.00"} {
-		if !strings.Contains(err.Error(), want) {
-			t.Errorf("error = %v, want it to name %s", err, want)
-		}
-	}
-}
-
 // TestASubtotalIsReportedAndCreditsItsPart: the subtotal chain runs, is
 // counted, and credits the part it checked. Mutation: drop the chain loop from
 // resolve, and the counters stay zero and the part is reported unchecked.
@@ -840,25 +839,6 @@ func TestASubtotalIsReportedAndCreditsItsPart(t *testing.T) {
 	}
 	if rep.Facts != 2 {
 		t.Errorf("facts = %d, want 2; the subtotal publishes nothing", rep.Facts)
-	}
-}
-
-// TestASubtotalThatDoesNotTieFailsTheBuild keeps the subtotal a gate, as a
-// rule's total_row is one.
-func TestASubtotalThatDoesNotTieFailsTheBuild(t *testing.T) {
-	moved := strings.Replace(subtotalPage, "SUBTOTAL  $ 30", "SUBTOTAL  $ 31", 1)
-	root := testRepoWithGeometry(t, map[int]string{95: moved},
-		map[int]string{95: geomtest.Monospaced(docID, 95, moved)}, "subtotal.yaml")
-	opts, _, _ := testOptions(t, root)
-
-	err := buildRun(context.Background(), opts)
-	if err == nil {
-		t.Fatal("buildRun succeeded; the rows sum to 30 and the page now prints 31")
-	}
-	for _, want := range []string{`"SUBTOTAL"`, "31", "$30.00"} {
-		if !strings.Contains(err.Error(), want) {
-			t.Errorf("error = %v, want it to name %s", err, want)
-		}
 	}
 }
 
