@@ -1,11 +1,8 @@
 // @ts-check
 /**
- * fisc — the client module change.html loads. Each figure's table is
- * server-rendered with every printed point Go cited; this module groups the
- * rows by category, sums each category per column, and stacks the sums as
- * one column per printed year, every column on the figure's one scale. Every
- * sum is ours, marked ◇; what a column holds is in its table. Importing it
- * runs nothing; the template calls boot().
+ * fisc — change.html's module; the template calls boot(). Groups each
+ * server-rendered table's rows by category and stacks the per-column sums
+ * on one scale per figure. Every sum is ours, marked ◇.
  */
 
 import { NAMED, TAIL_LABEL, clone, dollars, linkedPage, pageLinks, pinnable, plus, refuseFigure, rowCents, tipHead, tipHint, tipper } from "./format.js";
@@ -19,18 +16,15 @@ export const LEAST = 1;
 
 /**
  * @typedef {{category: string, label: string, cents: (number | null)[]}} Row
- *   cents is one entry per column, null where the row prints no figure.
+ *   cents: one per column, null where the row prints none.
  * @typedef {{id: string, label: string, cents: (number | null)[], members: string[], rank: number}} Band
- *   One drawn category, or the tail: its cents per column, null where none
- *   of its rows prints a figure there, the categories
- *   folded into it (itself alone where named), and its rank by the last
- *   column, 1..NAMED+1 (rank names a sixth rather than fold it alone), or 0
- *   for the tail.
+ *   A category or the tail. rank is by the last column, 1..NAMED+1 (a sixth
+ *   is named rather than folded alone), 0 for the tail.
  */
 
 /**
- * Reads the rows Go rendered. Refuses a row with no category or a figure
- * that is not an integer: a cell the page cannot place is not stacked.
+ * Refuses a row with no category or a non-integer figure: a cell the page
+ * cannot place is not stacked.
  * @param {HTMLTableElement} table
  * @returns {{rows: Row[], columns: number}}
  */
@@ -51,8 +45,7 @@ export function readRows(table) {
 }
 
 /**
- * Sums the rows by category per column, in order of first appearance; a
- * category none of whose rows prints a figure in a column sums to null there.
+ * In first-appearance order; null where no row prints in a column.
  * @param {Row[]} rows
  * @param {number} columns
  * @returns {{id: string, cents: (number | null)[], members: string[]}[]}
@@ -73,11 +66,8 @@ export function groupRows(rows, columns) {
 }
 
 /**
- * Ranks the categories by their size in the last column, largest first, and
- * folds every one past the NAMED largest into one tail, unless that tail
- * would hold a single category. The rank is the category's and holds in
- * every column, so a colour follows the category and never its place in a
- * column.
+ * Ranks by the last column, folding past NAMED unless the tail would hold
+ * one. The rank holds in every column, so a colour follows the category.
  * @param {{id: string, cents: (number | null)[], members: string[]}[]} groups
  * @returns {Band[]}
  */
@@ -100,10 +90,7 @@ export function rank(groups) {
 }
 
 /**
- * A column header's words, apart: the year label Go printed as the header's
- * text, and the basis it printed in the header's `span.basis`, or "" where
- * it printed none. The two are typeset separately, so they are never joined
- * into one word.
+ * Label and `span.basis` apart: typeset separately, never joined into one word.
  * @param {Element} th
  * @returns {{label: string, basis: string}}
  */
@@ -117,7 +104,7 @@ export function headWords(th) {
 }
 
 /**
- * A figure in millions to one place, for a column's cap: "$149.5M".
+ * "$149.5M".
  * @param {number} cents
  */
 export function millions(cents) {
@@ -125,9 +112,8 @@ export function millions(cents) {
 }
 
 /**
- * The column totals of the bands, signed, null for a column no band prints
- * in, and the tallest stack: the largest over any column of the positive
- * bands' sum and the negative bands' sum.
+ * Signed column totals (null where no band prints) and the tallest positive
+ * or negative stack.
  * @param {Band[]} bands
  * @param {number} columns
  */
@@ -151,14 +137,10 @@ export function totals(bands, columns) {
 }
 
 /**
- * Fills one figure's chart from its table: one column per printed column,
- * positive bands stacked above a baseline and negative ones hung below, the
- * legend naming each band, and the sentence stating the sums as ours. Each
- * band's tip pins on a click and links the pages its cells in that column
- * cite, each to the page text the table's own link names (`a[data-page]`)
- * and to the PDF page its `data-pdf` names.
+ * Positive bands above a baseline, negative below. A band's tip links its
+ * cells' pages via the table's `a[data-page]` and `data-pdf`.
  * @param {HTMLElement} section
- * @param {ReturnType<typeof tipper>} [tips] the page's tooltip
+ * @param {ReturnType<typeof tipper>} [tips]
  * @returns {{bands: Band[], sums: (number | null)[]}}
  */
 export function draw(section, tips = tipper(section.ownerDocument)) {
@@ -182,9 +164,8 @@ export function draw(section, tips = tipper(section.ownerDocument)) {
   // Rounded once, here, so the stack's height is the sum of the heights drawn.
   const px = (/** @type {number} */ cents) =>
     Math.round(100 * Math.max(LEAST, tallest ? (HEIGHT * Math.abs(cents)) / tallest : 0)) / 100;
-  // The stack above the baseline is as tall as the tallest one drawn there,
-  // gaps and least heights included, in every column: bands that overflow it
-  // are shrunk by the flexbox and leave the one scale.
+  // As tall as the tallest stack in any column, so flexbox shrinks no band
+  // off the one scale.
   let room = 0;
   for (let i = 0; i < heads.length; i++) {
     const up = /** @type {number[]} */ (bands.map((b) => b.cents[i]).filter((c) => c !== null && c > 0));
@@ -207,10 +188,8 @@ export function draw(section, tips = tipper(section.ownerDocument)) {
     // every column, whatever hangs below, and the columns align at the top.
     above.style.height = (Math.ceil(100 * room) / 100) + "px";
     above.style.gap = below.style.gap = GAP + "px";
-    // Largest nearest the baseline on either side, so the baseline band is
-    // the same category in every column and the eye reads one band across
-    // them: bands are ranked largest first, prepended above the baseline
-    // and appended below it.
+    // Largest nearest the baseline, so the baseline band is one category
+    // across columns.
     const head = headWords(th);
     for (const b of bands) {
       const c = b.cents[i];
@@ -273,10 +252,7 @@ export function draw(section, tips = tipper(section.ownerDocument)) {
   return { bands, sums };
 }
 
-/**
- * Draws every charted figure on the page.
- * @param {Document} doc
- */
+/** @param {Document} doc */
 export function boot(doc) {
   const tips = tipper(doc);
   for (const section of Array.from(doc.querySelectorAll('section.change-figure[data-chart="true"]'))) {

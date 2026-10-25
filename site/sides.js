@@ -1,15 +1,8 @@
 // @ts-check
 /**
- * fisc — the page plumbing ledger.html runs on. Importing it runs nothing; a
- * form module's boot() hands this its renderer, which reads the chart's sides
- * off its own hints. This reads the page's config, fetches the column the year
- * control names, folds the expansion schedule to the frontier the hash opens
- * (core.sideTree), and hands each declared side's tree to the renderer, which
- * draws it. The tooltip, the hash and the gestures that open and shut a tile
- * are here, so a form module holds what it draws and nothing else.
- *
- * Every figure here is core.js's: a sum of cited cents at a membership Go
- * declared. A share is this page's sentence about what is drawn, marked ◇.
+ * fisc — ledger.html's plumbing: config, column fetch, the hash's frontier
+ * (core.sideTree), tooltip and open/shut gestures; the form module draws
+ * each side. Every figure is core.js's; a share is ours, marked ◇.
  */
 
 import * as core from "./core.js";
@@ -36,17 +29,11 @@ export const KEY_MARK = "~";
  *   share: (tile: core.SideTile, side: Side) => string,
  *   clone: (id: string) => HTMLElement | SVGElement,
  * }} DrawContext
- *   scale is px per cent, one for every side on the page, from the largest
- *   root drawn.
- *   tip shows a tile's tip unless one is pinned; pin pins it under its mark
- *   (format.js's tipper).
+ *   scale: px per cent, one for the page, from the largest root drawn.
  * @typedef {{form: string, sidesOf: (chart: any) => SideHint[], draw: (section: HTMLElement, side: Side, ctx: DrawContext) => void}} SidesRenderer
  */
 
-/**
- * The page's config, read from its JSON script element.
- * @param {Document} doc
- */
+/** @param {Document} doc */
 export function readConfig(doc) {
   const config = configOf(doc, "sides-config", "sides");
   if (!config.overview || !config.overview.form) throw new Error("the config declares no chart");
@@ -54,7 +41,7 @@ export function readConfig(doc) {
 }
 
 /**
- * A view as a hash: `#y=<column file less .json>&o=<id>[~key],...`.
+ * `#y=<column file less .json>&o=<id>[~key],...`.
  * @param {SidesState} st
  */
 export function hashOf(st) {
@@ -63,9 +50,6 @@ export function hashOf(st) {
 }
 
 /**
- * A hash read back into a view over the config: the column it names or the
- * opening one, and the nodes it opens, with `refused` saying what it named
- * that the config does not offer.
  * @param {string} hash
  * @param {any} config
  * @returns {SidesState & {refused: string}}
@@ -79,10 +63,8 @@ export function parseHash(hash, config) {
 }
 
 /**
- * The frontier a list of opened entries comes to, replayed in order through
- * core.expand from the schedule's roots, with every entry the schedule
- * refuses left out and named. An entry is `id` for a node's primary split or
- * `id~key` for one of its others.
+ * Replays entries through core.expand from the roots; refused ones are
+ * dropped and named.
  * @param {FiscProjection} doc the expansion schedule
  * @param {string[]} opened
  * @returns {{frontier: Set<string>, kept: string[], refused: string[]}}
@@ -111,11 +93,9 @@ export function frontierOf(doc, opened) {
 }
 
 /**
- * The opened entries with a tile shut: its own entry and every entry inside
- * it taken off, from the node whose opening opened it (core.straightFrom), so
- * a member opened straight through its parent's one-member split closes with
- * its parent. A member's own entry left behind would be replayed on a
- * frontier that no longer draws it, and refused.
+ * Drops the tile's entry and all inside it, from core.straightFrom, so a
+ * member opened through its parent closes with it; a leftover entry would
+ * be replayed on a frontier that no longer draws it, and refused.
  * @param {FiscProjection} doc the expansion schedule
  * @param {string[]} opened
  * @param {string} id
@@ -126,10 +106,8 @@ export function closing(doc, opened, id) {
 }
 
 /**
- * The opened entries not inside one node: what survives opening or closing
- * it. Opening filters from the tile itself, so a tile opened straight
- * through its parent's one-member split can be switched to its other split
- * with the parent's entry kept, where closing() would fold the parent too.
+ * Like closing() but from the tile itself, so switching a tile opened
+ * straight through keeps the parent's entry.
  * @param {FiscProjection} doc the expansion schedule
  * @param {string[]} opened
  * @param {string} id
@@ -144,8 +122,7 @@ export function outside(doc, opened, id) {
 }
 
 /**
- * The total a side's shares are of: its roots that are not printed
- * reductions, their count and their cents, and how many roots are left out.
+ * Roots that are not printed reductions, and how many are left out.
  * @param {Side} side
  * @returns {{roots: number, cents: number, reductions: number}}
  */
@@ -159,9 +136,7 @@ export function shareTotal(side) {
 }
 
 /**
- * The words for shareTotal's count, agreeing in number: "1 bar" or "N bars",
- * then `where`, then, where the side has printed reductions, that the count
- * leaves them out. Every side's total and list label says its count so.
+ * "1 bar" / "N bars", `where`, and that reductions are left out, if any.
  * @param {{roots: number, reductions: number}} whole
  * @param {string} where
  */
@@ -172,9 +147,7 @@ export function countedBars(whole, where) {
 }
 
 /**
- * A tile's share of its side marked ours, or "" for a printed reduction:
- * a reduction takes no share and its side's total leaves out every root
- * that is one.
+ * "" for a printed reduction, which takes no share.
  * @param {core.SideTile} tile
  * @param {Side} side
  */
@@ -186,9 +159,7 @@ export function tileShare(tile, side) {
 }
 
 /**
- * The words a tile's tooltip says of how it opens: its primary
- * split's member count, and each alternative's, marked ours as a count of
- * what is drawn. Its caller asks only of a tile that opens.
+ * Member counts per split, marked ours. Asked only of a tile that opens.
  * @param {core.SideTile} tile
  */
 export function opensAs(tile) {
@@ -197,8 +168,6 @@ export function opensAs(tile) {
 }
 
 /**
- * The sides of one column at one frontier, each its declared tier's tree, as
- * the chart's renderer reads its sides off the chart.
  * @param {any} config
  * @param {any} column
  * @param {Set<string>} frontier
@@ -214,9 +183,6 @@ function sidesAt(config, column, frontier, renderer) {
 }
 
 /**
- * Writes a tile's tip into the emptied tooltip: its label, figure, share,
- * how it opens, and the pages it cites, each linked to its extracted text
- * and its PDF page by the config's `docs`.
  * @param {Document} doc
  * @param {HTMLElement} tip
  * @param {core.SideTile} tile
@@ -238,15 +204,13 @@ export function fillTip(doc, tip, tile, side, docs, pinned) {
 }
 
 /**
- * Draws every side of a column at a state through the renderer and returns
- * what was drawn with the entries the schedule refused.
  * @param {Window} win
  * @param {any} config
  * @param {any} column
  * @param {SidesState} st
  * @param {SidesRenderer} renderer
  * @param {(tile: core.SideTile, key?: string) => void} toggle
- * @param {ReturnType<typeof tipper>} tips the page's tooltip
+ * @param {ReturnType<typeof tipper>} tips
  */
 export function render(win, config, column, st, renderer, toggle, tips) {
   const doc = win.document;
@@ -279,9 +243,7 @@ export function render(win, config, column, st, renderer, toggle, tips) {
 }
 
 /**
- * Hands the focus back to the mark of the tile of this id where a side draws
- * it again, as an open or close redraws the row it was asked on: the next
- * Enter lands on that row, and no tip is pinned or shown over its members.
+ * After a redraw, focus the row asked on, with no tip over its members.
  * @param {Document} doc
  * @param {Side[]} sides
  * @param {string} id
@@ -298,8 +260,6 @@ function focusDrawn(doc, sides, id, tips) {
 }
 
 /**
- * Boots a sides page with its renderer: reads the config, opens the view the
- * hash names, and wires the year select, the gestures and Back and Forward.
  * Resolves once the opening view is drawn or refused.
  * @param {Window} win
  * @param {SidesRenderer} renderer
@@ -370,9 +330,8 @@ export async function boot(win, renderer) {
     if (!schedule) return;
     const primary = tile.splits.find((sp) => !sp.alternative);
     const want = key || (primary ? primary.key : "");
-    // A click on an opened tile closes it, whichever way it is open, as the
-    // key and the tooltip say; a keyed gesture on a tile open another way
-    // switches it, and on a tile open that way closes it.
+    // A click closes an open tile either way; a key on a tile open another
+    // way switches it.
     const open = tile.children ? tile.open : "";
     const opens = !open || (key && open !== key);
     const opened = opens ? outside(schedule, state.opened, tile.id) : closing(schedule, state.opened, tile.id);

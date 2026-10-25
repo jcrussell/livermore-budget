@@ -1,52 +1,33 @@
 // @ts-check
 /**
- * fisc — the client's form-agnostic core: what every chart form needs and no
- * form owns. Schedule assembly, the hierarchy by parent chain, the fold, the
- * cap, the mark ids, provenance, wording and formatting, each a sum or a
- * lookup over figures Go cited.
+ * fisc — the client's form-agnostic core: schedule assembly, the hierarchy,
+ * the fold, the cap, mark ids, provenance and wording, each a sum or lookup
+ * over figures Go cited.
  *
- * STATELESS BY RULE: no module-level `let`, and no global read at import.
- * The tests load app.js through a cache-busting query so each gets a fresh
- * instance; a module app.js imports by relative path is instantiated once per
- * process and shared by every test, so anything held here would leak between
- * them. The page's config is read through config() at call time, and the DOM
- * through `document` inside the function that needs it. The one module-level
- * store is `schedules`, a memo keyed by the column object whose every entry is
- * a pure function of its key, so a test sharing it shares nothing it would
- * not recompute.
- *
- * A type named here is one of app.js's typedefs, generated from schema/.
+ * Stateless by rule: no module-level `let`, no global read at import. A
+ * module app.js imports is shared by every test in the process, so state
+ * here would leak between them. The one store, `schedules`, memoises a pure
+ * function of its key. Types are app.js's typedefs.
  */
 
 import { pageOf } from "./format.js";
 
-/**
- * The page's window.FISC_CONFIG, read when asked for and never at import.
- * @returns {FiscConfig}
- */
+/** @returns {FiscConfig} */
 export function config() {
   return /** @type {any} */ (globalThis).FISC_CONFIG;
 }
 
 /**
- * The page this client draws: window.FISC_CONFIG's schema_version, which
- * versions its keys, its wording keys and the elements app.js paints into. A
- * test in internal/export pins this literal to export.PageConfigVersion. A
- * page of another version would draw a wrong chart or throw rather than
- * fail, so the page refuses it.
+ * The page config version this client draws; internal/export pins it to
+ * export.PageConfigVersion. Another version would draw wrong, so it is refused.
  */
 export const SCHEMA_VERSION = 2;
 
-/**
- * The projection schema scheduleOf stamps on the document it assembles, and
- * the projection_version a page must declare to be drawn by this script. A
- * test in internal/export pins this literal to project.SchemaVersion.
- */
+/** Pinned by internal/export to project.SchemaVersion. */
 export const PROJECTION_VERSION = 1;
 
 /**
- * One sentence of the page's wording, filled in. `{name:one|many}` appends the
- * singular or plural word; an unfilled placeholder is left as written.
+ * `{name:one|many}` picks singular or plural; an unfilled placeholder stays.
  * @param {string} key
  * @param {Record<string, string | number>} [vars]
  * @returns {string}
@@ -61,7 +42,6 @@ export function say(key, vars) {
 }
 
 /**
- * A link kind in the page's words, as the export ships them.
  * @param {string} kind
  * @returns {string}
  */
@@ -72,9 +52,8 @@ export function kindLabel(kind) {
 }
 
 /**
- * Whether the node `id` names is printed in its parent's own words: what a
- * member is told apart from its parent by a noun for (memberNoun).
- * @param {Map<string, {label: string, parent?: string}>} byID the unfolded nodes, by id
+ * Whether `id` is printed in its parent's words, so needs a memberNoun.
+ * @param {Map<string, {label: string, parent?: string}>} byID the unfolded nodes
  * @param {string} id
  * @returns {boolean}
  */
@@ -85,11 +64,9 @@ export function labelledAsParent(byID, id) {
 }
 
 /**
- * What one member of the split it belongs to is called, in the page's
- * member_nouns for that split's key, its `{fund}` filled with the member's
- * fund number: "" for a node that is no split's member. Refused, not guessed,
- * for a key the page publishes no noun for, and for a `{fund}` on a node
- * carrying no fund number.
+ * A split member's noun from member_nouns, `{fund}` filled; "" for no
+ * member. Refused, not guessed, for a key with no noun or a `{fund}` on a
+ * node with no fund number.
  * @param {FiscProjection} doc the expansion schedule
  * @param {string} id
  * @returns {string}
@@ -132,8 +109,7 @@ export function fmtShort(cents) {
 }
 
 /**
- * A figure with its sign. A minus rather than parentheses, because screen
- * readers do not announce parentheses; U+2212 so it reads as a sign.
+ * U+2212, not parentheses: screen readers do not announce parentheses.
  * @param {number} cents
  * @returns {string}
  */
@@ -166,8 +142,7 @@ export function el(id) {
 }
 
 /**
- * The element with this id, or null. For conditional elements such as the
- * year select: el() throws, so `if (!el(id))` is no guard.
+ * For conditional elements: el() throws, so `if (!el(id))` is no guard.
  * @param {string} id
  * @returns {HTMLElement | null}
  */
@@ -176,7 +151,7 @@ export function maybeEl(id) {
 }
 
 /**
- * @param {string} name CSS custom property, including the leading dashes.
+ * @param {string} name CSS custom property, with leading dashes
  * @returns {string}
  */
 export function cssVar(name) {
@@ -192,8 +167,7 @@ export function cssVar(name) {
 export function h(tag, className, text) {
   const node = document.createElement(tag);
   if (className) node.className = className;
-  // Labels come out of the data file; they are inserted as text, never as
-  // markup.
+  // Labels are data: inserted as text, never markup.
   if (text !== undefined) node.textContent = text;
   return node;
 }
@@ -211,15 +185,11 @@ export function link(label, href) {
   return a;
 }
 
-/* ------------------------------------------------------------------ *
- * State
- * ------------------------------------------------------------------ */
+/* ---- State ---- */
 
 /**
- * Citations for a set of source documents: the city's PDF at the page, the
- * committed page text, and the fact-store shard for the page, each the link
- * the export built for that page (pageOf, which refuses a page it built no
- * entry for). A link it left empty is not rendered.
+ * PDF page, page text and fact shard links the export built (pageOf refuses
+ * an unbuilt page); an empty link is not rendered.
  * @param {FiscSource[]} sources
  * @returns {{label:string, href:string}[]}
  */
@@ -238,11 +208,8 @@ export function citations(sources) {
 }
 
 /**
- * A node's printed balances, beginning then ending, then the change Go
- * derived from them, each in the page's words with the facts and the pages it
- * cites; none for a node carrying none, and none for a balance the page leaves
- * blank, which is absent and not zero. The change is Go's figure, read and
- * never taken here, and is marked derived.
+ * Beginning and ending balances, then Go's derived change. A blank balance
+ * is absent, not zero, and yields nothing.
  * @param {FiscNode} node
  * @returns {{words: string, fact_ids: string[], locators: FiscSource[], derived: boolean, rationale: string}[]}
  */
@@ -258,11 +225,7 @@ export function balancesOf(node) {
   }));
 }
 
-/**
- * What a partition ribbon is: the one sentence every mark showing it uses.
- * The direction drawn is not one the city printed; the ribbon is never
- * reversed, and the class and this sentence carry what it means.
- */
+/** The direction drawn is not printed; the ribbon is never reversed, so this says it. */
 export const PARTITION_NOTE = "a cross-tab: one printed table read along a second axis, " +
   "not money moving in the direction drawn";
 
@@ -276,15 +239,14 @@ export function isFundGroup(node) {
 }
 
 /**
- * The fund group a node belongs to, walking node.parent through `index`, the
- * drawn document's nodes by id; "" for none, which callers draw as --muted.
+ * Walks node.parent through `index`; "" for none (drawn --muted).
  * @param {Map<string, FiscNode>} index
  * @param {FiscNode | LaidNode} node
  * @returns {string}
  */
 export function fundGroupOf(index, node) {
-  // Start from the index, not the laid copy: the fold blanks a node's parent
-  // when its ancestor is filtered away, which would stop the walk on hop one.
+  // From the index, not the laid copy: the fold blanks a parent whose
+  // ancestor was filtered away.
   let at = index.get(node.id) || node;
   // Bounded against a parent cycle in a malformed document.
   for (let hops = 0; hops < 8; hops++) {
@@ -298,9 +260,7 @@ export function fundGroupOf(index, node) {
 }
 
 /**
- * Each column's schedules, assembled once, so one column's schedule is one
- * object however often a gesture reads it. Frozen, so a caller that would
- * change it throws rather than changing every later reader's copy.
+ * One object per column schedule, frozen so a mutating caller throws.
  * @type {WeakMap<object, Map<string, FiscProjection | null>>}
  */
 const schedules = new WeakMap();
@@ -337,12 +297,11 @@ function assembleSchedule(column, key) {
       role: base.role || "", derived: Boolean(base.derived),
       constraint_tier: base.constraint_tier || "",
       rationale: base.rationale || "", source_note: base.source_note || "",
-      // The fields a schedule states for itself: where the node hangs in its
-      // own hierarchy, and a fund's printed balances where it cites them.
+      // What a schedule states for itself: its parent and a fund's balances.
       parent: n.parent || "",
     };
-    // Not defaulted: an absent balance is a blank on the page, not a zero,
-    // and an absent alternative is a member of its parent's primary split.
+    // Not defaulted: absent balance is blank, not zero; absent alternative
+    // is the primary split.
     if (n.alternative) Object.assign(node, { alternative: n.alternative });
     // Not defaulted: a node naming no fund has no number.
     if (base.fund) Object.assign(node, { fund: base.fund });
@@ -361,11 +320,9 @@ function assembleSchedule(column, key) {
       // Defaulted: the schema carries contra only on a link printed negative.
       contra: l.contra || "",
     };
-    // Not defaulted: an absent alternative is a primary link, always read,
-    // and an absent completes is a leg of no set Go declares.
+    // Not defaulted: absent alternative is primary; absent completes is no set.
     if (l.completes) Object.assign(link, { completes: l.completes });
-    // Not defaulted: an absent repeats is a link drawn once, as itself, and
-    // an absent restates a link that states no leaf again.
+    // Not defaulted: absent repeats is drawn once; absent restates restates nothing.
     if (l.repeats) Object.assign(link, { repeats: l.repeats });
     if (Array.isArray(l.restates)) Object.assign(link, { restates: l.restates.slice() });
     return l.alternative ? Object.assign(link, { alternative: l.alternative }) : link;
@@ -396,14 +353,10 @@ function assembleSchedule(column, key) {
 }
 
 /**
- * One schedule of a column document, with the shared node table's indices
- * resolved to ids, a node's identity and annotations taken from the table and
- * its parent from the schedule, and the keys the column omits (empty strings,
- * false booleans) filled in.
- *
+ * A column schedule with node indices resolved and omitted keys filled.
  * @param {any} column
- * @param {string} key the schedule to read: the page's `primary`
- * @returns {FiscProjection | null} null when the column carries no such schedule
+ * @param {string} key the page's `primary`
+ * @returns {FiscProjection | null} null when the column has no such schedule
  */
 export function scheduleOf(column, key) {
   if (!column || typeof column !== "object") return assembleSchedule(column, key);
@@ -417,9 +370,7 @@ export function scheduleOf(column, key) {
 }
 
 /**
- * The subtree of one node: its id and every id whose parent chain reaches it.
- * Walked upward per node rather than downward from the root, because a node
- * names its parent and nothing names its children.
+ * The node and every id whose parent chain reaches it; nothing names its children.
  * @param {FiscProjection} doc
  * @param {string} id
  * @returns {Set<string>}
@@ -441,10 +392,7 @@ export function withinNode(doc, id) {
 }
 
 /**
- * The frontier a tier set draws: every node at one of those tiers, so a fold
- * to it places each node at its nearest ancestor-or-self at a drawn tier.
- * Empty where no node is at any of them, which foldDocument refuses.
- *
+ * Every node at one of `tiers`; empty is refused by foldDocument.
  * @param {FiscProjection} doc
  * @param {Iterable<number>} tiers
  * @returns {Set<string>}
@@ -455,9 +403,7 @@ export function tierFrontier(doc, tiers) {
 }
 
 /**
- * The id a node folds to under a frontier: itself or its nearest ancestor in
- * it, or "" when it has neither, which foldDocument refuses unless the node
- * is opened.
+ * Itself or its nearest frontier ancestor, else "" (refused unless opened).
  * @param {Map<string,FiscNode>} byID
  * @param {FiscNode} n
  * @param {ReadonlySet<string>} frontier
@@ -474,9 +420,8 @@ export function foldTarget(byID, n, frontier) {
 }
 
 /**
- * Rebuild doc\u001fpage keys as FiscSource[] in the packager's order:
- * documents ascending, pages ascending within each, each once. Any other order
- * would render one page as a different citation on two charts.
+ * In the packager's order (docs, then pages, ascending, once): any other
+ * order renders one page as different citations on two charts.
  * @param {Set<string>|undefined} keys
  * @returns {FiscSource[]}
  */
@@ -498,8 +443,6 @@ export function regroupLocators(keys) {
 }
 
 /**
- * One doc\u001fpage key per page a set of locators cites, the form
- * regroupLocators reads back.
  * @param {FiscSource[]} ss
  * @returns {string[]}
  */
@@ -512,8 +455,7 @@ export function locatorKeys(ss) {
 }
 
 /**
- * Every page a set of ribbons cites, each once, in regroupLocators' order: a
- * union of cited ids, so a leaf two ribbons draw cites its pages once.
+ * A union, so a leaf two ribbons draw cites its pages once.
  * @param {{locators?: FiscSource[]}[]} links
  * @returns {FiscSource[]}
  */
@@ -524,18 +466,14 @@ export function pagesCitedBy(links) {
 }
 
 /**
- * The fold's refusal to merge two ribbons one mark cannot draw as one: a
- * cross-tab slice with a flow that is not one. A type and not a message, so
- * a caller that decides by it matches the refusal itself and never an error
- * that quotes or wraps its words.
+ * The fold's refusal to merge a cross-tab slice with a non-slice. A type, so
+ * a caller matches the refusal, never its words.
  */
 export class FoldRefusal extends Error {}
 
 /**
- * The filter's refusal to cut part of a ribbon one of whose cells restates
- * leaves only some of which the filter names (filterDocument). A type, as
- * FoldRefusal is, carrying the ribbon's two ends, so a caller names them in
- * its own words and never reads the message.
+ * A cut through part of a ribbon whose restated leaves the filter names only
+ * some of. Carries the ends, so a caller never reads the message.
  */
 export class PartialCut extends Error {
   /**
@@ -551,14 +489,11 @@ export class PartialCut extends Error {
 }
 
 /**
- * The alternatives a frontier opens and the nodes it opens, both read off the
- * parent chains of the nodes in it: an alternative of a node is open while a
- * member of it, or a node inside one, is in the frontier, and a node is open
- * while a node strictly inside it is.
+ * Alternatives open (a member or something inside it is in the frontier)
+ * and nodes opened (something strictly inside is).
  * @param {Map<string,FiscNode>} byID
  * @param {ReadonlySet<string>} frontier
- * @returns {{alternatives: Set<string>, opened: Set<string>}} alternatives
- *   keyed node\u001fkey
+ * @returns {{alternatives: Set<string>, opened: Set<string>}} alternatives keyed node\u001fkey
  */
 function openedBy(byID, frontier) {
   const alternatives = new Set();
@@ -575,9 +510,8 @@ function openedBy(byID, frontier) {
 }
 
 /**
- * Whether a node is read under a frontier: every alternative on its parent
- * chain, itself included, is open. A node under a shut alternative is not
- * money this chart draws, since its parent's other split carries the same.
+ * Every alternative on its chain is open; under a shut one the parent's other
+ * split carries the same money.
  * @param {Map<string,FiscNode>} byID
  * @param {FiscNode} n
  * @param {ReadonlySet<string>} alternatives node\u001fkey
@@ -597,13 +531,10 @@ function readUnder(byID, n, alternatives) {
 const RESTATING = "\u001frestates\u001f";
 
 /**
- * The cells one ribbon draws, at the signs printed, or null where none of its
- * legs repeats a leaf or restates leaves: each leaf at its `repeats` key, so
- * a leaf drawn as itself and again as a hub leg is one key on both ribbons; a
- * total at one key per list of leaves it `restates`, shared with every total
- * naming that list (distinctCents reads it), joined as written because
- * expansion-splits-tie refuses a list not ascending; and each other leg at a key of
- * its own ends. A drawn ribbon's cells sum to its value_cents as folded.
+ * A ribbon's cells at printed signs, or null if no leg repeats or restates:
+ * a leaf at its `repeats` key (the same key wherever drawn), a total at one
+ * key per restated list (lists are ascending; expansion-splits-tie refuses
+ * otherwise), any other leg at its own ends. Cells sum to value_cents.
  * @param {FiscLink} l
  * @returns {Record<string, number> | null}
  */
@@ -615,8 +546,8 @@ export function cellsOf(l) {
 }
 
 /**
- * How many links of a drawn document draw each leaf, by its `repeats` key.
- * Every other cell's key opens with the separator a node id never does.
+ * Links drawing each leaf, by `repeats` key. Other keys open with the
+ * separator, which no node id does.
  * @param {FiscProjection | null} doc
  * @returns {Map<string, number>}
  */
@@ -630,11 +561,10 @@ export function leafDraws(doc) {
 }
 
 /**
- * Whether a link draws a leaf another link of its document draws too: a
- * figure the city printed once, between other ends, drawn again through a
- * hub a split opened. No page prints it at either pair of ends drawn.
+ * A leaf printed once, drawn again through a split's hub: no page prints it
+ * at either pair of ends.
  * @param {FiscLink} l
- * @param {Map<string, number>} draws leafDraws of the document drawing it
+ * @param {Map<string, number>} draws leafDraws of its document
  * @returns {boolean}
  */
 export function drawsAgain(l, draws) {
@@ -642,9 +572,7 @@ export function drawsAgain(l, draws) {
 }
 
 /**
- * Each leaf of a schedule at its `repeats` key, by its cents: what a total
- * restating it is read as by distinctCents.
- * @param {FiscProjection | null} doc the schedule as fetched, before any fold
+ * @param {FiscProjection | null} doc the schedule before any fold
  * @returns {Map<string, number>}
  */
 export function leafCents(doc) {
@@ -654,15 +582,9 @@ export function leafCents(doc) {
   return out;
 }
 
-/**
- * What one cell of a drawn ribbon cites: its facts, its pages as
- * locatorKeys, and whether a leg drawing it is inferred.
- * @typedef {{fact_ids: string[], pages: string[], derived: boolean}} CellSource
- */
+/** @typedef {{fact_ids: string[], pages: string[], derived: boolean}} CellSource */
 
 /**
- * Each cell of a ribbon with what it cites (CellSource): a merged ribbon's
- * as its fold kept them, one leg's its own.
  * @param {FiscLink} l
  * @returns {Record<string, CellSource> | null}
  */
@@ -679,11 +601,9 @@ export function cellSourcesOf(l) {
 }
 
 /**
- * A merged ribbon with the cells of its legs, and no `repeats`, which names
- * one leaf and a merged ribbon can draw many. Where no leg repeats a leaf the
- * ribbon carries no cells. Each cell keeps what its legs cite
- * (cell_sources), so a node filter can draw part of the ribbon at the
- * facts and pages of that part alone (filterDocument).
+ * A merged ribbon with its legs' cells and their cell_sources, so a node
+ * filter can draw part of it at that part's own citations; no `repeats`,
+ * which names one leaf.
  * @param {FiscLink} ribbon
  * @param {FiscLink[]} legs
  * @returns {FiscLink}
@@ -721,10 +641,8 @@ function withCells(ribbon, legs) {
 }
 
 /**
- * Whether a cell's leaf has an end among `inside`, the ids a node's money
- * is drawn from: "all" where it does, "none" where it does not, and "part"
- * for totals restating a list of leaves only some of which do, which no
- * ribbon can be cut along. A cell of a leg's own ends is read at those ends.
+ * "part" for totals restating leaves only some of which are inside: no
+ * ribbon can be cut along that.
  * @param {string} key a key of cellsOf
  * @param {ReadonlySet<string>} inside
  * @returns {"all" | "none" | "part"}
@@ -751,8 +669,6 @@ export function cellIn(key, inside) {
 }
 
 /**
- * Whether totals carrying `c` cents restate all of a list of leaves: each
- * key a leaf of `leaves`, their cents summing to `c`.
  * @param {string[]} keys
  * @param {number} c
  * @param {Map<string, number>} leaves
@@ -764,19 +680,13 @@ function restatesWhole(keys, c, leaves) {
 }
 
 /**
- * A sum over ribbons at the signs printed, each cell once: a leaf drawn as
- * itself and again as a hub leg repeating it is one figure, not two. The
- * totals restating one list of leaves are read as those leaves where they
- * carry all of the leaves' cents, so a division's total and the division's
- * own rows are one figure, and as themselves where they carry part. A ribbon
- * carrying no cells is read whole by `cents`.
- *
- * FAILS CLOSED on totals carrying part of a list beside any leaf of that
- * list, counted through its own cell or another list: which leaves part of
- * the totals restate is not printed (no one division of pp.85-125 is one
- * leaf), so no sum states that money once.
+ * A sum over ribbons, each cell once: a leaf drawn again through a hub, and
+ * a total restating all of its leaves, are one figure. Cell-less ribbons
+ * read whole. Fails closed on a total restating part of a list beside any of
+ * its leaves: which leaves it restates is unprinted (no one division of
+ * pp.85-125 is one leaf).
  * @param {FiscLink[]} links
- * @param {(l: FiscLink) => number} cents a ribbon's figure at its printed sign
+ * @param {(l: FiscLink) => number} cents
  * @param {Map<string, number>} [leaves] leafCents of the schedule folded
  * @returns {number}
  */
@@ -824,33 +734,21 @@ export function distinctCents(links, cents, leaves = new Map()) {
 }
 
 /**
- * Folds a document to a frontier of node ids: each node to its nearest
- * ancestor-or-self in the frontier, links merged on the folded pair and kind
- * with values summed and fact ids and locators unioned. A link folding onto
- * one node is dropped; the link that survives carries the same money and
- * facts. A tier set is folded as tierFrontier's frontier of it.
+ * Folds each node to its nearest frontier ancestor-or-self, merging links
+ * per folded pair and kind (values summed, facts and locators unioned); a
+ * link onto one node is dropped.
  *
- * On the expansion schedule: a link carrying an alternative is read only
- * while that alternative of the node it runs from is open, and a node under a
- * shut alternative is not read. An extended node stays in the frontier beside
- * its members, so its link to a member is a ribbon while they are drawn and a
- * dropped self-loop while it is shut. A node the frontier opens -- one a node
- * strictly inside it is drawn for -- is drawn as its members and folds to
- * nothing.
+ * Expansion schedule: an alternative's links and nodes are read only while
+ * it is open; an extended node stays beside its members; a node the
+ * frontier opens folds to nothing.
  *
- * A ribbon whose legs are exactly the links naming one cell in `completes` is
- * that printed cell, and is drawn printed whichever of its legs Go derived:
- * a membership Go declared. Any part of such a set is not the cell. Any other
- * ribbon merging a printed leg and an inferred one is drawn inferred: the
- * ribbon claims no more than its least-printed leg.
+ * A ribbon whose legs are exactly one `completes` set is that printed cell;
+ * any other merge of printed and inferred legs is inferred.
  *
- * FAILS CLOSED on a read node that neither folds nor is opened, and on a read
- * link with an end that does not fold: dropping either loses money silently,
- * keeping it leaves it nowhere to draw.
- *
+ * Fails closed on a read node that neither folds nor opens, and a link end
+ * that does not fold: dropping loses money silently.
  * @param {FiscProjection} doc
- * @param {Iterable<string>} frontier the node ids drawn: a tier set's
- *   tierFrontier, or an expansion's
+ * @param {Iterable<string>} frontier
  * @returns {FiscProjection}
  */
 export function foldDocument(doc, frontier) {
@@ -879,8 +777,7 @@ export function foldDocument(doc, frontier) {
   const merged = new Map();
   /** @type {Map<string, Set<string>>} */
   const cited = new Map();
-  // Locators union as fact_ids do, keyed doc\u001fpage; without this a merged
-  // ribbon cites only its first leg's pages.
+  // Without this a merged ribbon cites only its first leg's pages.
   /** @type {Map<string, Set<string>>} */
   const located = new Map();
   /** @type {Map<string, {completes: string, legs: number}>} */
@@ -896,15 +793,13 @@ export function foldDocument(doc, frontier) {
         " (" + l.kind + ") has an end this frontier draws no node for");
     }
     if (source === target) continue;
-    // ONE RIBBON PER KIND BETWEEN A FOLDED PAIR, so a ribbon's kind is true of
-    // all of it.
+    // One ribbon per kind per folded pair, so a ribbon's kind is true of all of it.
     const key = source + "\u001f" + target + "\u001f" + l.kind;
     const at = merged.get(key);
     const ids = cited.get(key);
     if (!at || !ids) {
       merged.set(key, Object.assign({}, l, { source: source, target: target }));
-      // ITERATED, NOT new Set(l.fact_ids): that would turn an absent fact_ids
-      // into a ribbon citing nothing instead of a throw.
+      // Iterated, not new Set(l.fact_ids): absent fact_ids must throw.
       const first = new Set();
       for (const id of l.fact_ids) first.add(id);
       cited.set(key, first);
@@ -913,9 +808,7 @@ export function foldDocument(doc, frontier) {
       ribbonLegs.set(key, [l]);
       continue;
     }
-    // A PARTITION LEG AND ONE THAT IS NOT ARE NEVER ONE RIBBON: one mark
-    // cannot be drawn as both, so the fold refuses rather than letting the
-    // first leg's flag speak for the other.
+    // A partition leg and a non-partition leg are never one ribbon.
     if (Boolean(at.partition) !== Boolean(l.partition)) {
       throw new FoldRefusal("cannot draw " + doc.projection + ": folding merges ribbons one mark cannot draw as one, " +
         "a cross-tab slice and a flow that is not one, from " + source + " to " + target + " (" + l.kind + ")");
@@ -925,8 +818,7 @@ export function foldDocument(doc, frontier) {
     /** @type {FiscLink[]} */ (ribbonLegs.get(key)).push(l);
     if (legs.completes !== (l.completes || "")) legs.completes = "";
     at.derived = Boolean(at.derived) || Boolean(l.derived);
-    // One leg's reduction words cannot name the sum; markContra names what
-    // the merged ribbon nets to.
+    // One leg's reduction words cannot name the sum.
     if ((at.contra || "") !== (l.contra || "")) at.contra = "";
     at.value_cents += l.value_cents;
     // A transfer id names one leg of one transfer and cannot survive a merge.
@@ -936,20 +828,15 @@ export function foldDocument(doc, frontier) {
     if (locs) for (const k of locatorKeys(l.locators)) locs.add(k);
   }
 
-  // A SET IS BROKEN where a leg of it is not in a ribbon of that set alone --
-  // merged with another leg, dropped onto one node or under a shut
-  // alternative -- and no later fold can make it whole again, so none of its
-  // ribbons keeps the name. Without this a fold of a folded document counts
-  // the set over the ribbons left naming it, and a lone derived leg of a
-  // broken set reads as the whole cell.
+  // A set is broken where any leg is not in a ribbon of that set alone; no
+  // later fold mends it, so none of its ribbons keeps the name, or a lone
+  // derived leg would read as the whole cell.
   /** @type {Map<string, number>} */
   const landed = new Map();
   for (const legs of legsOf.values()) {
     if (legs.completes) landed.set(legs.completes, (landed.get(legs.completes) || 0) + legs.legs);
   }
-  // A PRINTED LEG AND AN INFERRED ONE ARE A PRINTED RIBBON ONLY AS A
-  // COMPLETING SET; otherwise the merge is drawn inferred, as at.derived
-  // already says.
+  // Printed plus inferred is printed only as a completing set.
   for (const [key, l] of merged) {
     const legs = /** @type {{completes: string, legs: number}} */ (legsOf.get(key));
     const whole = legs.completes !== "" && landed.get(legs.completes) === sets.get(legs.completes);
@@ -970,17 +857,14 @@ export function foldDocument(doc, frontier) {
       : a.target < b.target ? -1 : a.target > b.target ? 1
       : a.kind < b.kind ? -1 : a.kind > b.kind ? 1 : 0));
 
-  // An untouched node is not drawable: d3-sankey lands it in the first column
-  // at zero height.
+  // d3-sankey lands an untouched node in column one at zero height.
   const touched = new Set();
   for (const l of links) {
     touched.add(l.source);
     touched.add(l.target);
   }
-  // A RETAINED NODE'S parent IS RE-POINTED AT ITS FOLDED ANCESTOR, so every
-  // parent resolves in the folded document; "" where its parent folded into
-  // it. A loop, because the walk continues past an ancestor the filter above
-  // dropped.
+  // Parents re-point at the folded ancestor ("" if folded into it). A loop,
+  // since the walk passes ancestors the filter dropped.
   const nodes = doc.nodes.filter((n) => touched.has(n.id)).map((n) => {
     let up = n.parent ? foldsTo.get(n.parent) : "";
     for (let hops = 0; up && up !== n.id && !touched.has(up); hops++) {
@@ -994,8 +878,7 @@ export function foldDocument(doc, frontier) {
 }
 
 /**
- * The frontier the expansion schedule opens on: its roots, which are the
- * spine's nodes.
+ * The schedule's roots: the spine's nodes.
  * @param {FiscProjection} doc the expansion schedule
  * @returns {Set<string>}
  */
@@ -1004,9 +887,8 @@ export function rootFrontier(doc) {
 }
 
 /**
- * Every way a node opens, as Go declared it, each with its members: the nodes
- * parented to it whose alternative is the split's key on an alternative
- * split, or absent on its primary one.
+ * A node's declared splits with members: children whose alternative is the
+ * key, or absent for the primary split.
  * @param {FiscProjection} doc the expansion schedule
  * @param {string} id
  * @returns {{key: string, form: string, alternative: boolean, members: string[]}[]}
@@ -1021,10 +903,8 @@ export function splitsOf(doc, id) {
 }
 
 /**
- * The key of the split of a node a frontier has open, or "" when none is:
- * read off the member of it each drawn node strictly inside it hangs from.
- * FAILS CLOSED on a frontier drawing members of two of its splits, which
- * would draw the same money twice.
+ * The open split's key, or "". Fails closed on members of two splits drawn
+ * at once: the same money twice.
  * @param {FiscProjection} doc the expansion schedule
  * @param {Iterable<string>} frontier
  * @param {string} id
@@ -1053,9 +933,7 @@ export function openSplitOf(doc, frontier, id) {
 }
 
 /**
- * The frontier with a node shut: every node strictly inside it taken out and
- * the node put back. A frontier drawing nothing inside it is returned as it
- * was.
+ * Everything strictly inside `id` out, `id` back in.
  * @param {FiscProjection} doc the expansion schedule
  * @param {Iterable<string>} frontier
  * @param {string} id
@@ -1074,16 +952,13 @@ export function collapse(doc, frontier, id) {
 }
 
 /**
- * The frontier with one split of a drawn node open: its members drawn beside
- * it, the node kept as their hub, and where the split has one member, that
- * member opened by its first split too (straightFrom). A node open another
- * way is shut first, so a frontier opens a node one way at a time.
- * FAILS CLOSED on a split the node does not have, on a split of a form other
- * than extend, and on a node the frontier does not draw.
+ * Opens one split: members beside the node, kept as hub; another open split
+ * is shut first. Fails closed on an undeclared split, a non-extend form, or
+ * an undrawn node.
  * @param {FiscProjection} doc the expansion schedule
  * @param {Iterable<string>} frontier
  * @param {string} id
- * @param {string} key the split to open, one of splitsOf(doc, id)
+ * @param {string} key one of splitsOf(doc, id)
  * @returns {Set<string>} a new set
  */
 export function expand(doc, frontier, id, key) {
@@ -1098,18 +973,15 @@ export function expand(doc, frontier, id, key) {
   const out = open ? collapse(doc, frontier, id) : new Set(frontier);
   if (!out.has(id)) throw new Error("cannot open " + id + ": the frontier does not draw it");
   for (const m of split.members) out.add(m);
-  // A SPLIT OF ONE MEMBER OPENS STRAIGHT THROUGH: its member alone draws no
-  // money the node did not, so the member's first split opens with it.
+  // A one-member split opens straight through: alone it draws nothing new.
   if (split.members.length !== 1) return out;
   const only = splitsOf(doc, split.members[0]).find((sp) => !sp.alternative);
   return only ? expand(doc, out, split.members[0], only.key) : out;
 }
 
 /**
- * The node whose opening opens `id`'s splits with it: `id`'s parent where
- * `id` is the one member of the split it belongs to, and so on up while the
- * node reached is open by its primary split, the only split expand opens
- * straight through; else `id` itself. What folding `id` back folds.
+ * The ancestor whose opening opened `id` straight through (one-member
+ * primary splits), else `id`: what folding `id` folds.
  * @param {FiscProjection} doc the expansion schedule
  * @param {string} id
  * @returns {string}
@@ -1117,29 +989,23 @@ export function expand(doc, frontier, id, key) {
 export function straightFrom(doc, id) {
   const byID = new Map(doc.nodes.map((n) => [n.id, n]));
   let at = id;
-  // Nine hops bounds the climb against a parent cycle; no schedule nests
-  // near so deep.
+  // Nine hops bounds a parent cycle; no schedule nests near so deep.
   for (let hops = 0; hops < 9; hops++) {
     const n = byID.get(at);
     if (!n || !n.parent) break;
     const split = splitsOf(doc, n.parent).find((sp) => sp.members.includes(at));
     if (!split || split.members.length !== 1) break;
     at = n.parent;
-    // Its parent is open by an alternative, the reader's choice and not
-    // expand's, so the parent folds alone.
+    // An alternative is the reader's choice, not expand's: the parent folds alone.
     if (n.alternative) break;
   }
   return at;
 }
 
 /**
- * The splits that draw a node, root first: each ancestor of it, and the key
- * of the split the next node down is a member of (its alternative's, else
- * the ancestor's primary split, which splitsOf and openSplitOf give every
- * member with no alternative). What revealing the node opens, whether as a
- * frontier (reveal) or as the page's expansions (revealEntries). A parent
- * with no split its child belongs to is refused: nothing could draw the
- * child.
+ * The splits that draw a node, root first: each ancestor and the split the
+ * next node down belongs to. A parent with no such split is refused:
+ * nothing could draw the child.
  * @param {FiscProjection} doc the expansion schedule
  * @param {string} id
  * @returns {{node: string, key: string}[]}
@@ -1160,8 +1026,6 @@ export function revealChain(doc, id) {
 }
 
 /**
- * The frontier with a node drawn: each split of revealChain opened, from
- * the root down, where it is not open already.
  * @param {FiscProjection} doc the expansion schedule
  * @param {Iterable<string>} frontier
  * @param {string} id
@@ -1176,10 +1040,7 @@ export function reveal(doc, frontier, id) {
 }
 
 /**
- * Expand all from a frontier: every node it draws unsplit split by its
- * first declared split, the one a click on it opens, and every node that
- * exposes, until none is left or 16 passes have run. The splits in the
- * order opened, and the frontier they reach.
+ * Splits every unsplit node by its first split, repeatedly, up to 16 passes.
  * @param {FiscProjection} doc the expansion schedule
  * @param {Set<string>} frontier
  * @returns {{splits: {node: string, key: string}[], frontier: Set<string>}}
@@ -1201,23 +1062,17 @@ export function expandAllFrom(doc, frontier) {
 }
 
 /**
- * Folds all but `cap` nodes of one tier into a single node: the column's
- * derived remainders, and the largest printed rows in the places left.
- *
- * A cap, not a rescale: the concentration is within a column, and the fold
- * tests measure the sub-pixel ribbons it removes. Values sum and fact ids and
- * locators union, as in the fold, so the aggregate stays citable. What MAY
- * fold is Go's (sankey.split_caps); which nodes it keeps is this page's.
- *
+ * Folds all but `cap` nodes of a tier into one tail: remainders first, then
+ * the largest printed rows. A cap, not a rescale; values sum and citations
+ * union, so the tail stays citable. What may fold is Go's (split_caps);
+ * what is kept is the page's.
  * @param {FiscProjection} doc
  * @param {number} tier
  * @param {number} cap
- * @param {string} opened  the node the aggregate is parented to: the opened
- *   node when the whole column is inside it, "" when it spans fund groups
- * @param {string} noun  the plural noun for the tier's rows
- * @param {{members: ReadonlySet<string>, id: string}} [among] the column is
- *   these ids rather than every node at the tier, and its tail is `id`: one
- *   split's drawn members, which share a slot with other splits' members
+ * @param {string} opened the tail's parent, "" across fund groups
+ * @param {string} noun the plural noun for the tier's rows
+ * @param {{members: ReadonlySet<string>, id: string}} [among] one split's
+ *   members and its tail id, instead of the whole tier
  * @returns {FiscProjection} doc itself when the column fits whole
  */
 export function capColumn(doc, tier, cap, opened, noun, among) {
@@ -1226,13 +1081,11 @@ export function capColumn(doc, tier, cap, opened, noun, among) {
     : (/** @type {FiscNode} */ n) => n.tier === tier;
   const tailID = among ? among.id : aggregateID(tier);
   const atTier = doc.nodes.filter(inColumn);
-  // AN AGGREGATE OF ONE IS WORSE THAN NO AGGREGATE, so a column of cap + 1 is
-  // drawn whole.
+  // A tail of one is worse than none: cap + 1 draws whole.
   if (atTier.length <= cap + 1) return doc;
 
-  // RANKED BY THE LARGER OF INFLOW AND OUTFLOW, d3-sankey's node value: a
-  // line takes in nothing, so inflow alone ties every line at zero. By
-  // magnitude, because a contra row is a printed line as large as its figure.
+  // Ranked by max(inflow, outflow) at magnitude, d3-sankey's node value: a
+  // line takes in nothing, and a contra row is as large as its figure.
   /** @type {Map<string, number>} */
   const inflow = new Map();
   /** @type {Map<string, number>} */
@@ -1245,9 +1098,7 @@ export function capColumn(doc, tier, cap, opened, noun, among) {
   // Ties broken by id, so the kept set is stable across builds.
   const ranked = atTier.slice().sort((a, b) =>
     size(b.id) - size(a.id) || (a.id < b.id ? -1 : 1));
-  // A REMAINDER IS ONE OF THE COLUMN'S ROWS AND IS NEVER FOLDED: it holds a
-  // place under the cap wherever it ranks, because the tail's words say every
-  // figure inside it is printed. The printed rows take the places left.
+  // A remainder is never folded: the tail's words say all inside is printed.
   const remainders = ranked.filter((n) => n.derived);
   const printed = ranked.filter((n) => !n.derived);
   const kept = new Set(remainders.concat(printed.slice(0, Math.max(0, cap - remainders.length))).map((n) => n.id));
@@ -1259,10 +1110,8 @@ export function capColumn(doc, tier, cap, opened, noun, among) {
   const tail = new Set(folded.map((n) => n.id));
   const remap = (/** @type {string} */ id) => (tail.has(id) ? tailID : id);
 
-  // A FOLDED NODE'S CHILDREN HANG FROM THE TAIL: foldDocument refuses a child
-  // naming a parent the document does not carry, and dropping the child would
-  // drop the money it carries onward -- a folded member's own members, drawn
-  // beside it by an extend split.
+  // A folded node's children hang from the tail: foldDocument refuses an
+  // unknown parent, and dropping them drops their money.
   const nodes = doc.nodes
     .filter((n) => !inColumn(n) || kept.has(n.id))
     .map((n) => (tail.has(n.parent) ? Object.assign({}, n, { parent: tailID }) : n))
@@ -1273,19 +1122,13 @@ export function capColumn(doc, tier, cap, opened, noun, among) {
     .map((l) => Object.assign({}, l, { source: remap(l.source), target: remap(l.target) }))
     .filter((l) => present.has(l.source) && present.has(l.target));
 
-  // THE FIGURE IS NOT ON THE MARK: tailFigure finishes the note after the
-  // fold and any later cap have re-pointed these ribbons.
+  // tailFigure finishes the note after the fold and any later cap.
   return Object.assign({}, doc, { nodes: nodes, links: links });
 }
 
 /**
- * What a folded tail carries, at the height d3-sankey draws it: the larger of
- * what arrives and what leaves, each ribbon at its magnitude as markContra
- * draws a reduction.
- *
- * READ OFF THE FOLDED DOCUMENT, because the fold nets, re-points and drops
- * ribbons capColumn produced.
- *
+ * max(arriving, leaving) at magnitude, as d3-sankey draws it. Read off the
+ * folded document, since the fold nets, re-points and drops ribbons.
  * @param {FiscProjection} doc a folded document
  * @param {string} id the tail's id
  * @returns {number} cents
@@ -1300,14 +1143,11 @@ export function tailFigure(doc, id) {
   return Math.max(arriving, leaving);
 }
 
-/**
- * The prefix every capped tail's id carries.
- */
+/** Every capped tail's id prefix. */
 export const AGGREGATE_PREFIX = "aggregate/tail/";
 
 /**
- * The id of the node one tier's capped tail is folded into. Per tier, because
- * one chart can cap two columns and d3-sankey and the fold both key by id.
+ * Per tier: one chart can cap two columns, and everything keys by id.
  * @param {number} tier
  * @returns {string}
  */
@@ -1316,9 +1156,8 @@ export function aggregateID(tier) {
 }
 
 /**
- * The id of the tail one split's capped members fold into. Per split, not per
- * tier: one slot holds the members of many splits, and each tail stays inside
- * the node it splits.
+ * Per split, not tier: one slot holds many splits' members, and each tail
+ * stays inside its node.
  * @param {string} node
  * @param {string} key the split's key
  * @returns {string}
@@ -1328,8 +1167,7 @@ export function splitTailID(node, key) {
 }
 
 /**
- * The node and split key a split's tail id names (splitTailID), or null for
- * an id that is no split's tail: a tier's tail (aggregateID) included.
+ * Null for a tier's tail or any other id.
  * @param {string} id
  * @returns {{node: string, key: string} | null}
  */
@@ -1342,9 +1180,7 @@ export function splitTailOf(id) {
 }
 
 /**
- * Whether a document is an expansion schedule: one that declares how its
- * nodes split (schema/projection.schema.json's splits), which scheduleOf
- * carries on that schedule alone.
+ * Declares splits; scheduleOf carries them on that schedule alone.
  * @param {FiscProjection | null | undefined} doc
  * @returns {boolean}
  */
@@ -1353,7 +1189,6 @@ export function isExpansionSchedule(doc) {
 }
 
 /**
- * Whether an id names a capped tail of any tier.
  * @param {string} id
  * @returns {boolean}
  */
@@ -1361,10 +1196,7 @@ export function isAggregate(id) {
   return id.startsWith(AGGREGATE_PREFIX);
 }
 
-/**
- * The prefix a smaller-flows mark's id carries, followed by its side and
- * tier.
- */
+/** Followed by side and tier. */
 export const SMALLER_PREFIX = "smaller/";
 
 /** smallerMark's side for the mark the folded ribbons run TO. */
@@ -1374,10 +1206,8 @@ export const SMALLER_TO = "to";
 export const SMALLER_FROM = "from";
 
 /**
- * The id of the mark one column's folded ribbons on one side end at. Per
- * side, so a mark either receives or sends and never reads as money passing
- * through it; per tier, and per slot where the shaping placed the far ends in
- * slots (expansionOf), since one tier can stand in several columns.
+ * Per side, so a mark only receives or sends and never reads as a pass-through;
+ * per tier and slot, since one tier can stand in several columns.
  * @param {string} side SMALLER_TO or SMALLER_FROM
  * @param {number} tier
  * @param {number} [slot]
@@ -1396,8 +1226,7 @@ export function isSmaller(id) {
 }
 
 /**
- * Whether an id is a mark this client makes: an aggregate or a smaller-flows
- * mark. The declared set is export.MarkPrefixes.
+ * The declared set is export.MarkPrefixes.
  * @param {string} id
  * @returns {boolean}
  */
@@ -1406,9 +1235,7 @@ export function isMark(id) {
 }
 
 /**
- * Whether a mark is a ribbon rather than a node: a ribbon cites facts and a
- * node does not, which is schema/projection.schema.json's shape and no
- * form's.
+ * A ribbon cites facts and a node does not: the schema's shape, no form's.
  * @param {LaidLink | LaidNode | FiscLink | FiscNode} d
  * @returns {boolean}
  */
@@ -1417,18 +1244,16 @@ export function isLink(d) {
 }
 
 /**
- * The aggregate a cap folds a column's tail into: schema/mark.schema.json,
- * role aggregate, worded by the page's aggregate_* templates. derived: true
- * IS THE INVARIANT: the city printed no line called "N smaller funds". Every cent inside is printed; the grouping is
- * inferred, and the ids it swallowed are kept so caveatsFor still reaches
- * them, since a tail folded by value is recorded by no parent chain.
+ * A cap's tail mark. derived: true is the invariant: no city line is called
+ * "N smaller funds". The folded ids are kept so caveatsFor still reaches
+ * them, since no parent chain records a fold by value.
  * @param {number} tier
- * @param {string} opened the node the aggregate hangs under, "" across groups
+ * @param {string} opened the parent, "" across groups
  * @param {string[]} folded the ids folded, two or more
- * @param {number} total how many nodes the column held before the cap
- * @param {number} cap the cap it was folded at
- * @param {string} word the plural noun the tail is counted in
- * @param {string} [id] the tail's id, aggregateID(tier) by default
+ * @param {number} total nodes before the cap
+ * @param {number} cap
+ * @param {string} word plural noun
+ * @param {string} [id] aggregateID(tier) by default
  * @returns {FiscMark}
  */
 export function aggregateMark(tier, opened, folded, total, cap, word, id) {
@@ -1447,19 +1272,15 @@ export function aggregateMark(tier, opened, folded, total, cap, word, id) {
 }
 
 /**
- * The mark the smallest-flow filter folds one column's small ribbons onto:
- * schema/mark.schema.json, role smaller, worded by the page's smaller_*
- * templates. derived: true, because the city printed no line called "flows
- * under $10,000"; every cent inside is printed and the ribbons into or out of
- * it cite every fact and page they merge.
+ * The smallest-flow filter's mark. derived: true, as no city line is called
+ * "flows under $10,000"; its ribbons cite every fact and page they merge.
  * @param {string} side SMALLER_TO or SMALLER_FROM
  * @param {number} tier
- * @param {number} flows how many printed ribbons it stands for
- * @param {number} smallest the threshold they are under, in cents
- * @param {number} cents what they add up to
- * @param {FiscSource[]} locators every page those ribbons cite
- * @param {number} [slot] the slot of the column it stands in, where the
- *   shaping placed the far ends in slots
+ * @param {number} flows printed ribbons it stands for
+ * @param {number} smallest the threshold, cents
+ * @param {number} cents their sum
+ * @param {FiscSource[]} locators every page they cite
+ * @param {number} [slot]
  * @returns {FiscMark}
  */
 export function smallerMark(side, tier, flows, smallest, cents, locators, slot) {
@@ -1479,60 +1300,34 @@ export function smallerMark(side, tier, flows, smallest, cents, locators, slot) 
 }
 
 /**
- * What the reader has asked the chart to leave out: the fund groups, link
- * kinds and nodes to hide, and the smallest flow drawn as itself, in cents.
- * A fund group among the nodes is hidden as a group among the groups is.
- * app.js's FilterState is this plus the isolation and the node shown alone.
+ * A fund group among `nodes` hides as one among `groups` does.
  * @typedef {{groups: ReadonlySet<string>, kinds: ReadonlySet<string>, nodes?: ReadonlySet<string>, smallest: number}} Removals
  */
 
 /**
- * The leaves a node or group filter names, read in the cells a ribbon draws: `out`,
- * the ids the money of every node filtered out is drawn from; `groups`, the
- * ids every fund group hidden's is; and `only`, the ids the node shown
- * alone's is, or null where none is. Each is the schedule's ids
- * (core.withinNode) and not the chart's, because a hub draws a member's
- * leaves on ribbons with no end at the member.
+ * Schedule ids (withinNode), not the chart's: a hub draws a member's leaves
+ * on ribbons with no end at the member.
  * @typedef {{out: ReadonlySet<string>, groups?: ReadonlySet<string>, only: ReadonlySet<string> | null}} LeafCut
  */
 
 /**
- * A shaped chart with the reader's removals applied: ribbons in a hidden
- * fund group, of a hidden kind, with an end at a hidden node or, where
- * `keeps` is given, not kept by it, REMOVED, then every printed ribbon under
- * the smallest flow but those `keeps` keeps folded onto a smaller-flows
- * mark, then every node no ribbon touches dropped. Figures are untouched: a ribbon is drawn as it
- * came, merged with others by summing cents and unioning facts and pages,
- * or listed in `hidden`, and exactly one of the three -- or, under `leaves`,
- * CUT IN TWO along its cells, one part drawn and the other hidden.
+ * Applies removals: ribbons in a hidden group (either end), kind or node,
+ * or not kept by `keeps`, are removed; printed ribbons under `smallest` fold
+ * onto a smaller-flows mark; untouched nodes drop. Each ribbon is drawn,
+ * merged or hidden, exactly one, or under `leaves` cut in two along its
+ * cells. A node keeps fixedValue only while all its arriving ribbons are
+ * drawn.
  *
- * A RIBBON IS IN A GROUP WHEN EITHER END IS, so hiding a group hides every
- * ribbon touching it, whatever the other end. A node keeps fixedValue only
- * while every ribbon arriving at it is drawn: the figure it fixes is the net
- * of those ribbons.
- *
- * A NODE'S MONEY IS ITS LEAVES, where `leaves` is given: a ribbon kept is
- * drawn without the cells whose leaf has an end among `leaves.out`, and a
- * ribbon `keeps` does not keep is drawn with those among `leaves.only`
- * alone, so the ribbons a hub draws a member's leaves on lose the member's
- * money with it and the hub draws in what it draws out; a ribbon carrying
- * no cells goes whole where an end is among `leaves.out`. Each part is the sum
- * of its cells and cites what they cite (cellSourcesOf). FAILS CLOSED on a
- * cell restating leaves only some of which are named: which part of a total
- * the city printed is whose is not printed. A cell whose leaf has an end
- * among `leaves.groups` goes as one among `leaves.out` does, but one
- * restating leaves only some of which are in a hidden group is drawn whole,
- * and the hub it reaches then draws out more than it draws in: a division's
- * total spans fund groups, and no page prints one group's part of it.
- *
- * @param {FiscProjection} doc  a shaped chart, reductions already drawn forward
- * @param {(n: FiscNode) => string} groupOf  a node's fund group, "" for none
+ * Under `leaves` a node's money is its leaves, so a hub loses a member's
+ * money with it. Fails closed on a cell restating leaves only some of which
+ * are named, except by group: a division's total spans groups and is drawn
+ * whole, as no page prints one group's part.
+ * @param {FiscProjection} doc a shaped chart, reductions drawn forward
+ * @param {(n: FiscNode) => string} groupOf "" for none
  * @param {Removals} state
- * @param {((l: FiscLink) => boolean) | null} [keeps] the ribbons a filter
- *   showing one node's money alone draws whole, or null for every one
+ * @param {((l: FiscLink) => boolean) | null} [keeps] what `only` draws whole
  * @param {LeafCut | null} [leaves]
- * @returns {{doc: FiscProjection, hidden: FiscLink[]}} doc itself where the
- *   state removes and folds nothing; otherwise a new chart marked filtered
+ * @returns {{doc: FiscProjection, hidden: FiscLink[]}} doc itself where nothing changes
  */
 export function filterDocument(doc, groupOf, state, keeps = null, leaves = null) {
   const byID = new Map(doc.nodes.map((n) => [n.id, n]));
@@ -1604,16 +1399,12 @@ export function filterDocument(doc, groupOf, state, keeps = null, leaves = null)
 }
 
 /**
- * Part of a ribbon: the cells `keys` names, at their sum and citing what
- * they cite (cellSourcesOf), drawn the way the ribbon is -- forward where
- * the shaping drew it forward as a reduction. A part claims no completing
- * set, since it is not all of one. FAILS CLOSED on a part drawn netting the
- * other way from its ribbon, which the ribbon's drawing cannot say; a part
- * hidden is only tallied, by its cells at their printed signs
- * (distinctCents), and may net either way.
+ * The cells `keys` names, drawn as the ribbon is; claims no completing set.
+ * Fails closed on a drawn part netting against its ribbon's direction; a
+ * hidden part is only tallied (distinctCents).
  * @param {FiscLink} l
  * @param {string[]} keys
- * @param {boolean} [drawn] false for a part the filters hide
+ * @param {boolean} [drawn] false for a hidden part
  * @returns {FiscLink}
  */
 export function partOf(l, keys, drawn = true) {
@@ -1654,25 +1445,15 @@ export function partOf(l, keys, drawn = true) {
 }
 
 /**
- * Folds every printed ribbon under `smallest` cents onto a smaller-flows
- * mark: each is kept at its LARGER end, sized as capColumn sizes a node, and
- * its other end becomes the mark at that end's column, one per column and
- * side, standing in that end's slot where it has one. Ribbons sharing both ends, kind and cross-tab flag after that are one
- * ribbon, summed and unioned as foldDocument merges; one leg alone is drawn
- * as itself, since a merge of one is worse than none.
- *
- * ONLY A PRINTED RIBBON BETWEEN PRINTED NODES FOLDS: an inferred ribbon, a
- * reduction, and a ribbon touching a mark this client made are drawn
- * whatever their size, because one merged ribbon cannot be drawn as both a
- * printed flow and one of those. So is a ribbon `keep` keeps: the node shown
- * alone draws its own ribbons as themselves, or none would be left for it.
- *
+ * Folds printed ribbons under `smallest` onto one mark per column and side,
+ * keeping each at its larger end; a merge of one is drawn as itself. Only
+ * printed ribbons between printed nodes fold, and none `keep` keeps: one
+ * merged ribbon cannot be both printed and inferred.
  * @param {FiscLink[]} links
  * @param {Map<string, FiscNode>} byID
  * @param {number} smallest cents; 0 folds nothing
- * @param {((l: FiscLink) => boolean) | null} [keep] filterDocument's keeps
- * @returns {{links: FiscLink[], marks: FiscMark[], cut: string[]}} cut: the
- *   ids a folded ribbon no longer arrives at
+ * @param {((l: FiscLink) => boolean) | null} [keep]
+ * @returns {{links: FiscLink[], marks: FiscMark[], cut: string[]}} cut: ids no longer arrived at
  */
 export function foldSmaller(links, byID, smallest, keep = null) {
   if (!(smallest > 0)) return { links: links, marks: [], cut: [] };
@@ -1758,16 +1539,10 @@ export function foldSmaller(links, byID, smallest, keep = null) {
   };
 }
 
-/* ------------------------------------------------------------------ *
- * The figures a mark carries: sums over cited ribbons. A form supplies
- * what only it knows -- where a mark stands -- and computes no figure of
- * its own.
- * ------------------------------------------------------------------ */
+/* ---- A mark's figures: sums over cited ribbons ---- */
 
 /**
- * How much of a mark's figure is printed as reductions: the reductions among
- * the ribbons on the side its figure is read from, the larger of what
- * arrives and what leaves, each ribbon at its magnitude.
+ * Reductions on the larger side, at magnitude.
  * @param {{value_cents: number, contra?: string}[]} arriving
  * @param {{value_cents: number, contra?: string}[]} leaving
  * @returns {number} cents
@@ -1790,12 +1565,8 @@ export function reducedOf(arriving, leaving) {
  */
 
 /**
- * What a sum of links is, beside its cents: inferred where its node is or any
- * link it sums is, since a sum over an inferred figure is not a printed one;
- * and the reduction it is printed as, the words its links share. FAILS CLOSED
- * on links that disagree on the reduction: part reduction and part not, the
- * sum is neither, and would take a share of a total it is no part of or be
- * left out of one it is.
+ * Inferred if the node or any link is; the shared reduction words. Fails
+ * closed on mixed reduction, which would misplace the sum in a share.
  * @param {{derived?: boolean}} node
  * @param {{derived?: boolean, contra?: string}[]} links
  * @param {string} what names the sum, for the refusal
@@ -1816,22 +1587,13 @@ export function sumReading(node, links, what) {
 }
 
 /**
- * The tree one side of the expansion schedule draws at a frontier: every root
- * at `tier`, each with the members the frontier opens under it, and so on
- * down. A root's figure is the sum of the folded ribbons joining it to what
- * is outside it, signed as the fold sums them, so a printed reduction counts
- * against it; a member's is the sum of the ribbons joining it to its parent
- * hub. Both are sums of figures Go cited, at memberships Go declared, and
- * `size` is the magnitude a tile or bar is laid out at. A tile reads as
- * sumReading says of its node and the ribbons it sums.
- *
- * FAILS CLOSED on a root whose outside ribbons both arrive and leave, since
- * no one figure is its size, and on a drawn member joined to its parent by
- * no ribbon, which would draw a tile for no money.
- *
+ * One side's tree at a frontier: roots at `tier`, opened members beneath. A
+ * root's figure is its folded outside ribbons, signed; a member's is its
+ * ribbons to its hub. Fails closed on a root both receiving and sending
+ * outside, and a member with no ribbon to its parent.
  * @param {FiscProjection} doc the expansion schedule
- * @param {Iterable<string>} frontier the node ids drawn, hubs included
- * @param {number} tier the roots drawn: a spine column
+ * @param {Iterable<string>} frontier hubs included
+ * @param {number} tier a spine column
  * @returns {{roots: SideTile[], cents: number, size: number}}
  */
 export function sideTree(doc, frontier, tier) {

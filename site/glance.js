@@ -1,11 +1,9 @@
 // @ts-check
 /**
- * fisc — the client module the glance page, index.html, loads. Each bar's table is
- * server-rendered with every cell Go cited; this module groups the rows,
- * sums each group, states each group's share of the sum as a percentage,
- * and draws one bar per table. Every sum and share is ours, marked ◇;
- * the projection's total over every cell of the kind is beside the bar,
- * written by Go. Importing it runs nothing; the template calls boot().
+ * fisc — the glance page's module; the template calls boot(). Groups each
+ * server-rendered table's rows, sums and shares each group, and draws one
+ * bar per table. Sums and shares are ours, marked ◇; Go writes the
+ * projection's total beside the bar.
  */
 
 import {
@@ -20,9 +18,8 @@ import {
  */
 
 /**
- * Reads the cells Go rendered into rows. Refuses a row with no group, no
- * label or a figure that is not an integer: a cell the page cannot name is
- * not drawn as part of a bar.
+ * Refuses a row with no group, no label or a non-integer figure: a cell the
+ * page cannot name is not drawn.
  * @param {HTMLTableElement} table
  * @returns {Row[]}
  */
@@ -48,7 +45,7 @@ export function readRows(table) {
 }
 
 /**
- * Sums the rows by group, in order of first appearance.
+ * In first-appearance order.
  * @param {Row[]} rows
  * @returns {Segment[]}
  */
@@ -68,9 +65,8 @@ export function groupRows(rows) {
 }
 
 /**
- * Ranks the groups largest first and folds every group past the NAMED
- * largest into one tail, unless that tail would hold a single group, which
- * is named instead. The whole is the sum of every group, folded or not.
+ * Largest first, past NAMED folded into a tail unless it would hold one.
+ * The whole sums every group.
  * @param {Segment[]} groups
  * @returns {{ segments: Segment[], whole: number }}
  */
@@ -90,15 +86,10 @@ export function rank(groups) {
 }
 
 /**
- * Fills one bar's figure from its table: the track of segments, the legend
- * naming each with its share of the whole, and the sentence stating the
- * sum as ours. The figure's markup is the template's; this fills it in.
- * Each segment's tip pins on a click and links the pages its rows cite,
- * each to the page text the table's own link names (`a[data-page]`) and
- * to the PDF page its `data-pdf` names.
- * Returns what it drew.
+ * Fills the template's bar: segments, legend with shares, the ◇ sentence. A
+ * segment's tip links its rows' pages via `a[data-page]` and `data-pdf`.
  * @param {HTMLElement} section
- * @param {ReturnType<typeof tipper>} [tips] the page's tooltip
+ * @param {ReturnType<typeof tipper>} [tips]
  * @returns {{ segments: Segment[], whole: number, rows: number }}
  */
 export function draw(section, tips = tipper(section.ownerDocument)) {
@@ -166,10 +157,7 @@ export function draw(section, tips = tipper(section.ownerDocument)) {
 }
 
 /**
- * Shows the one year section `key` names and hides the others, moves the
- * year select to it and carries it onto the top bar's links. A key no
- * section carries shows the year the select is on. With no select, every
- * year stays shown.
+ * An unknown key shows the select's year; with no select every year shows.
  * @param {Document} doc
  * @param {string} key
  * @returns {string} the key shown, or "" with no select
@@ -186,11 +174,7 @@ export function showYear(doc, key) {
   return shown;
 }
 
-/**
- * Draws every bar on the page, then shows the year the hash names, `#y=`,
- * or the one the year select opens on, and wires the select to switch.
- * @param {Document} doc
- */
+/** @param {Document} doc */
 export function boot(doc) {
   const tips = tipper(doc);
   for (const section of Array.from(doc.querySelectorAll("section.glance-bar"))) {

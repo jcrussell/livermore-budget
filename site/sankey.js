@@ -1,16 +1,9 @@
 // @ts-check
 /**
- * fisc — the Sankey form: what depends on the screen and on ribbons. The
- * expansion folded to a frontier, capped per split and stamped with its
- * slots, the reductions flipped so d3-sankey can draw them, and the layout
- * helpers. Every figure it draws is core.js's: a fold, a cap, a sum over
- * cited ribbons. It reads of a chart `chart.sankey`, and nothing of any
- * other form's.
- *
- * STATELESS BY RULE, as core.js is: no module-level `let`, no global read at
- * import. d3 is read through globalThis when a layout asks for it; the
- * frontier and the splits drawn whole are passed in by app.js, which holds
- * them. A type named here is one of app.js's typedefs.
+ * fisc — the Sankey form: the expansion folded, capped and slotted, the
+ * reductions flipped for d3-sankey, and layout helpers. Every figure is
+ * core.js's; it reads only `chart.sankey`. Stateless as core.js is: d3 is
+ * read through globalThis when asked, and app.js passes in its state.
  */
 
 import {
@@ -28,14 +21,11 @@ export const RIBBON_GAP = 2;
 export const CHART_HEIGHT = 820;
 
 /**
- * The canvas a chart is laid out on, in px: under a declared sankey.grow,
- * node_px for each node of the busiest slot of `nodes`, never shorter than
- * its floor or than `room`, and never taller than its ceiling; else
- * CHART_HEIGHT, which no room moves, since nothing caps it.
+ * Under sankey.grow, node_px per node of the busiest slot, clamped to the
+ * floor, `room` and the ceiling; else CHART_HEIGHT, which no room moves.
  * @param {FiscChart | null | undefined} chart
- * @param {{id: string, tier: number, slot?: number}[]} [nodes] what is drawn on it
- * @param {number} [room] the screen's height for the chart, in its own units;
- *   0 or absent where the page has measured none
+ * @param {{id: string, tier: number, slot?: number}[]} [nodes]
+ * @param {number} [room] chart units; 0 or absent where unmeasured
  * @returns {number}
  */
 export function canvasHeight(chart, nodes, room) {
@@ -48,7 +38,6 @@ export function canvasHeight(chart, nodes, room) {
 }
 
 /**
- * How many nodes the fullest column of `nodes` holds, placed by slotsOf.
  * @param {{id: string, tier: number, slot?: number}[]} nodes
  * @param {number[]} tiers
  * @returns {number}
@@ -61,17 +50,14 @@ export function busiestSlot(nodes, tiers) {
 }
 
 /**
- * A ribbon under this width on a declared canvas, in px, is drawn as a
- * hairline: a stroke one screen pixel wide whatever the zoom, which style.css
- * sets, under a wider transparent hit target the pointer can find.
+ * px under which a ribbon on a declared canvas is a one-screen-pixel
+ * hairline (style.css) under a wider hit target.
  */
 export const HAIRLINE = 1;
 
 /**
- * Whether a ribbon is drawn as a hairline: under HAIRLINE on a chart that
- * declares its canvas (sankey.grow), the one kind of chart
- * whose thin ribbons are accepted rather than folded away. On the form's own
- * canvas a ribbon keeps the stroke floor every chart has.
+ * Only under sankey.grow, where thin ribbons are accepted rather than
+ * folded; elsewhere a ribbon keeps the stroke floor.
  * @param {FiscChart | null | undefined} chart
  * @param {LaidLink} d
  * @returns {boolean}
@@ -82,37 +68,23 @@ export function isHairline(chart, d) {
 }
 
 /**
- * Room either side of the plot for node labels, in px. Only the two end
- * columns anchor labels outward, so it does not grow with the column count.
- * labelWords fits an outward label to it; site/layout.test.mjs pins what
- * that fit draws.
+ * Label room either side, px. Only end columns label outward, so it does not
+ * grow with columns; site/layout.test.mjs pins what labelWords fits to it.
  */
 export const LABEL_GUTTER = 320;
 
-/**
- * The clear run between one column's rects and the next's, in px, up to
- * HELD_COLUMNS columns.
- */
+/** px between columns, up to HELD_COLUMNS. */
 export const BAND = 319;
 
-/**
- * The column count whose width a wider chart is held to: past it the bands
- * narrow (bandOf) rather than the chart widening.
- */
+/** Past this many columns the bands narrow (bandOf) instead of widening. */
 export const HELD_COLUMNS = 4;
 
-/**
- * The narrowest band, in px. Past it the chart widens again. site/layout.test.mjs prints what an interior label keeps of its
- * name at this floor.
- */
+/** Narrowest band, px; past it the chart widens. site/layout.test.mjs prints what a label keeps here. */
 export const BAND_FLOOR = 160;
 
 /**
- * How wide a chart of `n` columns is laid out, in px: at BAND up to
- * HELD_COLUMNS, then held at that width while the bands narrow to
- * BAND_FLOOR, then at the floor. Labels do not reflow, so the chart is laid
- * out at a fixed width, and style.css draws every width at the one scale the
- * opening chart fits its card at.
+ * Fixed widths, since labels do not reflow; style.css draws every width at
+ * the opening chart's scale.
  * @param {number} n
  * @returns {number}
  */
@@ -126,8 +98,6 @@ export function chartWidth(n) {
 }
 
 /**
- * The clear run between one column's rects and the next's in a chart of `n`
- * columns, in px, as chartWidth lays them out.
  * @param {number} n
  * @returns {number}
  */
@@ -137,18 +107,12 @@ export function bandOf(n) {
 }
 
 /**
- * Draws every ribbon the schedule prints as a reduction forward, at its
- * magnitude, carrying the sentence the document put on it.
- *
- * A RIBBON IS NEVER REVERSED: a backward ribbon adds a column d3-sankey's
- * layering pass throws on. The contra words are the document's, from Go.
- *
- * The two arms here are about the drawn chart only: a fold sums ribbons, so a
- * merged ribbon can go negative with no printed reduction (named for what it
- * is) or positive despite one (loses the sentence).
- *
- * @param {FiscProjection} drawn  shaped and folded
- * @returns {FiscProjection} drawn itself when nothing in it is negative
+ * Draws printed reductions forward at magnitude with the document's words.
+ * Never reversed: a backward ribbon adds a column d3-sankey's layering
+ * throws on. A fold can net a ribbon negative with no printed reduction, or
+ * positive despite one; both are handled here.
+ * @param {FiscProjection} drawn shaped and folded
+ * @returns {FiscProjection} drawn itself when nothing is negative
  */
 export function markContra(drawn) {
   if (!drawn.links.some((l) => l.value_cents < 0 || l.contra)) return drawn;
@@ -166,8 +130,6 @@ export function markContra(drawn) {
 }
 
 /**
- * Whether every ribbon on a laid node is a contra one: a line the schedule
- * prints as a reduction, whose own figure is therefore negative.
  * @param {LaidNode} d
  * @returns {boolean}
  */
@@ -177,9 +139,7 @@ export function isContraNode(d) {
 }
 
 /**
- * Whether every ribbon on a laid node is a partition one, so the mark's whole
- * figure is a cross-tab total rather than money that moved through it. All or
- * nothing, as isContraNode is.
+ * All or nothing, as isContraNode: the whole figure is then a cross-tab total.
  * @param {LaidNode} d
  * @returns {boolean}
  */
@@ -189,8 +149,7 @@ export function isPartitionNode(d) {
 }
 
 /**
- * The figure a laid mark prints: negative for a contra ribbon and for a line
- * whose every ribbon is one, and d3's value otherwise.
+ * Negative for a contra ribbon or an all-contra node, else d3's value.
  * @param {LaidLink | LaidNode} d
  * @returns {number}
  */
@@ -204,13 +163,8 @@ export function markCents(d) {
 }
 
 /**
- * The region a mark's arriving ribbons hang into, for a mark printed net of
- * reductions drawn forward, and null for every other mark.
- *
- * The box is the published net figure, so the gross arriving stack overhangs
- * it; drawing the overhang avoids a box sized to a figure no page prints. It
- * is pixels and carries no cents.
- *
+ * The overhang of gross arriving ribbons past a net box, or null. Drawing it
+ * avoids a box sized to an unprinted figure; pixels only.
  * @param {LaidNode} d
  * @returns {{y:number, height:number} | null}
  */
@@ -223,9 +177,8 @@ export function contraBand(d) {
 }
 
 /**
- * How much of a mark's figure is printed as reductions, for a node with contra
- * ribbons among others, and "" for every other node -- a contra line's own
- * mark included, whose figure is the reduction and is already signed.
+ * For a node with contra ribbons among others; "" otherwise, including a
+ * contra line, whose figure is already signed.
  * @param {LaidNode} d
  * @returns {string}
  */
@@ -238,10 +191,8 @@ export function contraNote(d) {
 }
 
 /**
- * Re-stacks each node's ribbons in the order of the ends they run to.
- *
- * d3-sankey sorts before its last relaxation move, so ribbons can cross at the
- * node face for no reason in the data. Widths are untouched.
+ * d3-sankey sorts before its last relaxation, so ribbons cross at the face
+ * for no reason in the data. Widths untouched.
  * @param {{nodes:LaidNode[], links:LaidLink[]}} graph
  */
 export function restackLinks(graph) {
@@ -252,8 +203,8 @@ export function restackLinks(graph) {
 
   for (const node of graph.nodes) {
     node.sourceLinks.sort(byOtherEnd((l) => l.target));
-    // CONTRA LAST ON THE ARRIVING SIDE, so reductions stack inside the band.
-    // A tiebreak, not a reorder: nodeRank's crossing count rests on that.
+    // Contra last on the arriving side, inside the band; a tiebreak only, as
+    // nodeRank's crossing count relies on.
     node.targetLinks.sort((a, b) =>
       Number(Boolean(a.contra)) - Number(Boolean(b.contra)) ||
       byOtherEnd((l) => l.source)(a, b));
@@ -274,16 +225,10 @@ export function restackLinks(graph) {
   }
 }
 
-/**
- * The tallest a fund's mark is drawn, as a share of the canvas inside its
- * margins: a page's own constant and not a Go hint, since it is about the
- * screen.
- */
+/** A fund mark's tallest share of the canvas: about the screen, so not a Go hint. */
 export const FUND_MAX_SHARE = 0.35;
 
 /**
- * Whether a laid node is a fund's mark: a fund group, or a fund drawn as one
- * of its members.
  * @param {FiscNode | LaidNode} d
  * @returns {boolean}
  */
@@ -292,8 +237,6 @@ export function isFundMark(d) {
 }
 
 /**
- * How wide a laid ribbon is drawn where it meets its source or its target, in
- * px: its width, except at a clamped mark's face (clampFunds).
  * @param {LaidLink} l
  * @param {"source" | "target"} end
  * @returns {number}
@@ -304,17 +247,12 @@ export function endWidth(l, end) {
 }
 
 /**
- * Cuts every fund's mark taller than FUND_MAX_SHARE of the canvas between
- * `top` and `bottom` to that height, so one fund cannot swamp its column.
- *
- * The mark keeps its top; every mark below it in its column moves up by the
- * height freed, and the column is moved back to centre on where it stood. Its
- * ribbons keep their width (d3's, the figure's) at their far end and narrow
- * by the same ratio at the cut face, recorded as w0 (at the source) and w1
- * (at the target), which restackLinks stacks by. A cut mark carries that
- * ratio as `clamped`. Pixels only: no figure moves. A canvas whose bottom
- * stands above its top cuts a mark to nothing, never to a negative height.
- * @param {{nodes: LaidNode[], links: LaidLink[]}} graph laid by d3-sankey
+ * Cuts a fund mark taller than FUND_MAX_SHARE, so one fund cannot swamp its
+ * column. It keeps its top; marks below move up and the column recentres.
+ * Ribbons keep d3's width at the far end and narrow at the cut face (w0/w1);
+ * the mark carries the ratio as `clamped`. Pixels only. A canvas upside
+ * down cuts to nothing, never negative.
+ * @param {{nodes: LaidNode[], links: LaidLink[]}} graph
  * @param {number} top
  * @param {number} bottom
  */
@@ -350,8 +288,7 @@ export function clampFunds(graph, top, bottom) {
 }
 
 /**
- * Whether clampFunds cut a laid mark. A ratio of 0, a mark cut to nothing on
- * a canvas too short for any, is still a cut.
+ * A ratio of 0 is still a cut.
  * @param {LaidNode} d
  * @returns {boolean}
  */
@@ -360,8 +297,6 @@ export function isClamped(d) {
 }
 
 /**
- * Whether a laid ribbon is drawn as a band narrowing from one end to the
- * other (taperPath) rather than as a stroke of one width.
  * @param {LaidLink} d
  * @returns {boolean}
  */
@@ -370,9 +305,7 @@ export function isTapered(d) {
 }
 
 /**
- * A tapered ribbon's outline: d3.sankeyLinkHorizontal's curve at each edge,
- * each end its own width less the RIBBON_GAP a stroked ribbon gives up, and
- * never under the 1px a stroke is floored at.
+ * Each edge on d3.sankeyLinkHorizontal's curve, less RIBBON_GAP, floored at 1px.
  * @param {LaidLink} d
  * @returns {string}
  */
@@ -387,8 +320,6 @@ export function taperPath(d) {
 }
 
 /**
- * Two short strokes across a cut mark near its foot, where its height was
- * taken off; "" for a mark drawn whole.
  * @param {LaidNode} d
  * @returns {string}
  */
@@ -400,8 +331,6 @@ export function cutMark(d) {
 }
 
 /**
- * What the page says of a mark drawn shorter than its figure (clampFunds),
- * and "" of every other mark: a sentence about the drawing, carrying no cents.
  * @param {LaidNode} d
  * @returns {string}
  */
@@ -414,30 +343,18 @@ export function clampNote(d) {
 }
 
 /**
- * How many slots one spine column's extend splits may run across: a slot's
- * order key is its spine column times this, plus ROOT_SLOT, plus its depth
- * after its root or less its depth before it.
+ * Slots per spine column: key = column * SLOT_DEPTH + ROOT_SLOT ± depth.
  */
 export const SLOT_DEPTH = 10;
 
-/**
- * A root's slot within its spine column's SLOT_DEPTH: an extend chain stands
- * at most ROOT_SLOT slots before its root and SLOT_DEPTH - ROOT_SLOT - 1
- * after it.
- */
+/** A chain may stand ROOT_SLOT slots before its root and SLOT_DEPTH - ROOT_SLOT - 1 after. */
 const ROOT_SLOT = SLOT_DEPTH / 2;
 
 /**
- * THE PLACEMENT: the column each node is drawn in, by id, numbered from 0 with
- * no column empty. A node's order key is its `slot` where its shaping stamped
- * one (expansionOf), and otherwise its tier's place in `tiers`, the tier set
- * on screen being one slot assignment among others. The keys present are
- * ranked, so a column nothing is placed in is not one, and d3-sankey, which
- * throws on an empty leading or interior column, is never handed one.
- *
- * A node at a tier `tiers` does not hold, with no slot, is left out; with no
- * tiers and no slots the map is empty and d3 justifies.
- *
+ * The placement: each node's column from 0, none empty. The key is `slot`
+ * where stamped (expansionOf), else the tier's place in `tiers`; keys are
+ * ranked, since d3-sankey throws on an empty column. An unplaced tier is
+ * left out; with no tiers or slots the map is empty and d3 justifies.
  * @param {{id: string, tier: number, slot?: number}[]} nodes
  * @param {number[]} tiers the columns on screen, in order
  * @returns {Map<string, number>}
@@ -457,20 +374,12 @@ export function slotsOf(nodes, tiers) {
 }
 
 /**
- * The slot order key of every node of the expansion schedule, read off its
- * parent chain in the UNFOLDED schedule: a root at its tier's place in the
- * spine's column order, and a member in the slot directly after its
- * parent's, or directly before it, on the side its split declares -- before
- * a source's, whose members pay into it, so opening it moves nothing to its
- * right. No link is read to infer a side. Every split from one slot opens
- * into the same next or previous slot.
- *
- * FAILS CLOSED on a root at a tier the spine does not draw, a member of no
- * split the schedule declares, a member of a split of any form but extend, a
- * split declaring no side, a member opening back the way its own parent
- * opened, which would stand it in its grandparent's slot, and an extend
- * chain past the slots its root has on that side (ROOT_SLOT).
- *
+ * Slot keys from the unfolded parent chains: a root at its spine column, a
+ * member one slot after or before its parent per its split's side (before a
+ * source, so opening moves nothing right). No link is read for a side.
+ * Fails closed on an undrawn tier, an undeclared or non-extend split, no
+ * side, a member opening back into its grandparent's slot, and a chain past
+ * ROOT_SLOT.
  * @param {FiscProjection} expansion
  * @param {number[]} tiers the spine's column order
  * @returns {Map<string, number>}
@@ -480,8 +389,7 @@ export function expansionSlots(expansion, tiers) {
   /** @type {Map<string, string>} */
   const formOf = new Map();
   /**
-   * The slot step each split's members take from its node, by node\u001fkey:
-   * +1 after it, -1 before it, 0 on a side Go did not declare.
+   * By node\u001fkey: +1 after, -1 before, 0 where no side is declared.
    * @type {Map<string, number>}
    */
   const stepOf = new Map();
@@ -518,8 +426,7 @@ export function expansionSlots(expansion, tiers) {
       const above = slotOf(up, hops + 1);
       const step = stepOf.get(up.id + "\u001f" + key) ?? 0;
       const within = (above % SLOT_DEPTH) + step;
-      // A member opening back the way its parent opened stands where its
-      // grandparent does.
+      // Opening back the way its parent opened would land in the grandparent's slot.
       const back = step !== 0 && Math.sign((above % SLOT_DEPTH) - ROOT_SLOT) === -step;
       if (form === "extend" && step !== 0 && !back && within >= 0 && within < SLOT_DEPTH) slot = above + step;
       else {
@@ -540,19 +447,14 @@ export function expansionSlots(expansion, tiers) {
 }
 
 /**
- * The expansion schedule as drawn at a frontier: the one fold, each open
- * split whose key sankey.split_caps caps and that is not in `whole` folded
- * to its largest members and a tail (capColumn over that split's drawn
- * members alone), the tails' parallel ribbons merged by folding again onto
- * every node now drawn, and every node stamped with its slot. A tail sits in
- * its members' slot, hangs from the node they split, and its note is finished
- * with the figure only the folded document knows.
- *
- * @param {FiscProjection} expansion the expansion schedule
+ * The schedule at a frontier: one fold, each capped split not in `whole`
+ * folded to its largest members and a tail, folded again to merge the
+ * tails' ribbons, and slots stamped. A tail sits in its members' slot under
+ * their node.
+ * @param {FiscProjection} expansion
  * @param {Iterable<string>} frontier
- * @param {FiscChart} chart the overview, whose tiers are the spine's columns
- * @param {ReadonlySet<string>} whole the splits drawn whole rather than
- *   capped, each node\u001fkey
+ * @param {FiscChart} chart the overview
+ * @param {ReadonlySet<string>} whole node\u001fkey of splits drawn uncapped
  * @returns {FiscProjection}
  */
 export function expansionOf(expansion, frontier, chart, whole) {
@@ -592,13 +494,8 @@ export function expansionOf(expansion, frontier, chart, whole) {
 }
 
 /**
- * Which column d3-sankey puts a node in: its slot (slotsOf), or d3's own
- * justify when nothing places any node.
- *
- * Justify puts a link-less sink in the last column, wrong once columns can be
- * skipped. A node the slots do not place is answered -1, which d3 clamps
- * into the first column.
- *
+ * Justify puts a link-less sink last, wrong once columns are skipped; an
+ * unplaced node gets -1, which d3 clamps to the first column.
  * @param {Map<string, number>} slots
  * @returns {(d: LaidNode) => number}
  */
@@ -609,12 +506,7 @@ export function alignFor(slots) {
 }
 
 /**
- * The column a node was drawn in: its slot.
- *
- * NOT d.depth, the longest path to the node, which differs wherever no ribbon
- * reaches a node from the column before it. Not d.layer either, except in a
- * view that places nothing, where sankeyJustify chose the columns.
- *
+ * Not d.depth (the longest path), and d.layer only where nothing is placed.
  * @param {Map<string, number>} slots
  * @param {LaidNode} d
  * @returns {number}
@@ -625,15 +517,11 @@ export function columnOf(slots, d) {
 }
 
 /**
- * Where a node's label goes: the side it is anchored on, and the point.
- *
- * A LABEL MAY RUN OUTWARD ONLY INTO A GUTTER, and only the first and last
- * columns have one. An interior label is centred above its rect, in the
- * NODE_PADDING gap, rather than across the ribbons the next column receives.
- *
- * @param {Map<string, number>} slots the placement (slotsOf)
+ * Only end columns have a gutter to label outward into; an interior label
+ * centres above its rect in the NODE_PADDING gap.
+ * @param {Map<string, number>} slots
  * @param {LaidNode} d
- * @param {number} last the largest column index this chart drew
+ * @param {number} last the largest column index drawn
  * @returns {{anchor: string, x: number, y: number, dy: string|null}}
  */
 export function labelPlacement(slots, d, last) {
@@ -652,16 +540,12 @@ export const GLYPH_R = 6;
 export const GLYPH_GAP = 3;
 
 /**
- * Where a node's ⊕ or ⊖ is centred: beside its rect, mid-height, on the side
- * its label is not -- the ribbons' side, right of the rect, and left of it in
- * the last column, whose labels run right into the gutter. An interior rect
- * too short to hold it between its own label above and the next label below
- * has it at the end of its label's line instead, past the label's width.
- *
- * @param {Map<string, number>} slots the placement (slotsOf)
+ * Beside the rect on the ribbons' side (left in the last column); a rect too
+ * short to hold it puts it after its label.
+ * @param {Map<string, number>} slots
  * @param {LaidNode} d
- * @param {number} last the largest column index this chart drew
- * @param {number} width how wide the node's label draws (labelAdvance)
+ * @param {number} last the largest column index drawn
+ * @param {number} width labelAdvance
  * @returns {{x: number, y: number}}
  */
 export function glyphPlacement(slots, d, last, width) {
@@ -676,20 +560,12 @@ export function glyphPlacement(slots, d, last, width) {
 }
 
 /**
- * Each mark's parent label, on every mark whose label another mark in the same
- * column also carries; nothing elsewhere.
- *
- * AN AMBIGUITY IS A PROPERTY OF THE COLUMN, NOT THE NODE, so it is decided here
- * rather than in the document. The parent is the one `doc` gives the mark, and
- * is looked up there, not in the laid graph: the fold blanks the parent of a
- * node whose parent is split open, and the chart does not draw it. A mark
- * `doc` does not carry, a tail, keeps the parent it was laid with. A duplicate
- * whose parent is unnameable gets "" and stays ambiguous rather than invented.
- *
+ * Parent labels on marks whose label repeats in their column: ambiguity is
+ * the column's. The parent comes from `doc`, since the fold blanks a parent
+ * split open; a tail keeps its laid parent; unnameable gets "", not invented.
  * @param {LaidNode[]} nodes
- * @param {{nodes: FiscNode[]} | null} doc the unfolded nodes the chart was
- *   folded from
- * @param {Map<string, number>} slots the placement (slotsOf)
+ * @param {{nodes: FiscNode[]} | null} doc the unfolded nodes
+ * @param {Map<string, number>} slots
  * @returns {Map<string, string>}
  */
 export function labelQualifiers(doc, slots, nodes) {
@@ -716,17 +592,9 @@ export function labelQualifiers(doc, slots, nodes) {
 }
 
 /**
- * The noun each mark is told apart from its parent by, on every mark the
- * document prints in its parent's words; nothing elsewhere. An extended
- * split draws its node and its members side by side, so a member labelled as
- * its parent would read as the same thing twice.
- *
- * The parent is the one `doc` gives the mark, as labelQualifiers reads it.
- * The noun is `nounOf`'s, the page's words for one member of the split the
- * mark belongs to; a mark it names nothing for keeps its label alone.
- *
- * @param {{nodes: FiscNode[]} | null} doc the unfolded nodes the chart was
- *   folded from
+ * Member nouns for marks printed in their parent's words: an extend split
+ * draws both side by side, so it would read as one thing twice.
+ * @param {{nodes: FiscNode[]} | null} doc the unfolded nodes
  * @param {LaidNode[]} nodes
  * @param {(id: string) => string} nounOf
  * @returns {Map<string, string>}
@@ -743,11 +611,7 @@ export function labelNouns(doc, nodes, nounOf) {
   return out;
 }
 
-/**
- * The advance a label's words are fitted at, in em: an over-estimate on
- * purpose, wider than any usual face sets `system-ui`, so the error runs
- * toward cutting a label that would have fitted.
- */
+/** em per character, over-estimated so the error cuts a label that would have fitted. */
 export const ADVANCE_EM = 0.6;
 
 /** The px style.css sets a label's words and its flags at. */
@@ -757,7 +621,6 @@ export const LABEL_PX = 12;
 export const VALUE_PX = 11;
 
 /**
- * How wide `text` draws at `px` at most, by ADVANCE_EM.
  * @param {string} text
  * @param {number} px
  * @returns {number}
@@ -767,11 +630,9 @@ export function textAdvance(text, px) {
 }
 
 /**
- * How wide a mark's label draws at most, by ADVANCE_EM: the qualifier, label
- * and noun tspans at LABEL_PX on one line, and the value and flags after them.
- * @param {{qualifier: string, label: string, noun?: string}} words what labelWords draws
- * @param {string} value the value tspan's words
- * @param {string} flags the flag tspan's words
+ * @param {{qualifier: string, label: string, noun?: string}} words
+ * @param {string} value
+ * @param {string} flags
  * @returns {number}
  */
 export function labelAdvance(words, value, flags) {
@@ -780,11 +641,9 @@ export function labelAdvance(words, value, flags) {
 }
 
 /**
- * The run a label may draw over, in px: from an outward label's anchor to
- * the edge of the chart, and for an interior label, centred on its rect, its
- * column's rect and half the band either side (bandOf).
+ * To the chart edge outward; interior, its rect and half a band either side.
  * @param {{anchor: string, x: number}} place labelPlacement's answer
- * @param {number} columns how many columns the chart is laid out in
+ * @param {number} columns
  * @returns {number}
  */
 export function labelRoom(place, columns) {
@@ -794,29 +653,18 @@ export function labelRoom(place, columns) {
 }
 
 /**
- * The words a mark's qualifier, label and noun tspans draw, fitted to `room`.
- *
- * EVERY LABEL IS ONE LINE, its qualifier inline as "Qualifier: " and its noun
- * after it as " (noun)", because d3 holds only NODE_PADDING between two marks
- * and canvasHeight counts marks, not lines. Where it is wider than its room
- * by `measure`, the middle of its OWNER is cut for an ellipsis: the label's
- * words before its last ": ", else the qualifier, else, beside a noun, the
- * label. The ": Category" after it, the noun and the value are kept, and so
- * are the owner's first word and as much of its end as fits, since funds that
- * share a prefix differ at the end ("County Meas BB-Bike/Pedestrian", "County
- * Meas BB-Local St & Rd"). Where the owner cut to two characters still does
- * not fit, the whole line is cut as one owner, each tspan keeping what is
- * left of its own words; a label too wide even then is drawn so, and the room
- * checks under site/ see it.
- *
- * The text stays Go's; this only fits it to the screen.
- *
+ * Fits a label to `room`. One line always: d3 holds only NODE_PADDING
+ * between marks and canvasHeight counts marks. An overlong label has its
+ * owner's middle cut (the words before the last ": ", else the qualifier,
+ * else the label), keeping its first word and end, since funds sharing a
+ * prefix differ at the end ("County Meas BB-Bike/Pedestrian"). If two
+ * characters still overflow, the whole line is cut as one owner. Go's text,
+ * only fitted.
  * @param {number} room labelRoom
- * @param {string} qualifier labelQualifiers' answer for the mark, or ""
+ * @param {string} qualifier or ""
  * @param {string} label
  * @param {(words: {qualifier: string, label: string, noun: string}) => number} measure
- *   how wide the whole label draws in these words, value and flags included
- * @param {string} [noun] labelNouns' answer for the mark, or ""
+ * @param {string} [noun] or ""
  * @returns {{qualifier: string, label: string, noun: string, cut: boolean}}
  */
 export function labelWords(room, qualifier, label, measure, noun = "") {
@@ -840,12 +688,10 @@ export function labelWords(room, qualifier, label, measure, noun = "") {
 }
 
 /**
- * What each of `parts` keeps of its own words where their join is cut to
- * `head`, an ellipsis and `tail` (cutOwner), the ellipsis in the part the
- * cut opens in; every part whole where `tail` is null.
+ * Each part's share of a join cut to `head`…`tail`; whole where tail is null.
  * @param {string[]} parts
- * @param {string} head a prefix of the join
- * @param {string | null} tail a suffix of the join, or null where nothing is cut
+ * @param {string} head
+ * @param {string | null} tail
  * @returns {string[]}
  */
 function keptOf(parts, head, tail) {
@@ -864,11 +710,8 @@ function keptOf(parts, head, tail) {
 }
 
 /**
- * The most of `owner`'s characters, at least two, that `words` draws within
- * `room`: its first word leads and its end takes the rest, since names here
- * share a prefix ("Grant - ", "County Meas BB-") more than an end.
- * `words` is handed the owner as drawn, and what of its front and its end it
- * keeps either side of the ellipsis; its end is null where nothing is cut.
+ * The most of `owner` (two characters at least) that fits: first word, then
+ * the end, since names share prefixes ("Grant - ") more than ends.
  * @param {string} owner
  * @param {(owner: string, head: string, tail: string | null) => {qualifier: string, label: string, noun: string}} words
  * @param {number} room
@@ -897,15 +740,10 @@ function cutOwner(owner, words, room, measure) {
 }
 
 /**
- * The share one mark is of the money in its column, as a percentage.
- *
- * IT IS ARITHMETIC AND SAYS SO: no page prints it. Computed from the DRAWN
- * values. A printed reduction (isContraNode) is drawn at its size but is no
- * part of the column's money, so it has no share and is left out of every
- * other mark's total.
- *
+ * A mark's share of its column's drawn money. Arithmetic, and says so. A
+ * printed reduction has no share and is in no total.
  * @param {LaidNode} d
- * @param {LaidNode[]} laid every laid node of the chart
+ * @param {LaidNode[]} laid
  * @returns {string}
  */
 export function columnShare(laid, d) {
@@ -925,14 +763,12 @@ export function columnShare(laid, d) {
 }
 
 /**
- * Sort key inside a column. A fund group is its own place; anything else is
- * the value-weighted mean place of the fund groups it touches (a barycentre),
- * or, touching none, its own group's place.
- * Supplying a nodeSort is what pins the fund column to the palette's order.
- * Ties fall to the caller's tie-break on value.
+ * Sort key in a column: a fund group's own place, else the value-weighted
+ * mean place of the groups it touches, else its own group's. A nodeSort is
+ * what pins the fund column to the palette's order.
  * @param {LaidNode} node
- * @param {(node: FiscNode | LaidNode) => string} groupOf a node's fund group
- * @param {(id: string) => number} placeOf a fund group's place in the drawn order
+ * @param {(node: FiscNode | LaidNode) => string} groupOf
+ * @param {(id: string) => number} placeOf
  * @returns {number}
  */
 export function nodeRank(groupOf, placeOf, node) {
@@ -942,8 +778,7 @@ export function nodeRank(groupOf, placeOf, node) {
   let place = 0;
   for (const l of node.sourceLinks.concat(node.targetLinks)) {
     const other = l.source === node ? l.target : l.source;
-    // The neighbour's fund group, not the neighbour: once a group splits, the
-    // ends are funds and divisions.
+    // The neighbour's group: once a group splits, ends are funds and divisions.
     const group = groupOf(other);
     // A node in no fund group is ignored rather than counted as position zero.
     if (!group) continue;
@@ -952,32 +787,19 @@ export function nodeRank(groupOf, placeOf, node) {
     weight += l.value;
   }
   if (weight) return place / weight;
-  // NO NEIGHBOUR IN A GROUP: a node whose every neighbour is in no fund
-  // group rests at its own group's place, which its parent chain names. A
-  // node in no group either sorts to the top, and its own value breaks the tie.
+  // No grouped neighbour: its own group's place; groupless sorts top, value breaks ties.
   const own = groupOf(node);
   return own ? placeOf(own) : 0;
 }
 
 /**
- * The links layOutAt hands d3-sankey beside the drawn ones so a path runs
- * through every column the slots declare: none where the drawn ribbons
- * already reach the last, and otherwise one zero-value link at each column
- * no drawn path reaches, from a node the path does reach in the column before.
- *
- * d3-sankey draws one column per step of the longest path, plus one, and
- * nodeAlign can pick among those columns but never add one; two extend splits
- * open together can declare a slot further right than any ribbon reaches.
- * A zero-value link adds no height and pulls no node in d3's relaxation, but
- * d3 still spaces it among its ends' ribbons, so it can nudge where their
- * other ribbons aim: none is added where a drawn path already spans the slots.
- *
- * NONE where a drawn ribbon does not run forward in the slots: a scaffold
- * there could close a cycle, which d3 throws on, so the clamp check is left
- * to refuse the layout.
- *
+ * Zero-value links so a path spans every slot: d3-sankey adds a column only
+ * per step of the longest path, and two open extend splits can declare a
+ * slot no ribbon reaches. None where drawn paths already span (a scaffold
+ * can nudge ribbon aims), and none where a ribbon runs backward in the slots:
+ * a scaffold could close a cycle, so the clamp check refuses instead.
  * @param {FiscProjection} drawn
- * @param {Map<string, number>} slots slotsOf
+ * @param {Map<string, number>} slots
  * @returns {{source: string, target: string, value: number, scaffold: true}[]}
  */
 export function scaffoldOf(drawn, slots) {
@@ -987,8 +809,7 @@ export function scaffoldOf(drawn, slots) {
   const out = [];
   const placed = drawn.nodes.filter((n) => slots.has(n.id))
     .sort((a, b) => /** @type {number} */ (slots.get(a.id)) - /** @type {number} */ (slots.get(b.id)));
-  // The longest path into each node, over every link so far: each link runs
-  // forward in the slots, so one pass in slot order is the whole answer.
+  // Links run forward in the slots, so one pass in slot order suffices.
   const depths = () => {
     /** @type {Map<string, number>} */
     const depth = new Map();
@@ -1012,18 +833,14 @@ export function scaffoldOf(drawn, slots) {
 }
 
 /**
- * Where each node of a redrawn chart sat in the chart it replaces, as a
- * vertical place to order its column by: a node laid before at its own
- * centre, a new one at the centre of its nearest ancestor laid before
- * (parentOf, one step up), so a split's members take their parent's place.
- * Only a column every node of which has a place is seated; any other, and
- * every column of a chart with nothing before it, is ordered by nodeRank
- * alone, so a fresh chart is laid exactly as it always was.
+ * Vertical places from the replaced chart: a kept node's centre, a new one's
+ * nearest laid ancestor's, so members take their parent's place. Only fully
+ * placed columns are seated, so a fresh chart lays out as by nodeRank alone.
  * @param {{id: string, tier: number, slot?: number}[]} nodes
- * @param {Map<string, number>} slots slotsOf
- * @param {Map<string, {y0: number, y1: number}>} [before] the replaced chart's laid nodes, by id
+ * @param {Map<string, number>} slots
+ * @param {Map<string, {y0: number, y1: number}>} [before]
  * @param {(id: string) => string} [parentOf]
- * @returns {Map<string, number>} id to place, seated columns only
+ * @returns {Map<string, number>} seated columns only
  */
 export function seatsOf(nodes, slots, before, parentOf) {
   /** @type {Map<string, number>} */
@@ -1046,20 +863,12 @@ export function seatsOf(nodes, slots, before, parentOf) {
 }
 
 /**
- * SANKEY.layOut at a stated canvas height, in px: what the layout test
- * measures a chart at heights the chart does not declare with.
- *
- * d3 counts columns from the longest path, so the scaffold (scaffoldOf)
- * runs a path through every slot first.
- *
- * FAILS CLOSED on a node with a stamped slot (expansionOf) that d3 laid in
- * another column: d3 clamps a node placed beyond its last column, which would
- * draw it a column early in silence. Only a ribbon that does not run forward
- * in the slots, which no scaffold is added beside, leaves that reachable.
+ * SANKEY.layOut at a stated height. Fails closed on a slotted node d3 laid
+ * elsewhere: d3 silently clamps a node beyond its last column. Only a
+ * backward ribbon, given no scaffold, leaves that reachable.
  * @param {FiscProjection} drawn
  * @param {{tiers: number[], columns: number, groupOf: (n: any) => string, placeOf: (id: string) => number,
- *   before?: Map<string, {y0: number, y1: number}>, parentOf?: (id: string) => string}} ctx before and
- *   parentOf seat a redrawn chart's columns (seatsOf)
+ *   before?: Map<string, {y0: number, y1: number}>, parentOf?: (id: string) => string}} ctx
  * @param {number} height
  * @returns {{nodes: LaidNode[], links: LaidLink[]}}
  */
@@ -1088,8 +897,7 @@ export function layOutAt(drawn, ctx, height) {
     links: drawn.links.map((l) => Object.assign({}, l, { value: l.value_cents }))
       .concat(/** @type {any[]} */ (scaffoldOf(drawn, slots))),
   });
-  // THE SCAFFOLD LEAVES BEFORE ANYTHING READS A RIBBON: it is never drawn,
-  // stacked or counted.
+  // The scaffold leaves before anything reads a ribbon: never drawn, stacked or counted.
   /** @param {any} l */
   const drawnLink = (l) => !l.scaffold;
   graph.links = graph.links.filter(drawnLink);
@@ -1117,8 +925,7 @@ const FADE = "label-fade";
 const LABEL_TSPANS = ["qualifier", "", "qualifier", "value", "flag"];
 
 /**
- * A laid ribbon's id: its ends, its kind, and whether it is a cross-tab
- * slice, which is what one ribbon of a shaped chart is drawn per.
+ * Ends, kind and cross-tab flag: what one shaped ribbon is drawn per.
  * @param {{source: any, target: any, kind: string, partition?: boolean}} d
  * @returns {string}
  */
@@ -1128,8 +935,7 @@ export function linkKey(d) {
 }
 
 /**
- * Each ribbon's id (linkKey), a second ribbon of one id numbered after it,
- * so no two ribbons of a chart share an element.
+ * A repeated id is numbered, so no two ribbons share an element.
  * @param {any[]} links
  * @returns {Map<any, string>}
  */
@@ -1148,20 +954,14 @@ function linkKeys(links) {
 }
 
 /**
- * The Sankey form's renderer, as app.js's FORMS holds it under "sankey".
- * Every method takes what it needs: the chart's declaration, the frontier,
- * the document on screen. It reads of a chart `chart.sankey` and nothing of
- * any other form's hints; site/layout.test.mjs wraps
- * the hints in a recording Proxy and holds every read to this file.
+ * Reads only `chart.sankey`; site/layout.test.mjs holds every hint read to
+ * this file through a recording Proxy.
  * @type {FormRenderer}
  */
 export const SANKEY = Object.freeze({
   form: "sankey",
 
-  /**
-   * The overview's declared tiers, left to right: the spine's columns, which
-   * a root of the expansion is placed by.
-   */
+  /** The spine's columns, left to right. */
   tiersOf(chart) {
     return (chart.sankey && chart.sankey.tiers) || [];
   },
@@ -1201,39 +1001,26 @@ export const SANKEY = Object.freeze({
     return clampNote(d);
   },
 
-  /**
-   * How many columns a shaped chart is laid out in: its distinct slots
-   * (slotsOf), at least one.
-   */
+  /** Distinct slots, at least one. */
   columnsOf(drawn, tiers) {
     return Math.max(1, new Set(slotsOf(drawn.nodes, tiers).values()).size);
   },
 
-  /**
-   * Fits a document to the screen, then flips the reductions (markContra): an
-   * expansion schedule folded to the frontier and its open splits capped
-   * (expansionOf), any other document folded to the chart's tier set.
-   */
+  /** The expansion via expansionOf, else a tier-set fold; then markContra. */
   shape(doc, view) {
     if (isExpansionSchedule(doc)) return markContra(expansionOf(doc, view.frontier, view.chart, view.whole));
     return markContra(foldDocument(doc, tierFrontier(doc, SANKEY.tiersOf(view.chart))));
   },
 
   /**
-   * Lays a shaped document out with d3-sankey, pure of the page: the columns
-   * on screen, the group and place lookups and the constants are all it
-   * reads, and ctx.room, the screen's height the canvas is never shorter
-   * than (canvasHeight). d3-sankey mutates its input, so it gets a copy and
-   * the document stays the thing the detail panel reads from.
+   * Pure of the page. d3-sankey mutates its input, so it gets a copy and the
+   * document stays what the detail panel reads.
    */
   layOut(drawn, ctx) {
     return layOutAt(drawn, ctx, canvasHeight(ctx.chart, drawn.nodes, ctx.room));
   },
 
-  /**
-   * The canvas render draws laid nodes on at ctx.room with nothing held, so
-   * the page can tell whether a new room would move it.
-   */
+  /** The canvas at ctx.room with nothing held, so the page can tell if a room moves it. */
   canvas(nodes, ctx) {
     return canvasHeight(ctx.chart, nodes, ctx.room);
   },
@@ -1244,24 +1031,13 @@ export const SANKEY = Object.freeze({
   },
 
   /**
-   * Draws a laid graph into ctx.layer, the group the page keeps inside
-   * ctx.svg and moves as the reader zooms: ribbons, marks, bands and labels, with
-   * the classes, descriptions, gestures and the figure each label says
-   * (ctx.figure) the page hands it. Paints nothing: the page paints after, so
-   * a theme change repaints without redrawing.
-   *
-   * KEYED BY NODE AND RIBBON ID (linkKey), so a mark the chart it replaces
-   * drew keeps its element. Over ctx.motion ms, from ctx.before (the replaced
-   * chart's laid nodes by id), a surviving mark glides to its place, a new
-   * one grows out of its nearest ancestor drawn before (parentOf), one
-   * leaving shrinks into its nearest ancestor drawn now, each at the edge
-   * facing the mark (edgeOf), and every label fades in after the move. With no
-   * motion everything is at its end at once. The viewBox is the canvas at
-   * ctx.room, the room the graph was laid out at, and never shorter than
-   * ctx.held. Before any description is asked for, ctx.named, where
-   * given, is handed every mark's name by id: its qualifier, label and noun
-   * as drawn, never cut. Returns what puts every mark at its end now.
-   * @returns {() => void}
+   * Draws into ctx.layer; paints nothing, so a theme change repaints without
+   * redrawing. Keyed by node id and linkKey so a mark keeps its element:
+   * survivors glide, new marks grow from and leaving marks shrink into their
+   * nearest ancestor's facing edge (edgeOf); labels fade in after. The
+   * viewBox is never shorter than ctx.held. ctx.named gets every uncut name
+   * before any description is asked.
+   * @returns {() => void} puts every mark at its end now
    */
   render(graph, ctx) {
     const d3 = /** @type {any} */ (globalThis).d3;
@@ -1293,8 +1069,7 @@ export const SANKEY = Object.freeze({
     const gGlyphs = groupNamed("glyphs");
     /** @param {LaidLink} d */
     const hairline = (d) => isHairline(ctx.chart, d);
-    // A HAIRLINE IS NEVER A BAND: it is drawn a screen pixel wide whatever
-    // its ends are.
+    // A hairline is never a band.
     /** @param {LaidLink} d */
     const taper = (d) => !hairline(d) && isTapered(d);
     const keys = linkKeys(graph.links);
@@ -1311,13 +1086,11 @@ export const SANKEY = Object.freeze({
     const nouns = labelNouns(ctx.doc, graph.nodes, ctx.noun);
     /** @param {LaidNode} d */
     const nounOf = (d) => nouns.get(d.id) || "";
-    // A MARK'S NAME IS ITS DRAWN WORDS UNFITTED, and the page is handed every
-    // one before a description or a glyph's words are asked for.
+    // A name is the drawn words unfitted.
     /** @param {LaidNode} d */
     const nameOf = (d) => (qualifierOf(d) ? qualifierOf(d) + ": " : "") + d.label + (nounOf(d) ? " (" + nounOf(d) + ")" : "");
     if (ctx.named) ctx.named(new Map(graph.nodes.map((d) => [d.id, nameOf(d)])));
     /**
-     * The box of id's nearest ancestor among `boxes`, or null.
      * @param {string} id
      * @param {Map<string, {x0: number, x1: number, y0: number, y1: number}>} boxes
      */
@@ -1333,14 +1106,11 @@ export const SANKEY = Object.freeze({
     /** Where a mark that enters grows from. @param {string} id */
     const grownFrom = (id) => above(id, before) || above(id, now);
     /**
-     * The edge of its ancestor a mark grows out of or shrinks into: the left
-     * where the mark stands left of that ancestor among `boxes`, as a
-     * source's member does, the right otherwise. Where `boxes` draws no
-     * ancestor of the mark, the side is read against `box` itself, the
-     * ancestor the move uses from the other chart.
+     * Left where the mark stands left of its ancestor (a source's member),
+     * else right; read against `box` where `boxes` lacks the ancestor.
      * @param {string} id
      * @param {Map<string, {x0: number, x1: number, y0: number, y1: number}>} boxes
-     * @param {{x0: number, x1: number}} box the ancestor's box the move starts or ends at
+     * @param {{x0: number, x1: number}} box
      */
     const edgeOf = (id, boxes, box) => {
       const mark = boxes.get(id);
@@ -1380,13 +1150,11 @@ export const SANKEY = Object.freeze({
     /** @param {any} sel */
     const placeLinks = (sel) => sel
       .attr("d", /** @param {LaidLink} d */ (d) => (taper(d) ? taperPath(d) : path(d)))
-      // The surface gap, not a stroke, separates stacked ribbons. A band is
-      // filled, and its stroke is only the outline style.css dashes.
+      // The surface gap separates ribbons; a band's stroke is only style.css's dashed outline.
       .attr("stroke-width", /** @param {LaidLink} d */ (d) => (taper(d) ? 1 : Math.max(1, endWidth(d, "source") - RIBBON_GAP)));
 
-    // A HAIRLINE'S HIT TARGET IS WIDER THAN ITS STROKE: the ribbon keeps its
-    // focus and its description, and this transparent stroke above it takes
-    // the pointer's hover and click. Drawn at its end: it is never seen.
+      // A hairline's wider transparent hit target takes the pointer; the
+      // ribbon keeps focus and description.
     gHits.selectAll("path")
       .data(graph.links.filter(hairline), keyOf)
       .join("path")
@@ -1410,9 +1178,7 @@ export const SANKEY = Object.freeze({
         (/** @type {any} */ enter) => {
           const g = enter.append("g");
           g.append("rect").attr("rx", 2);
-          // On every mark, displayed on the ones that hang: the vendored d3
-          // selection has no filter(). pointer-events none, because the band
-          // is not the mark.
+          // On every mark: the vendored d3 has no selection.filter().
           g.append("rect").attr("class", "contra-band").attr("pointer-events", "none");
           // The cut a clamped mark is drawn with (cutMark), likewise on every mark.
           g.append("path").attr("class", "cut").attr("pointer-events", "none").attr("aria-hidden", "true");
@@ -1426,39 +1192,30 @@ export const SANKEY = Object.freeze({
       .attr("tabindex", 0)
       .attr("role", "button")
       .attr("aria-hidden", null)
-      // aria-pressed is the isolation, on every node. SPLITTING IS NOT THAT
-      // TOGGLE and must never be announced as it: the label announces what
-      // an activation does, splitting a node or folding its hub back.
+      // aria-pressed is the isolation. Splitting is not that toggle and must
+      // never be announced as it.
       .attr("aria-pressed", "false")
       .attr("aria-label", /** @param {LaidNode} d */ (d) => ctx.describe.node(d))
-      // Both keys are the one activation a click is; M opens the node's
-      // menu, as Shift+F10, the ContextMenu key and a right-click do.
+      // M opens the menu, as Shift+F10, the ContextMenu key and right-click do.
       .attr("aria-keyshortcuts", "Enter Space M Shift+F10")
       .on("pointerenter", /** @param {PointerEvent} e @param {LaidNode} d */ (e, d) => { on.tip(e, d); on.trace(d); })
       .on("pointermove", /** @param {PointerEvent} e @param {LaidNode} d */ (e, d) => on.tip(e, d))
       .on("pointerleave", () => { on.hide(); on.untrace(); })
       .on("focus", /** @param {FocusEvent} e @param {LaidNode} d */ (e, d) => on.guarded("show this mark", () => { if (on.unasked()) return; on.tip(e, d); on.pin(d); }))
       .on("blur", on.hide)
-      // ONE ACTIVATION, by click, Enter or Space: it opens a node that opens,
-      // folds an open hub back, and pins one that does neither.
-      //
-      // Both click and keydown, because an SVG g[role=button] synthesises no
-      // click from Enter. A held key is ignored.
+      // Click and keydown both: an SVG g[role=button] synthesises no click
+      // from Enter. A held key is ignored.
       .on("click", /** @param {MouseEvent} e @param {LaidNode} d */ (e, d) => {
         on.guarded("open this mark", () => {
           e.stopPropagation();
           on.click(d, e.timeStamp);
         });
       })
-      // THE NODE'S MENU, where the form is handed one: a right-click opens it
-      // at the pointer, and Shift+F10 or the ContextMenu key beside the mark.
-      // Both keys reach it as this event on the focused mark, never as a
-      // keydown arm: on Windows the ContextMenu key's contextmenu fires on
-      // keyup, after a keydown arm has moved focus into the menu, and the
-      // browser's own menu opens over it. The key's keydown marks the mark
-      // (keyedMenu) for the contextmenu that follows, since Chromium gives
-      // that event the mark's coordinates; a right-click at 0, 0 is still
-      // the pointer's.
+      // Shift+F10 and the ContextMenu key reach the menu only as this event,
+      // never a keydown arm: on Windows the key's contextmenu fires on keyup,
+      // after a keydown arm moved focus, and the browser's menu opens over
+      // it. The keydown marks the mark (keyedMenu), since Chromium gives that
+      // event the mark's coordinates.
       .on("contextmenu", /** @this {SVGGElement} @param {MouseEvent} e @param {LaidNode} d */ function (e, d) {
         const keyed = keyedMenu === this;
         keyedMenu = null;
@@ -1474,9 +1231,7 @@ export const SANKEY = Object.freeze({
           keyedMenu = this;
           return;
         }
-        // M OPENS THE MENU ON ITS KEYDOWN, where neither key above fires a
-        // contextmenu: macOS Safari fires none for either. M's keyup opens
-        // no menu of the browser's over it.
+        // M opens on keydown: macOS Safari fires no contextmenu for either key.
         if ((e.key === "m" || e.key === "M") && !e.ctrlKey && !e.metaKey && !e.altKey) {
           if (!on.menu || e.repeat) return;
           e.preventDefault();
@@ -1508,17 +1263,15 @@ export const SANKEY = Object.freeze({
     node.select("path.cut")
       .attr("display", /** @param {LaidNode} d */ (d) => (isClamped(d) ? null : "none"));
 
-    // Every node is directly labelled: the relief the palette's contrast check
-    // requires.
+    // Every node is labelled: the relief the palette's contrast check requires.
     const place = (/** @type {LaidNode} */ d) => labelPlacement(slots, d, lastColumn);
     const lastColumn = Math.max(...graph.nodes.map((d) => columnOf(slots, d)));
     /** @param {LaidNode} d */
     const value = (d) => "  " + fmtShortSigned(ctx.figure(d));
     /** @type {Map<string, {qualifier: string, label: string, noun: string, cut: boolean}>} */
     const fitted = new Map();
-    // Fitted at ADVANCE_EM, not read off the browser: the words drawn are the
-    // words site/layout.test.mjs measures against their room, and it holds
-    // the drawn tspans to them.
+    // Fitted at ADVANCE_EM, not measured: site/layout.test.mjs holds the
+    // drawn tspans to these words.
     /** @param {LaidNode} d */
     const words = (d) => {
       let w = fitted.get(d.id);
@@ -1535,8 +1288,7 @@ export const SANKEY = Object.freeze({
       .attr("dy", /** @param {LaidNode} d */ (d) => place(d).dy)
       .attr("x", /** @param {LaidNode} d */ (d) => place(d).x)
       .attr("text-anchor", /** @param {LaidNode} d */ (d) => place(d).anchor);
-    // The noun is the page's words, not the city's, so it is drawn as the
-    // qualifier is.
+    // The noun is the page's words, so drawn as the qualifier is.
     label.each(/** @this {SVGTextElement} @param {LaidNode} d */ function (d) {
       const w = words(d);
       const said = [w.qualifier, w.label, w.noun, value(d), ctx.classes.flags(d)];
@@ -1552,9 +1304,7 @@ export const SANKEY = Object.freeze({
         .text(nameOf(d) + value(d));
     });
 
-    // THE GLYPHS ARE CONTROLS OF THEIR OWN, beside the marks and not inside
-    // them, so no button is nested in another: ⊕ opens, ⊖ folds back, each
-    // in the words ctx.glyph gives it.
+    // Glyphs are controls beside the marks, not inside, so no button nests.
     /** @type {Map<string, {kind: string, label: string, menu: boolean}>} */
     const glyphWords = new Map();
     for (const d of graph.nodes) {
@@ -1620,9 +1370,7 @@ export const SANKEY = Object.freeze({
       return finish;
     }
 
-    // THE START: a new mark at its ancestor's edge on its own side, a
-    // surviving one where it stands, every label hidden until the move is
-    // over.
+    // Start: new marks at their ancestor's edge, labels hidden till the end.
     if (enteredNodes) {
       enteredNodes.each(/** @this {SVGGElement} @param {LaidNode} d */ function (d) {
         const from = grownFrom(d.id) || { x0: d.x0, x1: d.x0, y0: d.y0, y1: d.y1 };
@@ -1648,8 +1396,7 @@ export const SANKEY = Object.freeze({
     glyphs.transition(FADE).delay(motion).duration(motion / 2).attr("opacity", 1)
       .on("end", /** @this {SVGGElement} */ function () { this.removeAttribute("opacity"); });
 
-    // THE END OF A MARK LEAVING: into the edge on its own side of its
-    // ancestor drawn now.
+    // Leaving marks end at their ancestor's edge.
     if (leavingNodes) {
       inert(leavingNodes);
       leavingNodes.select("text").attr("opacity", 0);
@@ -1680,8 +1427,8 @@ export const SANKEY = Object.freeze({
   paint(ctx) {
     ctx.svg.selectAll("path.link")
       .attr("stroke", /** @param {LaidLink} d */ (d) => ctx.colour.link(d))
-      // A band's fill is style.css's, which reads its colour from here: a
-      // fill attribute loses to the rule every ribbon is unfilled by.
+      // style.css fills bands from --ribbon: a fill attribute loses to the
+      // unfilled-ribbon rule.
       .style("--ribbon", /** @param {LaidLink} d */ (d) => ctx.colour.link(d));
     ctx.svg.selectAll("g.node rect")
       .attr("fill", /** @param {LaidNode} d */ (d) => ctx.colour.node(d));

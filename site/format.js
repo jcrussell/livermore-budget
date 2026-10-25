@@ -1,13 +1,9 @@
 // @ts-check
 /**
- * fisc — the text the page modules read and write alike: a figure in
- * dollars, a part's share of a whole, a page's JSON config, the fields of
- * its hash, the year select under the top bar, cited pages and the tip. Importing it
- * runs nothing, and no export reads a global. Most exports are functions of
- * their arguments; tipper keeps the pinned mark in the object it returns and
- * adds listeners to the document it is handed, and pinnable and
- * wireYearSelect add listeners to the elements they are handed, so each
- * call wires another set.
+ * fisc — text the page modules share: dollars, shares, the config, the hash,
+ * the year select, cited pages and the tip. Importing runs nothing and no
+ * export reads a global; tipper, pinnable and wireYearSelect add listeners
+ * per call.
  */
 
 /** How many groups a ranked figure names before the rest fold into one tail. */
@@ -17,10 +13,8 @@ export const NAMED = 5;
 export const TAIL_LABEL = "Everything else";
 
 /**
- * Whole dollars with thousands separators, signed, cents only where a
- * figure has them. Integer arithmetic throughout: the dollars and the cents
- * are split by remainder, so no float stands between a cited figure and its
- * printed digits, and anything but a safe integer of cents is refused.
+ * Signed whole dollars, cents only where present. Integer arithmetic: no
+ * float between a cited figure and its digits; a non-safe-integer is refused.
  * @param {number} cents
  */
 export function dollars(cents) {
@@ -33,10 +27,8 @@ export function dollars(cents) {
 }
 
 /**
- * A part's share of the whole as a percentage to a tenth, or "" of a whole
- * of nothing. A share that would round to 0.0 or to 100.0 and is neither
- * reads "<0.1%" or ">99.9%": a sliver is not nothing, and the largest of
- * several parts is not the whole its siblings deny.
+ * To a tenth, "" of a zero whole. "<0.1%" and ">99.9%" rather than 0.0 or
+ * 100.0: a sliver is not nothing, and the largest part is not the whole.
  * @param {number} part
  * @param {number} whole
  */
@@ -49,7 +41,6 @@ export function share(part, whole) {
 }
 
 /**
- * The page's config, parsed from the JSON script element of that id.
  * @param {Document} doc
  * @param {string} id
  * @param {string} name what the refusal calls the config
@@ -61,8 +52,7 @@ export function configOf(doc, id, name) {
 }
 
 /**
- * One value of a hash, escaped except for the slashes every id holds, so
- * the hash stays readable.
+ * Escaped but for the slashes ids hold, so the hash stays readable.
  * @param {string} v
  */
 export function hashValue(v) {
@@ -70,9 +60,7 @@ export function hashValue(v) {
 }
 
 /**
- * The fields of a hash among those named, each decoded, or kept raw where it
- * does not decode. A part with no `=` or a field not named is skipped, and a
- * field written twice keeps its last value.
+ * Named fields only, decoded (raw where undecodable); the last of a repeat wins.
  * @param {string} hash
  * @param {readonly string[]} names
  * @returns {Map<string, string>}
@@ -95,10 +83,8 @@ export function hashFields(hash, names) {
 }
 
 /**
- * The column a hash's `y` names among the config's years, or the newest
- * where it names none, with `refused` saying what it named that the config
- * does not offer.
- * @param {Map<string, string>} fields hashFields' answer
+ * The column `y` names, else the newest, with `refused` naming what was not offered.
+ * @param {Map<string, string>} fields
  * @param {any} config
  * @returns {{year: string, refused: string}}
  */
@@ -112,10 +98,9 @@ export function hashYear(fields, config) {
 }
 
 /**
- * Fetches a page's columns, each once: a column is refused where it does not
- * answer ok or was written by another export than the page, and a refused
- * fetch is forgotten, so asking again fetches again.
- * @param {any} win the window whose fetch is used
+ * Fetches each column once; refuses one not ok or from another export, and
+ * forgets a refusal so asking again refetches.
+ * @param {any} win
  * @param {string} exportedBy the page config's exported_by
  * @returns {(path: string) => Promise<any>}
  */
@@ -142,8 +127,7 @@ export function columnLoader(win, exportedBy) {
 }
 
 /**
- * A column's key, the same on every page: its file name less .json. It is
- * the year select's option value and a page's `#y=`.
+ * The file name less .json: the select's value and `#y=` on every page.
  * @param {string} path
  */
 export function yearKey(path) {
@@ -151,12 +135,10 @@ export function yearKey(path) {
 }
 
 /**
- * Points each link whose view offers the year (its `data-years`: the top
- * bar's, and any other link to a view) at that year, `#y=<key>`, and every
- * other at its view as it opens: a year a view does not publish is not
- * carried there to be refused. "" carries none.
+ * Points `data-years` links offering the year at `#y=<key>` and the rest at
+ * their opening view, so an unpublished year is not carried to be refused.
  * @param {Document} doc
- * @param {string} key
+ * @param {string} key "" carries none
  */
 export function carryYear(doc, key) {
   for (const a of Array.from(doc.querySelectorAll("a[data-years]"))) {
@@ -167,9 +149,7 @@ export function carryYear(doc, key) {
 }
 
 /**
- * Moves the year select under the top bar to the year on screen and carries that year
- * onto the top bar's links (carryYear). A page with one year has no select
- * and still carries.
+ * A one-year page has no select and still carries.
  * @param {Document} doc
  * @param {string} key
  */
@@ -180,10 +160,8 @@ export function selectYear(doc, key) {
 }
 
 /**
- * Wires the year select under the top bar, which the template ships disabled:
- * enables it and hands each key chosen to `onChange`, which shows the year
- * and calls selectYear once it is on screen. Returns the key the select
- * shows, which a browser may have restored, or undefined with no select.
+ * Enables the select (shipped disabled) and hands choices to `onChange`.
+ * Returns the shown key, maybe browser-restored, or undefined with no select.
  * @param {Document} doc
  * @param {(key: string) => void} onChange
  * @returns {string | undefined}
@@ -197,10 +175,8 @@ export function wireYearSelect(doc, onChange) {
 }
 
 /**
- * The links the export built for one cited page of one document, refused
- * where it built none, so a cited page cannot vanish from what cites it.
+ * Refused where the export built none, so a cited page cannot vanish.
  * @param {Record<string, {pages?: Record<string, {pdf?: string, text?: string, records?: string}>}>} docs
- *   the page config's `docs`
  * @param {string} docId
  * @param {number} page
  * @returns {{pdf?: string, text?: string, records?: string}}
@@ -213,10 +189,8 @@ export function pageOf(docs, docId, page) {
 }
 
 /**
- * The pages a set of locators cites, each with the links the export built
- * for it in the config's `docs`, in the locators' order. A page the config
- * built no links for is kept with both links empty, so pageLinks names it
- * unlinked rather than a tip throwing inside a pointer or key handler.
+ * Unlike pageOf, keeps an unbuilt page with empty links, so a tip names it
+ * rather than throwing inside a pointer or key handler.
  * @param {Parameters<typeof pageOf>[0]} docs
  * @param {{doc_id: string, pages: number[]}[]} locators
  * @returns {CitedPage[]}
@@ -230,9 +204,7 @@ export function citedPages(docs, locators) {
 }
 
 /**
- * The cited page a table's own page link names: its `data-page` number, its
- * href to the extracted text and its `data-pdf` to the city's PDF page,
- * either "" where the link carries none.
+ * Read off `data-page`, href and `data-pdf`; "" where absent.
  * @param {Element} a
  * @returns {CitedPage}
  */
@@ -240,19 +212,11 @@ export function linkedPage(a) {
   return { page: Number(a.getAttribute("data-page")), text: a.getAttribute("href") || "", pdf: a.getAttribute("data-pdf") || "" };
 }
 
-/**
- * One cited page as a tip links it: its extracted text and the city's PDF
- * at the page, either "" where none was built, and the document it is a
- * page of where the citation names one.
- * @typedef {{doc?: string, page: number, text: string, pdf: string}} CitedPage
- */
+/** text and pdf are "" where none was built. @typedef {{doc?: string, page: number, text: string, pdf: string}} CitedPage */
 
 /**
- * A tip's line of cited pages, `p97 PDF, p98 PDF`: each page number links
- * its extracted text and the PDF link beside it the city's document at that
- * page, once per pair of links however many cells cite it. A page with
- * neither link is named, marked `data-unlinked`, and not linked, once per
- * document and page.
+ * `p97 PDF, p98 PDF`, once per pair of links; an unlinked page is named once
+ * per document and page, marked `data-unlinked`.
  * @param {Document} doc
  * @param {CitedPage[]} pages
  * @returns {HTMLElement}
@@ -296,9 +260,8 @@ export function pageLinks(doc, pages) {
 }
 
 /**
- * Stands a tip beside the pointer, or under the mark itself on an event
- * carrying no pointer, as a focus or a key does: a keyboard user's tip is
- * seen beside the mark they reached.
+ * Beside the pointer, or under the mark for focus or a key, so a keyboard
+ * user sees it beside what they reached.
  * @param {Document} doc
  * @param {HTMLElement} tip
  * @param {{clientX?: number, clientY?: number, target?: any}} e
@@ -320,15 +283,10 @@ export function placeTip(doc, tip, e) {
 }
 
 /**
- * The page's `#tooltip`, shown on hover and pinned by a click, Enter or
- * Space on a mark. A pinned tip takes the pointer and the focus, so its
- * links can be clicked and tabbed to; hovering or leaving a mark leaves it
- * as it is, and Escape or a click outside it and outside every mark
- * (`[data-pins]`) unpins it, Escape handing the focus back to its mark
- * with no tip showing until the next hover or focus.
- * `fill` writes the tip's content into the emptied tip, told whether it is
- * being pinned. The pinned mark is held in this call's closure, one per
- * page booted.
+ * The page's `#tooltip`: shown on hover, pinned by click, Enter or Space. A
+ * pinned tip takes pointer and focus so its links work; hovering leaves it.
+ * Escape, or a click outside it and every `[data-pins]`, unpins; Escape
+ * returns focus to the mark. The pinned mark lives in this closure.
  * @param {Document} doc
  */
 export function tipper(doc) {
@@ -355,7 +313,7 @@ export function tipper(doc) {
     /** Whether a tip is pinned. */
     pinned: () => mark !== null,
     /**
-     * Shows a mark's tip, unless one is pinned.
+     * Unless one is pinned.
      * @param {{clientX?: number, clientY?: number, target?: any}} e
      * @param {(tip: HTMLElement, pinned: boolean) => void} fill
      */
@@ -386,8 +344,7 @@ export function tipper(doc) {
       (first || tip).focus();
     },
     /**
-     * Unpins and hides the tip, handing the focus back to its mark where
-     * `refocus` asks and the mark is still drawn.
+     * Refocuses the mark where `refocus` asks and it is still drawn.
      * @param {boolean} refocus
      */
     unpin(refocus) {
@@ -405,8 +362,7 @@ export function tipper(doc) {
       if (refocus && was.isConnected) tips.focus(was);
     },
     /**
-     * Hands the focus to a mark with no tip shown for it, as unpin does and
-     * as a redraw does to the row it was asked on.
+     * Focuses a mark with no tip shown, as unpin and a redraw do.
      * @param {HTMLElement} at
      */
     focus(at) {
@@ -435,7 +391,6 @@ export function tipper(doc) {
 }
 
 /**
- * One line of a tip: a div of `className` reading `text`.
  * @param {Document} doc
  * @param {string} className
  * @param {string} text
@@ -448,7 +403,6 @@ export function tipLine(doc, className, text) {
 }
 
 /**
- * A tip's first three lines: what it is of, its figure and what is said of it.
  * @param {Document} doc
  * @param {string} label
  * @param {string} value
@@ -459,7 +413,6 @@ export function tipHead(doc, label, value, meta) {
 }
 
 /**
- * The tip's last line: how to keep it, or how to let it go.
  * @param {Document} doc
  * @param {boolean} pinned
  */
@@ -468,9 +421,7 @@ export function tipHint(doc, pinned) {
 }
 
 /**
- * Says in a figure's own section that it could not be drawn, and why, under
- * its heading. The table it was to be drawn from is hidden only once a
- * figure draws, so it stays shown beneath.
+ * The source table stays shown beneath; it is hidden only once a figure draws.
  * @param {HTMLElement} section
  * @param {unknown} err
  */
@@ -490,9 +441,7 @@ export function refuseFigure(section, err) {
 }
 
 /**
- * Wires a mark to a page's tip: hover and focus show it, leaving and blur
- * hide it, and a click, Enter or Space pins it. `fill` is the mark's
- * tipper fill.
+ * Hover and focus show, leave and blur hide, click, Enter or Space pin.
  * @param {HTMLElement} mark
  * @param {ReturnType<typeof tipper>} tips
  * @param {(tip: HTMLElement, pinned: boolean) => void} fill
@@ -518,8 +467,7 @@ export function pinnable(mark, tips, fill) {
 const SCROLL_CUED = ".table-scroll, .chart-scroll";
 
 /**
- * Which edges of a sideways scroller hide more: "left", "right", "both", or
- * "" where all of it shows. A pixel of slack absorbs sub-pixel widths.
+ * "left", "right", "both" or ""; a pixel of slack absorbs sub-pixel widths.
  * @param {{scrollLeft: number, scrollWidth: number, clientWidth: number}} el
  * @returns {string}
  */
@@ -530,11 +478,8 @@ export function hiddenEdges(el) {
 }
 
 /**
- * Marks every SCROLL_CUED box with data-more naming the edges that hide more
- * (hiddenEdges), kept current as it scrolls and as it or its content
- * resizes (the window's resize where there is no ResizeObserver), so
- * style.css can fade that edge: a table or chart cut at the card's edge
- * otherwise reads as broken rather than as more to the side.
+ * Keeps data-more current on every SCROLL_CUED box so style.css fades the
+ * hiding edge: a box cut at the card's edge otherwise reads as broken.
  * @param {Document} doc
  */
 export function scrollCues(doc) {
@@ -559,7 +504,6 @@ export function scrollCues(doc) {
 }
 
 /**
- * Clones the page's template for one piece of a figure.
  * @param {Document} doc
  * @param {string} id
  * @returns {HTMLElement | SVGElement}
@@ -575,8 +519,7 @@ export function clone(doc, id) {
 }
 
 /**
- * Says a refusal at the top of a page's main element, `<page>-main`, in one
- * `<page>-refusal` alert, or clears it when text is empty.
+ * One `<page>-refusal` alert atop `<page>-main`; empty text clears it.
  * @param {Document} doc
  * @param {string} page
  * @param {string} text
@@ -599,12 +542,11 @@ export function sayRefusal(doc, page, text) {
 }
 
 /**
- * One table row's figures Go rendered, one entry per column, null where the
- * row prints none. Refuses a figure that is not an integer of cents, an
- * empty attribute included, and a cell outside the columns.
+ * Null where the row prints none; refuses a non-integer (empty included) or
+ * a cell outside the columns.
  * @param {HTMLTableRowElement} tr
  * @param {number} columns
- * @param {string} who the row, as a refusal names it
+ * @param {string} who the row, for a refusal
  * @returns {(number | null)[]}
  */
 export function rowCents(tr, columns, who) {
@@ -625,8 +567,7 @@ export function rowCents(tr, columns, who) {
 }
 
 /**
- * Adds a cell into a running sum, absent into absent staying absent: a sum
- * is null until a printed figure, a printed zero included, reaches it.
+ * Absent plus absent stays absent: null until a printed figure, zero included.
  * @param {number | null} sum
  * @param {number | null} c
  * @returns {number | null}

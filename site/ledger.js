@@ -1,11 +1,8 @@
 // @ts-check
 /**
- * fisc — the ledger form: each side of the expansion schedule as ranked
- * bars, one scale for every side on the page, an opened bar followed by its
- * members' bars indented under it (core.sideTree). Importing it runs
- * nothing; the template calls boot(), which hands sides.js this renderer.
- * Reads of the config only its own hints, in sidesOf. No d3: a bar is
- * a span whose width is its figure's share of the largest root drawn.
+ * fisc — the ledger form: each side as ranked bars on one page-wide scale,
+ * opened members indented beneath (core.sideTree). No d3: a bar is a span.
+ * Reads only its own hints, in sidesOf.
  */
 
 import * as core from "./core.js";
@@ -16,10 +13,8 @@ import { boot as bootSides, countedBars, shareTotal } from "./sides.js";
 export const RANKED = 5;
 
 /**
- * The width of a bar as a percentage of the track, from the page's one
- * scale: the largest root drawn on any side fills its track.
  * @param {number} size
- * @param {number} scale px per cent, as sides.js hands it: 1 / the largest size
+ * @param {number} scale px per cent: 1 / the largest size
  */
 export function widthOf(size, scale) {
   const pct = 100 * size * scale;
@@ -27,9 +22,7 @@ export function widthOf(size, scale) {
 }
 
 /**
- * A side's list label: the count and sum sides.js shareTotal states in the
- * side's visible total, so a printed reduction root is in neither, as it is
- * in no share's total.
+ * shareTotal's count and sum, so a reduction root is in neither.
  * @param {import("./sides.js").Side} side
  */
 export function listLabel(side) {
@@ -37,16 +30,12 @@ export function listLabel(side) {
   return `${side.heading}: ◇ ${countedBars(whole, " by our count")}, ${dollars(whole.cents)} in all by our sum`;
 }
 
-/**
- * The ledger renderer sides.js draws each side through.
- * @type {import("./sides.js").SidesRenderer}
- */
+/** @type {import("./sides.js").SidesRenderer} */
 export const LEDGER = Object.freeze({
   form: "ledger",
 
   /**
-   * The sides a ledger chart declares, its own hints and no other form's,
-   * refused where it declares none.
+   * Refused where the chart declares none.
    * @param {any} chart
    * @returns {import("./sides.js").SideHint[]}
    */
@@ -59,13 +48,8 @@ export const LEDGER = Object.freeze({
   },
 
   /**
-   * Draws a side's tree into its section's figure: an ordered list, one
-   * `li.bar-row` per tile, roots ranked largest first and each opened
-   * root's members indented under it, every bar on the page's one scale. A
-   * row that opens takes a click or Enter, which opens or closes it and pins
-   * nothing; Shift opens its next alternative. A row that does not open pins
-   * its tip on a click or Enter. Every row pins its tip on P, and a row that
-   * opens on a click on its figure.
+   * One `li.bar-row` per tile. Click or Enter opens or closes a row that
+   * opens (Shift: next alternative), else pins its tip; P always pins.
    */
   draw(section, side, ctx) {
     const figure = section.querySelector("figure.sides-figure");
@@ -101,8 +85,7 @@ export const LEDGER = Object.freeze({
       li.addEventListener("pointerleave", () => ctx.hide());
       li.addEventListener("focus", (e) => ctx.tip(e, tile, side));
       li.addEventListener("blur", () => ctx.hide());
-      // A row that opens is opened or closed, and sides.js hands it the
-      // focus once it is drawn again; any other row pins its tip here.
+      // sides.js refocuses an opened row after redraw; others pin here.
       /** @param {MouseEvent | KeyboardEvent} e */
       const press = (e) => {
         if (!tile.splits.length) {
@@ -145,10 +128,7 @@ export const LEDGER = Object.freeze({
   },
 });
 
-/**
- * Boots ledger.html through sides.js with this renderer.
- * @param {Window} [win]
- */
+/** @param {Window} [win] */
 export function boot(win = globalThis.window) {
   return bootSides(win, LEDGER);
 }

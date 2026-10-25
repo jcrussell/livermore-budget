@@ -1,25 +1,21 @@
 // @ts-check
 /**
- * fisc — the client module capital.html loads. The table is server-rendered
- * with every figure Go cited; this module filters its rows by fund and by
- * project name, narrows it to the year selected, and sums the rows left
- * shown. The sum is ours, not the listing's printed TOTAL, and the
- * template's footer labels it so. Importing it runs nothing; the template calls boot().
+ * fisc — capital.html's module; the template calls boot(). Filters the
+ * server-rendered rows by fund, name and year and sums those shown: ours,
+ * not the listing's printed TOTAL, and the footer says so.
  */
 
 import { dollars, hashFields, hashValue, plus, rowCents, selectYear, wireYearSelect } from "./format.js";
 
 /**
  * @typedef {{ fund: string, column: string, query: string }} Filter
- *   fund is a fund number or "" for every fund, column a column index or ""
- *   for every year, query the text a project's name must contain.
+ *   "" fund or column means every one.
  * @typedef {{ el: HTMLTableRowElement, fund: string, project: string,
  *   cents: (number | null)[] }} Row
- *   cents is one entry per column, null where the row prints no figure.
+ *   cents: one per column, null where the row prints none.
  */
 
 /**
- * Reads the table Go rendered into rows.
  * @param {HTMLTableElement} table
  * @returns {{ rows: Row[], columns: number }}
  */
@@ -42,8 +38,7 @@ export function readTable(table) {
 }
 
 /**
- * Whether a row passes the fund and name filters. The year filter hides
- * columns, never rows.
+ * The year filter hides columns, never rows.
  * @param {{ fund: string, project: string }} row
  * @param {Filter} filter
  */
@@ -54,8 +49,7 @@ export function isShown(row, filter) {
 }
 
 /**
- * The cents of the shown rows, summed per column. A column no shown row
- * prints a figure in sums to null rather than to zero.
+ * Null, not zero, where no shown row prints in a column.
  * @param {Row[]} rows
  * @param {number} columns
  * @param {Filter} filter
@@ -74,8 +68,6 @@ export function sumShown(rows, columns, filter) {
 }
 
 /**
- * Applies a filter to the table: hides the rows and columns it excludes,
- * writes the sum of the rows shown into the footer and the count into status.
  * @param {HTMLTableElement} table
  * @param {HTMLElement | null} status
  * @param {Filter} filter
@@ -83,9 +75,7 @@ export function sumShown(rows, columns, filter) {
 export function apply(table, status, filter) {
   const { rows, columns } = readTable(table);
   let shown = 0;
-  // A shown row whose fund is the shown row above it says so by
-  // data-fund-repeat, which style.css blanks, so a fund's name is read once
-  // at the head of its run of rows rather than wrapped on every row.
+  // data-fund-repeat (blanked by style.css) names a fund once per run of rows.
   let above = "";
   for (const row of rows) {
     const on = isShown(row, filter);
@@ -116,8 +106,7 @@ export function apply(table, status, filter) {
 }
 
 /**
- * The index of the column whose header carries a year's key, or "" for every
- * column: "" itself, or a key no header carries.
+ * "" for every column, including for an unknown key.
  * @param {HTMLTableElement} table
  * @param {string} key
  */
@@ -130,9 +119,7 @@ export function columnOf(table, key) {
 }
 
 /**
- * Binds the page's controls. The template calls this with its document. The
- * year opens on the hash's `#y=`, or every year where it names no column, and
- * a year chosen is written back there.
+ * The year opens on `#y=` and a choice is written back.
  * @param {Document} doc
  */
 export function boot(doc) {

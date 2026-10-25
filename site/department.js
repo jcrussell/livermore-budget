@@ -1,18 +1,11 @@
 // @ts-check
 /**
- * fisc — the client module department.html loads. Importing it does nothing;
- * the template calls boot(). It reads the page's department config, fetches
- * the column the year control names, and draws every department as a bar of
- * its funding rows, split by the fund group each row's fund hangs from, and
- * the chosen department's two blocks of pp.85-125 as two sides of bars
- * drawn by the ledger form: the funds that pay it, and what it spends under
- * each object heading over every division the config files under it.
- *
- * Its arithmetic is sums of cited cents, unions of cited ids, and one row's
- * share of its side's sum. A fund's group is the funding schedule's parent
- * edge, which Go vets; the groups are ranked and folded by glance.js's rule.
- * Whether a department's two sides tie is the config's declaration, printed
- * and never computed here.
+ * fisc — department.html's module; the template calls boot(). Draws every
+ * department as a bar split by fund group, and the chosen department's two
+ * blocks of pp.85-125 as ledger sides: funds that pay it, and spending per
+ * object heading over its divisions. Arithmetic is sums, unions and shares;
+ * groups are ranked and folded by glance.js's rule. Whether the sides tie is
+ * the config's declaration, never computed here.
  */
 
 import { locatorKeys, pagesCitedBy, sumReading } from "./core.js";
@@ -29,8 +22,7 @@ import { countedBars, fillTip, shareTotal, tileShare } from "./sides.js";
  */
 
 /**
- * The link kinds a spending row may declare, and whether each is a transfer
- * drawn as not an expenditure.
+ * Spending link kinds, and whether each is a transfer (not an expenditure).
  * @type {Record<string, boolean>}
  */
 const SPENDING_TRANSFER = { external: false, internal_transfer: true };
@@ -38,17 +30,13 @@ const SPENDING_TRANSFER = { external: false, internal_transfer: true };
 /** The hash's fields. */
 const HASH_FIELDS = ["y", "d"];
 
-/**
- * The page's config, read from its JSON script element.
- * @param {Document} doc
- */
+/** @param {Document} doc */
 export function readConfig(doc) {
   return configOf(doc, "department-config", "department");
 }
 
 /**
- * A view as a hash: `#y=<column file less .json>&d=<department id>`, with no
- * `d` where it names no department, which parseHash reads as the longest bar.
+ * `#y=<column file less .json>&d=<department id>`; no `d` means the longest bar.
  * @param {{year: string, department: string}} st
  */
 export function hashOf(st) {
@@ -56,10 +44,8 @@ export function hashOf(st) {
 }
 
 /**
- * A hash read back into a view over the config: the year and department it
- * names, or the newest year and no department where it names none, with
- * `refused` saying what it named that the config does not offer. No
- * department opens the column's longest bar, which only its column can say.
+ * `refused` names what the config does not offer. No department opens the
+ * longest bar, which only the column can say.
  * @param {string} hash
  * @param {any} config
  */
@@ -76,13 +62,11 @@ export function parseHash(hash, config) {
 }
 
 /**
- * One row per distinct node at one end of the links, its cents summed and
- * its fact ids and locators unioned, largest first, read as core.sumReading
- * reads the node and the links it sums.
+ * One row per node at `end`, summed and unioned, largest first (core.sumReading).
  * @param {any[]} links
  * @param {any[]} nodes
  * @param {"from" | "to"} end
- * @param {string} schedule the schedule the links are read from, for the refusal
+ * @param {string} schedule for the refusal
  * @returns {Row[]}
  */
 function rowsBy(links, nodes, end, schedule) {
@@ -112,10 +96,7 @@ function rowsBy(links, nodes, end, schedule) {
   return [...by.values()].map((at) => at.row).sort((a, b) => b.cents - a.cents || a.label.localeCompare(b.label));
 }
 
-/**
- * The sum of rows: their cents added and their ids unioned.
- * @param {{cents: number, factIds: string[]}[]} rows
- */
+/** @param {{cents: number, factIds: string[]}[]} rows */
 function sumOf(rows) {
   /** @type {string[]} */
   const factIds = [];
@@ -128,9 +109,7 @@ function sumOf(rows) {
 }
 
 /**
- * One department's figures out of one column: the funding schedule's links
- * into the department, and the spending schedule's into each division the
- * config files under it, as rows of each side and each side's sum.
+ * Funding links into the department and spending links into its divisions.
  * @param {any} column
  * @param {any} config
  * @param {string} departmentId
@@ -184,23 +163,17 @@ export function departmentFigures(column, config, departmentId) {
 
 /**
  * @typedef {{id: string, label: string, cents: number, members: string[], memberIds: string[], rank: number}} Group
- *   One entry of the legend: a fund group, or the tail folding several, with
- *   its sum over every department; members are the labels it names and
- *   memberIds the fund-group ids it holds; rank is its place for a hue,
- *   1..NAMED+1 (rank names a sixth group rather than fold it alone), 0 for
- *   the tail.
+ *   A legend entry: a fund group or the folded tail. rank is 1..NAMED+1 (a
+ *   sixth group is named rather than folded alone), 0 for the tail.
  * @typedef {{key: number, label: string, members: string[], rank: number, cents: number, factIds: string[]}} Segment
- *   One department's part paid by one legend entry; key is the entry's index.
+ *   key is the legend entry's index.
  * @typedef {{id: string, label: string, cents: number, factIds: string[], segments: Segment[]}} Bar
  */
 
 /**
- * Every department of one column as a bar: the funding schedule's links into
- * it, summed per fund group and the groups ranked by their sum over every
- * department, largest first, past NAMED folded into one tail as the glance
- * page folds. A fund the schedule hangs from no fund group it draws, and a
- * cell that is not a positive integer of cents, is refused rather than drawn
- * in no segment.
+ * Every department as a bar of fund-group segments, groups ranked over all
+ * departments and past NAMED folded, as the glance page folds. A fund in no
+ * drawn group, or a cell not a positive integer of cents, is refused.
  * @param {any} column
  * @param {any} config
  * @returns {{groups: Group[], bars: Bar[]}}
@@ -271,9 +244,6 @@ export function departmentBars(column, config) {
  */
 
 /**
- * One row of a side as a flat tile LEDGER draws: no parent, nothing under
- * it and nothing to open, its figure, citations, inference and reduction the
- * row's.
  * @param {Row} r
  * @param {string} label
  * @returns {SideTile}
@@ -288,10 +258,7 @@ function tileOf(r, label) {
 }
 
 /**
- * A department's two sides as LEDGER draws them: where its money comes from,
- * a tile per fund, and where it goes, a tile per object heading, each side's
- * figure the sum of its tiles. A fund the schedule calls internal service,
- * and a heading Go declares a transfer, say so in their label.
+ * Internal-service funds and transfer headings say so in their label.
  * @param {ReturnType<typeof departmentFigures>} f
  * @returns {{funding: DeptSide, spending: DeptSide}}
  */
@@ -310,19 +277,14 @@ export function departmentSides(f) {
 }
 
 /**
- * Draws one department of one column into the page: its two sides through
- * LEDGER on one scale, the longest bar of either filling its track, each
- * side's ◇ sum under its heading. A fund's bar wears the hue of the legend
- * entry in `groups` holding its fund group's id, the tail's only where the
- * tail holds it; a bar no entry holds, and every spending bar, wears none,
- * and a transfer's is marked as not an expenditure. Returns the figures and the
- * sides drawn.
+ * Draws a department's two sides on one scale. A fund bar wears its legend
+ * entry's hue; unheld and spending bars wear none; transfers are marked.
  * @param {Document} doc
  * @param {any} config
  * @param {any} column
  * @param {{year: string, department: string}} st
- * @param {Group[]} [groups] the legend departmentBars ranked over the column
- * @param {ReturnType<typeof tipper>} [tips] the page's tooltip
+ * @param {Group[]} [groups] departmentBars' legend
+ * @param {ReturnType<typeof tipper>} [tips]
  */
 export function render(doc, config, column, st, groups = [], tips = tipper(doc)) {
   const f = departmentFigures(column, config, st.department);
@@ -349,8 +311,6 @@ export function render(doc, config, column, st, groups = [], tips = tipper(doc))
     notes.set(id, "Not an expenditure: money moved to another of the city's own funds. The page prints it inside the division's sum, so it is inside this side's.");
   }
   /**
-   * A bar's tip: sides.js's, with the bar's fund group or transfer note
-   * over its pages.
    * @param {SideTile} tile
    * @param {any} side
    */
@@ -394,8 +354,7 @@ export function render(doc, config, column, st, groups = [], tips = tipper(doc))
 }
 
 /**
- * Empties both sides, their sums and the heading over them, so no
- * department's bars stand under a year select naming another column.
+ * So no bars stand under a select naming another column.
  * @param {Document} doc
  */
 function clearSides(doc) {
@@ -415,7 +374,6 @@ function clearSides(doc) {
 }
 
 /**
- * One part of a cloned template, refused where the template lacks it.
  * @param {HTMLElement} el
  * @param {string} sel
  * @returns {HTMLElement}
@@ -427,9 +385,7 @@ function part(el, sel) {
 }
 
 /**
- * Draws one column's bars and legend into the page, every bar closed, and
- * returns what it drew. A bar's track is as long against the list as its
- * sum is against the longest's.
+ * Every bar closed; tracks scale to the longest.
  * @param {Document} doc
  * @param {any} config
  * @param {any} column
@@ -498,8 +454,6 @@ export function drawBars(doc, config, column, yearPath) {
 }
 
 /**
- * Opens one department's bar, or closes it where `open` is false, and closes
- * every other.
  * @param {Document} doc
  * @param {string} department
  * @param {boolean} open
@@ -518,10 +472,8 @@ export function openBar(doc, department, open) {
 }
 
 /**
- * Boots the page: reads the config, opens the view the hash names, and wires
- * the two selects and Back and Forward. The template calls this; it resolves
- * once the opening view is drawn or refused.
- * @param {any} [win] the window, passed in so a test can hand it its own
+ * Resolves once the opening view is drawn or refused.
+ * @param {any} [win]
  */
 export async function boot(win = globalThis.window) {
   const doc = win.document;
@@ -536,9 +488,7 @@ export async function boot(win = globalThis.window) {
   const deptSelect = /** @type {HTMLSelectElement | null} */ (doc.getElementById("department-select"));
   const column = columnLoader(win, config.exported_by);
 
-  // The page's one view: the year and the department the hash names, which
-  // the selects and the open bar show. Closing the open bar hides its detail
-  // and keeps the department; any other choice opens what it chooses.
+  // Closing the open bar hides its detail but keeps the department.
   let shown = 0;
   // The view drawn, and the one asked for and not yet drawn or refused.
   let current = { year: "", department: "" };
@@ -554,8 +504,7 @@ export async function boot(win = globalThis.window) {
   let open = true;
   const tips = tipper(doc);
   /**
-   * Shows a view, no department being the column's longest bar's, and
-   * resolves to the view shown, or undefined where it was refused or overtaken.
+   * Resolves to the view shown, or undefined if refused or overtaken.
    * @param {{year: string, department: string}} st
    */
   const show = async (st) => {
@@ -610,9 +559,8 @@ export async function boot(win = globalThis.window) {
     });
   };
   const list = doc.getElementById("department-list");
-  // The open bar's link to its sides scrolls by script: followed as a
-  // fragment it would fire popstate, and restore() would read a hash naming
-  // no view and open the newest year's longest bar in place of this one.
+  // Scrolled by script: as a fragment it would fire popstate, and restore()
+  // would open the newest year's longest bar instead.
   /** @param {Event} e */
   const toSides = (e) => {
     const target = /** @type {any} */ (e.target);
@@ -649,10 +597,8 @@ export async function boot(win = globalThis.window) {
       activate(ke);
     });
   }
-  // A select names one half of the view and the other half is the view's
-  // own: until the opening column resolves the department select shows the
-  // config's first department, which nobody chose, so a year chosen then
-  // keeps the view's department, "" where none was named: the longest bar.
+  // Before the opening column resolves the select shows a department nobody
+  // chose, so a year chosen then keeps the view's department.
   const asking = () => asked || current;
   const restore = async () => {
     const st = parseHash(win.location.hash, config);

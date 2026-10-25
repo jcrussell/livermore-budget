@@ -1,12 +1,7 @@
 // @ts-check
 /**
- * fisc — the chrome every page shares: the theme toggle and the menu button
- * in its top bar, and the cue on every box that scrolls sideways. Importing
- * this module does nothing; boot() wires the page it is handed.
- *
- * A switch dispatches THEME_EVENT on the document, so a page that writes
- * resolved colours onto its marks (app.js) repaints without wiring a second
- * click handler onto the same button.
+ * fisc — shared chrome: theme toggle, menu button, scroll cues. A switch
+ * dispatches THEME_EVENT so app.js repaints without a second click handler.
  */
 
 import { scrollCues } from "./format.js";
@@ -20,8 +15,7 @@ export const THEME_EVENT = "fisc-theme";
 const OS_DARK = "(prefers-color-scheme: dark)";
 
 /**
- * Whether the page is dark: the stamped theme wins, then the OS setting.
- * matchMedia is missing in some headless renderers, hence the check.
+ * Stamped theme, then the OS; matchMedia is missing in some headless renderers.
  * @param {Window} win
  * @returns {boolean}
  */
@@ -33,9 +27,8 @@ export function prefersDark(win) {
 }
 
 /**
- * Brings the button's label back into agreement with the page. The label is
- * the action a click takes, so the button carries no aria-pressed: "Light
- * mode, pressed" on a dark page would announce the state it is not in.
+ * The label is the click's action, so no aria-pressed: "Light mode,
+ * pressed" on a dark page would announce the wrong state.
  * @param {Window} win
  */
 export function syncTheme(win) {
@@ -46,11 +39,8 @@ export function syncTheme(win) {
 }
 
 /**
- * Shows and wires the menu button the view list folds behind on a narrow
- * screen. It marks the nav data-menu, which lets style.css fold the list
- * there, and data-open while the reader has it open; Escape closes it and
- * puts focus back on the button. A page with no button is left alone, and
- * with no script the list is never folded.
+ * The narrow-screen menu: data-menu lets style.css fold the list, data-open
+ * while open; Escape closes and refocuses the button. No script, no fold.
  * @param {Window} win
  */
 export function wireMenu(win) {
@@ -79,11 +69,8 @@ export function wireMenu(win) {
 const NARROW = "(max-width: 760px)";
 
 /**
- * Folds every details.how-to-read on a narrow screen and opens it on a wide
- * one, following the window across the breakpoint. Where the summary is
- * hidden (wide) a closed block would hide its prose with no way to open it,
- * so wide always opens. Without matchMedia every block stays as shipped,
- * open.
+ * Folds details.how-to-read narrow, opens it wide: there the summary is
+ * hidden, so closed would hide the prose for good. No matchMedia: as shipped.
  * @param {Window} win
  */
 export function wireHowTo(win) {
@@ -100,10 +87,8 @@ export function wireHowTo(win) {
 }
 
 /**
- * Offers "More" (the top bar's "lede-more" template) under the page head's
- * lede wherever style.css's narrow clamp cuts it short, kept current as the window resizes, and drops the clamp
- * (data-full) for good on a press. A lede the clamp does not cut has no
- * button.
+ * "More" under a lede the narrow clamp cuts; a press drops the clamp
+ * (data-full) for good.
  * @param {Window} win
  */
 export function wireLede(win) {
@@ -132,11 +117,8 @@ export function wireLede(win) {
 }
 
 /**
- * Opens every closed <details> the element the URL's fragment names is, or
- * is inside, and scrolls it into view. A browser scrolls to a fragment but
- * does not reliably open the <details> it names, which on the caveats page
- * would land a reader on a folded summary, or on nothing where the target is
- * inside one. A fragment naming nothing, or nothing folded, is left alone.
+ * Opens the <details> the fragment names or is inside: browsers scroll to a
+ * fragment but do not reliably open it.
  * @param {Window} win
  */
 function openTarget(win) {
@@ -157,11 +139,8 @@ function openTarget(win) {
 }
 
 /**
- * Opens the fragment's target now (openTarget), on every later change of
- * fragment, and on a plain click of a link to the fragment already in the URL,
- * which changes nothing and so fires no hashchange: a reader who closed the
- * caveat they arrived at and follows its link again would otherwise see
- * nothing happen.
+ * Also on a click of the fragment already in the URL, which fires no
+ * hashchange: a reader who closed it and follows the link again sees it open.
  * @param {Window} win
  */
 export function wireTargets(win) {
@@ -177,12 +156,8 @@ export function wireTargets(win) {
 }
 
 /**
- * Wires the page's chrome: the menu (wireMenu), the folding prose
- * (wireHowTo), the clamped page lede (wireLede), a folded fragment target
- * (wireTargets), the cue on every box that
- * scrolls sideways (format.js scrollCues), and the page's theme toggle, shown
- * and following the OS setting so the button never announces the opposite of
- * what it does. A page with no toggle keeps no theme control.
+ * The toggle follows the OS so the button never announces the opposite of
+ * what it does.
  * @param {Window} [win]
  */
 export function boot(win = globalThis.window) {
