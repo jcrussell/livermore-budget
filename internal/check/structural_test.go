@@ -20,40 +20,19 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/registry"
 )
 
-// The tests in this file are all of one shape: take a copy of the real repository,
-// change one thing on disk, load it through Load, and assert the structural check
-// that claims the changed thing reports it.
-//
-// They are written that way for the reason the whole tier exists. A test that hands
-// a check a hand-built Subject with a wrong hash in it proves the comparison, and
-// proves nothing about whether any repository can reach that state — and a suite
-// made of those is how this project once shipped five checks that could not fail.
-// Every mutation below is one a `git status` could show.
-//
-// Nothing here needs Python, the network, or the 67 MB of PDF in Git LFS. The
-// --full tests synthesize their own source documents (see repoWithPDFs), which is
-// also the only way to test a corrupted one.
+// Every test here copies the real repository, changes one thing on disk that
+// `git status` could show, loads it, and asserts the check claiming that thing
+// reports it. --full tests synthesize their own source documents (repoWithPDFs).
 
-// docWithFacts is the document the committed mapping rules read, and docWithout is
-// one that nothing maps. Both are extracted and both are swept, which is the
-// difference between Subject.Extractions and Subject.Docs; a test that wants a
-// mutation the fact checks cannot see uses the second.
-//
-// docWithout MUST BE A DOCUMENT NO RULE FILE MAPS: a rule file demands its
-// document's extraction, so deleting or skewing a mapped one is a load error
-// before any check runs, not an invisible mutation.
-//
-// TestDocWithoutIsMappedByNothing turns that from a convention into a check, so
-// the next change to map a document gets told which constant to move rather than
-// re-deriving it from a manifest error.
+// docWithFacts is the document the committed rules read; docWithout is one no
+// rule file maps, so mutating it is not a load error.
+// TestDocWithoutIsMappedByNothing holds that.
 const (
 	docWithFacts = testDoc
 	docWithout   = "livermore-cip-fy2026-2030"
 )
 
-// pagesOfDocWithout is docWithout's page count, read off data/sources.yaml rather
-// than written down here: it is a property of whichever document the constant
-// names.
+// pagesOfDocWithout is docWithout's page count, read off data/sources.yaml.
 func pagesOfDocWithout(t *testing.T) int {
 	t.Helper()
 	sources, err := registry.LoadSources(os.DirFS("../../data"))
@@ -69,13 +48,8 @@ func pagesOfDocWithout(t *testing.T) int {
 	return 0
 }
 
-// TestDocWithoutIsMappedByNothing is the guard on the constant above.
-//
-// Every mutation test in this file that uses docWithout depends on nothing
-// mapping it. That dependency was silent until the ACFR was mapped, and what it
-// produced was a load failure in tests whose names are about manifests and
-// artifacts -- a diagnosis one step removed from the cause. This fails with the
-// cause instead.
+// TestDocWithoutIsMappedByNothing fails with the cause when a mapped document
+// would otherwise surface as a load failure in an unrelated manifest test.
 func TestDocWithoutIsMappedByNothing(t *testing.T) {
 	t.Parallel()
 	files, err := mapping.LoadDir(os.DirFS("../.."), "mappings")
@@ -130,12 +104,8 @@ func readRepoFile(t *testing.T, root, rel string) []byte {
 	return b
 }
 
-// mutateManifest rewrites one extraction's manifest.json.
-//
-// It decodes with UseNumber so that page_count and every artifact size survive the
-// round trip as the integers they are: decoded into `any` they would become
-// float64, and 35648752 written back as 3.5648752e+07 would make the mutation
-// under test indistinguishable from a mangled file.
+// mutateManifest rewrites one extraction's manifest.json, decoding with
+// UseNumber so integers do not round-trip as float64.
 func mutateManifest(t *testing.T, root, docID string, mutate func(map[string]any)) {
 	t.Helper()
 	rel := artifactPath(docID, corpus.ManifestFile)
@@ -164,15 +134,9 @@ func manifestArtifacts(t *testing.T, root, docID string) map[string]corpus.Artif
 	return doc.Artifacts()
 }
 
-// anArtifactOf names one artifact of a document, chosen deterministically by
-// sorting so a failure message is reproducible: the first geometry file.
-//
-// Geometry rather than a page, and deliberately: no fact cites a geometry artifact,
-// so a corruption in one is invisible to every check except the drift sweep. It is
-// the FIRST geometry file by sort, p0001, which no rule reads -- geometry for a
-// mapped page would also break `fisc build`, and the point of choosing this one is
-// that these tests are a claim about THIS check rather than about the report or the
-// resolver.
+// anArtifactOf names one artifact deterministically: the first geometry file by
+// sort, p0001, which no fact cites and no rule reads, so only the drift sweep
+// sees a corruption in it.
 func anArtifactOf(t *testing.T, root, docID string) (string, corpus.Artifact) {
 	t.Helper()
 	artifacts := manifestArtifacts(t, root, docID)
@@ -198,9 +162,8 @@ func mutateArtifacts(t *testing.T, root, docID string, mutate func(map[string]an
 	})
 }
 
-// dropArtifact removes one artifact from BOTH the manifest and the directory, which
-// is the mutation the hash sweep cannot see: the two sides still agree with each
-// other perfectly, and the extraction is one page shorter than the document.
+// dropArtifact removes one artifact from both the manifest and the directory,
+// which the hash sweep cannot see.
 func dropArtifact(t *testing.T, root, docID, rel string) {
 	t.Helper()
 	mutateArtifacts(t, root, docID, func(artifacts map[string]any) {
@@ -214,18 +177,9 @@ func dropArtifact(t *testing.T, root, docID, rel string) {
 	}
 }
 
-// TestAnEmptiedExtractionFails is the hole a bijection cannot see, and it is the
-// reason extraction-emitted-every-page exists.
-//
-// Delete every artifact of an extraction from the directory AND from its manifest,
-// and the hash sweep passes: the map and the directory agree, because both are
-// empty. Its subject count drops from 1,572 to 926 — a number nobody notices
-// without diffing two reports — and every page of a published document is gone.
-// --strict does not help either, because it is a PASS and not a vacuous result.
-//
-// This is not a contrived state. It is the shape of the extractor's own documented
-// failure mode: a poppler run that fails on a page writes no artifact for it, and
-// the manifest it writes afterwards does not list one.
+// TestAnEmptiedExtractionFails: an extraction emptied from both the directory
+// and its manifest passes the hash sweep, and extraction-emitted-every-page
+// must fail it. This is the shape a poppler run failing on pages leaves.
 func TestAnEmptiedExtractionFails(t *testing.T) {
 	t.Parallel()
 	root := repoWithoutPDFs(t)
@@ -275,9 +229,7 @@ func TestAnEmptiedExtractionFails(t *testing.T) {
 	if res.Subjects != pages {
 		t.Errorf("subjects = %d, want the %d extractions it looked at before", res.Subjects, pages)
 	}
-	// And the hash sweep is happy, which is the whole point of this test: the two
-	// sides of the bijection agree, and only an independent count of the document's
-	// pages can see that both are wrong.
+	// The hash sweep passes: only an independent page count sees this.
 	sweep := resultFor(t, rep, "artifacts-match-manifest")
 	if sweep.Status != StatusPass {
 		t.Errorf("artifacts-match-manifest = %s (%s), want pass: the manifest and the "+
@@ -285,8 +237,8 @@ func TestAnEmptiedExtractionFails(t *testing.T) {
 	}
 }
 
-// TestAMissingPageFails is the same failure at the scale it actually happens: one
-// page, dropped from both sides, the way a poppler failure on page 5 leaves it.
+// TestAMissingPageFails: one page dropped from both sides, as a poppler
+// failure on one page leaves it.
 func TestAMissingPageFails(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {
@@ -320,10 +272,8 @@ func TestAMissingPageFails(t *testing.T) {
 	}
 }
 
-// TestAnArtifactForNoPageFails is the other direction: a manifest listing a page the
-// document does not have, consistent with the directory, so the sweep passes. It is
-// what a re-extraction of a shorter document would leave if extract.py stopped
-// clearing its output directories.
+// TestAnArtifactForNoPageFails: a manifest listing a page the document does not
+// have, consistent with the directory, so the sweep passes.
 func TestAnArtifactForNoPageFails(t *testing.T) {
 	t.Parallel()
 	root := repoWithoutPDFs(t)
@@ -357,11 +307,9 @@ func TestAnArtifactForNoPageFails(t *testing.T) {
 	}
 }
 
-// TestZeroingThePageCountIsCaughtByTheRegistry closes the laundering path: page_count
-// is what extraction-emitted-every-page compares against, so an attacker who empties
-// an extraction would zero it too. It is not self-certifying, and this is the check
-// that says so — data/sources.yaml records the same count, written by hand from the
-// document, and registry.LoadSources refuses a source with no page count at all.
+// TestZeroingThePageCountIsCaughtByTheRegistry: zeroing page_count alongside an
+// emptied extraction satisfies the completeness check, and the hand-written
+// count in data/sources.yaml catches it.
 func TestZeroingThePageCountIsCaughtByTheRegistry(t *testing.T) {
 	t.Parallel()
 	root := repoWithoutPDFs(t)
@@ -379,8 +327,7 @@ func TestZeroingThePageCountIsCaughtByTheRegistry(t *testing.T) {
 	if !rep.Failed() {
 		t.Error("an emptied extraction with a zeroed page count did not fail the run")
 	}
-	// The completeness check is now satisfied -- zero pages, zero artifacts -- and
-	// the registry comparison is what fires.
+	// The completeness check is satisfied, and the registry comparison fires.
 	res := resultFor(t, rep, "manifest-matches-source-registry")
 	if res.Status != StatusFail {
 		t.Fatalf("manifest-matches-source-registry = %s (%s), want fail", res.Status, res.Summary)
@@ -391,10 +338,8 @@ func TestZeroingThePageCountIsCaughtByTheRegistry(t *testing.T) {
 	}
 }
 
-// TestARecordedExtractionErrorFails is fisc-6r5: tools/extract.py records every
-// failure in the manifest rather than only logging it, precisely so that verify can
-// see it, and until this check existed nothing read the field. A run that failed on
-// fifty pages exited 1 and still verified clean.
+// TestARecordedExtractionErrorFails: an error tools/extract.py records in the
+// manifest fails verify.
 func TestARecordedExtractionErrorFails(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {
@@ -440,11 +385,8 @@ func TestARecordedExtractionErrorFails(t *testing.T) {
 	}
 }
 
-// TestWarningsAreCountedAndNotFailures is the other half of reading the extractor's
-// two channels. Warnings are not failures — poppler exits 0 for a damaged xref and an
-// unread metadata key alike, and all three committed extractions carry some — but
-// decoding them and then saying nothing is how "reading the warnings is the human's
-// job" becomes nobody's. They are counted into the passing summary.
+// TestWarningsAreCountedAndNotFailures: poppler warnings are not failures, and
+// are counted into the passing summary.
 func TestWarningsAreCountedAndNotFailures(t *testing.T) {
 	t.Parallel()
 	root := repoWithoutPDFs(t)
@@ -474,11 +416,9 @@ func TestWarningsAreCountedAndNotFailures(t *testing.T) {
 	}
 }
 
-// TestAManifestKeyThatIsNotACleanPathIsNamedAsWritten guards the report's honesty
-// about paths. corpus.Artifacts hands back manifest keys exactly as the file spells
-// them, and a finding has to cite what the file contains: cleaning
-// "pages/../geometry/p0001.json" would print an existing, readable path and call it
-// unreadable.
+// TestAManifestKeyThatIsNotACleanPathIsNamedAsWritten: a finding cites the
+// manifest key as written; cleaning "pages/../geometry/p0001.json" would name
+// an existing path as unreadable.
 func TestAManifestKeyThatIsNotACleanPathIsNamedAsWritten(t *testing.T) {
 	t.Parallel()
 	root := repoWithoutPDFs(t)
@@ -504,10 +444,8 @@ func TestAManifestKeyThatIsNotACleanPathIsNamedAsWritten(t *testing.T) {
 	}
 }
 
-// TestAnUnreadableExtractionDirectoryIsAnError covers the one path in the sweep that
-// returns an error rather than a finding. A file it cannot read is a state of the
-// repository and is reported per file; a directory it cannot LIST means it cannot say
-// what is or is not there, which is a claim about the machine and not the corpus.
+// TestAnUnreadableExtractionDirectoryIsAnError: a directory the sweep cannot
+// list is an error, not a finding; an unreadable file is a per-file finding.
 func TestAnUnreadableExtractionDirectoryIsAnError(t *testing.T) {
 	t.Parallel()
 	if os.Geteuid() == 0 {
@@ -565,18 +503,15 @@ func TestACorruptedArtifactFails(t *testing.T) {
 		t.Errorf("finding %q does not name the sha256 the manifest records",
 			res.Findings[0].Detail)
 	}
-	// And no other check noticed, which is the point of the sweep: no fact cites a
-	// geometry artifact, so nothing else in the report reads this file at all.
+	// No other check noticed: nothing else reads a geometry artifact.
 	if got := resultFor(t, rep, "fact-offset-points-at-token").Status; got != StatusPass {
 		t.Errorf("fact-offset-points-at-token = %s; this corruption is invisible to it, "+
 			"which is why the drift sweep exists", got)
 	}
 }
 
-// TestAnEditedManifestHashFails is the same mismatch from the other side: the
-// artifact is untouched and the record of it is not. It is the likelier mistake of
-// the two — a hand-edited manifest is one keystroke, a corrupted page is an event —
-// and neither side can be trusted to police itself.
+// TestAnEditedManifestHashFails: the artifact untouched and its manifest
+// record edited.
 func TestAnEditedManifestHashFails(t *testing.T) {
 	t.Parallel()
 	root := repoWithoutPDFs(t)
@@ -606,11 +541,8 @@ func TestAnEditedManifestHashFails(t *testing.T) {
 	}
 }
 
-// TestAnUnlistedArtifactFails is the direction that is easy to leave out, and it is
-// the one that lets a file be read that nothing vouches for. The manifest is the
-// authority on what was extracted; a file beside it that it does not name has no
-// recorded origin, and a future rule reading it would produce provenance that
-// resolves to bytes nobody hashed.
+// TestAnUnlistedArtifactFails: a file beside the manifest that it does not
+// name has no recorded origin.
 func TestAnUnlistedArtifactFails(t *testing.T) {
 	t.Parallel()
 	root := repoWithoutPDFs(t)
@@ -640,10 +572,8 @@ func TestAnUnlistedArtifactFails(t *testing.T) {
 	}
 }
 
-// TestADeletedArtifactFails covers the third state: the manifest lists it and it is
-// gone. corpus.Doc reports a missing page as a read error at the point a rule asks
-// for it, which is a failure of whatever was being built; this is what says so about
-// the whole corpus, including the 1,300 artifacts no rule reads yet.
+// TestADeletedArtifactFails: the manifest lists an artifact that is gone,
+// including one no rule reads.
 func TestADeletedArtifactFails(t *testing.T) {
 	t.Parallel()
 	root := repoWithoutPDFs(t)
@@ -666,10 +596,8 @@ func TestADeletedArtifactFails(t *testing.T) {
 	}
 }
 
-// TestAManifestSkewedFromTheRegistryFails is the cross-check that needs no PDF: two
-// parties recorded the same three claims about one document, and this is what
-// happens when they stop agreeing. Each field is its own case, because each says a
-// different thing about what went wrong.
+// TestAManifestSkewedFromTheRegistryFails: manifest and registry disagree on
+// one field per case.
 func TestAManifestSkewedFromTheRegistryFails(t *testing.T) {
 	t.Parallel()
 	const wrongSHA = "1111111111111111111111111111111111111111111111111111111111111111"
@@ -717,9 +645,7 @@ func TestAManifestSkewedFromTheRegistryFails(t *testing.T) {
 	}
 }
 
-// TestASourceWithNoExtractionFails covers one half of the set comparison. A
-// document the registry lists and nobody has extracted is a document the site can
-// cite, with a URL and a retrieval date, that no fact can ever come from.
+// TestASourceWithNoExtractionFails: a registered document nobody extracted.
 func TestASourceWithNoExtractionFails(t *testing.T) {
 	t.Parallel()
 	root := repoWithoutPDFs(t)
@@ -738,18 +664,15 @@ func TestASourceWithNoExtractionFails(t *testing.T) {
 	if !strings.Contains(res.Findings[0].Detail, "nothing is extracted") {
 		t.Errorf("finding %q does not say the extraction is absent", res.Findings[0].Detail)
 	}
-	// Two documents remain and both are still swept: the missing one is reported
-	// once, by the check that compares the two sets, and does not silently shrink
-	// what everything else claims to have looked at.
+	// Two documents remain and both are still swept; the missing one is
+	// reported once, by the set comparison.
 	if got := resultFor(t, rep, "extraction-toolchain-pinned").Subjects; got != 2 {
 		t.Errorf("extraction-toolchain-pinned looked at %d extractions, want the 2 left", got)
 	}
 }
 
-// TestAnExtractionWithNoSourceFails is the other half, and the more dangerous one:
-// 15 MB of pages with no URL, no retrieval date and no recorded hash is the
-// provenance chain broken at its first link. A renamed document leaves exactly this
-// behind.
+// TestAnExtractionWithNoSourceFails: an extraction with no registry entry, as
+// a renamed document leaves behind.
 func TestAnExtractionWithNoSourceFails(t *testing.T) {
 	t.Parallel()
 	root := repoWithoutPDFs(t)
@@ -769,10 +692,8 @@ func TestAnExtractionWithNoSourceFails(t *testing.T) {
 	}
 }
 
-// writeSyntheticExtraction lays down a valid, empty extraction directory whose
-// manifest names the directory and the pinned toolchain, so a test can add a
-// document to a tree without inventing artifacts. overrides is applied last, which
-// is how a test makes exactly one field wrong.
+// writeSyntheticExtraction lays down a valid, empty extraction directory with
+// the pinned toolchain; overrides is applied last to make one field wrong.
 func writeSyntheticExtraction(t *testing.T, root, docID string, overrides map[string]any) {
 	t.Helper()
 	man := map[string]any{
@@ -796,10 +717,8 @@ func writeSyntheticExtraction(t *testing.T, root, docID string, overrides map[st
 	writeRepoFile(t, root, artifactPath(docID, corpus.ManifestFile), b)
 }
 
-// TestAnUnpinnedToolchainFails: the artifacts are intact, the registry agrees, and
-// the extraction was made by something else. poppler's output is not stable across
-// versions, so this is the difference between the artifacts that were reviewed and
-// artifacts that merely parse.
+// TestAnUnpinnedToolchainFails: intact artifacts, an agreeing registry, and an
+// extraction made by an unpinned poppler.
 func TestAnUnpinnedToolchainFails(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -842,14 +761,8 @@ func TestAnUnpinnedToolchainFails(t *testing.T) {
 	}
 }
 
-// TestAnUnreadableManifestSchemaRefusesToLoad records the line between a finding
-// and a load failure, which the toolchain check's doc comment depends on.
-//
-// A schema_version this fisc does not know means the artifact namespace itself may
-// be different — at version 1 the pages were .md and there was a tables/ directory —
-// so there is no verdict to reach about that extraction, only a statement that the
-// reader cannot read it. That is a failure of the harness, and internal/corpus,
-// internal/registry and internal/mapping all draw it in the same place.
+// TestAnUnreadableManifestSchemaRefusesToLoad: an unknown schema_version is a
+// load failure, not a finding, since the artifact namespace may differ.
 func TestAnUnreadableManifestSchemaRefusesToLoad(t *testing.T) {
 	t.Parallel()
 	for _, version := range []json.Number{"1", "3"} {
@@ -876,30 +789,16 @@ func TestAnUnreadableManifestSchemaRefusesToLoad(t *testing.T) {
 // --full: the source documents
 // --------------------------------------------------------------------------
 
-// fakePDF is what these tests put under data/pdf/ in place of a 35 MB document.
-//
-// It begins "%PDF-" because that is the one thing about a real PDF that matters
-// here: it is what an LFS pointer is told apart from. Nothing in fisc parses a PDF —
-// the extractor is poppler and it does not run in a test — so the bytes only have to
-// be bytes with a recorded hash.
+// fakePDF stands in for a source document under data/pdf/. It begins "%PDF-",
+// which is what tells it from an LFS pointer; nothing in fisc parses a PDF.
 func fakePDF(id string) []byte {
 	return []byte("%PDF-1.7\n% a stand-in for " + id + ", so no test needs Git LFS\n%%EOF\n")
 }
 
-// repoWithPDFs is a tree --full can pass over: repoWithoutPDFs plus a synthesized
-// source document per registry entry, with data/sources.yaml and every manifest
-// rewritten to record the hash and size of the bytes actually written.
-//
-// The real documents are 67 MB in Git LFS. A test that read them would be a test
-// that fails on a plain clone, and it could not test a corrupted document at all
-// without corrupting the checkout. Synthesizing them instead means the three
-// parties this check compares — the bytes, the registry and the manifest — are all
-// under the test's control, so any one of them can be made to disagree.
-//
-// What is NOT rewritten is anything else the registry says about the document: it
-// still records 268 pages for a 70-byte file. Nothing reads a PDF's page count —
-// the manifest's page_count came from the extractor, and the extraction is the real
-// one — so leaving it is honest about what these tests cover and what they do not.
+// repoWithPDFs is repoWithoutPDFs plus a synthesized source document per
+// registry entry, with data/sources.yaml and every manifest rewritten to its
+// hash and size. The registry's page counts are left as they are; nothing
+// reads a PDF's page count.
 func repoWithPDFs(t *testing.T) string {
 	t.Helper()
 	root := repoWithoutPDFs(t)
@@ -927,9 +826,7 @@ func repoWithPDFs(t *testing.T) string {
 	return root
 }
 
-// replaceOnce substitutes exactly one occurrence and fails if there was not exactly
-// one, so a helper that quietly stopped rewriting the registry cannot leave the
-// tests it supports passing for the wrong reason.
+// replaceOnce substitutes exactly one occurrence and fails otherwise.
 func replaceOnce(t *testing.T, s, old, new string) string {
 	t.Helper()
 	if n := strings.Count(s, old); n != 1 {
@@ -951,9 +848,8 @@ func loadAndRunFull(t *testing.T, root string) *Report {
 	return Run(t.Context(), s, All(), ReportOptions{GeneratedBy: testVersion})
 }
 
-// TestFullHashesEverySourceDocument is the pass case, and it is also what makes
-// SKIPPED reachable: this check is the first in the report to need an input --full
-// supplies, so this is the run in which it stops being skipped and does something.
+// TestFullHashesEverySourceDocument is the pass case, the run in which this
+// check stops being skipped.
 func TestFullHashesEverySourceDocument(t *testing.T) {
 	t.Parallel()
 	root := repoWithPDFs(t)
@@ -970,18 +866,14 @@ func TestFullHashesEverySourceDocument(t *testing.T) {
 		t.Fatalf("source-pdfs-match-both-records = %s (%s): %v",
 			res.Status, res.Summary, res.Findings)
 	}
-	// Six records over three documents: each hashed file is compared against two
-	// independently written claims, and both comparisons are counted.
-	// TestOnlyTheRecordsThatExistAreCounted is what holds that honest.
+	// Six records over three documents: each file against two written claims.
 	if res.Subjects != 6 {
 		t.Errorf("subjects = %d, want 6 records over the 3 source documents", res.Subjects)
 	}
 }
 
-// TestACorruptedSourceDocumentFails is the check's reason for existing. The two
-// written records still agree with each other — so the three checks that need no PDF
-// all pass — and the bytes they describe are not the bytes on disk. Nothing but
-// hashing the file can see it.
+// TestACorruptedSourceDocumentFails: the two written records agree and the
+// bytes on disk differ; only hashing the file sees it.
 func TestACorruptedSourceDocumentFails(t *testing.T) {
 	t.Parallel()
 	root := repoWithPDFs(t)
@@ -1001,8 +893,7 @@ func TestACorruptedSourceDocumentFails(t *testing.T) {
 	if len(res.Findings) != 1 || res.Findings[0].Subject != docWithFacts {
 		t.Fatalf("findings = %v, want exactly the corrupted document", res.Findings)
 	}
-	// Both records are named, because both are now wrong about the file and a
-	// reader has to know that neither of them is the odd one out.
+	// Both records are named, so neither reads as the odd one out.
 	for _, want := range []string{sourcesFile, "the extraction was made from sha256"} {
 		if !strings.Contains(res.Findings[0].Detail, want) {
 			t.Errorf("finding %q does not mention %q", res.Findings[0].Detail, want)
@@ -1014,10 +905,8 @@ func TestACorruptedSourceDocumentFails(t *testing.T) {
 	}
 }
 
-// TestATruncatedSourceDocumentFails covers comparePDF's size comparison, which a
-// corruption test cannot reach: flipping a byte preserves the length, so the finding
-// only ever names the hashes. A truncated download is the likelier real event of the
-// two, and the size is what says so in one number.
+// TestATruncatedSourceDocumentFails covers comparePDF's size comparison, which
+// a byte flip cannot reach.
 func TestATruncatedSourceDocumentFails(t *testing.T) {
 	t.Parallel()
 	root := repoWithPDFs(t)
@@ -1044,10 +933,8 @@ func TestATruncatedSourceDocumentFails(t *testing.T) {
 	}
 }
 
-// TestOnlyTheRecordsThatExistAreCounted is must-fix 4 from review: this check claims
-// agreement with BOTH records, and a document whose extraction is missing has only
-// one. Counting one subject per document would print "3 documents, each matching
-// both" over a document that was compared once.
+// TestOnlyTheRecordsThatExistAreCounted: a document whose extraction is missing
+// is compared against one record and counted once, not twice.
 func TestOnlyTheRecordsThatExistAreCounted(t *testing.T) {
 	t.Parallel()
 	root := repoWithPDFs(t)
@@ -1075,16 +962,9 @@ func TestOnlyTheRecordsThatExistAreCounted(t *testing.T) {
 	}
 }
 
-// TestAnUnfetchedPointerIsAnErrorAndSaysHowToFetchIt is the case a plain clone is
-// in, and the one it would be easiest to get wrong. data/pdf/** is the only thing in
-// this repository held in Git LFS, and a checkout without it has POINTER TEXT where
-// the document should be — not a missing file. Reporting that as a corrupted
-// document would be a false alarm on every developer machine that has not run `git
-// lfs pull`, and in CI, which skips the smudge filter deliberately.
-//
-// So it is an ERROR: the checker could not reach a verdict, which is a different
-// column of the report from a corpus that is wrong. And the message carries the
-// command, because the fix is one command.
+// TestAnUnfetchedPointerIsAnErrorAndSaysHowToFetchIt: an LFS pointer where the
+// document should be is an ERROR, not a corrupted document, and the message
+// carries `git lfs pull`.
 func TestAnUnfetchedPointerIsAnErrorAndSaysHowToFetchIt(t *testing.T) {
 	t.Parallel()
 	root := repoWithPDFs(t)
@@ -1113,28 +993,22 @@ func TestAnUnfetchedPointerIsAnErrorAndSaysHowToFetchIt(t *testing.T) {
 		"Git LFS pointer",
 		"git lfs pull",
 		pointerFor.File,
-		// The pointer records the same hash the registry does, so fetching will
-		// produce the recorded document — which is worth saying, because the
-		// alternative is a tree no fetch can reconcile.
+		// The pointer records the registry's hash, so fetching reconciles.
 		"which is the sha256 the registry records",
 	} {
 		if !strings.Contains(res.Summary, want) {
 			t.Errorf("summary %q does not contain %q", res.Summary, want)
 		}
 	}
-	// It is an error and not a failure, and nothing else in the report moved: the
-	// committed artifacts are all still there and still hash correctly.
+	// An error, not a failure, and nothing else in the report moved.
 	if rep.Counts.Fail != 0 {
 		t.Errorf("counts = %+v, want the unfetched pointer in the error column alone",
 			rep.Counts)
 	}
 }
 
-// TestAPointerThatDisagreesWithTheRegistrySaysSo distinguishes two unfetched trees
-// that look identical: one where `git lfs pull` produces the recorded document, and
-// one where the committed pointer names a different file than the registry does, so
-// no fetch can reconcile them. Both are errors; only one of them is fixable by
-// fetching.
+// TestAPointerThatDisagreesWithTheRegistrySaysSo: a pointer naming a different
+// file than the registry is an error no fetch can fix, and says so.
 func TestAPointerThatDisagreesWithTheRegistrySaysSo(t *testing.T) {
 	t.Parallel()
 	root := repoWithPDFs(t)
@@ -1175,20 +1049,15 @@ func TestAMissingSourceDocumentIsAnError(t *testing.T) {
 	}
 }
 
-// lfsPointer renders a Git LFS v1 pointer, in the byte-for-byte shape this
-// repository's own committed pointers have — three lines, LF-terminated, oid before
-// size, 130-odd bytes total. Taken from `git cat-file -p HEAD:data/pdf/...`, not
-// guessed: the sentinel that tells this from a PDF is the first line, and a test
-// that invented its own spelling would prove nothing about the file git writes.
+// lfsPointer renders a Git LFS v1 pointer in the shape this repository's
+// committed pointers have (`git cat-file -p HEAD:data/pdf/...`).
 func lfsPointer(oid string, size int64) []byte {
 	return []byte(fmt.Sprintf("version https://git-lfs.github.com/spec/v1\noid sha256:%s\nsize %d\n",
 		oid, size))
 }
 
-// TestParseLFSPointer is the sentinel on its own, over the shapes it has to tell
-// apart. A false positive here would report a real document as unfetched; a false
-// negative would hash 130 bytes of pointer text and report the document as
-// corrupted.
+// TestParseLFSPointer: a false positive reports a real document as unfetched;
+// a false negative hashes pointer text and reports it corrupted.
 func TestParseLFSPointer(t *testing.T) {
 	t.Parallel()
 	const oid = "1176ab87130ba5ddc73f13bf97e8d9d44f1dc049d16334a124afe00fdfbdd1e8"

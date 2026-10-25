@@ -47,10 +47,9 @@ const (
 	libraryLine = "revenue-line/charges-for-services/library-fees"
 )
 
-// lineTieSubject is that spine and a drill-down that decomposes it, plus a
-// second drill-down of a column the spine does not publish, as the corpus has.
-// The ERAF contra row makes General Fund property tax tie only if the negative
-// is summed with its sign.
+// lineTieSubject is a spine, a drill-down decomposing it, and a drill-down of a
+// column the spine does not publish; the ERAF contra row ties only if summed
+// with its sign.
 //
 //	general      revenue taxes/property        100,000  120,000 secured + (20,000) ERAF
 //	             revenue charges-for-services   40,000  drawn as one line into fund/100

@@ -7,15 +7,13 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/project"
 )
 
-// TestDebtServiceTiesToFactsGoesRed edits the committed debt-service document
-// one way at a time and holds the check to naming each: a figure that is not
-// its fact, a fact no figure publishes, a band read as a year, and a total
-// that is not its facts' sum.
+// TestDebtServiceTiesToFactsGoesRed edits the debt-service document one way at
+// a time and holds the check to naming each.
 //
-// Mutation: drop the slice sweep from debtServiceTiesToFacts.Run and "a
-// figure dropped" goes green; drop the column-set comparison and "a total
-// that leaves out the bands" does; drop the per-type count of totals and "a
-// fund type with no total" and "a fund type with two totals" do.
+// Mutation: drop the slice sweep from debtServiceTiesToFacts.Run and "a figure
+// dropped" goes green; drop the column-set comparison and "a total that leaves
+// out the bands" does; drop the per-type count of totals and "a fund type with
+// no total" and "a fund type with two totals" do.
 func TestDebtServiceTiesToFactsGoesRed(t *testing.T) {
 	t.Parallel()
 	if res := runCheck(t, &debtServiceTiesToFacts{}, committed(t)); res.Status != StatusPass {

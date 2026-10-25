@@ -17,14 +17,9 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
-// The fixture is a miniature of the citywide spine: two fund groups, one row of
-// each kind, and one cell of each shape the projection treats specially — a zero
-// that earns no link, the two stock rows, and a change in working capital of each
-// sign so both inferred nodes exist.
-//
-// It is hand-made rather than read from the committed corpus so that these tests
-// state what each check should conclude over a shape a reader can count. What
-// each check concludes over the committed corpus is `fisc verify --strict`'s.
+// The fixture is a hand-made miniature of the citywide spine: two fund groups,
+// one row of each kind, a zero that earns no link, the two stock rows, and a
+// change in working capital of each sign so both inferred nodes exist.
 const (
 	testDoc     = "livermore-budget-fy2026-2027"
 	testScope   = "all-funds-gross"
@@ -109,12 +104,9 @@ type testCell struct {
 	cents    int64
 }
 
-// fixtureCells is the whole fixture: 12 cells, of which 7 earn a link. Four are
-// the stock rows and one is a zero the document printed, which is what makes the
-// counts identity — cited + stock + zero = facts — worth asserting.
-//
-// Each group holds both identities a printed column does: beginning + change
-// == ending, and revenue + transfers in - expenditure - transfers out == change.
+// fixtureCells is the whole fixture: 12 cells, 7 earning a link, 4 stock rows
+// and one printed zero. Each group ties beginning + change == ending and
+// revenue + transfers in - expenditure - transfers out == change.
 var fixtureCells = []testCell{
 	{vocab.KindRevenue, "taxes/property", "general", 100_000},
 	{vocab.KindRevenue, "taxes/property", "enterprise", 0},
@@ -147,11 +139,8 @@ func printed(cents int64) string {
 	return digits
 }
 
-// fact builds the fixture's fact for one cell, with an id from fact.MakeID over
-// the same tuple `fisc build` hashes, so a finding that names an id names one
-// that could exist.
-//
-// The offset is filled in by testFacts, which lays the cells out as a page.
+// fact builds a cell's fact with an id from fact.MakeID over the tuple `fisc
+// build` hashes; testFacts fills in the offset.
 func (c testCell) fact() fact.Fact {
 	rule := "fixture-" + string(c.kind)
 	rowPath := fact.RowPath(mapping.Row{Category: c.category})
@@ -202,11 +191,8 @@ func testFacts(cells ...testCell) []fact.Fact {
 	return out
 }
 
-// inlinePageDoc builds a one-page document whose text is written in the test.
-//
-// testDocs derives its pages FROM the facts, which is right for the provenance
-// checks and wrong for a check about what the page prints: those tests want the
-// printed line and the rule that reads it on the same screen.
+// inlinePageDoc builds a one-page document whose text is written in the test,
+// for checks about what a page prints.
 func inlinePageDoc(t *testing.T, docID string, page int, text string) *corpus.Doc {
 	t.Helper()
 	return inlinePagesDoc(t, docID, map[int]string{page: text})
@@ -240,15 +226,8 @@ func inlinePagesDoc(t *testing.T, docID string, pages map[int]string) *corpus.Do
 	return d
 }
 
-// testDocs builds an extraction whose page text carries each fact's token at that
-// fact's offset, by writing the tokens into a padded buffer.
-//
-// It is derived from the facts on purpose: the fixture then satisfies
-// fact-offset-points-at-token by construction, and these tests are about the other
-// checks. A test that wants the offset check to FAIL mutates a fact AFTER the
-// subject is built, and the input-mutation tests in subject_test.go do it properly
-// — through Load, over a copy of the real corpus, where the pages are fixed and it
-// is the fact store that moves.
+// testDocs builds an extraction carrying each fact's token at its offset, so
+// the fixture satisfies fact-offset-points-at-token by construction.
 func testDocs(t *testing.T, facts []fact.Fact) map[string]*corpus.Doc {
 	t.Helper()
 	type key struct {
@@ -304,11 +283,8 @@ func testDocs(t *testing.T, facts []fact.Fact) map[string]*corpus.Doc {
 	return docs
 }
 
-// The fixture department axis. `patrol` is what the department-bearing fixture
-// facts carry; `records` is here so a test can name a division the registry
-// does NOT list without inventing a department too, and `police-department`
-// shares its name with no division on purpose -- the real file's five
-// name-sharing pairs are pinned in internal/registry, not here.
+// The fixture department axis: `records` is a division the registry does not
+// list, and `police-department` shares its name with no division.
 const testDepartmentsYAML = `schema_version: 1
 departments:
   - slug: police-department
@@ -362,17 +338,9 @@ func testSubject(t *testing.T, facts ...fact.Fact) *Subject {
 	if err != nil {
 		t.Fatalf("build the fixture projections: %v", err)
 	}
-	// Resolvers are left empty because Files is: Subject.Resolvers promises one
-	// per rule file, and a fixture that adds a file builds its resolver there
-	// (fundRuleSubject). One tier-1 check DOES read them:
-	// fact-offset-is-not-a-stated-total resolves each rule's stated-total line
-	// through them. That is why it is pinned "vacuous over 0" here and has no
-	// fixture coverage — with no rule files there are no stated-total lines, so
-	// there is nothing a fact could collide with, which is the honest verdict
-	// rather than a gap. Its subjects are the committed corpus, in
-	// statedtotals_test.go. Docs are NOT left empty —
-	// fact-offset-points-at-token reads page text, which is committed extraction
-	// and still not a PDF.
+	// Resolvers are empty because Files is, so fact-offset-is-not-a-stated-total
+	// is vacuous here (its subjects are in statedtotals_test.go); Docs are not,
+	// because fact-offset-points-at-token reads page text.
 	return &Subject{
 		Root:               t.TempDir(),
 		Facts:              facts,
@@ -388,14 +356,9 @@ func testSubject(t *testing.T, facts ...fact.Fact) *Subject {
 	}
 }
 
-// spineDocuments is the published set of a repository that publishes only the
-// spine, one document per year.
-//
-// It exists so a fixture can be a SMALLER repository than this one rather than a
-// broken one. project.PublishedDocuments names revenue-trends, and a fixture
-// carrying no revenue-by-fund fact is not a repository that has lost a published
-// document — it is a miniature that never published it, and
-// published-projection-built must not report on the difference.
+// spineDocuments is the published set of a repository publishing only the
+// spine, one document per year, so published-projection-built does not report
+// on documents a fixture never published.
 func spineDocuments(years ...int) []project.PublishedDocument {
 	slices := make([]project.Options, 0, len(years))
 	for _, y := range years {

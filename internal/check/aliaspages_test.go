@@ -6,11 +6,8 @@ import (
 	"testing"
 )
 
-// TestAnAliasListsEveryPageARuleReadsItOn holds data/funds.yaml's alias pages
-// to the rules that resolve by them. An alias's Pages is its only source note
-// -- "this string appears on these pages" -- so a rule declaring
-// row_labels_name_funds that reads a row by an alias on a page the alias does
-// not list is a binding whose stated evidence never mentions where it was used.
+// TestAnAliasListsEveryPageARuleReadsItOn holds a row_labels_name_funds rule
+// to reading an alias only on a page data/funds.yaml lists for that alias.
 func TestAnAliasListsEveryPageARuleReadsItOn(t *testing.T) {
 	t.Parallel()
 	s := committed(t)

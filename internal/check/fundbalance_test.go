@@ -9,13 +9,8 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
-// TestFundBalanceIdentityCatchesAnEndingThatDoesNotFollow is the mutation the
-// check exists for: a balance whose three published lines do not agree.
-//
-// $1 is deliberate. The identity is exact, and a tolerance is the thing this
-// check must never grow — the corpus's fund balances tie at zero in all thirteen
-// cells, so a discrepancy of any size is a wrong figure rather than the
-// document's rounding.
+// TestFundBalanceIdentityCatchesAnEndingThatDoesNotFollow: a balance whose
+// three lines disagree by $1 is a finding; the identity has no tolerance.
 func TestFundBalanceIdentityCatchesAnEndingThatDoesNotFollow(t *testing.T) {
 	t.Parallel()
 	cells := slices.Clone(fixtureCells)
@@ -49,13 +44,8 @@ func TestFundBalanceIdentityCatchesAnEndingThatDoesNotFollow(t *testing.T) {
 	}
 }
 
-// TestFundBalanceIdentityCatchesADroppedLine is the arm that makes this check
-// able to see a mapping that stopped publishing a row, rather than only one that
-// publishes a wrong figure.
-//
-// Without it the check fails OPEN in the direction that matters most: drop the
-// `change` line and there is nothing left to violate, so the identity would go
-// quietly from thirteen subjects to twelve and still report a pass.
+// TestFundBalanceIdentityCatchesADroppedLine: a balance missing its `change`
+// line is a finding, not one subject fewer.
 func TestFundBalanceIdentityCatchesADroppedLine(t *testing.T) {
 	t.Parallel()
 	var cells []testCell
@@ -86,16 +76,8 @@ func TestFundBalanceIdentityCatchesADroppedLine(t *testing.T) {
 	}
 }
 
-// TestFundBalanceIdentityIgnoresReserveIncrease pins the exclusion that is
-// easiest to get wrong, and the one whose absence would be invisible.
-//
-// fund-balance/reserve-increase is a FOURTH category carrying kind fund_balance
-// — the spine's ADDITION TO RESERVES — and it is a movement inside the change
-// rather than a fourth line beside beginning and ending.
-//
-// Summing it in reddens every committed balance whose page prints it non-zero,
-// which would fail the check against a corpus that is not wrong, and is what
-// makes the exclusion worth a test.
+// TestFundBalanceIdentityIgnoresReserveIncrease: fund-balance/reserve-increase
+// is a movement inside the change, not a line beside beginning and ending.
 func TestFundBalanceIdentityIgnoresReserveIncrease(t *testing.T) {
 	t.Parallel()
 	cells := append(slices.Clone(fixtureCells), testCell{
@@ -113,17 +95,9 @@ func TestFundBalanceIdentityIgnoresReserveIncrease(t *testing.T) {
 	}
 }
 
-// TestFundBalanceIdentityReportsADuplicateWithoutAbandoningTheRest pins the
-// difference between a defect in the STORE and a failure of the harness.
-//
-// Two facts of one category on one balance leave the identity with no single
-// value to check. That is a finding, not an error: an error gives the whole
-// check StatusError, so one duplicated line would leave every balance
-// unexamined and report a corpus defect as a broken checker.
-//
-// The shape is not hypothetical: fisc-2x7y is exactly this, measured on ACFR
-// p41, where two rules over one page section can publish one printed figure
-// twice.
+// TestFundBalanceIdentityReportsADuplicateWithoutAbandoningTheRest: two facts
+// of one category on one balance are a finding, not a StatusError that leaves
+// every other balance unexamined.
 func TestFundBalanceIdentityReportsADuplicateWithoutAbandoningTheRest(t *testing.T) {
 	t.Parallel()
 	cells := slices.Clone(fixtureCells)

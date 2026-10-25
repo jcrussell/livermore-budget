@@ -184,12 +184,10 @@ func TestRevenueRowsAndLinesAreOneSet(t *testing.T) {
 	}
 }
 
-// TestEveryRevenueLineIsARowOfTheMapping makes fact-revenue-lines-resolve's
-// claim against the rule file rather than the fact store, so a rule row no
-// page yields a fact for is caught here.
+// TestEveryRevenueLineIsARowOfTheMapping holds the rule file's rows and the
+// revenue lines to each other, so a rule row no page yields a fact for is caught.
 //
-// Mutation: move taxes/property/eraf to taxes/other/eraf; this fails twice,
-// naming the line no rule row carries and the rule row no line resolves.
+// Mutation: move taxes/property/eraf to taxes/other/eraf; this fails twice.
 func TestEveryRevenueLineIsARowOfTheMapping(t *testing.T) {
 	t.Parallel()
 	s := committed(t)

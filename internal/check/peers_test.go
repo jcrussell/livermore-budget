@@ -222,12 +222,11 @@ func (c *peersOver) Run(_ context.Context, s *Subject) (Result, error) {
 	return c.run(s, c.cuts)
 }
 
-// A pair Peers cannot compare for a reason in the declarations rather than
-// the lattice -- here two cuts at a level no lattice declares, which restrict
-// accepts and project refuses -- is a finding, not a refused pair.
+// A pair Peers cannot compare because of its declarations (two cuts at a level
+// no lattice declares) is a finding, not a refused pair.
 //
-// Mutation: count every error from structure.Peers as refused and the check
-// goes green with "x/y" among the refused pairs.
+// Mutation: count every error from structure.Peers as refused; the check goes
+// green with "x/y" among the refused pairs.
 func TestAPeerComparisonThatFailsOnItsDeclarationsIsAFinding(t *testing.T) {
 	t.Parallel()
 	s := committed(t)

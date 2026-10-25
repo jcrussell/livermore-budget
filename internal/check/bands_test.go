@@ -18,13 +18,10 @@ func band(f fact.Fact, through int) fact.Fact {
 	return f
 }
 
-// TestAnEditedBandNoLongerAddressesItself holds a band's last year to its id.
-// The parser ties fiscal_year_through to the printed label at build, and
-// nothing at verify re-reads the label, so a facts.jsonl line edited from
-// 2031-2035 to 2031-2034 would otherwise pass every fact-store check.
+// TestAnEditedBandNoLongerAddressesItself holds a band's last year to its id,
+// which nothing at verify otherwise re-reads.
 //
-// Mutation: hash MakeIDThrough's tuple without the band end and this goes
-// green over the edited line.
+// Mutation: hash MakeIDThrough's tuple without the band end; this goes green.
 func TestAnEditedBandNoLongerAddressesItself(t *testing.T) {
 	t.Parallel()
 	facts := testFacts()
@@ -43,13 +40,10 @@ func TestAnEditedBandNoLongerAddressesItself(t *testing.T) {
 	}
 }
 
-// TestABandIsNeverKeyedAsItsFirstYear feeds a band and the one-year figure
-// sharing its first year to every store-wide path that keys a fact by its
-// column, and holds each to telling them apart: a key of (fiscal year, basis)
-// alone would file the band's five years under FY2031.
+// TestABandIsNeverKeyedAsItsFirstYear holds every store-wide path that keys a
+// fact by column to telling a band from the one-year figure at its first year.
 //
-// Mutation: drop fact.BandOf from any one of the keys below and its arm goes
-// red.
+// Mutation: drop fact.BandOf from any one key below; its arm goes red.
 func TestABandIsNeverKeyedAsItsFirstYear(t *testing.T) {
 	t.Parallel()
 	year := testFacts()[0]

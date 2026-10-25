@@ -586,16 +586,12 @@ func TestTheExpansionChecksCanFail(t *testing.T) {
 	}
 }
 
-// TestAFlowBetweenAHubsMembersIsALeaf plants a flow from one enterprise fund
-// to another, re-pointed onto their group as an inflow hub re-points a leaf
-// arriving at a member, with the leg to its target repeating it. The
-// re-pointed link runs from a member into the node, which is no leg, and
-// against the side the split declares, which the client draws as a circular
-// link and this check names. The plant takes its leaf from the line it
-// repeated, so other findings fire and are not what this reads.
+// TestAFlowBetweenAHubsMembersIsALeaf plants a flow between two enterprise
+// funds re-pointed onto their group, which runs against the split's side and
+// must be named.
 //
-// MUTATION: skip a leaf re-pointed onto the node in sideFindings' count and
-// the plant passes.
+// Mutation: skip a leaf re-pointed onto the node in sideFindings' count; the
+// plant passes.
 func TestAFlowBetweenAHubsMembersIsALeaf(t *testing.T) {
 	t.Parallel()
 	const (
@@ -660,14 +656,12 @@ func TestRepeatsAndRestatesAreTheExpansionsAlone(t *testing.T) {
 	}
 }
 
-// TestASplitsSideIsTheStitchs holds sideFindings to the side the stitch
-// gives a split, at a root the spine draws nothing into: a hub stands its
-// members before it and a split citing totals of its own after it, so the
-// general fund's divisions declared after such a root are correct and a
-// fund group's funds declared after it are not.
+// TestASplitsSideIsTheStitchs holds sideFindings to the side the stitch gives
+// a split at a root the spine draws nothing into: a hub's members stand before
+// it, a split citing its own totals after it.
 //
-// MUTATION: want before for every root primary split at a node taking
-// nothing in, hub or not, and this names the general fund's divisions.
+// Mutation: want before for every root primary split at a node taking nothing
+// in, hub or not; this names the general fund's divisions.
 func TestASplitsSideIsTheStitchs(t *testing.T) {
 	t.Parallel()
 	x := stitched{spine: &project.Document{}}
@@ -688,15 +682,12 @@ func TestASplitsSideIsTheStitchs(t *testing.T) {
 	}
 }
 
-// TestALinkIsReadWholeAtItsLeafOnlyAsALeg holds atLeaf to project.IsLeg:
-// a link from a fund into its own group, an inflow hub, that leaves the fund
-// and repeats a leaf to another node is a leaf re-pointed onto the group,
-// not a leg, so it is read where it is drawn at the group rather than whole
-// at the leaf's ends, where it would hide the end it does not reach.
+// TestALinkIsReadWholeAtItsLeafOnlyAsALeg holds atLeaf to project.IsLeg: a
+// fund's link into its own group that repeats a leaf elsewhere is read at the
+// group, not whole at the leaf.
 //
-// MUTATION: read every link between a node and its own primary member whole
-// at its leaf, as a parent-only rule does, and this reads it as fund/600 ->
-// expenditure/capital-outlay.
+// Mutation: read every link between a node and its own primary member whole at
+// its leaf; this reads it as fund/600 -> expenditure/capital-outlay.
 func TestALinkIsReadWholeAtItsLeafOnlyAsALeg(t *testing.T) {
 	t.Parallel()
 	const group = "fund-group/enterprise"

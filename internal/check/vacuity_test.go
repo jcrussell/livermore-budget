@@ -116,14 +116,8 @@ func TestADeclaredVacancyPassesStrictAndAnUndeclaredOneDoesNot(t *testing.T) {
 	}
 }
 
-// TestAStaleDeclarationFailsWithOrWithoutStrict is the self-retiring half, and
-// the asymmetry with the test above is the argument.
-//
-// An undeclared vacancy is a coverage shortfall, which a default run
-// deliberately tolerates. A declaration whose check has started reporting
-// something else is a FALSE STATEMENT in this package's own source, and no run
-// should pass on one -- otherwise the entry outlives the work it was waiting
-// for, which is exactly the failure mode a declaration is supposed to prevent.
+// TestAStaleDeclarationFailsWithOrWithoutStrict: a declaration whose check
+// reports something else is false, and fails even a default run.
 func TestAStaleDeclarationFailsWithOrWithoutStrict(t *testing.T) {
 	t.Parallel()
 	declared, s := testVacancy(t)
@@ -163,16 +157,9 @@ func TestAStaleDeclarationFailsWithOrWithoutStrict(t *testing.T) {
 	}
 }
 
-// TestADeclarationSurvivesACheckThatReachedNoVerdict: stale is a claim that the
-// work landed, and only PASS and FAIL are verdicts. A check that ERRORED or was
-// SKIPPED did not look, so the run establishes nothing about the declaration.
-//
-// ERROR IS THE REACHABLE ONE: run1 turns ctx.Err() into errored(...), so a
-// Ctrl-C on `fisc verify` must not report a declaration stale. SKIPPED is
-// asserted too, because ci.yml's --strict step passes no --full.
-//
-// A genuine error still fails the run. That is Counts.Error's job in Failed(),
-// and it says the checker could not tell rather than claiming a bead landed.
+// TestADeclarationSurvivesACheckThatReachedNoVerdict: only PASS and FAIL are
+// verdicts, so a check that ERRORED (as ctx.Err() makes it) or was SKIPPED
+// leaves its declaration standing; the error itself still fails the run.
 func TestADeclarationSurvivesACheckThatReachedNoVerdict(t *testing.T) {
 	t.Parallel()
 	declared, s := testVacancy(t)
@@ -222,10 +209,7 @@ func TestADeclarationSurvivesACheckThatReachedNoVerdict(t *testing.T) {
 }
 
 // testVacancy is the one declaration the cases below run over, on a subject
-// carrying nothing else. A case about the mechanism must not borrow a live
-// declaration: it would retire with the last thing the tree excuses. The id is
-// a real check, because Declaration.Ran distinguishes "this run had no such
-// check" from a stale entry and a made-up id would exercise the wrong arm.
+// carrying nothing else; its id is a real check so Declaration.Ran is exercised.
 func testVacancy(t *testing.T) (string, *Subject) {
 	t.Helper()
 	const id = "transfer-legs-pair"

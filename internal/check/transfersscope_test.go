@@ -6,24 +6,10 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
-// TestTheGeneralFundTransferInLegIsNotDoubled is fisc-5gk.3.1's acceptance
-// criterion, against the committed corpus rather than a fixture.
-//
-// THE DEFECT IT GUARDS IS SILENT, which is why the number is written out. p76
-// and pp.66-67 are the SAME MONEY: every destination fund group's section total
-// on p76 equals the spine's TRANSFER IN cell exactly. So a rule written at
-// scope all-funds-gross would join the spine projection and netCells would sum
-// the two -- the General Fund in-leg going 480,400 -> 960,800, the published
-// transfer residual roughly doubling -- with headline-transfer-residual and
-// link-values-tie-to-facts both still GREEN, because they tie the graph to the
-// facts it was built from rather than to the document. That is fisc-u2v's
-// mechanism one schedule over.
-//
-// The one check that would see it is exempt exactly there:
-// cuts-tie-along-the-lattice reads structure.BudgetBookExceptions, which pins
-// (transfer_in, transfers/in, general) on both sides because pp.127-130 print no
-// General Fund Transfers In row -- and that is the same key a doubled leg would
-// land on.
+// TestTheGeneralFundTransferInLegIsNotDoubled holds the committed corpus to one
+// General Fund transfer-in leg: p76 and pp.66-67 are the same money, and a rule
+// at scope all-funds-gross would sum them (480,400 -> 960,800) with every
+// graph-to-fact check still green.
 func TestTheGeneralFundTransferInLegIsNotDoubled(t *testing.T) {
 	t.Parallel()
 	s := committed(t)
@@ -69,15 +55,9 @@ func TestTheGeneralFundTransferInLegIsNotDoubled(t *testing.T) {
 	}
 }
 
-// TestEveryP76LegNamesAFundOrSaysWhyNot is the payer side's own assertion, and
-// it exists because the DOCUMENT cannot make it.
-//
-// fact.FromValues' counterpart fan-out is downstream of everything that
-// compares our read against the city's arithmetic, so a payer declared as the
-// wrong fund entirely leaves the page's totals byte for byte unchanged --
-// proven in mapping's TestTheDocumentCannotCheckACounterpart, which redeclares
-// every p76 payer as fund 999 and changes nothing. What is asserted here is the
-// weaker structural claim the fact store CAN make: every leg is addressable.
+// TestEveryP76LegNamesAFundOrSaysWhyNot holds every p76 leg to being
+// addressable; the page's totals cannot tell a wrong payer fund, so this is the
+// structural claim the fact store can make.
 func TestEveryP76LegNamesAFundOrSaysWhyNot(t *testing.T) {
 	t.Parallel()
 	s := committed(t)
@@ -106,12 +86,8 @@ func TestEveryP76LegNamesAFundOrSaysWhyNot(t *testing.T) {
 			legs[vocab.KindTransferOut])
 	}
 
-	// EXACTLY ONE ROW HAS NO FUND AT ITS RECEIVING END, and it is named.
-	// "LAVWMA / Wastewater Connection" is a joint powers authority, not a City
-	// fund; data/funds.yaml has no entry and no alias for it, and
-	// registry.FundByLabel fails on it by name -- deliberately, because the
-	// alternative is silently picking Wastewater Connection Fees (623). Its
-	// column path is the fund group alone, which is addressable.
+	// Exactly one row has no fund at its receiving end: LAVWMA is a joint
+	// powers authority, not a City fund, so its column path is the fund group.
 	const lavwma = "Transfer From Wastewater to LAVWMA / Wastewater"
 	if len(noFund) != 1 || noFund[lavwma] != 2 {
 		t.Errorf("rows publishing a leg with no fund = %v, want just %q twice "+

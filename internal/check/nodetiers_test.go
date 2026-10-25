@@ -41,13 +41,8 @@ func nodeIndex(t *testing.T, g *project.Document, prefix string) int {
 	return -1
 }
 
-// TestNodeTiersAreDeclaredIsFailable damages the graph four ways, one per claim.
-//
-// EACH CASE IS INVISIBLE TO EVERY OTHER CHECK, which is the argument for this
-// one existing. A node at the wrong tier still cites the right facts, so
-// link-values-tie-to-facts is green; it introduces no cycle, so graph-acyclic is
-// green; the counts are unchanged, so counts-reconcile is green. The only thing
-// that moves is where the client draws the box and which parent it folds into.
+// TestNodeTiersAreDeclaredIsFailable damages the graph four ways, one per
+// claim, each invisible to every other check.
 func TestNodeTiersAreDeclaredIsFailable(t *testing.T) {
 	t.Parallel()
 	// The undamaged fixture passes, or the cases below prove nothing.
@@ -102,11 +97,8 @@ func TestNodeTiersAreDeclaredIsFailable(t *testing.T) {
 			want: "coarser tier to a finer one",
 		},
 		{
-			// THE GAP: this was a `continue` blamed on
-			// graph-acyclic and link-values-tie-to-facts, and neither reports
-			// it. findCycle only looks for cycles and a dangling end is a leaf;
-			// linkValuesTieToFacts never reads Graph.Nodes. So a typo'd
-			// endpoint passed every check in the tree.
+			// No other check reports a dangling link end: findCycle reads it
+			// as a leaf and linkValuesTieToFacts never reads Graph.Nodes.
 			name: "a link naming a node the graph does not carry",
 			damage: func(t *testing.T, g *project.Document) {
 				g.Links[0].Target = "fund-group/genrl"

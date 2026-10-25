@@ -25,15 +25,9 @@ func citeFact(id, rule, label string, kind vocab.Kind, cents int64) fact.Fact {
 	}
 }
 
-// TestOnePrintedFigureIsTwoFactsOnlyWhenARowDeclaresIt is the guard fisc-2x7y
-// asked for, and it is written as a table because the check's whole job is to
-// separate one shared citation from another.
-//
-// The declared case is Budget Book p76's shape -- one rule, one row, two ends of
-// one movement -- and the store carries 44 of them, so a check that refused every
-// shared citation would redden 88 committed facts. The undeclared case is ACFR
-// p41's, where two rules read one section anchor and can publish its single
-// printed figure twice with every other check satisfied.
+// TestOnePrintedFigureIsTwoFactsOnlyWhenARowDeclaresIt: a shared citation
+// passes when one row declares both ends (Budget Book p76) and fails when two
+// rules read one anchor (ACFR p41).
 func TestOnePrintedFigureIsTwoFactsOnlyWhenARowDeclaresIt(t *testing.T) {
 	t.Parallel()
 	withCounterpart := []mapping.Rule{{
@@ -118,13 +112,9 @@ func TestOnePrintedFigureIsTwoFactsOnlyWhenARowDeclaresIt(t *testing.T) {
 	}
 }
 
-// TestATransferPrintedAgainstItsKindMustSaySo pins fisc-fdxx's invariant, and
-// pins the RESTRICTION as well as the rule: the last two cases are the negative
-// revenue and fund_balance facts the committed store really carries, and a check
-// written as "a negative amount must be declared" would redden all FIFTEEN of
-// them -- 9 negative revenue and 6 negative fund_balance. The store holds
-// sixteen negative facts; the sixteenth is the netted transfer_out, which such a
-// rule would not redden because it declares.
+// TestATransferPrintedAgainstItsKindMustSaySo holds the netted transfer to its
+// declaration, and holds the store's negative revenue and fund_balance facts,
+// which declare nothing, to passing.
 func TestATransferPrintedAgainstItsKindMustSaySo(t *testing.T) {
 	t.Parallel()
 	f := func(kind vocab.Kind, sign vocab.Sign, cents int64) fact.Fact {
@@ -168,14 +158,8 @@ func TestATransferPrintedAgainstItsKindMustSaySo(t *testing.T) {
 	}
 }
 
-// TestTheOrientationSummaryDoesNotCountAZeroAsNetted pins a string fisc verify
-// prints on every run.
-//
-// The count and the arm above it have to agree: a zero declares no direction, so
-// counting one as "printed against their kind's direction" would contradict the
-// reason zeroes are exempt in the first place. Latent on the committed corpus,
-// where the one netted row has no zero column, which is why it needs a test
-// rather than a run.
+// TestTheOrientationSummaryDoesNotCountAZeroAsNetted pins the summary fisc
+// verify prints: a zero declares no direction, so it is not counted as netted.
 func TestTheOrientationSummaryDoesNotCountAZeroAsNetted(t *testing.T) {
 	t.Parallel()
 	nettedAt := func(cents int64) fact.Fact {

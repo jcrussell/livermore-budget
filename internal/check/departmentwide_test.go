@@ -10,35 +10,17 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/structure"
 )
 
-// This file is the arithmetic behind pp.85-125's UPPER block, and like
-// fundingsources_test.go it is deliberately NOT a second call into the machinery
-// that publishes it: check.go's doctrine is that two functions over identical
-// input inside one process cannot witness a wrong amount. The first test below
-// reads the pages with a scanner of its own and compares what the city printed
-// against figures typed out of pp.66-67.
-//
-// The second guards the one exception structure.BudgetBookExceptions declares
-// on these pages, which is the part a reader has to take on trust.
+// This file reads pp.85-125 with a scanner of its own, independent of the
+// machinery that publishes them, and compares the printed figures to pp.66-67.
 
-// departmentwidePages are the ELEVEN pages that carry an Expenditures by
-// Category block, in printed order. Fourteen pages print the DEPARTMENTWIDE
-// EXPENDITURES WITH FUNDING SOURCES heading; p102, p120 and p125 are
-// continuation pages carrying funding-source rows only, which is why they are
-// in fundingPages and not here.
+// departmentwidePages are the eleven pages carrying an Expenditures by Category
+// block; p102, p120 and p125 carry funding-source rows only.
 var departmentwidePages = []int{85, 89, 93, 97, 101, 105, 108, 111, 115, 119, 124}
 
-// objectRow matches a printed object line: an optional division label, an object
-// category, and the four figures. A bare "-" is a printed zero.
-//
-// THE LABEL IS SEPARATED BY \s+ AND NOT BY \s{2,}, which is the whole of what
-// makes this match p101. A long division label runs right up to the object
-// column: p101:11 prints "Community Development Wages & Benefits" with a SINGLE
-// space, where every other page leaves a wide run. A two-space rule reads that
-// line as no match at all and silently drops Community Development Admin's four
-// figures out of a sum it then reports as short.
-//
-// The figures are still separated by \s{2,}, which is what keeps the object name
-// from swallowing the first column.
+// objectRow matches a printed object line: an optional division label, an
+// object category, and four figures; a bare "-" is a printed zero. The label is
+// split by \s+ because p101:11 prints "Community Development Wages & Benefits"
+// with one space; the figures are split by \s{2,}.
 var objectRow = regexp.MustCompile(
 	`^(.*?)\s+(Wages & Benefits|Services & Supplies|Capital Outlay|Debt Services|` +
 		`Transfers Out|Division Total)\s{2,}(.*)$`)
@@ -65,16 +47,10 @@ func readObjectFigures(t *testing.T, tail string) []amount.Cents {
 	return out
 }
 
-// THE ARITHMETIC, read off the pages rather than out of the fact store.
-//
-// It asserts two things a mis-read column would break: every division's object
-// rows sum to its own printed Division Total, and the eleven pages' object rows
-// sum, per object category, to the four figures pp.66-67 print citywide.
-//
-// The FY2026-27 services-and-supplies figure typed below is the SPINE's, and the
-// pages come to 250,000 less -- fisc-av0w. That is asserted as a difference
-// here, so this test states the discrepancy independently of the check that
-// declares it.
+// TestThePrintedDepartmentwideRowsSumToTheSpineByObjectCategory holds every
+// division's object rows to its printed Division Total, and the pages' rows per
+// category to pp.66-67's citywide figures; FY2026-27 services and supplies come
+// to 250,000 less than the spine (fisc-av0w), asserted as a difference.
 func TestThePrintedDepartmentwideRowsSumToTheSpineByObjectCategory(t *testing.T) {
 	t.Parallel()
 	s := committed(t)
@@ -108,13 +84,9 @@ func TestThePrintedDepartmentwideRowsSumToTheSpineByObjectCategory(t *testing.T)
 			}
 			if m[2] == "Division Total" {
 				divisions++
-				// Five divisions miss their own printed total by exactly one
-				// dollar, every one in the FY2023-24 Actual column, and those
-				// five are declared as stated_total_deltas in the rule file.
-				//
-				// THE TOLERATED CELLS ARE COUNTED, NOT WAIVED: a blanket $1
-				// allowance would let a sixth rounding division pass silently.
-				// The count is asserted against the five declarations below.
+				// Five divisions miss their printed total by exactly $1 in the
+				// FY2023-24 Actual column, declared as stated_total_deltas; the
+				// tolerated cells are counted against those five, not waived.
 				for c := 0; c < 4; c++ {
 					d := v[c] - running[c]
 					if d == 0 {
@@ -228,20 +200,9 @@ func TestDepartmentwideExceptionFiguresAreNotPrintedAndTheirDifferenceIs(t *test
 		t.Fatal("no exception is declared on the departmentwide cut, so this test asserts nothing")
 	}
 
-	// THE SCAN COUNTS THE PAGES IT READ. An earlier draft looped to a hardcoded
-	// 268 and skipped a page it could not open, so the absence assertion below
-	// was vacuously true against an unreadable corpus.
-	//
-	// IT READS EVERY DOCUMENT THE SUBJECT LOADS AND NOT JUST THE BUDGET BOOK. The
-	// string it substantiates says this corpus prints no citywide
-	// object-category total, and a scan of one document cannot say that.
-	//
-	// "Every document the subject loads" is TWO of the three that are extracted:
-	// the budget book at 268 pages and the ACFR at 195. The CIP is extracted and
-	// is not loaded here, because no rule file maps it, so this test cannot
-	// speak for its 323 pages. That is a real limit on the claim rather than a
-	// gap in the loop, and it is why the assertion below counts pages rather
-	// than naming a corpus size.
+	// The scan counts the pages it read so the absence assertion cannot pass
+	// over an unreadable corpus, and reads every document the subject loads
+	// (the budget book and the ACFR; the CIP is not loaded, so is not covered).
 	scanned, figures := 0, 0
 	for _, e := range byObject {
 		for _, p := range e.Cells {

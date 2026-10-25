@@ -7,10 +7,8 @@ import (
 )
 
 // TestFundGroupsAreTheirPrintedRowsCanFail runs the check over the committed
-// corpus, then over the same documents selecting without the cuts -- which
-// lets in the Capital Improvement Program Funds block, whose CIP funds are
-// typed enterprise and internal-service -- and then with one declared
-// rounding dollar taken off a block total.
+// corpus, then without the cuts (letting in the CIP funds block), then with one
+// declared rounding dollar taken off a block total.
 func TestFundGroupsAreTheirPrintedRowsCanFail(t *testing.T) {
 	t.Parallel()
 	s := committed(t)

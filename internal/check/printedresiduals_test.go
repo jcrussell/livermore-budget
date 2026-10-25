@@ -9,11 +9,7 @@ import (
 )
 
 // TestEveryExceptionResidualIsPrintedWhereItSaysItIs holds each exception's
-// Printed claim to the page line it cites and recomputes its residual from
-// those figures. cuts-tie-along-the-lattice holds exceptions only to the facts,
-// so a residual typed from memory would agree with itself there. The by-object
-// entry prints on no page and is held by
-// TestDepartmentwideExceptionFiguresAreNotPrintedAndTheirDifferenceIs. An
+// Printed claim to the page line it cites and recomputes its residual; an
 // exception this test does not know is a failure.
 func TestEveryExceptionResidualIsPrintedWhereItSaysItIs(t *testing.T) {
 	t.Parallel()

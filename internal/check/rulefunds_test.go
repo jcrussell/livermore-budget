@@ -8,24 +8,10 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 )
 
-// TestFundNameInReadsBothPrintedShapes pins the two forms this corpus prints and
-// the exactness that separates them from a prefix match.
-//
-// WHY THE SECOND SHAPE EXISTS. A leading `Total ` cut answered every anchor that
-// existed while the fund-bearing rules were the revenue schedule's: pp.131-140
-// print `Total <fund>` and pp.127-130's rollup prints `Total General Fund`.
-// pp.167-170 put the fund first -- p0170:23 is `General Fund Total Expenses`,
-// mapped as the rollup gf-total-expenses over all 23 division rules -- so
-// declaring `fund: 100` on those rules produced 23 findings reading "no printed
-// total governing it names that fund: the totals governing it are ...,
-// "General Fund Total Expenses", ...". The anchor was in the list it was
-// reported as missing from.
-//
-// WHAT THIS IS NOT is a prefix match. data/funds.yaml refuses one in writing and
-// the exactness is what keeps the five operating/CIP twins apart. The cases
-// below assert that what is cut is the word Total and the schedule's own
-// trailing noun, never a fragment of a fund name: the caller then resolves the
-// whole candidate through FundByLabel, which answers or does not.
+// TestFundNameInReadsBothPrintedShapes pins `Total <fund>` (pp.131-140) and
+// `<fund> Total <noun>` (p0170:23 `General Fund Total Expenses`), cutting only
+// the word Total and the trailing noun, never a fragment of a fund name: it is
+// not a prefix match.
 func TestFundNameInReadsBothPrintedShapes(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -67,20 +53,9 @@ func TestFundNameInReadsBothPrintedShapes(t *testing.T) {
 	}
 }
 
-// TestUnclaimedFundTotalsSeesBothPrintedShapes is clause 2's half of the same
-// generalisation clause 1 got, and it was nearly missed.
-//
-// fundNameIn taught clause 1 to read `<fund> Total <noun>`; clause 2 kept its own
-// leading-`Total ` regex and a claimed lookup that rebuilt "Total "+name. So on
-// pp.167-170 -- swept for the first time when those rules declared fund 100 --
-// `General Fund Total Expenses` could neither be matched nor claimed, and the
-// check's PASS line said "every printed fund total on those pages is claimed"
-// about a total it could not see. An overstatement in a summary is published
-// verbatim on every run.
-//
-// The two subtests are the two halves that must both hold: the trailing shape is
-// SEEN (so a real unclaimed one is reported) and it is CLAIMABLE under the label
-// as printed (so the mapped one does not become a false finding).
+// TestUnclaimedFundTotalsSeesBothPrintedShapes: a trailing-shape fund total is
+// both seen (an unclaimed one is reported) and claimable under its printed
+// label (a mapped one is not a false finding).
 func TestUnclaimedFundTotalsSeesBothPrintedShapes(t *testing.T) {
 	t.Parallel()
 	const docID = "livermore-budget-fy2026-2027"
@@ -163,18 +138,9 @@ func TestPrintedTotalLabelSplitsOnTheColumnGrid(t *testing.T) {
 	}
 }
 
-// TestAClaimOnOnePageDoesNotSilenceAnotherPage is fisc-lkx.
-//
-// The `claimed` set was keyed on (doc_id, printed label) with NO page dimension,
-// while this check's own stated claim is per page: "on the pages a schedule
-// maps, the schedule maps all of it". So a total mapped on one page silenced an
-// identically-worded total on every other swept page of the same document -- an
-// entirely unmapped fund section on a swept page went invisible, which is the
-// hole clause 2 exists to close.
-//
-// The corpus has no collision, so this cannot be shown against committed
-// pages: it is shown against two inline
-// pages printing the same line, one of them claimed.
+// TestAClaimOnOnePageDoesNotSilenceAnotherPage: a claimed total is claimed per
+// page, so an identically worded total on another swept page is still reported.
+// Two inline pages print the same line, one of them claimed.
 func TestAClaimOnOnePageDoesNotSilenceAnotherPage(t *testing.T) {
 	t.Parallel()
 	const docID = "livermore-budget-fy2026-2027"

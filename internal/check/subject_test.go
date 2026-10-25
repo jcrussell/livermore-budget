@@ -56,14 +56,9 @@ var loadCommitted = sync.OnceValues(func() (*Subject, error) {
 	return Load(LoadOptions{Root: root, Version: testVersion})
 })
 
-// committed is the committed corpus, loaded once and shared by every test
-// that reads it. IT IS SHARED AND THE TESTS RUN IN PARALLEL, so a test
-// writes nothing it reaches through this subject: one that reassigns a field
-// or edits a fact takes [mutable], and one that writes through a pointer the
-// subject holds -- a rule file's rules, a document's nodes or links -- takes
-// [isolated]. A test that forgets is caught by `go test -race` where its
-// write coincides with a read, and by the assertions over the committed
-// corpus where it does not.
+// committed is the committed corpus, loaded once and shared by parallel tests:
+// a test that reassigns a field or edits a fact takes [mutable], and one that
+// writes through a pointer the subject holds takes [isolated].
 func committed(t *testing.T) *Subject {
 	t.Helper()
 	s, err := loadCommitted()
@@ -74,10 +69,7 @@ func committed(t *testing.T) *Subject {
 }
 
 // mutable is the committed corpus with its own Facts, Files and Projections
-// slices, so a test can reassign a field or edit an element and reach no
-// other test. The rule files, documents, docs and resolvers behind those
-// slices are still the shared ones, and a write through any of them is
-// [isolated]'s.
+// slices; a write through what those slices point at is [isolated]'s.
 func mutable(t *testing.T) *Subject {
 	t.Helper()
 	s := *committed(t)
@@ -115,21 +107,9 @@ func copyRepoFile(t *testing.T, src, dst, rel string) {
 	}
 }
 
-// repoWithoutPDFs copies everything Load is allowed to read into a temporary tree,
-// and nothing else: the fact store, the rule files, the four registry files, and
-// the whole committed extraction. data/pdf is not among it.
-//
-// This is what makes the no-PDF property a test rather than a claim: if some check
-// ever reaches for a source document it will not find one here. It is also the
-// tree the input-mutation tests below rewrite, which is the only way to make a
-// check fail from something a repository could actually contain.
-//
-// It copies every artifact rather than only the pages the facts cite:
-// artifacts-match-manifest hashes every
-// file the manifest lists AND reports every file the manifest does not list, so a
-// tree holding five of 1,572 pages is not a repository verify passes over — it is
-// 1,567 findings. The set copied here is exactly the set verify reads, which is
-// what the copy is for.
+// repoWithoutPDFs copies everything Load reads into a temporary tree -- the fact
+// store, rule files, registry files and the whole committed extraction, which
+// artifacts-match-manifest requires -- and no data/pdf.
 func repoWithoutPDFs(t *testing.T) string {
 	t.Helper()
 	src, dst := repoRoot(t), t.TempDir()
@@ -202,12 +182,8 @@ func readFacts(t *testing.T, root string) []fact.Fact {
 	return facts
 }
 
-// mutateFacts rewrites a copied tree's fact store, which is how the tests below
-// make a check fail from an input rather than from a hand-built structure. Load is
-// the only production path to a projection graph and it always derives one from
-// these facts, so a state that this cannot produce is a state no repository can be
-// in — and a test that asserts on one proves the logic without proving the check
-// can ever fire.
+// mutateFacts rewrites a copied tree's fact store, so a test makes a check fail
+// from an input a repository could contain.
 func mutateFacts(t *testing.T, root string, mutate func([]fact.Fact) []fact.Fact) {
 	t.Helper()
 	facts := mutate(readFacts(t, root))
@@ -231,13 +207,8 @@ func loadAndRun(t *testing.T, root string) *Report {
 	return Run(t.Context(), s, All(), ReportOptions{GeneratedBy: testVersion})
 }
 
-// TestVerifyNeedsNoPDFs is the property that lets CI run this command on a plain
-// clone: every input of a default run is a committed artifact, and the source
-// documents — 67MB of PDF that is not in a shallow checkout — are read by nothing.
-//
-// One check now needs them, and the shape of that is the point: it is SKIPPED, with
-// the reason, and the run still exits clean. A --full check that failed on a
-// PDF-less tree would make this property impossible to state.
+// TestVerifyNeedsNoPDFs: every input of a default run is a committed artifact;
+// the one --full check is SKIPPED with its reason and the run still exits clean.
 func TestVerifyNeedsNoPDFs(t *testing.T) {
 	t.Parallel()
 	s, err := Load(LoadOptions{Root: repoWithoutPDFs(t), Version: testVersion})
@@ -318,13 +289,8 @@ func TestLoadWiresOneResolverPerRuleFile(t *testing.T) {
 	}
 }
 
-// TestLoadCarriesTheTreesDeclarations: Load is the one constructor `fisc
-// verify` runs, so a declaration the tree makes reaches the checks through it
-// or not at all. Each field is held to the producer's own list, so a field
-// Load stops filling, or fills from a second spelling, is the diff.
-//
-// A hand-built subject is the other half: it carries only what its builder
-// sets, and the checks that read these fields see none.
+// TestLoadCarriesTheTreesDeclarations holds each field Load fills to its
+// producer's own list; a hand-built subject carries only what its builder sets.
 func TestLoadCarriesTheTreesDeclarations(t *testing.T) {
 	t.Parallel()
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
@@ -449,15 +415,7 @@ func TestProjectionsCoverEveryYearTheFactsCarry(t *testing.T) {
 	}
 }
 
-// The tests below are the ones that matter most in this package, and they are the
-// only shape that catches what the in-memory mutations cannot: they change an
-// INPUT and assert a check fails.
-//
-// Every other failure test here mutates a *project.Document in memory. Those prove the
-// logic, but Load is the only production path to a graph and it always derives one
-// from the fact store, so no repository can be in the state they describe — and a
-// suite made only of those reads as proof of failability while five checks were
-// unfailable.
+// The tests below change an INPUT, through Load, and assert a check fails.
 
 // TestAWrongAmountFails is the check the whole tier was missing. Perturbing one
 // amount by a dollar moves the facts AND every figure internal/project derives from
@@ -595,15 +553,9 @@ func TestANegativeOffsetIsRefusedBeforeTheChecksRun(t *testing.T) {
 	}
 }
 
-// TestAnOffsetPastTheEndOfThePageFails guards the bounds check. The failure this
-// check exists for includes an offset that is simply too large, and reporting it
-// must not mean panicking on the slice.
-//
-// MaxInt64 is a case of its own and not paranoia about a number nobody would
-// write. The offset is read out of a JSONL file, so its value is whatever that
-// file says; the obvious bound, offset+len(token) > len(text), WRAPS NEGATIVE at
-// MaxInt64, passes, and panics one line later. Found in code review of this
-// package, which is why the comparison is a remaining-length subtraction.
+// TestAnOffsetPastTheEndOfThePageFails guards the bounds check, including
+// MaxInt64, where offset+len(token) > len(text) wraps negative; hence the
+// remaining-length subtraction.
 func TestAnOffsetPastTheEndOfThePageFails(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {
@@ -749,14 +701,9 @@ func TestTheYearTheSitePublishesMustBeBuilt(t *testing.T) {
 	}
 }
 
-// TestASpineDocumentWithoutAHeadlineIsAFinding is fisc-gljt's trigger, over
-// the committed corpus: one of the two spine documents the site publishes
-// loses its headline, and every check that reads one must say so by name.
-//
-// THE OTHER DOCUMENT STAYS A SUBJECT. A spine selected by whether a document
-// carries a headline drops the broken one and passes over the rest, which is
-// the state this test refuses: the report would be green and only the
-// projection count in the summary would move.
+// TestASpineDocumentWithoutAHeadlineIsAFinding: one published spine document
+// loses its headline; every check reading one names it, and the other document
+// stays a subject.
 func TestASpineDocumentWithoutAHeadlineIsAFinding(t *testing.T) {
 	t.Parallel()
 	s := isolated(t)
@@ -791,13 +738,9 @@ func TestASpineDocumentWithoutAHeadlineIsAFinding(t *testing.T) {
 	}
 }
 
-// TestARetargetedScopeUnbuildsThePublishedTrendsDocument is fisc-w7d's own
-// trigger, run against the real corpus.
-//
-// THE MUTATION IS A RETARGET AND NOT A DELETION: the facts survive, no
-// projection is of them, and Trends.Slices returns nil. The run is also red on
-// cuts-tie-along-the-lattice's coverage arm, so this asserts on
-// published-projection-built's own result rather than on rep.Failed().
+// TestARetargetedScopeUnbuildsThePublishedTrendsDocument retargets the scope
+// (the facts survive, no projection is of them) and asserts on
+// published-projection-built's own result, since other checks also go red.
 func TestARetargetedScopeUnbuildsThePublishedTrendsDocument(t *testing.T) {
 	t.Parallel()
 	root := repoWithoutPDFs(t)
@@ -822,11 +765,7 @@ func TestARetargetedScopeUnbuildsThePublishedTrendsDocument(t *testing.T) {
 			"trends document were retargeted and no document was built from them",
 			res.Status, res.Summary, moved)
 	}
-	// EVERY DOCUMENT OF THE RETARGETED SCHEDULE, and the spine is not one of
-	// them: the drill-down draws the same schedule, so retargeting it unbuilds
-	// those documents too. No count is asserted, so a future document of
-	// pp.127-140 needs no edit here; what is asserted is that no finding names
-	// the spine.
+	// Every document of the retargeted schedule is named, and the spine is not.
 	var named []string
 	for _, f := range res.Findings {
 		named = append(named, f.Subject)
@@ -846,12 +785,8 @@ func TestARetargetedScopeUnbuildsThePublishedTrendsDocument(t *testing.T) {
 	if got := resultFor(t, rep, "counts-reconcile").Status; got != StatusPass {
 		t.Errorf("counts-reconcile = %s, want pass over the untouched spine", got)
 	}
-	// And the two trend checks stay GREEN rather than failing: the ACFR history
-	// pair still builds, so they pass over those documents and say nothing about
-	// the vanished one. (Before that pair existed they went vacuous here.) That
-	// silence is what published-projection-built exists to convert into a
-	// finding; if either of them ever fails here instead, it has stopped being
-	// the only thing standing between a vanished document and a green run.
+	// The two trend checks stay green, passing over the ACFR history documents;
+	// published-projection-built is what turns the vanished one into a finding.
 	for _, id := range []string{"trend-points-tie-to-facts", "trend-series-are-complete"} {
 		if got := resultFor(t, rep, id).Status; got != StatusPass {
 			t.Errorf("%s = %s, want pass over the remaining series documents, with "+
@@ -860,12 +795,9 @@ func TestARetargetedScopeUnbuildsThePublishedTrendsDocument(t *testing.T) {
 	}
 }
 
-// TestASliceNoDocumentClaimsIsReported builds the spine carrying two BASES for
-// one fiscal year, an FY2026 revised column beside the adopted one: the day
-// pp.66-67's revised column is mapped, Sankey.Slices declares a third slice,
-// because it derives its years from the facts. Each slice is compared on its
-// own, so a slice nobody publishes -- a file the site would serve and never
-// declared -- is reported by name and by the stem it would take.
+// TestASliceNoDocumentClaimsIsReported builds the spine with an FY2026 revised
+// column beside the adopted one, so a slice no document publishes is reported
+// by name and by the stem it would take.
 func TestASliceNoDocumentClaimsIsReported(t *testing.T) {
 	t.Parallel()
 	root := repoWithoutPDFs(t)
@@ -913,19 +845,9 @@ func TestASliceNoDocumentClaimsIsReported(t *testing.T) {
 	}
 }
 
-// TestAPublishedDocumentShortAColumnIsReported is the per-column arm, and it is
-// the hole fisc-7dt describes from the publishing side.
-//
-// trend-series-are-complete compares each series against the columns its
-// document was BUILT over, and Trends.Slices derives those from the facts that
-// survive — so a corpus losing one printed column entirely produces a
-// three-column document over which all 231 series are complete, and that check
-// passes green while counts.facts falls from 924 to 693. Nothing compared either
-// number against anything.
-//
-// project.TrendsColumns is the declared floor that closes it: it states what the
-// SITE PUBLISHES, not what the corpus holds, and a corpus that does not cover
-// it goes red here naming the column.
+// TestAPublishedDocumentShortAColumnIsReported: a corpus losing a column that
+// project.TrendsColumns declares goes red naming the column, though every
+// series is complete over the columns that survive.
 func TestAPublishedDocumentShortAColumnIsReported(t *testing.T) {
 	t.Parallel()
 	dropped := project.TrendsColumns()[0]
@@ -954,15 +876,9 @@ func TestAPublishedDocumentShortAColumnIsReported(t *testing.T) {
 		t.Fatalf("published-projection-built = %s (%s), want fail: %d facts of one published "+
 			"column are gone and the document was built without it", res.Status, res.Summary, gone)
 	}
-	// "built without", not "nothing checked it": a document short a column and a
-	// document that does not exist are two different repairs, and a finding that
-	// cannot tell them apart sends a reader to the wrong one.
-	//
-	// The trends document is short a column; the drill-down's FY2024 document
-	// stops existing altogether, because its Slices declares a column only when
-	// BOTH its schedules carry it. Two documents, two different findings, and
-	// this test is about the first -- so it looks for the one naming the trends
-	// stem rather than counting.
+	// The finding says "built without", not "nothing checked it". The
+	// drill-down's FY2024 document stops existing too, so this looks for the
+	// finding naming the trends stem rather than counting.
 	var detail string
 	for _, f := range res.Findings {
 		if strings.Contains(f.Subject, project.TrendsProjection) {
@@ -987,11 +903,9 @@ func TestAPublishedDocumentShortAColumnIsReported(t *testing.T) {
 	}
 }
 
-// TestContestedTotalsAreStillContested is the arm that stops a contested-total
-// declaration going dead unnoticed. The caveat prints only when the graph
-// draws the declared figure, so its silence is ambiguous; over the committed
-// corpus every entry's column must be published, its figure drawn, and that
-// figure differ from the one printed elsewhere.
+// TestContestedTotalsAreStillContested: over the committed corpus every
+// contested-total entry's column is published, its figure drawn, and that
+// figure differs from the one printed elsewhere.
 func TestContestedTotalsAreStillContested(t *testing.T) {
 	t.Parallel()
 	entries, err := project.ContestedTotals()

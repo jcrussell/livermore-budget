@@ -13,25 +13,15 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
-// This file is the arithmetic behind pp.85-125, and it is deliberately NOT a
-// second call into the machinery that publishes them.
-//
-// The doctrine internal/check/check.go states is that two functions over
-// identical input inside one process cannot witness a wrong amount. Summing the
-// committed facts and comparing them to the check that already sums the
-// committed facts would be exactly that. So the tests below READ THE PAGES,
-// with a scanner of their own that shares no code with internal/mapping, and
-// compare what the city printed against figures typed out of pp.66-67. A rule
-// that mis-read a column would move the facts and leave this file red.
+// These tests read pp.85-125 with a scanner that shares no code with
+// internal/mapping and compare them against figures typed out of pp.66-67,
+// so a rule that mis-reads a column leaves this file red.
 
 const budgetDoc = "livermore-budget-fy2026-2027"
 
-// fundingPages are the fourteen pages that print DEPARTMENTWIDE EXPENDITURES
-// WITH FUNDING SOURCES, in printed order, each with where its block begins and
-// ends. Three departments run onto a second page -- Community Development
-// (101/102), Police (119/120) and Public Works (124/125) -- so the block on the
-// first of each pair has no printed total and the block on the second has no
-// printed heading. Fourteen pages, eleven departments.
+// fundingPages are the fourteen pages (eleven departments) that print
+// DEPARTMENTWIDE EXPENDITURES WITH FUNDING SOURCES. Pairs 101/102, 119/120 and
+// 124/125 split a block: no total on the first, no heading on the second.
 var fundingPages = []struct {
 	page      int
 	continued bool // the heading is on the previous page
@@ -44,13 +34,9 @@ var fundingPages = []struct {
 	{124, false, false}, {125, true, true},
 }
 
-// spineExpenditureByGroup is pp.66-67's TOTAL EXPENDITURES row, typed out of the
-// pages, per fund group and budget year. It is the thing pp.85-125 must
-// reproduce and it is written down rather than read off the fact store, so that
-// a mis-mapped spine cannot make both sides of this comparison agree.
-//
-// The internal-service FY2027 figure is p0067's, which fisc-av0w records as the
-// book's one self-contradicting cell; see TestP0067IsTheOutlierAndFivePagesDisagree.
+// spineExpenditureByGroup is pp.66-67's TOTAL EXPENDITURES row per fund group
+// and budget year, typed from the pages rather than read off the fact store.
+// The internal-service FY2027 figure is p0067's outlier (fisc-av0w).
 var spineExpenditureByGroup = map[string][2]amount.Cents{
 	// group:            FY2026            FY2027
 	"capital":          {amount.Cents(106135500), amount.Cents(96993400)},
@@ -61,28 +47,15 @@ var spineExpenditureByGroup = map[string][2]amount.Cents{
 	"special-revenue":  {amount.Cents(1926756100), amount.Cents(1180800000)},
 }
 
-// A data row is a label, a run of two or more spaces, then the figures. Go's
-// regexp has no lookahead, so the figures are split on whitespace and each field
-// is handed to amount.Parse -- which is stricter than any pattern this file
-// could spell and is the same parser the pipeline uses. These pages carry no
-// standalone "$" token, which is what makes a whitespace split safe here and
-// would not make it safe on a page that does. mapping.dropCurrencyMarks handles
-// a lone mark in the labelled read; it does not make a hand-rolled split in a
-// TEST safe.
+// fundingRowRE: a data row is a label, two or more spaces, then figures split
+// on whitespace for amount.Parse. Safe only because these pages print no
+// standalone "$" token.
 var fundingRowRE = regexp.MustCompile(`^(.*?)\s\s+([$\-\d].*)$`)
 
-// readFundingRows scans one page's Department Funding Sources block and returns
-// its printed (label, four values) rows.
-//
-// IT IS A SECOND READER AND NOT A WRAPPER. It knows only what a person reading
-// the page knows: the block starts at the heading, ends at the total, and every
-// data row is a label, a run of two or more spaces, and four figures. It does
-// not consult mappings/, so it cannot inherit a mistake from it.
-//
-// continued says the block began on the previous page and this one carries no
-// heading; endsHere says the page prints the total that closes it. Both are
-// declared by the caller rather than inferred, so a page that stopped printing
-// its total is a failure and not a shorter list.
+// readFundingRows scans one page's Department Funding Sources block into
+// (label, four values) rows without consulting mappings/. continued and
+// endsHere are declared by the caller, so a page that stops printing its
+// total is a failure and not a shorter list.
 func readFundingRows(t *testing.T, text string, continued, endsHere bool) [][5]string {
 	t.Helper()
 	var out [][5]string
@@ -135,19 +108,9 @@ func fundingCents(t *testing.T, tok string) amount.Cents {
 	return c
 }
 
-// TestThePrintedFundingSourcesSumToTheSpineByFundGroup ties pp.85-125's funding
-// rows to the spine, done from the pages.
-//
-// Every one of the 78 printed rows is resolved to a fund through
-// data/funds.yaml, bucketed by that fund's TYPE, and summed. The result must be
-// pp.66-67's own TOTAL EXPENDITURES for each of the six fund groups, in both
-// budget years, to the cent -- with the single exception fisc-av0w owns.
-//
-// WHY THIS IS THE STRONGEST STATEMENT AVAILABLE ABOUT THE SCHEDULE: 254,095,412
-// is all_funds_gross_expenditure_cents, the headline the site publishes. A
-// schedule that reproduces the city's entire expenditure from a completely
-// different decomposition -- by paying fund rather than by object category --
-// and lands on the same number six times over is not agreeing by construction.
+// TestThePrintedFundingSourcesSumToTheSpineByFundGroup: pp.85-125's 78 rows,
+// bucketed by fund type through data/funds.yaml, sum to pp.66-67's TOTAL
+// EXPENDITURES for each fund group in both years, to the cent, bar fisc-av0w.
 func TestThePrintedFundingSourcesSumToTheSpineByFundGroup(t *testing.T) {
 	t.Parallel()
 	s := committed(t)
@@ -173,9 +136,8 @@ func TestThePrintedFundingSourcesSumToTheSpineByFundGroup(t *testing.T) {
 			rows++
 			labels[r[0]] = true
 			acc := sums[entry.Type]
-			// r[3] is the FY2025-26 column and r[4] the FY2026-27 column;
-			// r[1] and r[2] are the actual and revised columns the spine
-			// prints no counterpart for.
+			// r[3] is FY2025-26 and r[4] FY2026-27; r[1] and r[2] are actual
+			// and revised, which the spine does not print.
 			acc[0] += fundingCents(t, r[3])
 			acc[1] += fundingCents(t, r[4])
 			sums[entry.Type] = acc
@@ -188,13 +150,9 @@ func TestThePrintedFundingSourcesSumToTheSpineByFundGroup(t *testing.T) {
 			rows, len(labels))
 	}
 
-	// THE PERMANENT GROUP IS ZERO IN BOTH BUDGET YEARS, which is the only reason
-	// a six-column spine can reconcile a seven-group schedule. Doolan Canyon
-	// Preserve Endow (470) pays 620,581 of Community Development in FY2023-24
-	// and nothing after it, and pp.66-67 print no Permanent column at all
-	// (fisc-u8o). Asserted rather than filtered out: the day the city budgets a
-	// permanent fund into a department, this goes red instead of the money
-	// vanishing from a comparison that has no bucket for it.
+	// The permanent group is zero in both budget years and pp.66-67 print no
+	// Permanent column; asserted rather than filtered, so budgeted permanent
+	// money goes red instead of vanishing.
 	if got := sums["permanent"]; got[0] != 0 || got[1] != 0 {
 		t.Errorf("permanent funds pay %s / %s in the budget years and pp.66-67 print no "+
 			"Permanent column to reconcile that against (fisc-u8o)", got[0], got[1])
@@ -220,8 +178,8 @@ func TestThePrintedFundingSourcesSumToTheSpineByFundGroup(t *testing.T) {
 			if got[i] == want[i] {
 				continue
 			}
-			// The one cell the book contradicts itself on. Named here rather
-			// than skipped, so that a change to either figure is a failure.
+			// The one cell the book contradicts itself on, named so a change
+			// to either figure fails.
 			if g == "internal-service" && fy == 2027 &&
 				got[i] == amount.Cents(2629451500) && want[i] == amount.Cents(2654451500) {
 				continue
@@ -231,8 +189,8 @@ func TestThePrintedFundingSourcesSumToTheSpineByFundGroup(t *testing.T) {
 		}
 	}
 
-	// The grand total, because it is the figure the site publishes. FY2026 is
-	// exact; FY2027 is short by the 250,000 fisc-av0w owns.
+	// The grand total the site publishes: FY2026 exact, FY2027 short by
+	// fisc-av0w's 250,000.
 	if want := amount.Cents(25409541200); total[0] != want {
 		t.Errorf("FY2026 total = %s, want %s (all_funds_gross_expenditure_cents)",
 			total[0], want)
@@ -242,14 +200,9 @@ func TestThePrintedFundingSourcesSumToTheSpineByFundGroup(t *testing.T) {
 	}
 }
 
-// TestEveryFundingSourceFactMatchesThePrintedRow closes the loop the test above
-// deliberately leaves open: that the facts the corpus publishes are the figures
-// the pages print.
-//
-// The test above proves the PAGES reconcile. This one proves the MAPPING read
-// them, cell for cell, and it is the arm that would catch a rule reading the
-// wrong column -- a mistake that leaves the printed page untouched and every
-// group sum intact if two columns were swapped in every rule at once.
+// TestEveryFundingSourceFactMatchesThePrintedRow: each funding-source fact is
+// the figure its page prints, cell for cell, which catches a rule reading the
+// wrong column even where every group sum survives.
 func TestEveryFundingSourceFactMatchesThePrintedRow(t *testing.T) {
 	t.Parallel()
 	s := committed(t)
@@ -281,12 +234,8 @@ func TestEveryFundingSourceFactMatchesThePrintedRow(t *testing.T) {
 			continue
 		}
 		seen++
-		// THE YEAR HAS TO BE ONE OF THE FOUR, checked rather than looked up.
-		// A bare map read aliases an unknown year to column index 0, so a
-		// `fiscal_year: 2023` typo on the first column would satisfy the very
-		// test written to catch a wrong-column read -- and nothing else catches
-		// it either: parse.go rejects only year 0, and the tie check leaves an
-		// unmatched (year, basis) pair unfailed by design.
+		// The year must be one of the four: a bare map read aliases an
+		// unknown year to column 0, so a `fiscal_year: 2023` typo would pass.
 		col, ok := column[f.FiscalYear]
 		if !ok {
 			t.Errorf("%s: p%d %q publishes FY%d and these pages print four columns, "+
@@ -304,22 +253,10 @@ func TestEveryFundingSourceFactMatchesThePrintedRow(t *testing.T) {
 				f.ID, f.Page, f.RowLabel, f.FiscalYear, got, want)
 		}
 
-		// THE PRINTED LABEL DECIDES THE FUND, and this is the only thing in the
-		// tree that says so for this schedule.
-		//
-		// The arithmetic does not settle it: fact-funds-resolve catches a fund
-		// whose TYPE disagrees with the group typed beside it, and
-		// cuts-tie-along-the-lattice catches a fund that leaves its group, but
-		// a same-type substitution passes both, and all four of Public Works'
-		// CIP twins carry their operating fund's own type.
-		//
-		// The page settles it. Every one of the 63 distinct labels resolves
-		// through data/funds.yaml to exactly one fund, so the number a rule
-		// types is checkable against the line it was typed for.
-		//
-		// row-funds-match-their-anchors makes the same comparison in the gate
-		// over mapping.Row; this is the fact-side statement, over f.RowLabel,
-		// so a defect between the row and the fact shows here.
+		// The printed label decides the fund. A same-type substitution passes
+		// fact-funds-resolve and cuts-tie-along-the-lattice; every one of the
+		// 63 distinct labels resolves to exactly one fund in data/funds.yaml.
+		// This is the fact-side twin of row-funds-match-their-anchors.
 		entry, err := s.Vocabulary.FundByLabel(f.RowLabel)
 		if err != nil {
 			t.Errorf("%s: %q resolves to no fund: %v", f.ID, f.RowLabel, err)
@@ -341,24 +278,10 @@ func TestEveryFundingSourceFactMatchesThePrintedRow(t *testing.T) {
 	}
 }
 
-// TestP0067IsTheOutlierAndFivePagesDisagree is what makes the by-fund-group
-// exception structure.BudgetBookExceptions declares a check rather than a
-// tolerance.
-//
-// The entry claims two figures, and BOTH are printed. If either stops being
-// printed the exception is a claim about a document that no longer says it, and
-// this test is the only thing that would notice: the check itself compares the
-// constants against the corpus, which is the same corpus the constants were
-// read from.
-//
-// The pages, and what each prints for FY2026-27 internal service:
-//
-//	p0067:34  the spine's own column               26,544,515  <- the outlier
-//	p0183:64  Citywide Expenditures, per fund      26,294,515
-//	p0075:53  Fund Balance by Major/Non-Major      26,294,515
-//	p0205:17  Fund Balances summary, Uses          26,294,515
-//	p0209:20  Fund Balances detail, five funds     26,294,515
-//	p0061:39  Table 1 Total Uses, + 612,000 to CIP 26,906,515
+// TestP0067IsTheOutlierAndFivePagesDisagree: both figures
+// structure.BudgetBookExceptions claims are still printed. FY2026-27 internal
+// service is 26,544,515 on p0067:34 and 26,294,515 on p0183, p0075, p0205 and
+// p0209; p0061 prints 26,906,515 including the 612,000 to CIP.
 func TestP0067IsTheOutlierAndFivePagesDisagree(t *testing.T) {
 	t.Parallel()
 	s := committed(t)
@@ -389,23 +312,19 @@ func TestP0067IsTheOutlierAndFivePagesDisagree(t *testing.T) {
 				p, agreed)
 		}
 	}
-	// p0061 prints the same quantity plus the 612,000 transfer to the CIP, which
-	// is why it corroborates rather than repeats.
+	// p0061 prints the same quantity plus the 612,000 transfer to the CIP.
 	if !strings.Contains(page(61), "26,906,515") {
 		t.Errorf("p0061 no longer prints 26,906,515 (= %s + 612,000 to CIP)", agreed)
 	}
-	// And p0067 prints NONE of the agreed figure, which is the whole claim:
-	// the disagreement is a cell, not a rounding.
+	// p0067 prints none of the agreed figure: the disagreement is a cell,
+	// not a rounding.
 	if strings.Contains(page(67), agreed) {
 		t.Errorf("p0067 prints %s after all; the exception says it does not", agreed)
 	}
 
-	// p0183's figure is not one number but five, and summing the printed
-	// per-fund totals is what makes it independent evidence rather than a
-	// second copy of the same subtotal. 16,546,010 -- the Services & Supplies
-	// column those five funds add up to, and the 250,000 difference from
-	// p0067's printed 16,796,010 -- is NOT printed anywhere, which is why it is
-	// derived here and cited nowhere as a page figure.
+	// p0183's figure is summed from five per-fund totals, so it is
+	// independent evidence. Their Services & Supplies sum, 16,546,010, is
+	// printed nowhere, so it is derived here and cited as no page figure.
 	var fromFunds amount.Cents
 	for _, tok := range []string{
 		"$3,785,705", // Total Facilities Rehab Pgm
@@ -426,9 +345,7 @@ func TestP0067IsTheOutlierAndFivePagesDisagree(t *testing.T) {
 		t.Error("p0067 no longer prints 16,796,010, the Services & Supplies figure that " +
 			"is 250,000 more than the five funds on p0183 add up to")
 	}
-	// And the same page's Grand Total is what the departmentwide pages sum to,
-	// which is the corroboration that matters most: two schedules built on
-	// different axes closing on one number.
+	// The same page's Grand Total is what the departmentwide pages sum to.
 	for _, tok := range []string{"$254,095,412", "$252,604,896"} {
 		if !strings.Contains(page(183), tok) {
 			t.Errorf("p0183's Grand Total no longer prints %s, which is what pp.85-125's "+

@@ -18,19 +18,9 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
-// TestFixtureVerdicts states what every check concludes over a corpus small
-// enough to count by hand: 12 facts in 12 cells, of which 4 are stocks and 1 is
-// a zero, leaving 7 links over 9 nodes.
-//
-// The subject counts are asserted alongside the statuses because they are the
-// substance of the vacuous distinction. A check reporting "pass" over 0 subjects
-// is the failure this package exists to prevent, and only the number says which
-// one happened.
-//
-// A CHECK NOT LISTED MUST BE VACUOUS OVER 0. The fixture is a miniature of the
-// SPINE with no extraction directory, no rule file and none of the schedules
-// the other checks read, so having nothing to look at is its default; a check
-// that newly finds a subject here, or fails, needs a row.
+// TestFixtureVerdicts states every check's status and subject count over the
+// fixture: 12 facts in 12 cells, 4 stocks and 1 zero, so 7 links over 9 nodes.
+// A check not listed must be vacuous over 0.
 func TestFixtureVerdicts(t *testing.T) {
 	t.Parallel()
 	rep := runChecks(t, testSubject(t))
@@ -84,10 +74,8 @@ func TestFixtureVerdicts(t *testing.T) {
 	}
 }
 
-// TestVacuousFailsOnlyUnderStrict pins the policy the whole status model turns
-// on. A vacuous check is not a pass and not a failure by default, because a gate
-// that is red until the corpus is finished gets commented out; --strict is how a
-// run demands that nothing be left unchecked.
+// TestVacuousFailsOnlyUnderStrict: a vacuous check is neither pass nor failure
+// by default; --strict fails it.
 func TestVacuousFailsOnlyUnderStrict(t *testing.T) {
 	t.Parallel()
 	s := testSubject(t)
@@ -140,9 +128,8 @@ func TestVacuousChecksSayWhatIsAbsent(t *testing.T) {
 	}
 }
 
-// TestUnsortedFactStoreFails is the file-level version of the check `fisc build`
-// makes on the way out. A hand-edited or differently-ordered facts.jsonl is
-// caught here and nowhere else.
+// TestUnsortedFactStoreFails: a hand-edited or reordered facts.jsonl is caught
+// here and nowhere else.
 func TestUnsortedFactStoreFails(t *testing.T) {
 	t.Parallel()
 	facts := testFacts()
@@ -165,15 +152,9 @@ func TestUnsortedFactStoreFails(t *testing.T) {
 	}
 }
 
-// TestKindMatchesCategorySummariesArePinned covers the two sentences
-// fact-kind-matches-category can publish, neither of which was asserted by
-// anything (fisc-9nw part 2).
-//
-// A check that quietly shrinks its own denominator while still printing a pass
-// line is the coverage.go incident fisc-u2v records. The pass summary carries
-// the count, so pinning it is what makes a silent drop visible; the vacuous
-// sentence was unreachable in any test at all, which means the wording a
-// reader sees when the check has nothing to say had never been read.
+// TestKindMatchesCategorySummariesArePinned pins both sentences
+// fact-kind-matches-category can publish; the pass summary carries the count,
+// so a silently shrunk denominator shows.
 func TestKindMatchesCategorySummariesArePinned(t *testing.T) {
 	t.Parallel()
 	t.Run("pass", func(t *testing.T) {
@@ -208,24 +189,14 @@ func TestKindMatchesCategorySummariesArePinned(t *testing.T) {
 	})
 }
 
-// TestAnUnassignableCategoryReddensOneVocabularyCheck is fisc-9nw part 3.
-//
-// `taxes` is a rollup: assignable: false, so no rule may write it as a
-// category. factVocabulary reports that precisely, with the fix, and
-// fact-kind-matches-category must not redden as well: its finding would send
-// a reader to fix a `kinds:` list that is not the problem.
-//
-// The surviving check must PASS over the remaining facts rather than go
-// vacuous: this package distinguishes "checked and held" from "had nothing to
-// check", and collapsing the two is how a hole gets reported as a pass.
+// TestAnUnassignableCategoryReddensOneVocabularyCheck: `taxes` is a rollup, so
+// factVocabulary reports it and fact-kind-matches-category passes over the
+// rest rather than reddening or going vacuous.
 func TestAnUnassignableCategoryReddensOneVocabularyCheck(t *testing.T) {
 	t.Parallel()
 	facts := testFacts()
-	// BOTH FIELDS, and the kind is the load-bearing one. The fixture taxonomy
-	// declares taxes with kinds: [revenue] and facts[0] is a revenue cell, so
-	// setting only the category leaves declaresKind TRUE -- the pre-fix build
-	// emitted no finding either, and this test passed in both. It has to be a
-	// kind `taxes` does NOT declare for the double-redden to exist at all.
+	// Both fields: taxes declares kinds: [revenue], so the kind must be one
+	// `taxes` does not declare or there is no double-redden to refuse.
 	facts[0].Category = "taxes"
 	facts[0].Kind = vocab.KindExpenditure
 	results := runChecks(t, testSubject(t, facts...))
@@ -262,15 +233,9 @@ func TestCollidingIDsFail(t *testing.T) {
 	}
 }
 
-// TestARelabelledFactNoLongerAddressesItself is fisc-c2j's failability, and the
-// mutation is chosen to be the one the OTHER fact-store checks miss.
-//
-// Editing row_label leaves the store sorted, leaves every id unique, and leaves
-// every amount re-derivable from its own token — facts-sorted, fact-ids-unique
-// and fact-token-reparses all pass, because none of them relates the id to the
-// fields it was hashed over. The line now carries an address that names a row
-// the record does not contain, which on a file whose whole purpose is to be
-// addressable is the silent failure fisc-28h's decision was made to prevent.
+// TestARelabelledFactNoLongerAddressesItself: editing row_label passes
+// facts-sorted, fact-ids-unique and fact-token-reparses, since none relates
+// the id to the fields it was hashed over.
 func TestARelabelledFactNoLongerAddressesItself(t *testing.T) {
 	t.Parallel()
 	facts := testFacts()
@@ -282,16 +247,14 @@ func TestARelabelledFactNoLongerAddressesItself(t *testing.T) {
 	if res.Status != StatusFail {
 		t.Fatalf("status = %s, want fail", res.Status)
 	}
-	// The finding names the STALE id as its subject and the id the published
-	// fields now hash to as the remedy, so a reader can tell which of the two
-	// is wrong without recomputing anything by hand.
+	// The finding names the stale id as subject and the recomputed id as the
+	// remedy.
 	want := fact.MakeID(facts[0].DocID, facts[0].RuleID, facts[0].RowPath,
 		facts[0].RowLabel, facts[0].ColumnPath, facts[0].FiscalYear, facts[0].Basis)
 	if got := res.Findings[0]; got.Subject != stale || !strings.Contains(got.Detail, want) {
 		t.Errorf("finding = %+v, want subject %s naming %s", got, stale, want)
 	}
-	// And the neighbours stay green, which is what makes this check worth
-	// having rather than a restatement of one of them.
+	// The neighbours stay green.
 	for _, id := range []string{"facts-sorted", "fact-ids-unique", "fact-token-reparses"} {
 		if res := resultFor(t, rep, id); res.Status != StatusPass {
 			t.Errorf("%s = %s over a relabelled fact, want pass: this check is not "+
@@ -300,9 +263,8 @@ func TestARelabelledFactNoLongerAddressesItself(t *testing.T) {
 	}
 }
 
-// TestVocabularyCatchesAnUnknownCategory is the reason data/taxonomy.yaml exists:
-// a rule that writes `tax/property` where the taxonomy says `taxes/property`
-// produces a fact that is confidently wrong and joins to nothing.
+// TestVocabularyCatchesAnUnknownCategory: `tax/property` for
+// `taxes/property` joins to nothing.
 func TestVocabularyCatchesAnUnknownCategory(t *testing.T) {
 	t.Parallel()
 	cells := slices.Clone(fixtureCells)
@@ -324,11 +286,8 @@ func TestVocabularyCatchesAnUnknownCategory(t *testing.T) {
 	}
 }
 
-// TestVocabularyCatchesARollupCategory is the case Registry.Assignable's doc
-// comment draws its distinction for. `taxes` EXISTS — it is the rollup a view
-// groups under — and a rule may still never assign it, so reporting only
-// "unassignable" would leave the reader to work out which of the two problems
-// they have.
+// TestVocabularyCatchesARollupCategory: `taxes` exists but is a rollup no rule
+// may assign, and the finding says which of the two problems it is.
 func TestVocabularyCatchesARollupCategory(t *testing.T) {
 	t.Parallel()
 	cells := slices.Clone(fixtureCells)
@@ -349,9 +308,8 @@ func TestVocabularyCatchesARollupCategory(t *testing.T) {
 	}
 }
 
-// TestVocabularyCatchesAnUnknownFundGroup covers the funds.yaml half. The answer
-// comes from the file rather than from a list in Go, so a group no fund is
-// recorded under is not a group.
+// TestVocabularyCatchesAnUnknownFundGroup: groups come from funds.yaml, so a
+// group no fund is recorded under is not a group.
 func TestVocabularyCatchesAnUnknownFundGroup(t *testing.T) {
 	t.Parallel()
 	cells := slices.Clone(fixtureCells)
@@ -366,14 +324,9 @@ func TestVocabularyCatchesAnUnknownFundGroup(t *testing.T) {
 	}
 }
 
-// TestATransferCountedAsRevenueIsCaughtAtTheFact is the failure fisc-u2v measured
-// as route 3, at the place it is cheapest to name.
-//
-// pp.131-140 print eleven funds whose one `Total <fund>` covers revenue rows AND a
-// Transfers In row, so a rule author without a per-row kind can make the fund tie
-// by calling the transfer revenue. `transfers/in` is a real slug and it is
-// assignable, so fact-vocabulary passes over it — which is asserted here, because
-// the whole reason this check exists is that the two halves are each valid alone.
+// TestATransferCountedAsRevenueIsCaughtAtTheFact: pp.131-140's funds tie if a
+// Transfers In row is called revenue; `transfers/in` is assignable, so
+// fact-vocabulary passes and only this check sees it.
 func TestATransferCountedAsRevenueIsCaughtAtTheFact(t *testing.T) {
 	t.Parallel()
 	cells := slices.Clone(fixtureCells)
@@ -402,7 +355,7 @@ func TestATransferCountedAsRevenueIsCaughtAtTheFact(t *testing.T) {
 	if want := cells[4].fact().ID; f.Subject != want {
 		t.Errorf("finding subject = %q, want the fact at fault %q", f.Subject, want)
 	}
-	// The point of the bead: nothing else says a word about it.
+	// Nothing else says a word about it.
 	if got := resultFor(t, rep, "fact-vocabulary").Status; got != StatusPass {
 		t.Errorf("fact-vocabulary = %s, want pass: transfers/in is a real assignable slug, "+
 			"which is exactly why the pair needed its own check", got)
@@ -436,10 +389,8 @@ func TestEveryKindIsWrongSomewhere(t *testing.T) {
 			if got := len(res.Findings); got != 1 {
 				t.Fatalf("findings = %d, want 1: %v", got, res.Findings)
 			}
-			// HasSuffix, not Contains: the declared kinds are the last thing the
-			// message says, and "declares transfer" is a PREFIX of "declares
-			// transfer_in". An assertion that holds against a list it did not
-			// mean is one that will not fail when it goes stale.
+			// HasSuffix, not Contains: "declares transfer" is a prefix of
+			// "declares transfer_in".
 			if want := "which declares " + tt.declares; !strings.HasSuffix(res.Findings[0].Detail, want) {
 				t.Errorf("finding %q does not end by saying the category declares exactly %q",
 					res.Findings[0].Detail, tt.declares)
@@ -448,14 +399,9 @@ func TestEveryKindIsWrongSomewhere(t *testing.T) {
 	}
 }
 
-// TestTheCommittedTaxonomyTellsTheTransferDirectionsApart reads data/taxonomy.yaml
-// itself rather than the fixture, because a disagreement between the two is
-// the defect: a transfer category declaring `kinds: [transfer]` names no
-// vocab.Kind value.
-//
-// So both transfer errors are one literal comparison over the committed file:
-// a transfer counted as revenue and a transfer pointing the wrong way,
-// the latter being what a declared `transfer` family could never see.
+// TestTheCommittedTaxonomyTellsTheTransferDirectionsApart reads
+// data/taxonomy.yaml itself: a transfer category declaring `kinds: [transfer]`
+// would miss both a transfer counted as revenue and one pointing the wrong way.
 func TestTheCommittedTaxonomyTellsTheTransferDirectionsApart(t *testing.T) {
 	t.Parallel()
 	reg, err := registry.Load(os.DirFS(filepath.Join(repoRoot(t), "data")))
@@ -471,8 +417,7 @@ func TestTheCommittedTaxonomyTellsTheTransferDirectionsApart(t *testing.T) {
 		// Wrong family: the p131 Stormwater trap, a Transfers In row called
 		// revenue so the printed Total <fund> ties.
 		{vocab.KindRevenue, "transfers/in", "enterprise", 3_247_000},
-		// Wrong direction: fisc-ttq. This pair resolved clean while transfers/in
-		// declared `transfer`, because both directions satisfied the family.
+		// Wrong direction: resolves clean if transfers/in declares `transfer`.
 		{vocab.KindTransferOut, "transfers/in", "general", 7_000},
 	}
 	res := resultFor(t, runChecks(t, &Subject{Facts: testFacts(cells...), Vocabulary: reg}),
@@ -484,9 +429,8 @@ func TestTheCommittedTaxonomyTellsTheTransferDirectionsApart(t *testing.T) {
 	if res.Subjects != len(cells) {
 		t.Errorf("subjects = %d, want %d", res.Subjects, len(cells))
 	}
-	// Exact whole-message equality, not Contains: "which declares transfer" is a
-	// prefix of "which declares transfer_in", so a containment assertion here
-	// would have held against the broken file and the corrected one alike.
+	// Exact equality, not Contains: "which declares transfer" is a prefix of
+	// "which declares transfer_in".
 	want := []string{
 		testDoc + ` p66 "transfers/in": kind "revenue" is not one data/taxonomy.yaml ` +
 			`declares for category "transfers/in", which declares transfer_in`,
@@ -510,14 +454,9 @@ func TestTheCommittedTaxonomyTellsTheTransferDirectionsApart(t *testing.T) {
 	}
 }
 
-// TestDepartmentsResolveAgainstTheRegistry pins the clause that makes the axis a controlled vocabulary rather than a set of free strings the
-// check happens to like the shape of: a well-formed, consistently spelled,
-// non-colliding department that names neither a division nor a department still
-// joins to nothing.
-//
-// The subject is built without a projection: internal/project refuses a
-// department-carrying fact outright, which is a different and also correct answer
-// to the same problem, and it would otherwise stop this test at Load.
+// TestDepartmentsResolveAgainstTheRegistry: a well-formed department that names
+// neither a division nor a department joins to nothing. Built without a
+// projection, which refuses department-carrying facts.
 func TestDepartmentsResolveAgainstTheRegistry(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -560,11 +499,8 @@ func TestDepartmentsResolveAgainstTheRegistry(t *testing.T) {
 	}
 }
 
-// A malformed department is reported ONCE, as the shape problem it is.
-//
-// It is also absent from the registry — departments.yaml applies the same slug
-// rule when it loads, so it could not be there — and reporting both would put two
-// findings and one fix against one fact. The specific diagnosis wins.
+// A malformed department is reported once, as a shape problem, not also as
+// unlisted.
 func TestAMalformedDepartmentIsNotAlsoReportedAsUnlisted(t *testing.T) {
 	t.Parallel()
 	facts := testFacts()
@@ -586,13 +522,8 @@ func TestAMalformedDepartmentIsNotAlsoReportedAsUnlisted(t *testing.T) {
 	}
 }
 
-// TestDepartmentsAreCheckedForWhatIsCheckable covers the three claims that stand
-// beside resolution. Each is a real way the axis goes wrong: a label used as a
-// slug, one department spelled two ways across the store, and a string that is a
-// category on the other axis — the near miss data/taxonomy.yaml exists to prevent.
-//
-// departments.yaml refuses the last two at load time too. They stay because this
-// check is written against the Vocabulary interface, not that one loader.
+// TestDepartmentsAreCheckedForWhatIsCheckable: a label used as a slug, one
+// department spelled two ways, and a category slug used as a department.
 func TestDepartmentsAreCheckedForWhatIsCheckable(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -625,10 +556,8 @@ func TestDepartmentsAreCheckedForWhatIsCheckable(t *testing.T) {
 	}
 }
 
-// TestFundNumbersResolveAgainstTheRegistry covers the join key a fact's fund is:
-// it has to resolve in data/funds.yaml and has to agree with the fund group
-// beside it. An absent fund is null, so a 0 is refused before the registry is
-// asked.
+// TestFundNumbersResolveAgainstTheRegistry: a fact's fund resolves in
+// data/funds.yaml and agrees with its fund group; a 0 is refused first.
 func TestFundNumbersResolveAgainstTheRegistry(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -663,9 +592,8 @@ func TestFundNumbersResolveAgainstTheRegistry(t *testing.T) {
 	}
 }
 
-// TestLinkValueMustEqualItsFacts is the join between the chart and its
-// provenance. A wrong value with a working citation is worse than a broken link:
-// the reader follows it and lands on rows that do not add up to what they saw.
+// TestLinkValueMustEqualItsFacts: a link's value is the sum of the facts it
+// cites.
 func TestLinkValueMustEqualItsFacts(t *testing.T) {
 	t.Parallel()
 	s := testSubject(t)
@@ -715,14 +643,9 @@ func TestLinkFactIDsMustAscend(t *testing.T) {
 	}
 }
 
-// TestLinkLocatorsMustBeThePagesOfItsFacts proves the locator check can fail,
-// in the two ways a real defect would produce.
-//
-// This matters more than it looks. Nothing ELSE compares the two citations a
-// link publishes: link-values-tie-to-facts reads fact_ids only, and the shard
-// a wrong locator points at is a well-formed file either way. So if this check
-// could not fail, a mark on the chart could send a reader to a page its figure
-// was never printed on and every gate would stay green.
+// TestLinkLocatorsMustBeThePagesOfItsFacts: nothing else compares a link's
+// locators to its facts' pages, so a mark could cite a page its figure is not
+// printed on with every other gate green.
 func TestLinkLocatorsMustBeThePagesOfItsFacts(t *testing.T) {
 	t.Parallel()
 	t.Run("a page the facts did not come from", func(t *testing.T) {
@@ -745,8 +668,7 @@ func TestLinkLocatorsMustBeThePagesOfItsFacts(t *testing.T) {
 		if !strings.Contains(f.Subject, link.Source) || !strings.Contains(f.Subject, link.Target) {
 			t.Errorf("finding subject %q does not name the link's endpoints", f.Subject)
 		}
-		// The finding has to name BOTH pages, or a reader cannot tell whether
-		// the locator is wrong or the facts moved.
+		// The finding names both pages.
 		for _, want := range []string{"p9999", fmt.Sprintf("p%d", was)} {
 			if !strings.Contains(f.Detail, want) {
 				t.Errorf("finding %q does not name %s", f.Detail, want)
@@ -754,8 +676,7 @@ func TestLinkLocatorsMustBeThePagesOfItsFacts(t *testing.T) {
 		}
 	})
 
-	// The failure a rule split actually produces: the projection keeps citing
-	// the facts and stops citing one of their pages.
+	// What a rule split produces: the facts still cited, one page dropped.
 	t.Run("a locator dropped entirely", func(t *testing.T) {
 		s := testSubject(t)
 		link := &s.Projections[0].Graph.Links[0]
@@ -769,9 +690,8 @@ func TestLinkLocatorsMustBeThePagesOfItsFacts(t *testing.T) {
 		}
 	})
 
-	// A nil list is not the same as an empty one and gets its own sentence,
-	// because it is what a projection that never populated the field at all
-	// would publish -- the state every link was in before fisc-5hxr.
+	// A nil list gets its own sentence: it is what a projection that never
+	// populated the field publishes.
 	t.Run("no locators at all", func(t *testing.T) {
 		s := testSubject(t)
 		link := &s.Projections[0].Graph.Links[0]
@@ -786,10 +706,8 @@ func TestLinkLocatorsMustBeThePagesOfItsFacts(t *testing.T) {
 	})
 }
 
-// TestALinkCitingAnUnresolvableFactIsNamedOnce stops the locator check
-// double-reporting. A fact_id that resolves in no slice is already
-// link-values-tie-to-facts's finding, with the fix; repeating it here would
-// send a reader to chase one edit twice.
+// TestALinkCitingAnUnresolvableFactIsNamedOnce: an unresolvable fact_id is
+// link-values-tie-to-facts's finding and not repeated here.
 func TestALinkCitingAnUnresolvableFactIsNamedOnce(t *testing.T) {
 	t.Parallel()
 	s := testSubject(t)
@@ -806,11 +724,8 @@ func TestALinkCitingAnUnresolvableFactIsNamedOnce(t *testing.T) {
 	}
 }
 
-// TestFundBalanceDrawKeepsItsSign pins the one link allowed a value that is not
-// the plain sum of its facts, and pins it in the direction that matters. The
-// draw leg carries the negation because a Sankey cannot draw a negative link, so
-// a check written as "value equals the absolute sum" would accept a leg pointing
-// the wrong way — which is the error the decomposition can actually make.
+// TestFundBalanceDrawKeepsItsSign: the draw leg carries a negated value, and an
+// "absolute sum" check would accept it pointing the wrong way.
 func TestFundBalanceDrawKeepsItsSign(t *testing.T) {
 	t.Parallel()
 	s := testSubject(t)
@@ -822,17 +737,16 @@ func TestFundBalanceDrawKeepsItsSign(t *testing.T) {
 		t.Fatalf("status = %s (%s), want pass", res.Status, res.Summary)
 	}
 
-	// Point the same value at the contribution node instead: the magnitude still
-	// matches its facts, and it is still wrong.
+	// The same value at the contribution node: the magnitude matches, the
+	// direction is wrong.
 	draw.Source, draw.Target = "fund-group/general", project.NodeFundBalanceContribution
 	if res := resultFor(t, runChecks(t, s), "link-values-tie-to-facts"); res.Status != StatusFail {
 		t.Errorf("status = %s, want fail for a draw whose sign was not decomposed", res.Status)
 	}
 }
 
-// TestCycleIsFoundAndNamed covers the check with no failing case in the shipped
-// graph. A cycle is money funding itself, d3-sankey renders one without
-// complaint, so nothing downstream would notice.
+// TestCycleIsFoundAndNamed: the shipped graph has no cycle, and d3-sankey
+// renders one without complaint.
 func TestCycleIsFoundAndNamed(t *testing.T) {
 	t.Parallel()
 	s := testSubject(t)
@@ -855,9 +769,8 @@ func TestCycleIsFoundAndNamed(t *testing.T) {
 	}
 }
 
-// TestDerivedNodeNeedsItsProvenance covers the fourth provenance invariant: a
-// figure the city printed and a classification we inferred must not be presented
-// alike.
+// TestDerivedNodeNeedsItsProvenance: a derived node carries its rationale and
+// source note.
 func TestDerivedNodeNeedsItsProvenance(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {
@@ -887,10 +800,8 @@ func TestDerivedNodeNeedsItsProvenance(t *testing.T) {
 	}
 }
 
-// TestCountsMustAccountForEveryFact asserts the identity three ways, because the
-// published counts are three separate claims: how many facts the projection was
-// of, how many its links cite, and that the difference is exactly the stocks plus
-// the zero-valued cells.
+// TestCountsMustAccountForEveryFact: facts, facts cited, and the identity that
+// the uncited are exactly the stocks plus the zero cells.
 func TestCountsMustAccountForEveryFact(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -900,8 +811,7 @@ func TestCountsMustAccountForEveryFact(t *testing.T) {
 	}{
 		{"facts", func(g *project.Document) { g.Metadata.Counts.Facts++ }, "counts.facts is 13"},
 		{"cited", func(g *project.Document) { g.Metadata.Counts.FactsCited++ }, "counts.facts_cited is 8"},
-		// A fact newly cited with facts_cited raised and facts_uncited left:
-		// the identity, not the kind of fact, is what goes red.
+		// A citation added with facts_cited raised: the identity goes red.
 		{"a citation added and facts_uncited left", func(g *project.Document) {
 			g.Links[0].FactIDs = append(g.Links[0].FactIDs, stockFactID(g))
 			g.Metadata.Counts.FactsCited++
@@ -925,8 +835,8 @@ func TestCountsMustAccountForEveryFact(t *testing.T) {
 	}
 }
 
-// TestCountsReconcileNamesTheArithmetic keeps the passing case legible: the whole
-// value of publishing both counts is that a reader can see where the gap went.
+// TestCountsReconcileNamesTheArithmetic: the passing summary shows where the
+// gap went.
 func TestCountsReconcileNamesTheArithmetic(t *testing.T) {
 	t.Parallel()
 	res := resultFor(t, runChecks(t, testSubject(t)), "counts-reconcile")
@@ -936,8 +846,7 @@ func TestCountsReconcileNamesTheArithmetic(t *testing.T) {
 }
 
 // TestTransferHeadlineIsTheLinks checks the headline against the transfer
-// links the document draws rather than against itself, which is the only way a
-// headline check means anything.
+// links the document draws.
 func TestTransferHeadlineIsTheLinks(t *testing.T) {
 	t.Parallel()
 	res := resultFor(t, runChecks(t, testSubject(t)), "headline-transfer-residual")
@@ -956,9 +865,8 @@ func TestTransferHeadlineIsTheLinks(t *testing.T) {
 	}
 }
 
-// TestNaiveExpenditureMustStayWrong covers the figure internal/project ships
-// deliberately wrong. It is worth publishing only while it differs from the real
-// one; the day they agree, the page is illustrating nothing.
+// TestNaiveExpenditureMustStayWrong: the naive figure must differ from the
+// real one.
 func TestNaiveExpenditureMustStayWrong(t *testing.T) {
 	t.Parallel()
 	s := testSubject(t)
@@ -977,10 +885,8 @@ func TestNaiveExpenditureMustStayWrong(t *testing.T) {
 	}
 }
 
-// TestNaiveExpenditureIsVacuousWithoutADoubleCount is the guard that keeps the
-// check above from being a trap. The two figures differ by transfers out plus
-// internal service charges, so a graph with neither makes the claim one about
-// nothing — and a check that failed there would fail a correct projection.
+// TestNaiveExpenditureIsVacuousWithoutADoubleCount: with no transfers out and
+// no internal service charges the two figures agree, and the check is vacuous.
 func TestNaiveExpenditureIsVacuousWithoutADoubleCount(t *testing.T) {
 	t.Parallel()
 	cells := []testCell{
@@ -1000,9 +906,8 @@ func TestNaiveExpenditureIsVacuousWithoutADoubleCount(t *testing.T) {
 	}
 }
 
-// TestTransferLegsPairWhenLegsExist covers the check that is vacuous in every
-// shipped graph. It has to work the day a link can carry a transfer_id, and the
-// only way to know that today is to hand it legs.
+// TestTransferLegsPairWhenLegsExist hands the check legs, which no shipped
+// graph's links carry.
 func TestTransferLegsPairWhenLegsExist(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -1079,14 +984,8 @@ func TestTransferLegsPairSeesALegWithNoID(t *testing.T) {
 	}
 }
 
-// TestNodeHierarchyWellFormedIsFailable damages a hierarchy four ways, one per
-// claim.
-//
-// THE CHECK IS STRUCTURAL: a fold's sum is invariant under relabelling whatever
-// node.parent says, so an arithmetic version could not fail.
-//
-// The fixture's spine carries no hierarchy, so each case builds one, which is
-// also what proves the check is not merely counting nothing.
+// TestNodeHierarchyWellFormedIsFailable damages a hierarchy one way per claim.
+// The fixture carries no hierarchy, so each case builds one.
 func TestNodeHierarchyWellFormedIsFailable(t *testing.T) {
 	t.Parallel()
 	const id = "node-hierarchy-well-formed"
@@ -1131,9 +1030,8 @@ func TestNodeHierarchyWellFormedIsFailable(t *testing.T) {
 			want: "not a node of this document",
 		},
 		{
-			// The fold must run coarse to fine. Parenting a COARSE node to a
-			// fine one inverts it, and a client walking the chain renders the
-			// hierarchy inside out.
+			// The fold runs coarse to fine; a coarse node under a fine one
+			// inverts it.
 			name: "a parent at a finer tier than its child",
 			damage: func(t *testing.T, s *Subject) {
 				g := s.Projections[0].Graph
@@ -1228,10 +1126,8 @@ func tierNode(t *testing.T, g *project.Document, tier int) string {
 	return ""
 }
 
-// TestConstraintTierComesFromTheFile pins where the vocabulary comes from. The
-// closed set registry.go declares is the ceiling; the tiers funds.yaml actually
-// uses are the floor, and a node may only carry the latter — the same reading
-// Registry.FundGroup takes of a fund type.
+// TestConstraintTierComesFromTheFile: a node may carry only a tier funds.yaml
+// uses, not every tier registry.go declares.
 func TestConstraintTierComesFromTheFile(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
@@ -1245,10 +1141,7 @@ func TestConstraintTierComesFromTheFile(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := testSubject(t)
-			// The disclosure travels with the tier, which is the other arm of
-			// this check: a node carrying one and no source note is a finding
-			// whatever the tier says. Set here so these cases are about the
-			// VOCABULARY alone.
+			// Disclosure set so these cases are about the vocabulary alone.
 			tierNodeWithDisclosure(t, s, tt.tier)
 			res := resultFor(t, runChecks(t, s), "constraint-tier-vocabulary")
 
@@ -1274,15 +1167,9 @@ func tierNodeWithDisclosure(t *testing.T, s *Subject, tier string) {
 		s.Projections[0].Graph.Metadata.Caveats, project.ConstraintTierCaveat())
 }
 
-// TestAConstraintTierWithoutItsDisclosureIsAFinding is fisc-yor's requirement
-// asserted rather than described.
-//
-// A FUND NODE IS THE INVERSE OF A DERIVED ONE: the node is published -- the city
-// prints the fund and its revenue -- while the constraint tier is our reading of
-// the Description of Funds narrative, pp.258-261. The tier is the editorial half
-// and this check is what asserts its disclosure. Without these arms the site
-// would publish an editorial classification unmarked, which is the single
-// thing this project's premise refuses.
+// TestAConstraintTierWithoutItsDisclosureIsAFinding: a constraint tier is our
+// reading of pp.258-261 on a published fund node, and must carry its
+// disclosure (fisc-yor).
 func TestAConstraintTierWithoutItsDisclosureIsAFinding(t *testing.T) {
 	t.Parallel()
 	const id = "constraint-tier-vocabulary"
@@ -1300,28 +1187,16 @@ func TestAConstraintTierWithoutItsDisclosureIsAFinding(t *testing.T) {
 		{"the document does not disclose", func(_ *testing.T, s *Subject) {
 			s.Projections[0].Graph.Metadata.Caveats = nil
 		}, "does not carry the disclosure sentence"},
-		// THE TWO ARMS BELOW WERE ADDED WITH NO CASE, and were unfalsifiable:
-		// rewriting both as `case false:` left
-		// ./internal/check green, because only the missing-caveat arm above was
-		// ever exercised. They are the reason the check looks the caveat up by
-		// ID rather than comparing whole values, so leaving them unproved would
-		// have made that whole design unverified.
-		//
-		// TEXT DRIFT WITH THE ID INTACT is the quieter failure of the two: the
-		// anchor still resolves, the page still renders a paragraph under the
-		// right heading, and the paragraph says something the contract does not
-		// require. Matching on the id alone -- the obvious simplification --
-		// goes green over exactly this.
+		// Text drift with the id intact: matching on the id alone goes green.
+		// Mutation: rewrite this arm as `case false:` and this goes green.
 		{"the disclosure is present under the right id and says something else",
 			func(_ *testing.T, s *Subject) {
 				c := project.ConstraintTierCaveat()
 				c.Text = "Constraint tiers come from the budget book."
 				s.Projections[0].Graph.Metadata.Caveats = []project.Caveat{c}
 			}, "not the disclosure internal/project declares"},
-		// AND SUMMARY DRIFT, which is the one a reader is most likely to meet:
-		// index.html prints the summary and links to the text,
-		// so a document whose text is word-perfect and whose summary says
-		// something else misleads everyone who does not follow the link.
+		// Summary drift: index.html prints the summary and links to the text.
+		// Mutation: rewrite this arm as `case false:` and this goes green.
 		{"the summary is not the one internal/project declares",
 			func(_ *testing.T, s *Subject) {
 				c := project.ConstraintTierCaveat()
@@ -1353,11 +1228,8 @@ func TestAConstraintTierWithoutItsDisclosureIsAFinding(t *testing.T) {
 	}
 }
 
-// factsSubject builds a subject with no projection in it, for the checks that
-// are about the fact store alone. Some of the facts these tests construct are
-// ones internal/project refuses outright — it will not project a fact carrying a
-// department — and building a graph from them would make the test about the
-// projection rather than about the vocabulary.
+// factsSubject builds a subject with no projection, for fact-store checks over
+// facts internal/project would refuse.
 func factsSubject(t *testing.T, facts []fact.Fact) *Subject {
 	t.Helper()
 	return &Subject{Facts: facts, Vocabulary: testVocabulary(t)}
@@ -1413,9 +1285,7 @@ func stockFactID(g *project.Document) string {
 }
 
 // internalServiceCells is a schedule with an internal-service column, which the
-// main fixture deliberately does not have: an Internal Service Fund charge is
-// billed by one city department to another, so it is inside the city and the
-// external headline figures exclude it.
+// main fixture lacks; the external headline figures exclude it.
 var internalServiceCells = []testCell{
 	{vocab.KindRevenue, "taxes/property", "general", 100_000},
 	{vocab.KindRevenue, "charges-for-services", "internal-service", 5_000},
@@ -1423,10 +1293,8 @@ var internalServiceCells = []testCell{
 	{vocab.KindExpenditure, "wages-and-benefits", "internal-service", 3_000},
 }
 
-// TestHeadlineExternalFiguresExcludeInternalService is the arithmetic behind the
-// four headline figures, over a schedule where the gross and external answers
-// differ. Getting this wrong is the error the projection exists to prevent, one
-// order of magnitude smaller than the transfer double count.
+// TestHeadlineExternalFiguresExcludeInternalService: the four headline figures
+// over a schedule where gross and external differ.
 func TestHeadlineExternalFiguresExcludeInternalService(t *testing.T) {
 	t.Parallel()
 	s := testSubject(t, testFacts(internalServiceCells...)...)
@@ -1452,9 +1320,8 @@ func TestHeadlineExternalFiguresExcludeInternalService(t *testing.T) {
 	}
 }
 
-// TestEveryHeadlineFigureIsTiedToTheFacts covers the figures a reader quotes
-// without reading the chart. Each is accumulated inside internal/project, and
-// before this check nothing at all would have noticed one of them being wrong.
+// TestEveryHeadlineFigureIsTiedToTheFacts: each headline figure is tied to the
+// facts.
 func TestEveryHeadlineFigureIsTiedToTheFacts(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {
@@ -1477,8 +1344,7 @@ func TestEveryHeadlineFigureIsTiedToTheFacts(t *testing.T) {
 			if !hasFinding(res, tt.key) {
 				t.Errorf("findings %v do not name %s", res.Findings, tt.key)
 			}
-			// The sign of the difference is part of the message: the last case
-			// shifts the figure down rather than up.
+			// The sign of the difference is in the message.
 			if !hasFinding(res, "999.00)") {
 				t.Errorf("findings %v do not state the difference", res.Findings)
 			}
@@ -1486,11 +1352,9 @@ func TestEveryHeadlineFigureIsTiedToTheFacts(t *testing.T) {
 	}
 }
 
-// TestNaiveExpenditureIgnoresInternalServiceRevenue is a regression test. The
-// subject condition once tested for ANY internal_service link, which a projection
-// whose only internal-service flow is revenue satisfies while having no
-// expenditure double count at all — so a correct graph was failed for publishing a
-// naive figure that legitimately equals the external one.
+// TestNaiveExpenditureIgnoresInternalServiceRevenue: an internal-service
+// revenue flow alone is no expenditure double count, so the check does not
+// fail a naive figure equal to the external one.
 func TestNaiveExpenditureIgnoresInternalServiceRevenue(t *testing.T) {
 	t.Parallel()
 	cells := []testCell{
@@ -1514,10 +1378,8 @@ func TestNaiveExpenditureIgnoresInternalServiceRevenue(t *testing.T) {
 	}
 }
 
-// TestALinkMayOnlyCiteItsOwnSlice covers the failure project.Options exists to
-// prevent, from the provenance side. A citation that resolves in facts.jsonl but
-// belongs to another fiscal year is not provenance for this graph, and it would be
-// accepted by anything that looked the id up in the whole fact store.
+// TestALinkMayOnlyCiteItsOwnSlice: a citation resolving in facts.jsonl but to
+// another fiscal year is not provenance for this graph.
 func TestALinkMayOnlyCiteItsOwnSlice(t *testing.T) {
 	t.Parallel()
 	s := testSubject(t)
@@ -1542,9 +1404,8 @@ func TestALinkMayOnlyCiteItsOwnSlice(t *testing.T) {
 	}
 }
 
-// TestALinkCitingNothingInTheStoreIsADifferentProblem keeps the two citation
-// failures apart: an id from another slice and an id from nowhere at all need
-// different fixes.
+// TestALinkCitingNothingInTheStoreIsADifferentProblem: an id from another slice
+// and one from nowhere get different findings.
 func TestALinkCitingNothingInTheStoreIsADifferentProblem(t *testing.T) {
 	t.Parallel()
 	s := testSubject(t)
@@ -1569,14 +1430,8 @@ func hasLinkKind(g *project.Document, k project.LinkKind) bool {
 	return false
 }
 
-// A projection that refuses to build is REPORTED, not fatal — and the report
+// A projection that refuses to build is reported, not fatal, and the report
 // still has every other check in it.
-//
-// Before fisc-o15 this path aborted check.Load, so `fisc verify` exited 1 having
-// printed nothing: the reason was wrapped inside a load error and every other
-// finding in the run was lost. The refusal itself stays — internal/project is
-// right to reject a department-bearing fact, because the citywide spine has no
-// department tier — and what changed is that a check now owns saying so.
 func TestARefusedProjectionIsReportedAndNotFatal(t *testing.T) {
 	t.Parallel()
 	facts := testFacts()
@@ -1590,8 +1445,7 @@ func TestARefusedProjectionIsReportedAndNotFatal(t *testing.T) {
 	if !hasFinding(res, `carries department "patrol"`) {
 		t.Errorf("finding %v does not carry internal/project's own refusal", res.Findings)
 	}
-	// The checks that read the fact store rather than a graph are unaffected,
-	// which is the whole point of reporting instead of aborting.
+	// The fact-store checks are unaffected.
 	for _, id := range []string{"facts-sorted", "fact-ids-unique", "fact-token-reparses"} {
 		if got := resultFor(t, rep, id).Status; got != StatusPass {
 			t.Errorf("%s = %s, want pass: a refused projection must not take the report down", id, got)
@@ -1602,12 +1456,8 @@ func TestARefusedProjectionIsReportedAndNotFatal(t *testing.T) {
 	}
 }
 
-// projections-build must never be VACUOUS while a refusal is recorded.
-//
-// Vacuous is the verdict that exits 0 without --strict, and a refused projection
-// silences ten graph checks at once. This is the arm that would make the whole
-// mechanism pointless if it regressed, so it is asserted by name rather than
-// left to the status assertions above.
+// projections-build must never be vacuous while a refusal is recorded: vacuous
+// exits 0 without --strict, and a refusal silences the graph checks.
 func TestProjectionsBuildIsNeverVacuousWithARefusalRecorded(t *testing.T) {
 	t.Parallel()
 	facts := testFacts()
@@ -1622,8 +1472,8 @@ func TestProjectionsBuildIsNeverVacuousWithARefusalRecorded(t *testing.T) {
 	}
 }
 
-// projections-build COUNTS SLICES, the unit it names: one projection may
-// build several.
+// projections-build counts slices, the unit it names: one projection may build
+// several.
 func TestProjectionsBuildCountsSlicesNotProjections(t *testing.T) {
 	t.Parallel()
 	s := &Subject{Projections: []projection{{
@@ -1646,10 +1496,8 @@ func TestProjectionsBuildCountsSlicesNotProjections(t *testing.T) {
 	}
 }
 
-// fundRuleSubject builds a subject carrying rule files and a one-page document,
-// which is what rule-funds-match-their-headings reads. The page is written here
-// rather than copied, because these tests are about the RULES and want to state
-// the printed line they are checked against on the same screen.
+// fundRuleSubject builds a subject carrying rule files and a one-page document
+// written here, for rule-funds-match-their-headings.
 func fundRuleSubject(t *testing.T, page string, rules []mapping.Rule,
 	rollups []mapping.Rollup) *Subject {
 	t.Helper()
@@ -1659,9 +1507,7 @@ func fundRuleSubject(t *testing.T, page string, rules []mapping.Rule,
 		Path: "testdata/fixture.yaml",
 	}}
 	s.Docs = map[string]*corpus.Doc{testDoc: inlinePageDoc(t, testDoc, 1, page)}
-	// A rule file carries a resolver, as Subject.Resolvers promises: the
-	// stated-total check indexes the map by the file's path and runs over this
-	// fixture with every other check.
+	// A rule file carries a resolver, as Subject.Resolvers promises.
 	r, err := mapping.NewResolver(s.Docs[testDoc], s.Files[0])
 	if err != nil {
 		t.Fatalf("build the fixture's resolver: %v", err)
@@ -1706,10 +1552,8 @@ func TestRuleFundsMatchTheirHeadings(t *testing.T) {
 		}
 	})
 
-	// THE BEAD'S OWN CASE. Both funds exist, both are the right TYPE for the
-	// fund group the columns declare, and the column sums are identical either
-	// way — so fact-funds-resolve, cuts-tie-along-the-lattice and CheckTotals
-	// all pass. Only the printed name disagrees.
+	// Both funds exist and match the columns' fund group, and the column sums
+	// are identical, so every other check passes; only the printed name differs.
 	t.Run("a fund swapped for another of the same type fails", func(t *testing.T) {
 		res := resultFor(t, runChecks(t, fundRuleSubject(t, page, []mapping.Rule{
 			// Reads the Water block and files it under Information Technology.
@@ -1737,10 +1581,8 @@ func TestRuleFundsMatchTheirHeadings(t *testing.T) {
 		}
 	})
 
-	// CLAUSE 2, AND THE REASON IT EXISTS. Nine of the schedule's 69 funds print
-	// zero in BOTH budget years, so dropping one leaves every reconciled sum
-	// unchanged and cuts-tie-along-the-lattice green. Clause 1 cannot see it:
-	// it only inspects rules that exist.
+	// Clause 2: nine of the schedule's 69 funds print zero in both years, so
+	// dropping one moves no sum, and clause 1 inspects only rules that exist.
 	t.Run("a printed fund total no rule claims fails", func(t *testing.T) {
 		res := resultFor(t, runChecks(t, fundRuleSubject(t, page, []mapping.Rule{
 			fundRule("water", 500, "enterprise", "Total Water Utility Fund"),
@@ -1754,11 +1596,8 @@ func TestRuleFundsMatchTheirHeadings(t *testing.T) {
 		}
 	})
 
-	// A MAPPED SECTION MUST NOT BE REPORTED AS UNCLAIMED.
-	//
-	// Claiming a printed total says SOME rule reads that heading, so a rule
-	// that maps a fund section without declaring one fund -- fund_group-only
-	// columns, which is what p76 does -- still claims its own total.
+	// A rule mapping a fund section with fund_group-only columns (p76's shape)
+	// still claims its own printed total.
 	t.Run("a rule with no fund of its own still claims its printed total", func(t *testing.T) {
 		noFund := fundRule("it", 700, "internal-service", "Total Information Technology Fund")
 		noFund.Parts[0].Columns[0].Fund = 0 // the group is declared, the fund is not
@@ -1777,12 +1616,7 @@ func TestRuleFundsMatchTheirHeadings(t *testing.T) {
 		}
 	})
 
-	// A MISMATCH IS ONE FINDING, NOT TWO THAT CONTRADICT EACH OTHER.
-	//
-	// The mismatch arm did not mark the rule as reported, so the "anchored to
-	// nothing on the page" arm fired as well -- while listing the very total
-	// that anchors it. The second sentence was false and the two point a reader
-	// at different fixes.
+	// A mismatch is one finding, not also "anchored to nothing on the page".
 	t.Run("a fund mismatch produces exactly one finding", func(t *testing.T) {
 		res := resultFor(t, runChecks(t, fundRuleSubject(t, page, []mapping.Rule{
 			fundRule("water", 700, "internal-service", "Total Water Utility Fund"),
@@ -1806,9 +1640,8 @@ func TestRuleFundsMatchTheirHeadings(t *testing.T) {
 		}
 	})
 
-	// pp.127-130's shape: ONE fund decomposed by CATEGORY across several rules
-	// whose printed totals are category names. The fund is named exactly once,
-	// by the rollup that covers them, and that is what anchors the number.
+	// pp.127-130's shape: one fund split by category across rules, named once
+	// by the rollup that covers them.
 	t.Run("a fund named only by a rollup that covers the rules passes", func(t *testing.T) {
 		gf := func(id, totalRow string) mapping.Rule {
 			return fundRule(id, 100, "general", totalRow)
@@ -1826,9 +1659,8 @@ func TestRuleFundsMatchTheirHeadings(t *testing.T) {
 		}
 	})
 
-	// The same shape with the rollup covering only ONE of them. The uncovered
-	// rule's number is anchored to nothing printed, which is the state
-	// pp.127-130 would be in if a category rule fell out of the rollup's covers.
+	// The rollup covering only one of them: the uncovered rule is anchored to
+	// nothing printed.
 	t.Run("a rule the naming rollup does not cover fails", func(t *testing.T) {
 		gf := func(id, totalRow string) mapping.Rule {
 			return fundRule(id, 100, "general", totalRow)
@@ -1846,9 +1678,8 @@ func TestRuleFundsMatchTheirHeadings(t *testing.T) {
 		}
 	})
 
-	// A rule whose columns declare two funds is held to a heading line that
-	// names them in column order, as Budget Book p81 heads "Airport Fund" and
-	// "Water Fund" over its requirements.
+	// A two-fund rule is held to a heading naming them in column order, as
+	// p81 heads "Airport Fund" and "Water Fund".
 	mixed := func(heading string) Result {
 		ru := fundRule("mixed", 500, "enterprise", "Total")
 		ru.Parts[0].Columns = append(ru.Parts[0].Columns,
@@ -1868,8 +1699,7 @@ func TestRuleFundsMatchTheirHeadings(t *testing.T) {
 		}
 	})
 
-	// The spine: no rule names a fund, so there is nothing to check and the
-	// honest report is vacuous rather than a pass over zero.
+	// The spine names no fund, so the report is vacuous.
 	t.Run("no rule declares a fund is vacuous", func(t *testing.T) {
 		res := resultFor(t, runChecks(t, testSubject(t)), id)
 		if res.Status != StatusVacuous {
@@ -1879,9 +1709,8 @@ func TestRuleFundsMatchTheirHeadings(t *testing.T) {
 }
 
 // TestAnEndpointCarryingNoFlowMayBeAParent covers node-hierarchy-well-formed's
-// one exception, and the mutation that closes it. The subject is the committed
-// corpus because testSubject builds no transfers-by-fund document, and a case
-// there would be green because the shape never arrived.
+// one exception over the committed corpus, which has the transfers-by-fund
+// document testSubject lacks.
 func TestAnEndpointCarryingNoFlowMayBeAParent(t *testing.T) {
 	t.Parallel()
 	const id = "node-hierarchy-well-formed"
@@ -1923,7 +1752,7 @@ func TestAnEndpointCarryingNoFlowMayBeAParent(t *testing.T) {
 			res.Status, said(res))
 	}
 
-	// THE MUTATION: one link at the endpoint, and each folded node is refused.
+	// Mutation: one link at the endpoint, and each folded node is refused.
 	doc.Links = append(doc.Links, project.Link{
 		Source: endpoint, Target: doc.Nodes[0].ID, Kind: project.KindInternalTransfer,
 	})
@@ -1938,8 +1767,7 @@ func TestAnEndpointCarryingNoFlowMayBeAParent(t *testing.T) {
 }
 
 // scheduleSubject is one document of each of the four schedule shapes, each
-// over one cited fact and one uncited printed zero. Hand-assembled, because
-// every producer would build more than the check under test needs.
+// over one cited fact and one uncited printed zero.
 func scheduleSubject() *Subject {
 	col := project.Column{FiscalYear: 2026, Basis: vocab.BasisAdopted}
 	mk := func(id, scope string, cents int64) fact.Fact {

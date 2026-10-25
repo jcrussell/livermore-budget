@@ -37,24 +37,17 @@ func aStatedTotalLine(t *testing.T, s *Subject, want func(*mapping.Rule, *mappin
 	return "", 0, 0, ""
 }
 
-// TestARepublishedTotalIsCaught is fisc-eaic: a figure the document prints as a
-// block's total, republished as one of that block's rows.
-//
-// The fact is planted at a REAL resolved total offset rather than a made-up one,
-// so the test fails the same way the corpus would.
+// TestARepublishedTotalIsCaught: a block's printed total republished as one of
+// its rows, planted at a real resolved total offset.
 func TestARepublishedTotalIsCaught(t *testing.T) {
 	t.Parallel()
 	s := mutable(t)
 	doc, page, off, ruleID := aStatedTotalLine(t, s, func(r *mapping.Rule, _ *mapping.Part) bool {
 		return r.TotalRow != ""
 	})
-	// PLANTED AT THE FIRST FIGURE, NOT AT THE SPAN'S FIRST BYTE. `lo` is the
-	// byte after the LABEL, which is whitespace on 147 of the 149 rule spans,
-	// and fact-offset-points-at-token guarantees no fact sits in whitespace --
-	// so planting there exercises the span's start and never its EXTENT.
-	// Collapsing the check to `hi := lo+1` must redden this test; it does not
-	// if the fact is planted at `lo`. A real republished total sits where its
-	// token does, which is what this plants.
+	// Planted at the first figure, not at `lo`, which is whitespace on most
+	// spans and so exercises only the span's start. Mutation: collapse the
+	// check to `hi := lo+1` and this is red.
 	at := off
 	for at < len(pageOf(t, s, doc, page)) && pageOf(t, s, doc, page)[at] == ' ' {
 		at++
@@ -92,14 +85,9 @@ func pageOf(t *testing.T, s *Subject, docID string, page int) string {
 	return text
 }
 
-// TestARepublishedRollupTotalIsCaught is the same defect one level up.
-//
-// A rollup is a printed total covering several RULES -- pp.167-170's eleven
-// "<DEPARTMENT> TOTAL" rows over their divisions, plus three more elsewhere in
-// the file. dept-city-council's p167 line prints $149,198 and covers
-// div-city-council's own Total, so republishing it as a row doubles a whole
-// department. Delete the rollup loop from the check and this is the only test
-// that reddens.
+// TestARepublishedRollupTotalIsCaught: a rollup's printed total (p167's
+// dept-city-council $149,198) republished as a row doubles a department.
+// Mutation: delete the rollup loop from the check and only this reddens.
 func TestARepublishedRollupTotalIsCaught(t *testing.T) {
 	t.Parallel()
 	s := mutable(t)
@@ -141,24 +129,17 @@ func TestARepublishedRollupTotalIsCaught(t *testing.T) {
 	if !strings.Contains(got, id) {
 		t.Errorf("the finding does not name the rollup %q: %s", id, got)
 	}
-	// IT MUST SAY "rollup", NOT "rule". Rollup ids are not rule ids, so a
-	// violation published as `rule "dept-city-council"` sends its reader to grep
-	// mappings/ for a rule that is not there.
+	// It must say "rollup", not "rule": rollup ids are not rule ids, so
+	// `rule "dept-city-council"` names a rule mappings/ does not hold.
 	if !strings.Contains(got, `rollup "`+id+`"`) {
 		t.Errorf("the finding calls the rollup a rule: %s", got)
 	}
 }
 
-// TestLosingASpanningRulesTotalIsCaught holds the spanning arm: a
-// total_spans_parts rule has ONE stated-total line, on the page
-// mapping.Resolver.TotalBearingPart finds, and losing it is a finding.
-//
-// EVERY committed spanning rule is bent in turn rather than one of them,
-// because the shape that goes wrong here is selective: a predicate that
-// excuses a spanning rule's non-resolution forgives all of them except the
-// ones a rollup happens to cover, which produce a finding by RollupTotalSpan's
-// route instead. Restore `if rule.TotalSpansParts { continue }` ahead of the
-// bearer lookup and this names every spanning rule no rollup covers.
+// TestLosingASpanningRulesTotalIsCaught: losing a total_spans_parts rule's
+// one stated-total line is a finding, bent for every committed spanning rule.
+// Mutation: restore `if rule.TotalSpansParts { continue }` ahead of the bearer
+// lookup and this names every spanning rule no rollup covers.
 func TestLosingASpanningRulesTotalIsCaught(t *testing.T) {
 	t.Parallel()
 	s := isolated(t)
@@ -196,21 +177,11 @@ func TestLosingASpanningRulesTotalIsCaught(t *testing.T) {
 	t.Logf("measured: %d spanning rules, each a finding when its total_row resolves on no page", bent)
 }
 
-// TestALabelLessPartThatLosesItsTotalLineIsCaught holds the stop_at arm for a
-// part that DECLARES a total: a label-less part of a total_row rule reads its
-// stated total at the block terminator, so a terminator that is no longer a
-// totals line is a lost span, exactly as a moved total_row is.
-//
-// The bend is to the LINE and not to the block. stop_at is moved onto the
-// page's running footer, which the block still resolves to -- the finding must
-// carry statedTotalLine's "no run of" message, which is the arm that says the
-// anchor was found and the line under it prints no totals. Setting stop_at to
-// text the page does not print would redden the test too, but through the
-// block failing, which is what every check over the store refuses and not what
-// this one is for.
-//
-// Excuse label-less parts from the per-part arm -- `if mapping.AnchorOf(p) ==
-// mapping.AnchorStopAt { continue }` after the error -- and this goes red.
+// TestALabelLessPartThatLosesItsTotalLineIsCaught: stop_at is moved onto the
+// page's running footer, which the block still resolves to, so the finding
+// must carry statedTotalLine's "no run of" message. Mutation: excuse
+// label-less parts with `if mapping.AnchorOf(p) == mapping.AnchorStopAt
+// { continue }` after the error and this goes red.
 func TestALabelLessPartThatLosesItsTotalLineIsCaught(t *testing.T) {
 	t.Parallel()
 	s := isolated(t)
@@ -232,8 +203,8 @@ func TestALabelLessPartThatLosesItsTotalLineIsCaught(t *testing.T) {
 				if _, _, err := r.TotalRowSpan(rule, p); err != nil {
 					continue
 				}
-				// The page's last printed line. On every page of the Budget Book
-				// that is the running footer, and a footer prints no amounts.
+				// The page's last printed line: the running footer, which
+				// prints no amounts.
 				text := strings.TrimRight(pageOf(t, s, f.DocID, p.Page), "\n ")
 				footer = strings.TrimSpace(text[strings.LastIndexByte(text, '\n')+1:])
 				bentRule, bentPart = rule, p
@@ -269,26 +240,14 @@ func TestALabelLessPartThatLosesItsTotalLineIsCaught(t *testing.T) {
 	}
 }
 
-// TestOneLostPartIsCaughtEvenWhenOthersResolve holds the arm to per-PART.
-//
-// Gate it on `resolved == 0` instead and a rule that loses ONE part's
-// stated-total span passes on the strength of its other parts: fisc verify
-// reports PASS over one line fewer, with no finding, while a fact planted on
-// p66's real "TOTAL REVENUES:" line goes unrefused. Every span this check
-// loses is a line it can no longer refuse a fact on.
-//
-// The rule bent here is chosen for the shape the arm must NOT excuse: labelled
-// parts, a declared total_row, and not total_spans_parts. The spanning shape,
-// whose head parts print no total, has its own test above.
+// TestOneLostPartIsCaughtEvenWhenOthersResolve holds the arm to per-part, on a
+// labelled total_row rule that is not total_spans_parts. Mutation: gate it on
+// `resolved == 0` and a rule losing one part's span passes with no finding.
 func TestOneLostPartIsCaughtEvenWhenOthersResolve(t *testing.T) {
 	t.Parallel()
 	s := isolated(t)
-	// The shape wanted is a rule that keeps SOME span after its total_row is
-	// broken, because that is exactly what `resolved == 0` forgave. It is found
-	// by simulation rather than by naming a rule, so the test follows the corpus
-	// instead of pinning it. spine-revenues is today's answer: its p66 part is
-	// labelled and resolves through total_row, and its p67 part is label-less
-	// and resolves through stop_at, so breaking total_row costs one of the two.
+	// A rule that keeps some span after its total_row is broken, found by
+	// simulation (spine-revenues: labelled p66, label-less p67).
 	var bent *mapping.Rule
 	var before, after int
 	count := func(r *mapping.Resolver, rule *mapping.Rule) int {
@@ -345,23 +304,11 @@ func TestOneLostPartIsCaughtEvenWhenOthersResolve(t *testing.T) {
 	}
 }
 
-// TestNoTotalLurksAtAnUndeclaredLabelLessTerminator is the page claim behind
-// the check's first exit: a rule with no total_row is not asked for a span, and
-// that passes over no printed total only if the block terminators of such
-// rules' label-less parts -- the one place a label-less part reads a total from
-// -- print no totals run.
-//
-// Held against the pages rather than assumed: spine-transfers-in's p67 part
-// ends on the fund-group header `Capital Funds  Debt Service Funds ...`,
-// spine-transfers-out's and spine-fund-balance's on the running footer "BUDGET
-// FY 2025-27 Page 63", pp.225-235's CIP continuations and pp.187-209's
-// fund-balance continuations on the same footer or on a blank run. A part that
-// stops failing here has a stated total its rule does not declare, and the fix
-// is a total_row on the rule, which is what makes the build tie it and this
-// check guard it.
-//
-// Delete the amountRun test from statedTotalLine and this goes red, naming
-// every terminator line verbatim.
+// TestNoTotalLurksAtAnUndeclaredLabelLessTerminator: the block terminators of
+// label-less parts of rules with no total_row print no totals run, held
+// against the pages. A failure means the rule needs a total_row.
+// Mutation: delete the amountRun test from statedTotalLine and this goes red,
+// naming every terminator line.
 func TestNoTotalLurksAtAnUndeclaredLabelLessTerminator(t *testing.T) {
 	t.Parallel()
 	s := committed(t)
@@ -403,20 +350,11 @@ func TestNoTotalLurksAtAnUndeclaredLabelLessTerminator(t *testing.T) {
 	}
 }
 
-// TestALabelLessPartWithATotalRowNamesItsRealAnchor is the SECOND half of the
-// LabelsFrom-before-TotalRow trap.
-//
-// Two committed parts are label-less AND declare a total_row: spine-revenues and
-// spine-expenditures on p67. totalAnchor tests LabelsFrom first, so their anchor
-// is stop_at "$" and their total_row is never searched for -- and p67 prints
-// neither "TOTAL REVENUES:" nor "TOTAL EXPENDITURES:" anywhere (it is p66 that
-// prints them). Choosing the finding's label on TotalRow alone therefore made
-// this check report a real defect by pointing at a printed line that does not
-// exist, which is worse than not reporting it: a reader goes to p67, greps, and
-// concludes the check is broken.
-//
-// Restore `label := rule.TotalRow` ahead of the LabelsFrom test and this goes
-// red while every other test in this file still passes.
+// TestALabelLessPartWithATotalRowNamesItsRealAnchor: p67's label-less
+// spine-revenues and spine-expenditures parts anchor on stop_at "$", and p67
+// prints neither declared total_row, so the finding must name the stop_at.
+// Mutation: restore `label := rule.TotalRow` ahead of the LabelsFrom test and
+// only this goes red.
 func TestALabelLessPartWithATotalRowNamesItsRealAnchor(t *testing.T) {
 	t.Parallel()
 	s := mutable(t)
@@ -460,11 +398,8 @@ func TestALabelLessPartWithATotalRowNamesItsRealAnchor(t *testing.T) {
 	}
 }
 
-// TestARuleWhoseTotalResolvesNowhereIsCaught covers the per-part arm's plainest
-// case, which is the one way the check could quietly examine nothing: a declared
-// total_row that resolves on no part contributes no span, so nothing on that
-// block's total line can ever be refused. The spanning shape has its own test
-// above and its own finding.
+// TestARuleWhoseTotalResolvesNowhereIsCaught: a declared total_row that
+// resolves on no part contributes no span, and is a finding.
 func TestARuleWhoseTotalResolvesNowhereIsCaught(t *testing.T) {
 	t.Parallel()
 	s := isolated(t)
@@ -502,8 +437,8 @@ func TestARuleWhoseTotalResolvesNowhereIsCaught(t *testing.T) {
 // block starts, and the first is a row's. A finding naming the line by stop_at
 // "$" alone sends its reader to the first row.
 //
-// Mutation: drop the ordinal from the label, and the finding names stop_at
-// "$" alone.
+// Mutation: drop the ordinal from the label and the finding names stop_at "$"
+// alone.
 func TestALineFoundByOrdinalIsNamedWithIt(t *testing.T) {
 	t.Parallel()
 	s := mutable(t)

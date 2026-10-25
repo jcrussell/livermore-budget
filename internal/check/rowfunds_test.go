@@ -10,25 +10,9 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 )
 
-// TestRowFundsCatchesTheTwinSwapNothingElseSees is this check's whole reason for
-// existing, stated as the mutation the rest of the suite is blind to.
-//
-// Budget Book p76's payer side is hand-typed 44 times and the DOCUMENT cannot
-// check it: a counterpart is resolved downstream of every comparison against the
-// city's own arithmetic, so redeclaring a payer changes no printed total.
-// Measured elsewhere in this repository and relied on here.
-//
-// Five of p76's payer labels match an operating fund AND its CIP twin, and every
-// twin is type: capital. So:
-//
-//   - cuts-tie-along-the-lattice cannot see it: the swap moves the leg inside
-//     the collapsed {capital, special-revenue, permanent} cell and the joint
-//     sum is unchanged.
-//   - factFundsResolve cannot see three of the five (510, 550, 560), because
-//     those are already capital and the fund group does not change.
-//
-// This test runs the two hardest cases: the one that changes fund group and the
-// one that does not.
+// TestRowFundsCatchesTheTwinSwapNothingElseSees: five of p76's payer labels
+// match an operating fund and its capital CIP twin, a swap no printed total
+// and no group sum sees. Runs one case that changes fund group and one that does not.
 func TestRowFundsCatchesTheTwinSwapNothingElseSees(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {
@@ -88,11 +72,9 @@ func TestRowFundsCatchesTheTwinSwapNothingElseSees(t *testing.T) {
 	}
 }
 
-// TestThePassLineKeepsTheTwoArmsApart is heldLine's wiring, over p76's verb
-// phrases and pp.85-125's bare labels alone: passing it a zero for either arm
-// -- heldLines(subjects, 0, numbered) -- folds the bare labels into the verb
-// phrases' claim of direction, which TestTheHeldLineNeverReportsAnEmptyArm,
-// calling heldLine directly, cannot see.
+// TestThePassLineKeepsTheTwoArmsApart is heldLine's wiring over p76's verb
+// phrases and pp.85-125's bare labels. Mutation: pass 0 for either arm to
+// heldLines and the bare labels fold into the verb phrases' direction claim.
 func TestThePassLineKeepsTheTwoArmsApart(t *testing.T) {
 	t.Parallel()
 	base := committed(t)
@@ -119,15 +101,9 @@ func TestThePassLineKeepsTheTwoArmsApart(t *testing.T) {
 	}
 }
 
-// TestTheBareLabelArmIsWhatTheDeclarationTurnsOn is the proof that
-// row_labels_name_funds is load-bearing rather than decorative.
-//
-// WITHOUT IT THE ARM WOULD STILL LOOK RIGHT. A commit that added the code and
-// forgot the eleven YAML declarations would leave a reader checking "does the
-// new arm work" against a hand-built fixture seeing it work. This runs the committed corpus with the flag
-// cleared and asserts the check falls back exactly to where it was: 522 fewer
-// subjects -- pp.85-125's 78 and pp.186-209's 444 -- and the clause naming
-// those rows as unread returns.
+// TestTheBareLabelArmIsWhatTheDeclarationTurnsOn: with row_labels_name_funds
+// cleared the check falls back to 522 fewer subjects (pp.85-125's 78,
+// pp.186-209's 444) and the unread-rows clause returns.
 func TestTheBareLabelArmIsWhatTheDeclarationTurnsOn(t *testing.T) {
 	t.Parallel()
 	base := committed(t)
@@ -143,10 +119,8 @@ func TestTheBareLabelArmIsWhatTheDeclarationTurnsOn(t *testing.T) {
 		t.Errorf("with the declaration cleared the summary does not report the 522 as "+
 			"rows it makes no claim about:\n%s", res.Summary)
 	}
-	// ONE NAME PER RULE, NOT PER ROW -- eleven funding-* rules for 78 rows and
-	// sixteen fund-balances-* rules for 444 -- and both halves are asserted:
-	// replacing the seenRule dedup with a per-row append leaves the rest of the
-	// suite green and puts this check's PASS line at 11 KB.
+	// One name per rule, not per row. Mutation: a per-row append in place of
+	// the seenRule dedup leaves the rest of the suite green.
 	for _, want := range []string{"funding-city-council", "funding-public-works"} {
 		if !strings.Contains(res.Summary, want) {
 			t.Errorf("the summary does not attribute the unread declarations to their "+
@@ -179,29 +153,14 @@ func withoutRowLabelFunds(base *Subject) *Subject {
 	return &s
 }
 
-// TestAVacuousRowFundsSummaryCannotDenyTheRowsItSaw is the arm that was
-// missing.
-//
-// The vacuous reason is printed by --strict as the justification for a check
-// having nothing to look at, so a false one is worse than no reason at all --
-// which is what the comment beside `nothing` already said. It tested only the
-// unanchored counter, so a corpus of nothing but pp.85-125 reported "no row
-// declares a fund" while 78 did. Reverting the guard to `unanchored > 0` makes
-// this red.
+// TestAVacuousRowFundsSummaryCannotDenyTheRowsItSaw: a corpus of only
+// pp.85-125 must not report "no row declares a fund" while 78 do.
+// Mutation: revert the guard to `unanchored > 0` and this is red.
 func TestAVacuousRowFundsSummaryCannotDenyTheRowsItSaw(t *testing.T) {
 	t.Parallel()
 	base := committed(t)
-	// Only the funding-source rules, whose row labels carry no verb phrase, so
-	// every declared fund is unphrased and none is unanchored.
-	//
-	// AND WITH row_labels_name_funds CLEARED, which fisc-90fp made necessary and
-	// which does not weaken this test. Those rules declare it on the committed
-	// corpus, so the check now READS all 78 and this corpus is no longer vacuous
-	// at all -- the property under test would have nowhere to live. Clearing it
-	// restores the exact shape the defect lived in: 78 declared funds, none of
-	// them resolvable by this check, and a reason that must not deny them.
-	// A corpus of rules that decline the declaration is also a real corpus; it
-	// is what every schedule mapped before this one looked like.
+	// Only the funding-source rules, with row_labels_name_funds cleared: 78
+	// declared funds, none unanchored, none resolvable by this check.
 	cleared := withoutRowLabelFunds(base)
 	s := *cleared
 	s.Files = nil
@@ -228,13 +187,8 @@ func TestAVacuousRowFundsSummaryCannotDenyTheRowsItSaw(t *testing.T) {
 	if !strings.Contains(res.Summary, "78 declared fund(s)") {
 		t.Errorf("the vacuous reason does not say what it saw:\n%s", res.Summary)
 	}
-	// AND IT HAS TO READ. The assertion above passed on "; a further 78
-	// declared fund(s)..." -- a clause with no antecedent, because the note was
-	// seeded in the unanchored arm and appended to in the unphrased one.
-	// Contains("78 declared fund(s)") is satisfied by that malformed string, so a
-	// test written for this defect could not fail on it, which is why the two
-	// assertions below pin the antecedent and the adjacency rather than a
-	// substring.
+	// The clause needs its antecedent: Contains("78 declared fund(s)") is also
+	// satisfied by "; a further 78 ...", so antecedent and adjacency are pinned.
 	if strings.Contains(res.Summary, "a further") {
 		t.Errorf("the summary says \"a further\" with nothing before it:\n%s", res.Summary)
 	}
@@ -243,13 +197,9 @@ func TestAVacuousRowFundsSummaryCannotDenyTheRowsItSaw(t *testing.T) {
 	}
 }
 
-// TestABareFundLabelIsNotReportedAsAnUnprintedAnchor is the property the split
-// above exists for, stated so it can fail on its own.
-//
-// pp.85-125's 78 rows print their label, so one sentence for both lists would
-// be false 78 times over, in a string fisc verify prints verbatim. Reverting
-// anchorHasVerbPhrase to a constant true collapses the two lists back into one
-// and makes this test red on the count.
+// TestABareFundLabelIsNotReportedAsAnUnprintedAnchor: pp.85-125's 78 rows
+// print their label. Mutation: anchorHasVerbPhrase returning true collapses
+// the two lists into one and this is red on the count.
 func TestABareFundLabelIsNotReportedAsAnUnprintedAnchor(t *testing.T) {
 	t.Parallel()
 	if anchorHasVerbPhrase("General Fund") {
@@ -322,25 +272,12 @@ func TestRowFundsCatchesASameGroupEndSwap(t *testing.T) {
 	}
 }
 
-// TestRowFundsCatchesABareLabelTwin: a bare-label row's hand-typed fund that
-// disagrees with its label makes fisc verify fail, not only a test.
-//
-// SO THIS ASSERTS ON THE Result AND NOT ON THE SUITE, deliberately. Running the
-// whole suite over this mutation goes red either way, and a proof that cannot
-// tell this arm from that test is green because the other gate fired -- the
-// shape AGENTS.md names.
-//
-// The swap is Water 640 -> Water Replacement 642: both `enterprise` in
-// data/funds.yaml, so no money leaves its group and fact-funds-resolve stays
-// PASS. cuts-tie-along-the-lattice goes red, because funding-sources is held
-// per fund to pp.186-209's Expenses: 640 and 642 each miss in all four
-// columns. That is a second gate on this swap, and not one on a same-type swap
-// between two funds whose pp.186-209 Expenses are equal. Its CIP
-// twin 641 is not such a swap: 641 is a fund of the cip-funds cut, which is
-// outside the reference, so cuts-tie-along-the-lattice refuses it -- the last
-// subtest holds that. Deleting the BARE-LABEL arm from Run -- the second of
-// the two gated on ru.RowLabelsNameFunds, not the phrased-label refusal above it
-// -- returns it to green.
+// TestRowFundsCatchesABareLabelTwin: a bare-label row's fund that disagrees
+// with its label fails fisc verify. It asserts on this Result, not the suite,
+// because cuts-tie-along-the-lattice also reddens on Water 640 -> 642; the
+// last subtest holds that the CIP twin 641 is refused by the cip-funds cut.
+// Mutation: delete the bare-label arm from Run (the second gated on
+// ru.RowLabelsNameFunds) and the check goes green.
 func TestRowFundsCatchesABareLabelTwin(t *testing.T) {
 	t.Parallel()
 	s := isolated(t)
@@ -376,15 +313,9 @@ func TestRowFundsCatchesABareLabelTwin(t *testing.T) {
 		}
 	}
 
-	// THE OTHER GATES. fact-funds-resolve, which catches a swap across fund
-	// types, reports PASS over this one; cuts-tie-along-the-lattice reports it
-	// per fund against pp.186-209.
-	//
-	// THE FACTS HAVE TO BE MUTATED TOO: factFundsResolve and
-	// cutsTieAlongTheLattice read s.Facts, everything above reads s.Files, and
-	// with only the rules mutated both pass without ever seeing the swap.
-	// Editing the facts in place is what `fisc build` would emit from the
-	// mutated rule: 640 and 642 are both enterprise, so no group sum moves.
+	// The other gates: fact-funds-resolve passes this same-type swap and
+	// cuts-tie-along-the-lattice reports it per fund against pp.186-209. Both
+	// read s.Facts, so the facts are mutated as `fisc build` would emit them.
 	original := slices.Clone(s.Facts)
 	swappedFacts := 0
 	for i := range s.Facts {
@@ -477,20 +408,9 @@ func TestTheFundNumberArmHoldsBothEndsOfAP222Row(t *testing.T) {
 	}
 }
 
-// TestABareLabelThatResolvesToNoFundIsAFinding is the fail-closed arm, and it is
-// the difference between a declaration and a decoration.
-//
-// If an unresolvable label were a `continue`, a rule could declare
-// row_labels_name_funds over labels data/funds.yaml has never heard of and the
-// check would report exactly nothing -- vacuously green, with a declaration
-// standing over it that reads to the next author like a guarantee. That is this
-// project's "green because the gate fired" in its purest form: the gate is the
-// registry lookup, and skipping on its failure means the assertion below it
-// never runs.
-//
-// It cannot be proved by mutating the published file, which is why it is here.
-// Renaming a row label breaks the page anchor first, so the resolver refuses
-// long before this check runs. Mutating the loaded rules reaches it.
+// TestABareLabelThatResolvesToNoFundIsAFinding: a label data/funds.yaml does
+// not resolve is a finding, not a `continue`. Only mutating the loaded rules
+// reaches it; renaming a page label breaks the anchor first.
 func TestABareLabelThatResolvesToNoFundIsAFinding(t *testing.T) {
 	t.Parallel()
 	s := isolated(t)
@@ -525,19 +445,9 @@ func TestABareLabelThatResolvesToNoFundIsAFinding(t *testing.T) {
 	}
 }
 
-// TestASkippedRowIsInvisibleToThisCheck makes the skip guard falsifiable.
-//
-// A skipped row is never read from the page, so this check -- which is entirely
-// about what the page prints on a row's line -- has nothing to say about it. It
-// must not be a subject, and it must not be counted as a fund the page prints no
-// anchor for either.
-//
-// A guard on the bare-label arm alone would leave a skipped funded row in the
-// omission counters, and the PASS line would say "no row_labels_name_funds
-// declaration covers that end" about a rule that declares it.
-//
-// The corpus cannot exercise it: all 29 skip: true rows carry no fund, measured.
-// So the row is built here.
+// TestASkippedRowIsInvisibleToThisCheck: a skipped row is neither a subject
+// nor counted in the omission counters. No skip: true row in the corpus
+// carries a fund, so the row is built here.
 func TestASkippedRowIsInvisibleToThisCheck(t *testing.T) {
 	t.Parallel()
 	base := isolated(t)
@@ -579,22 +489,12 @@ func TestASkippedRowIsInvisibleToThisCheck(t *testing.T) {
 }
 
 // TestTheHeldLineNeverReportsAnEmptyArm covers all three shapes of the PASS
-// line, because two of them are corpora this repo does not have today and both
-// were wrong when they were first written.
-//
-// The line is printed by fisc verify on every run. A clause reading "0 printed
-// with a verb phrase, each the fund its row declares at that end of the
-// movement" reports the absence of a whole arm as though it were a result, and
-// the direction claim in it is about no row at all.
+// line, two over corpora this repo does not have: no clause may report
+// "0 printed with a verb phrase" for an absent arm.
 func TestTheHeldLineNeverReportsAnEmptyArm(t *testing.T) {
 	t.Parallel()
-	// wantNot ARE REGEXPS AND NOT SUBSTRINGS, and that is the third attempt at
-	// this test rather than a flourish. "0 " matches inside "40 printed", and so
-	// does "0 printed with a verb phrase" -- a substring test over a formatted
-	// number catches digits, not clauses, and both earlier drafts failed the
-	// committed-corpus case for that reason and not for the reason they were
-	// written. \b refuses the match inside 40 because 4 and 0 are both word
-	// characters, so there is no boundary between them.
+	// wantNot are regexps: the substring "0 printed" matches inside
+	// "40 printed", and \b refuses it.
 	zeroPhrased := regexp.MustCompile(`\b0 printed with a verb phrase`)
 	zeroBare := regexp.MustCompile(`\b0 a bare fund name`)
 
@@ -671,9 +571,8 @@ func TestAVerbPhrasedLabelUnderTheDeclarationIsRefused(t *testing.T) {
 				b)
 		}
 	}
-	// THE SUBJECT COUNT MUST NOT MOVE, which is the half that catches both
-	// earlier attempts. Attempt one inflated it to 121 by reading each row
-	// twice; attempt two deflated it to 117 by reading one of them not at all.
+	// The subject count must not move: reading a row twice or not at all
+	// both change it.
 	if got.Subjects != before.Subjects {
 		t.Errorf("the declaration moved the subject count from %d to %d; these rows "+
 			"are read by the anchor arm and by it alone", before.Subjects, got.Subjects)

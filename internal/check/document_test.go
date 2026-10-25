@@ -8,13 +8,8 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/project"
 )
 
-// seriesOnly is a projection whose document is not a graph, standing in for the
-// trends document that fisc-4ua.3 will add.
-//
-// It exists to pin the shape rather than to model that document: what these
-// tests are about is what THIS package does with a projection it cannot read
-// structurally, and that answer must be settled before such a projection is
-// written, not discovered by it.
+// seriesOnly is a projection whose document is not a graph: it pins what this
+// package does with a projection it cannot read structurally.
 type seriesOnly struct{}
 
 var _ project.Projection = (*seriesOnly)(nil)
@@ -58,11 +53,9 @@ func TestANonGraphProjectionDoesNotKillTheRun(t *testing.T) {
 	}
 }
 
-// TestSpineIsSelectedByPublication is the other half: the headline checks
-// read the documents the site publishes as the spine, and the structural
-// checks every graph, so a projection with no document reaches neither -- and
-// a graph of another projection carrying a headline block reaches only the
-// structural checks, because the spine is a declaration and not a pointer.
+// TestSpineIsSelectedByPublication: headline checks read the published spine
+// and structural checks every graph, so a graph of another projection carrying
+// a headline block reaches only the structural checks.
 func TestSpineIsSelectedByPublication(t *testing.T) {
 	t.Parallel()
 	column := project.Options{
@@ -152,11 +145,8 @@ func (*silent) Build(_ []fact.Fact, _ project.Options) ([]byte, error) {
 }
 func (*silent) Slices(_ []fact.Fact, _ string) []project.Options { return nil }
 
-// TestAProjectionThatProducesNothingIsNotADefect: the export command builds the
-// slices each projection declares, so a projection declaring none writes no
-// file and there is no document to be wrong about. A fixture of the spine
-// alone declares no trends slice, and that is not a corpus finding. A
-// published document that stops being built is publishedProjectionBuilt's.
+// TestAProjectionThatProducesNothingIsNotADefect: a projection declaring no
+// slices writes no file and is no finding.
 func TestAProjectionThatProducesNothingIsNotADefect(t *testing.T) {
 	t.Parallel()
 	built, failed, err := buildProjections(
@@ -209,9 +199,8 @@ func TestAPublishedYearNothingBuiltIsReported(t *testing.T) {
 	}
 }
 
-// TestAPublishedYearBuiltByAnotherProjectionIsNotEnough guards the narrowing
-// that came with per-projection slices: matching the triple is no longer the
-// same as having built the document the page renders.
+// TestAPublishedYearBuiltByAnotherProjectionIsNotEnough: a published year
+// built only by another projection does not build the document the page renders.
 func TestAPublishedYearBuiltByAnotherProjectionIsNotEnough(t *testing.T) {
 	t.Parallel()
 	s := &Subject{
@@ -267,13 +256,8 @@ func TestADeclaredDocumentIsNotCountedAsExamined(t *testing.T) {
 	}
 }
 
-// TestAnUnreadProjectionIsInItsOwnDenominator is the other side of narrowing
-// the count, and narrowing it too far is a defect of the same class.
-//
-// A projection that built no shape any check reads WAS examined -- this check
-// looked at it and reported it. Counting only the ones that reached a shape
-// would report "2 findings over 0 projections": a numerator with no denominator
-// under it, which is as unreadable as the pass over zero the narrowing fixed.
+// TestAnUnreadProjectionIsInItsOwnDenominator: a projection that built no shape
+// any check reads is still counted among the projections examined.
 func TestAnUnreadProjectionIsInItsOwnDenominator(t *testing.T) {
 	t.Parallel()
 	s := &Subject{Projections: []projection{{Name: "blob"}, {Name: "blob-two"}}}

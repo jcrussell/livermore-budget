@@ -207,17 +207,8 @@ func TestASeriesShortAColumnIsCaught(t *testing.T) {
 	dropped := series.Points[1]
 	series.Points = series.Points[:1]
 
-	// THE TWO CHECKS OVERLAP HERE, AND THAT IS WRITTEN DOWN RATHER THAN WISHED
-	// AWAY.
-	//
-	// What actually happens, reproduced rather than reasoned about: dropping a
-	// point reddens BOTH checks. trend-points-tie-to-facts fails through its
-	// REVERSE arm, because the dropped point's fact is still in
-	// project.SelectFacts(p.Options) and no point publishes it; trend-series-are-complete
-	// fails because the series is short a column. That is redundancy, not a
-	// division of labour, and it is very likely the right answer -- two
-	// independent statements about one corruption is what makes a check set
-	// hard to fool.
+	// Dropping a point reddens both checks: trend-points-tie-to-facts through
+	// its reverse arm, trend-series-are-complete because the series is short.
 	points := runCheck(t, &trendPointsTieToFacts{}, s)
 	if points.Status != StatusFail {
 		t.Errorf("trend-points-tie-to-facts = %s on a dropped point, want fail: %s",
@@ -286,20 +277,9 @@ func withIncompleteSeries(t *testing.T, s *Subject, m map[string]string) {
 	t.Cleanup(func() { s.IncompleteSeries = prev })
 }
 
-// TestAPointInAnUndeclaredColumnIsCaught is fisc-4j5's check-side half, and the
-// mutation is deliberately a GENUINE point: every field matches a real fact,
-// the series id recomputes, the amount and all four provenance fields agree.
-// Only its COLUMN is one the document does not publish.
-//
-// That is the shape nothing could see. comparePoint compares a point against
-// its own fact, which agrees; and the reverse sweep walks project.SelectFacts(p.Options),
-// which filters on the declared columns, so the fact behind the extra point is
-// never looked at. Both arms stayed green while a figure was being published
-// that no page could draw -- internal/export drops it, having no column to put
-// it in.
-//
-// The test asserts the OTHER two conclusions as well, because a new arm that
-// reddens everything is not a check, it is a broken one.
+// TestAPointInAnUndeclaredColumnIsCaught plants a genuine point (matching a
+// real fact) in a column the document does not publish, and asserts the other
+// two conclusions stay as they were.
 func TestAPointInAnUndeclaredColumnIsCaught(t *testing.T) {
 	t.Parallel()
 	facts := trendsTestFacts(t)

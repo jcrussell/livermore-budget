@@ -7,14 +7,8 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/project"
 )
 
-// TestLinkKindsMatchTheirFactsIsFailable damages the fixture's link kinds.
-//
-// THE REGRESSION IT EXISTS FOR SHIPPED. The drill-down classified its tier-0
-// flows by fund group alone, so links carrying $21,045,597 of transfers went out
-// as "external" -- money crossing the city's boundary -- while sankey.json
-// published the same money as internal_transfer. Every other check was green,
-// because a kind is not an amount: values tied to their facts, counts
-// reconciled, the graph was acyclic. Nothing in the tree read Link.Kind.
+// TestLinkKindsMatchTheirFactsIsFailable damages the fixture's link kinds: a
+// transfer published as "external" passes every check that reads only amounts.
 func TestLinkKindsMatchTheirFactsIsFailable(t *testing.T) {
 	t.Parallel()
 	const id = "link-kinds-match-their-facts"
@@ -66,14 +60,9 @@ func TestLinkKindsMatchTheirFactsIsFailable(t *testing.T) {
 	}
 }
 
-// TestAnExternalLinkIsNotAssertedToBeExternal states the limit in a test, so the
-// PASS line is not read as more than it is.
-//
-// The converse claim -- that a link published as external really is external --
-// is NOT made, and cannot be from the facts alone: a revenue fact carries no
-// marker distinguishing it from a transfer, so re-deriving the kind would mean a
-// second copy of every projection's classification rules, and two copies of a
-// rule agree by construction rather than by evidence.
+// TestAnExternalLinkIsNotAssertedToBeExternal states the check's limit: a
+// revenue fact carries no marker telling it from a transfer, so an external
+// link is not re-derived.
 func TestAnExternalLinkIsNotAssertedToBeExternal(t *testing.T) {
 	t.Parallel()
 	s := testSubject(t)
