@@ -486,8 +486,10 @@ rather than inferring from the code.
 - `site/app.js` is served to readers exactly as committed: a browser-native ES
   module the page template boots, with no bundler and no npm on the deploy path.
   The vendored d3 stays a classic script that sets a global.
-- `make js` runs `node --test` over `site/*.test.mjs` under jsdom. jsdom is a
-  dev-only dependency pinned by `package.json` and `package-lock.json`; `npm ci`
+- `make js` runs `node --test` over `site/*.test.mjs` under jsdom, after `tsc
+  -p site/tsconfig.json` type-checks every `site/*.js` against its JSDoc. jsdom
+  and typescript are dev-only dependencies pinned by `package.json` and
+  `package-lock.json`; `npm ci`
   is the only npm command in the tree and `make js` runs it only when the
   lockfile changes. `make build`, `make site` and `fisc export` never run node.
   A contributor with only Go can still build, test and land a change.

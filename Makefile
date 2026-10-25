@@ -126,26 +126,30 @@ lint-if-available: ## Run lint, warning rather than failing if golangci-lint is 
 # read back from the scope and named; with no user systemd (CI) the run is
 # uncapped. Measured at concurrency 2, 2026-10-10: every file but render peaks at
 # 735 MB of summed node RSS, render alone at about 915 MB. JS_FILES narrows it.
+#
+# Before the tests, inside the same cap, tsc type-checks every site/*.js against
+# its JSDoc under site/tsconfig.json; JS_FILES does not narrow the type check.
 JS_FILES ?= "site/*.test.mjs"
 JS_MEM ?= 3G
 JS_JOBS ?= 2
+JS_RUN = node_modules/.bin/tsc -p site/tsconfig.json && node --test --test-concurrency=$(JS_JOBS) $(JS_FILES)
 
 node_modules/.package-lock.json: package-lock.json
 	npm ci --ignore-scripts --no-audit --no-fund
 
 .PHONY: js
-js: node_modules/.package-lock.json ## Run the client's tests under node and jsdom, memory-capped (needs node and npm; nothing else does)
+js: node_modules/.package-lock.json ## Type-check the client and run its tests under node and jsdom, memory-capped (needs node and npm; nothing else does)
 	@if systemd-run --user --scope -q true 2>/dev/null; then \
 		unit=fisc-js-$$$$; \
 		systemd-run --user --scope -q --unit=$$unit -p MemoryMax=$(JS_MEM) -p MemorySwapMax=0 \
-			node --test --test-concurrency=$(JS_JOBS) $(JS_FILES); status=$$?; \
+			sh -c '$(JS_RUN)'; status=$$?; \
 		if [ "$$(systemctl --user show -p Result --value $$unit.scope 2>/dev/null)" = oom-kill ]; then \
 			echo "js: the run was killed at the $(JS_MEM) memory cap; look for an assert whose operand is a mark or a laid node (see AGENTS.md, The node boundary)" >&2; \
 			systemctl --user reset-failed $$unit.scope 2>/dev/null; \
 		fi; \
 		exit $$status; \
 	else \
-		node --test --test-concurrency=$(JS_JOBS) $(JS_FILES); \
+		sh -c '$(JS_RUN)'; \
 	fi
 
 # js-if-available is to `js` what lint-if-available is to `lint`.
