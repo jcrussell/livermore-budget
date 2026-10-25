@@ -222,13 +222,11 @@ func TestTheIdenticalLegsArmFiresOnTheShapeEveryPublishedRuleUses(t *testing.T) 
 func TestTheDocumentCannotCheckACounterpart(t *testing.T) {
 	read := func(t *testing.T, withCounterparts bool) ([]Value, amount.Cents) {
 		t.Helper()
-		f, err := Load("testdata/transfers-p76.yaml")
-		if err != nil {
-			t.Fatalf("Load: %v", err)
-		}
-		if withCounterparts {
-			for i := range f.Rules {
-				for j := range f.Rules[i].Rows {
+		f := loadPublishedP76(t)
+		for i := range f.Rules {
+			for j := range f.Rules[i].Rows {
+				f.Rules[i].Rows[j].Counterpart = nil
+				if withCounterparts {
 					// Deliberately absurd: every payer on the page declared as
 					// the same wrong fund. If the document could see a
 					// counterpart at all, this would be caught.
