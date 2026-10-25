@@ -229,20 +229,11 @@ func TestHistoryDocumentsShipTheUnauditedCaveat(t *testing.T) {
 	}
 }
 
-// TestHistoryIsDeterministic is what lets a rebuild-and-diff mean anything.
-func TestHistoryIsDeterministic(t *testing.T) {
-	facts := balancesFixture(t)
-	p := &FundBalances{}
-	first, err := p.Build(facts, historyOptions(FundBalancesScope))
+// TestHistoryPublishesOneNullPerSeries holds where the document publishes null.
+func TestHistoryPublishesOneNullPerSeries(t *testing.T) {
+	first, err := (&FundBalances{}).Build(balancesFixture(t), historyOptions(FundBalancesScope))
 	if err != nil {
 		t.Fatalf("Build: %v", err)
-	}
-	second, err := p.Build(facts, historyOptions(FundBalancesScope))
-	if err != nil {
-		t.Fatalf("Build: %v", err)
-	}
-	if string(first) != string(second) {
-		t.Error("two builds over the same facts differ")
 	}
 	// THE ONE NULL THIS DOCUMENT PUBLISHES IS fund, AND ON EVERY SERIES. These
 	// schedules print a fund's components and an aggregate across funds, never

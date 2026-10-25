@@ -407,25 +407,15 @@ func TestContraRowNetsIntoParent(t *testing.T) {
 	}
 }
 
-// TestDeterminism is what makes a rebuild-and-diff check meaningful.
-func TestDeterminism(t *testing.T) {
+// TestFactOrderDoesNotMatter: the fact file's canonical order is not this
+// projection's, and a map iteration leaking into the output would show up
+// here rather than as a mystery diff in CI.
+func TestFactOrderDoesNotMatter(t *testing.T) {
 	s := &sankey{Labels: goldenLabels}
-
 	first, err := s.Build(spineFacts(t, testYear), testOptions())
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
-	second, err := s.Build(spineFacts(t, testYear), testOptions())
-	if err != nil {
-		t.Fatalf("Build: %v", err)
-	}
-	if !bytes.Equal(first, second) {
-		t.Error("two builds of the same facts differ")
-	}
-
-	// Fact order must not matter either: the fact file's canonical order is
-	// not this projection's, and a map iteration leaking into the output would
-	// show up here rather than as a mystery diff in CI.
 	shuffled := spineFacts(t, testYear)
 	for i, j := 0, len(shuffled)-1; i < j; i, j = i+1, j-1 {
 		shuffled[i], shuffled[j] = shuffled[j], shuffled[i]

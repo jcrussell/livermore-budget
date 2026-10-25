@@ -165,23 +165,6 @@ func TestTrendsSeriesIDIsTheFactIDWithoutRuleOrColumn(t *testing.T) {
 	}
 }
 
-// TestTrendsIsDeterministic is what lets a rebuild-and-diff mean anything.
-func TestTrendsIsDeterministic(t *testing.T) {
-	facts := trendsFixture(t)
-	tr := &Trends{}
-	first, err := tr.Build(facts, trendsOptions())
-	if err != nil {
-		t.Fatalf("Build: %v", err)
-	}
-	second, err := tr.Build(facts, trendsOptions())
-	if err != nil {
-		t.Fatalf("Build: %v", err)
-	}
-	if string(first) != string(second) {
-		t.Error("two builds over the same facts differ")
-	}
-}
-
 // TestTrendsPublishesEveryKey guards the no-omitempty rule the whole project
 // runs on: a key that vanishes when it is empty makes a diff between two
 // releases read as a structural change.

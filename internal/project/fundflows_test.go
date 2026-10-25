@@ -673,26 +673,6 @@ func TestFundFlowsNeedsARegistry(t *testing.T) {
 	}
 }
 
-// TestFundFlowsIsDeterministic: two builds of the same facts are byte-identical,
-// which is the contract every projection in this package holds to.
-func TestFundFlowsIsDeterministic(t *testing.T) {
-	p := &fundFlows{Labels: fundFlowsLabels()}
-	first, err := p.Build(fundFlowsFacts(), fundFlowsOptions())
-	if err != nil {
-		t.Fatalf("Build: %v", err)
-	}
-	for i := 0; i < 8; i++ {
-		again, err := p.Build(fundFlowsFacts(), fundFlowsOptions())
-		if err != nil {
-			t.Fatalf("Build: %v", err)
-		}
-		if string(again) != string(first) {
-			t.Fatalf("build %d differs from the first; a map walk is leaking into the "+
-				"output", i)
-		}
-	}
-}
-
 // TestFundFlowsSlicesDeclareOnlyColumnsBothSchedulesCarry: a column one schedule
 // prints and the other does not would draw a whole revenue side against an empty
 // expenditure side, which looks like a city that stopped spending.

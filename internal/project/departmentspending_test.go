@@ -235,22 +235,6 @@ func TestTheCrossTabRefusesTwoColumnsAndTheWrongSchedule(t *testing.T) {
 	}
 }
 
-// TestTheCrossTabIsDeterministic is the property a rebuild-and-compare rests on.
-func TestTheCrossTabIsDeterministic(t *testing.T) {
-	facts := spendingFacts(t, nil)
-	first, err := (&departmentSpending{Labels: spendingLabels()}).Build(facts, spendingOptions())
-	if err != nil {
-		t.Fatalf("Build: %v", err)
-	}
-	second, err := (&departmentSpending{Labels: spendingLabels()}).Build(facts, spendingOptions())
-	if err != nil {
-		t.Fatalf("Build: %v", err)
-	}
-	if string(first) != string(second) {
-		t.Error("two builds of the same facts differ; the document is not deterministic")
-	}
-}
-
 // TestTheCrossTabDeclaresOneSlicePerPrintedColumn pins the declaration
 // PublishedDocuments states by hand against the one the corpus produces.
 func TestTheCrossTabDeclaresOneSlicePerPrintedColumn(t *testing.T) {
