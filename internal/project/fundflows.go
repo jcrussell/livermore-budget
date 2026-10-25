@@ -15,7 +15,6 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/registry"
 	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
-	"github.com/jcrussell/livermore-budget/schema"
 )
 
 // FundFlowsProjection is this document's name and file stem.
@@ -123,11 +122,7 @@ func (*fundFlows) Slices(facts []fact.Fact, version string) []Options {
 
 // Build is [Projection]'s entry point.
 func (f *fundFlows) Build(facts []fact.Fact, o Options) ([]byte, error) {
-	doc, err := f.Document(facts, o)
-	if err != nil {
-		return nil, err
-	}
-	return encode(doc, f.Name(), schema.Projection)
+	return encodeGraph(f, facts, o)
 }
 
 // Document builds the drill-down and returns it, so `fisc verify` reads the
@@ -155,7 +150,6 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*Document, error) {
 			"a fund node's parent comes from data/funds.yaml's type:, so this document "+
 				"cannot be built without one")
 	}
-	col := o.Columns[0]
 	selected, err := SelectFacts(facts, o)
 	if err != nil {
 		return nil, fmt.Errorf("fund-flows: %w", err)
@@ -359,42 +353,12 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*Document, error) {
 	}
 	nameContraLinks(links, nodes)
 
-	sortLinks(links)
-	if err := checkDistinctLinks(links); err != nil {
+	out, err := drawGraph(nodes, links)
+	if err != nil {
 		return nil, err
 	}
-	out := sortedNodes(nodes)
-
-	c, uncited := tally(selected, links, out)
-	if err := refuseUncited(f.Name(), uncited, nil); err != nil {
-		return nil, err
-	}
-
-	// Validated against this document's own nodes: an AppliesTo naming a
-	// node it does not carry marks nothing.
-	cavs := fundFlowsCaveats(c.FactsCitedTwice, out)
-	if err := validateCaveats(cavs, nodeIDs(out)); err != nil {
-		return nil, fmt.Errorf("%s: %w", col, err)
-	}
-
-	return &Document{
-		SchemaVersion: SchemaVersion,
-		Projection:    f.Name(),
-		Metadata: Metadata{
-			GeneratedBy:     o.Version,
-			FiscalYear:      col.FiscalYear,
-			FiscalYearLabel: fiscalYearLabel(col.FiscalYear),
-			Basis:           string(col.Basis),
-			Scopes:          FundFlowsScopes(),
-			Currency:        "USD",
-			Units:           "cents",
-			Sources:         SourcesOf(selected),
-			Counts:          c,
-			Caveats:         cavs,
-		},
-		Nodes: out,
-		Links: links,
-	}, nil
+	return graphDocument(f.Name(), o, FundFlowsScopes(), selected, out, links, nil,
+		func(c Counts) []Caveat { return fundFlowsCaveats(c.FactsCitedTwice, out) })
 }
 
 // fundFlowsCaveats are the things a reader of this file has to be told. The

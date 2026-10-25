@@ -12,7 +12,6 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
-	"github.com/jcrussell/livermore-budget/schema"
 )
 
 // ExpansionProjection is the stitched schedule's name and file stem.
@@ -266,11 +265,7 @@ func (*expansion) Slices(facts []fact.Fact, version string) []Options {
 
 // Build is [Projection]'s entry point.
 func (e *expansion) Build(facts []fact.Fact, o Options) ([]byte, error) {
-	doc, err := e.Document(facts, o)
-	if err != nil {
-		return nil, err
-	}
-	return encode(doc, e.Name(), schema.Projection)
+	return encodeGraph(e, facts, o)
 }
 
 // stitch is one column's schedule under construction.
@@ -527,10 +522,6 @@ func (e *expansion) Document(facts []fact.Fact, o Options) (*Document, error) {
 	}
 	out := sortedNodes(st.nodes)
 
-	c, uncited := tally(selected, st.links, out)
-	if err := refuseUncited(e.Name(), uncited, drawnElsewhere); err != nil {
-		return nil, err
-	}
 	var apart []string
 	for _, id := range st.apart {
 		if _, drawn := st.nodes[id]; drawn {
@@ -538,29 +529,13 @@ func (e *expansion) Document(facts []fact.Fact, o Options) (*Document, error) {
 		}
 	}
 	slices.Sort(apart)
-	cavs := expansionCaveats(c.FactsCitedTwice, out, apart)
-	if err := validateCaveats(cavs, nodeIDs(out)); err != nil {
-		return nil, fmt.Errorf("%s: %w", col, err)
+	doc, err := graphDocument(e.Name(), o, ExpansionScopes(), selected, out, st.links, drawnElsewhere,
+		func(c Counts) []Caveat { return expansionCaveats(c.FactsCitedTwice, out, apart) })
+	if err != nil {
+		return nil, err
 	}
-	return &Document{
-		SchemaVersion: SchemaVersion,
-		Projection:    e.Name(),
-		Metadata: Metadata{
-			GeneratedBy:     o.Version,
-			FiscalYear:      col.FiscalYear,
-			FiscalYearLabel: fiscalYearLabel(col.FiscalYear),
-			Basis:           string(col.Basis),
-			Scopes:          ExpansionScopes(),
-			Currency:        "USD",
-			Units:           "cents",
-			Sources:         SourcesOf(selected),
-			Counts:          c,
-			Caveats:         cavs,
-		},
-		Nodes:  out,
-		Links:  st.links,
-		Splits: splits,
-	}, nil
+	doc.Splits = splits
+	return doc, nil
 }
 
 // CellKey names the spine cell from source to target of kind, as a link's

@@ -10,7 +10,6 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
-	"github.com/jcrussell/livermore-budget/schema"
 )
 
 // DepartmentSpendingProjection is this document's name and file stem.
@@ -59,11 +58,7 @@ func (*departmentSpending) Slices(facts []fact.Fact, version string) []Options {
 
 // Build is [Projection]'s entry point.
 func (d *departmentSpending) Build(facts []fact.Fact, o Options) ([]byte, error) {
-	doc, err := d.Document(facts, o)
-	if err != nil {
-		return nil, err
-	}
-	return encode(doc, d.Name(), schema.Projection)
+	return encodeGraph(d, facts, o)
 }
 
 // Document builds the cross-tab and returns it, so `fisc verify` reads the same
@@ -84,7 +79,6 @@ func (d *departmentSpending) Document(facts []fact.Fact, o Options) (*Document, 
 			fmt.Errorf("department-spending: a cross-tab is of one column, got %d", len(o.Columns)),
 			"two budget years in one matrix add every cell to its own successor")
 	}
-	col := o.Columns[0]
 	selected, err := SelectFacts(facts, o)
 	if err != nil {
 		return nil, fmt.Errorf("department-spending: %w", err)
@@ -125,40 +119,12 @@ func (d *departmentSpending) Document(facts []fact.Fact, o Options) (*Document, 
 		})
 	}
 
-	sortLinks(links)
-	if err := checkDistinctLinks(links); err != nil {
+	out, err := drawGraph(nodes, links)
+	if err != nil {
 		return nil, err
 	}
-	out := sortedNodes(nodes)
-
-	c, uncited := tally(selected, links, out)
-	if err := refuseUncited(d.Name(), uncited, nil); err != nil {
-		return nil, err
-	}
-
-	cavs := departmentSpendingCaveats()
-	if err := validateCaveats(cavs, nodeIDs(out)); err != nil {
-		return nil, fmt.Errorf("%s: %w", col, err)
-	}
-
-	return &Document{
-		SchemaVersion: SchemaVersion,
-		Projection:    d.Name(),
-		Metadata: Metadata{
-			GeneratedBy:     o.Version,
-			FiscalYear:      col.FiscalYear,
-			FiscalYearLabel: fiscalYearLabel(col.FiscalYear),
-			Basis:           string(col.Basis),
-			Scopes:          DepartmentSpendingScopes(),
-			Currency:        "USD",
-			Units:           "cents",
-			Sources:         SourcesOf(selected),
-			Counts:          c,
-			Caveats:         cavs,
-		},
-		Nodes: out,
-		Links: links,
-	}, nil
+	return graphDocument(d.Name(), o, DepartmentSpendingScopes(), selected, out, links, nil,
+		func(Counts) []Caveat { return departmentSpendingCaveats() })
 }
 
 // spendKey addresses one printed cell: what a division spends under an object

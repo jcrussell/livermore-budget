@@ -16,7 +16,6 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/registry"
 	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
-	"github.com/jcrussell/livermore-budget/schema"
 )
 
 // LinkKind says what a link is, which is what decides whether it belongs in
@@ -589,11 +588,7 @@ func (*sankey) Slices(facts []fact.Fact, version string) []Options {
 
 // Build renders the graph as canonical JSON.
 func (s *sankey) Build(facts []fact.Fact, o Options) ([]byte, error) {
-	g, err := s.Document(facts, o)
-	if err != nil {
-		return nil, err
-	}
-	return encode(g, s.Name(), schema.Projection)
+	return encodeGraph(s, facts, o)
 }
 
 // cellKey addresses one printed cell of the schedule: a row's classification
@@ -765,52 +760,25 @@ func (s *sankey) Document(facts []fact.Fact, o Options) (*Document, error) {
 	h.NaiveExpenditureCents = h.AllFundsGrossExpenditureCents + h.InternalTransferOutCents
 	h.TransferResidualCents = h.InternalTransferOutCents - h.InternalTransferInCents
 
-	sortLinks(links)
-	if err = checkDistinctLinks(links); err != nil {
+	drawn, err := drawGraph(nodes, links)
+	if err != nil {
 		return nil, err
 	}
-
-	// THE CAVEATS ARE VALIDATED AGAINST THE NODES THIS DOCUMENT ACTUALLY DREW,
-	// which is the only place that pairing is available. caveats() is
-	// conditional on the graph -- the internal-service and contested-total
-	// entries are emitted only when the links justify them -- so a caveat can
-	// name a node a DIFFERENT column carries and this one does not, and that is
-	// exactly the mistake AppliesTo makes silent.
-	drawn := sortedNodes(nodes)
+	// caveats() is conditional on the graph, so a caveat can name a node a
+	// different column carries and this one does not.
 	cavs, err := caveats(h, col, links, toCIP(facts, col))
 	if err != nil {
 		return nil, err
 	}
-	if err := validateCaveats(cavs, nodeIDs(drawn)); err != nil {
-		return nil, fmt.Errorf("%s: %w", col, err)
-	}
-
 	// A stock row is the one non-zero fact this schedule leaves uncited:
 	// beginning and ending working capital are balances and earn no link.
-	c, uncited := tally(selected, links, drawn)
-	if err := refuseUncited(s.Name(), uncited, isStock); err != nil {
+	doc, err := graphDocument(s.Name(), o, []string{scope}, selected, drawn, links, isStock,
+		func(Counts) []Caveat { return cavs })
+	if err != nil {
 		return nil, err
 	}
-
-	return &Document{
-		SchemaVersion: SchemaVersion,
-		Projection:    s.Name(),
-		Metadata: Metadata{
-			GeneratedBy:     o.Version,
-			FiscalYear:      col.FiscalYear,
-			FiscalYearLabel: fiscalYearLabel(col.FiscalYear),
-			Basis:           string(col.Basis),
-			Scopes:          []string{scope},
-			Currency:        "USD",
-			Units:           "cents",
-			Sources:         SourcesOf(selected),
-			Headline:        &h,
-			Counts:          c,
-			Caveats:         cavs,
-		},
-		Nodes: drawn,
-		Links: links,
-	}, nil
+	doc.Metadata.Headline = &h
+	return doc, nil
 }
 
 // isStock is whether a fact is one of the two balance rows pp.66-67 print,

@@ -13,7 +13,6 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
-	"github.com/jcrussell/livermore-budget/schema"
 )
 
 // FundSourcesUsesProjection is this document's name and file stem. The stem
@@ -70,11 +69,7 @@ func (*fundSourcesUses) Slices(facts []fact.Fact, version string) []Options {
 
 // Build is [Projection]'s entry point.
 func (u *fundSourcesUses) Build(facts []fact.Fact, o Options) ([]byte, error) {
-	doc, err := u.Document(facts, o)
-	if err != nil {
-		return nil, err
-	}
-	return encode(doc, u.Name(), schema.Projection)
+	return encodeGraph(u, facts, o)
 }
 
 // fundCell is one line pp.186-209 print per fund that this document draws as
@@ -147,7 +142,6 @@ func (u *fundSourcesUses) Document(facts []fact.Fact, o Options) (*Document, err
 			"a fund node's parent comes from data/funds.yaml's type:, so this document "+
 				"cannot be built without one")
 	}
-	col := o.Columns[0]
 	selected, err := SelectFacts(facts, o)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", u.Name(), err)
@@ -209,40 +203,12 @@ func (u *fundSourcesUses) Document(facts []fact.Fact, o Options) (*Document, err
 		}
 	}
 
-	sortLinks(links)
-	if err := checkDistinctLinks(links); err != nil {
+	out, err := drawGraph(nodes, links)
+	if err != nil {
 		return nil, err
 	}
-	out := sortedNodes(nodes)
-
-	c, uncited := tally(selected, links, out)
-	if err := refuseUncited(u.Name(), uncited, nil); err != nil {
-		return nil, err
-	}
-
-	cavs := fundSourcesUsesCaveats(links, out)
-	if err := validateCaveats(cavs, nodeIDs(out)); err != nil {
-		return nil, fmt.Errorf("%s: %w", col, err)
-	}
-
-	return &Document{
-		SchemaVersion: SchemaVersion,
-		Projection:    u.Name(),
-		Metadata: Metadata{
-			GeneratedBy:     o.Version,
-			FiscalYear:      col.FiscalYear,
-			FiscalYearLabel: fiscalYearLabel(col.FiscalYear),
-			Basis:           string(col.Basis),
-			Scopes:          FundSourcesUsesScopes(),
-			Currency:        "USD",
-			Units:           "cents",
-			Sources:         SourcesOf(selected),
-			Counts:          c,
-			Caveats:         cavs,
-		},
-		Nodes: out,
-		Links: links,
-	}, nil
+	return graphDocument(u.Name(), o, FundSourcesUsesScopes(), selected, out, links, nil,
+		func(Counts) []Caveat { return fundSourcesUsesCaveats(links, out) })
 }
 
 // fundBlocks groups the selected facts by fund, refusing a fact naming no

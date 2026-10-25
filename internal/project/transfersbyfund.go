@@ -12,7 +12,6 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
-	"github.com/jcrussell/livermore-budget/schema"
 )
 
 // TransfersByFundProjection is this document's name and file stem.
@@ -117,11 +116,7 @@ func (t *transfersByFund) Slices(facts []fact.Fact, version string) []Options {
 
 // Build is [Projection]'s entry point.
 func (t *transfersByFund) Build(facts []fact.Fact, o Options) ([]byte, error) {
-	doc, err := t.Document(facts, o)
-	if err != nil {
-		return nil, err
-	}
-	return encode(doc, t.Name(), schema.Projection)
+	return encodeGraph(t, facts, o)
 }
 
 // Document builds the transfer network and returns it, so `fisc verify` reads
@@ -143,7 +138,6 @@ func (t *transfersByFund) Document(facts []fact.Fact, o Options) (*Document, err
 				len(o.Columns)),
 			"two budget years in one network add every movement to its own successor")
 	}
-	col := o.Columns[0]
 	selected, err := SelectFacts(facts, o)
 	if err != nil {
 		return nil, fmt.Errorf("transfers-by-fund: %w", err)
@@ -192,43 +186,16 @@ func (t *transfersByFund) Document(facts []fact.Fact, o Options) (*Document, err
 		})
 	}
 
-	sortLinks(links)
-	if err := checkDistinctLinks(links); err != nil {
+	out, err := drawGraph(nodes, links)
+	if err != nil {
 		return nil, err
 	}
-	out := sortedNodes(nodes)
-
-	c, uncited := tally(selected, links, out)
-	if err := refuseUncited(t.Name(), uncited, nil); err != nil {
-		return nil, err
-	}
-
-	cavs := transfersByFundCaveats()
-	if t.Out {
-		cavs = transfersOutCaveats(rows)
-	}
-	if err := validateCaveats(cavs, nodeIDs(out)); err != nil {
-		return nil, fmt.Errorf("%s: %w", col, err)
-	}
-
-	return &Document{
-		SchemaVersion: SchemaVersion,
-		Projection:    t.Name(),
-		Metadata: Metadata{
-			GeneratedBy:     o.Version,
-			FiscalYear:      col.FiscalYear,
-			FiscalYearLabel: fiscalYearLabel(col.FiscalYear),
-			Basis:           string(col.Basis),
-			Scopes:          t.scopes(),
-			Currency:        "USD",
-			Units:           "cents",
-			Sources:         SourcesOf(selected),
-			Counts:          c,
-			Caveats:         cavs,
-		},
-		Nodes: out,
-		Links: links,
-	}, nil
+	return graphDocument(t.Name(), o, t.scopes(), selected, out, links, nil, func(Counts) []Caveat {
+		if t.Out {
+			return transfersOutCaveats(rows)
+		}
+		return transfersByFundCaveats()
+	})
 }
 
 // transferKey addresses one printed figure of p76 by position, which pairs its

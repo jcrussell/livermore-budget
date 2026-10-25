@@ -138,6 +138,64 @@ func refuseUncited(name string, uncited []*fact.Fact, allow func(*fact.Fact) boo
 	return nil
 }
 
+// drawGraph sorts links in place and nodes by (tier, id), refusing two links
+// of one kind between one pair.
+func drawGraph(nodes map[string]Node, links []Link) ([]Node, error) {
+	sortLinks(links)
+	if err := checkDistinctLinks(links); err != nil {
+		return nil, err
+	}
+	return sortedNodes(nodes), nil
+}
+
+// graphDocument is the tail every graph projection shares, over nodes and
+// links already sorted: the counts, the refusal of an uncited fact allow does
+// not admit, the caveats validated against the nodes this column drew, and
+// the metadata of the one column o selects.
+func graphDocument(name string, o Options, scopes []string, selected []fact.Fact, nodes []Node,
+	links []Link, allow func(*fact.Fact) bool, caveats func(Counts) []Caveat) (*Document, error) {
+	c, uncited := tally(selected, links, nodes)
+	if err := refuseUncited(name, uncited, allow); err != nil {
+		return nil, err
+	}
+	col := o.Columns[0]
+	cavs := caveats(c)
+	if err := validateCaveats(cavs, nodeIDs(nodes)); err != nil {
+		return nil, fmt.Errorf("%s: %w", col, err)
+	}
+	return &Document{
+		SchemaVersion: SchemaVersion,
+		Projection:    name,
+		Metadata: Metadata{
+			GeneratedBy:     o.Version,
+			FiscalYear:      col.FiscalYear,
+			FiscalYearLabel: fiscalYearLabel(col.FiscalYear),
+			Basis:           string(col.Basis),
+			Scopes:          scopes,
+			Currency:        "USD",
+			Units:           "cents",
+			Sources:         SourcesOf(selected),
+			Counts:          c,
+			Caveats:         cavs,
+		},
+		Nodes: nodes,
+		Links: links,
+	}, nil
+}
+
+// encodeGraph is a graph projection's Build: its Document, encoded and held to
+// the projection schema.
+func encodeGraph(p interface {
+	Name() string
+	Document([]fact.Fact, Options) (*Document, error)
+}, facts []fact.Fact, o Options) ([]byte, error) {
+	doc, err := p.Document(facts, o)
+	if err != nil {
+		return nil, err
+	}
+	return encode(doc, p.Name(), schema.Projection)
+}
+
 // Source is one document the facts came from, with the pages actually read.
 type Source struct {
 	DocID string `json:"doc_id"`

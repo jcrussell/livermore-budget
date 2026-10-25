@@ -10,7 +10,6 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/structure"
-	"github.com/jcrussell/livermore-budget/schema"
 )
 
 // DepartmentFundingProjection is this document's name and file stem.
@@ -61,11 +60,7 @@ func (*departmentFunding) Slices(facts []fact.Fact, version string) []Options {
 
 // Build is [Projection]'s entry point.
 func (d *departmentFunding) Build(facts []fact.Fact, o Options) ([]byte, error) {
-	doc, err := d.Document(facts, o)
-	if err != nil {
-		return nil, err
-	}
-	return encode(doc, d.Name(), schema.Projection)
+	return encodeGraph(d, facts, o)
 }
 
 // Document builds the graph and returns it, so `fisc verify` reads the same
@@ -86,7 +81,6 @@ func (d *departmentFunding) Document(facts []fact.Fact, o Options) (*Document, e
 			fmt.Errorf("department-funding: a column is one budget year, got %d", len(o.Columns)),
 			"two budget years in one graph add every cell to its own successor")
 	}
-	col := o.Columns[0]
 	selected, err := SelectFacts(facts, o)
 	if err != nil {
 		return nil, fmt.Errorf("department-funding: %w", err)
@@ -127,43 +121,15 @@ func (d *departmentFunding) Document(facts []fact.Fact, o Options) (*Document, e
 		})
 	}
 
-	sortLinks(links)
-	if err := checkDistinctLinks(links); err != nil {
-		return nil, err
-	}
 	if err := d.addFundGroups(nodes); err != nil {
 		return nil, err
 	}
-	out := sortedNodes(nodes)
-
-	c, uncited := tally(selected, links, out)
-	if err := refuseUncited(d.Name(), uncited, nil); err != nil {
+	out, err := drawGraph(nodes, links)
+	if err != nil {
 		return nil, err
 	}
-
-	cavs := departmentFundingCaveats()
-	if err := validateCaveats(cavs, nodeIDs(out)); err != nil {
-		return nil, fmt.Errorf("%s: %w", col, err)
-	}
-
-	return &Document{
-		SchemaVersion: SchemaVersion,
-		Projection:    d.Name(),
-		Metadata: Metadata{
-			GeneratedBy:     o.Version,
-			FiscalYear:      col.FiscalYear,
-			FiscalYearLabel: fiscalYearLabel(col.FiscalYear),
-			Basis:           string(col.Basis),
-			Scopes:          DepartmentFundingScopes(),
-			Currency:        "USD",
-			Units:           "cents",
-			Sources:         SourcesOf(selected),
-			Counts:          c,
-			Caveats:         cavs,
-		},
-		Nodes: out,
-		Links: links,
-	}, nil
+	return graphDocument(d.Name(), o, DepartmentFundingScopes(), selected, out, links, nil,
+		func(Counts) []Caveat { return departmentFundingCaveats() })
 }
 
 // fundingKey addresses one printed cell: what one fund pays towards one
