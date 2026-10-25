@@ -60,15 +60,11 @@ var balanceCategories = []string{
 // reason.
 type fundBalanceIdentity struct{}
 
-var _ Check = (*fundBalanceIdentity)(nil)
-
-func (*fundBalanceIdentity) ID() string { return "fund-balance-identity" }
-func (*fundBalanceIdentity) Tier() int  { return 1 }
-func (*fundBalanceIdentity) Full() bool { return false }
-func (*fundBalanceIdentity) Description() string {
-	return "every published fund balance carries the balance lines its scope prints, satisfies " +
-		"beginning + change == ending exactly where the scope prints a change, and ends each year " +
-		"where the next begins, except where a declared exception pins both sides"
+func (*fundBalanceIdentity) meta() meta {
+	return meta{id: "fund-balance-identity", tier: 1,
+		description: "every published fund balance carries the balance lines its scope prints, satisfies " +
+			"beginning + change == ending exactly where the scope prints a change, and ends each year " +
+			"where the next begins, except where a declared exception pins both sides"}
 }
 
 // balance is the lines of one fund balance, as collected from the store.

@@ -34,7 +34,7 @@ func TestFundChangesAndBalancesAreFailable(t *testing.T) {
 		t.Fatalf("no node %s", id)
 		return nil
 	}
-	run := func(t *testing.T, c Check) Result {
+	run := func(t *testing.T, c local) Result {
 		t.Helper()
 		res, err := c.Run(t.Context(), s)
 		if err != nil {
@@ -42,9 +42,9 @@ func TestFundChangesAndBalancesAreFailable(t *testing.T) {
 		}
 		return res
 	}
-	for _, c := range []Check{&linkValuesTieToFacts{}, &nodeBalancesTieToFacts{}} {
+	for _, c := range []local{&linkValuesTieToFacts{}, &nodeBalancesTieToFacts{}} {
 		if res := run(t, c); res.Status != StatusPass {
-			t.Fatalf("%s over the committed corpus is %s: %v", c.ID(), res.Status, res.Findings)
+			t.Fatalf("%s over the committed corpus is %s: %v", c.meta().id, res.Status, res.Findings)
 		}
 	}
 

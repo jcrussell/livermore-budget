@@ -45,14 +45,10 @@ import (
 // documents-are-checked exists to refuse.
 type trendPointsTieToFacts struct{}
 
-var _ Check = (*trendPointsTieToFacts)(nil)
-
-func (*trendPointsTieToFacts) ID() string { return "trend-points-tie-to-facts" }
-func (*trendPointsTieToFacts) Tier() int  { return 1 }
-func (*trendPointsTieToFacts) Full() bool { return false }
-func (*trendPointsTieToFacts) Description() string {
-	return "every point a trends document publishes equals the fact it cites, sits in a column " +
-		"the document declares, and every fact in the document's slice is published by exactly one point"
+func (*trendPointsTieToFacts) meta() meta {
+	return meta{id: "trend-points-tie-to-facts", tier: 1,
+		description: "every point a trends document publishes equals the fact it cites, sits in a column " +
+			"the document declares, and every fact in the document's slice is published by exactly one point"}
 }
 
 func (*trendPointsTieToFacts) Run(_ context.Context, s *Subject) (Result, error) {
@@ -240,14 +236,10 @@ var incompleteSeries = map[string]string{}
 //     floor is project.TrendsColumns, which publishedProjectionBuilt holds.
 type trendSeriesAreComplete struct{}
 
-var _ Check = (*trendSeriesAreComplete)(nil)
-
-func (*trendSeriesAreComplete) ID() string { return "trend-series-are-complete" }
-func (*trendSeriesAreComplete) Tier() int  { return 1 }
-func (*trendSeriesAreComplete) Full() bool { return false }
-func (*trendSeriesAreComplete) Description() string {
-	return "every series in a trends document has a point in every column the document was " +
-		"built over, or the gap is declared with its reason"
+func (*trendSeriesAreComplete) meta() meta {
+	return meta{id: "trend-series-are-complete", tier: 1,
+		description: "every series in a trends document has a point in every column the document was " +
+			"built over, or the gap is declared with its reason"}
 }
 
 func (*trendSeriesAreComplete) Run(_ context.Context, s *Subject) (Result, error) {

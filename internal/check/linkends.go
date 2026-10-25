@@ -61,15 +61,11 @@ var endNames = map[string]endName{
 // ribbon to another fund, moved no cent and every other check stayed green.
 type linkEndsMatchTheirFacts struct{}
 
-var _ Check = (*linkEndsMatchTheirFacts)(nil)
-
-func (*linkEndsMatchTheirFacts) ID() string { return "link-ends-match-their-facts" }
-func (*linkEndsMatchTheirFacts) Tier() int  { return 1 }
-func (*linkEndsMatchTheirFacts) Full() bool { return false }
-func (*linkEndsMatchTheirFacts) Description() string {
-	return "every link end names the fund, fund group, department or division, category and " +
-		"line its facts carry, a transfer's payer and receiver ends name its other leg's fund, " +
-		"and a fund group's link into a fund goes to a fund data/funds.yaml puts in that group"
+func (*linkEndsMatchTheirFacts) meta() meta {
+	return meta{id: "link-ends-match-their-facts", tier: 1,
+		description: "every link end names the fund, fund group, department or division, category and " +
+			"line its facts carry, a transfer's payer and receiver ends name its other leg's fund, " +
+			"and a fund group's link into a fund goes to a fund data/funds.yaml puts in that group"}
 }
 
 func (*linkEndsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, error) {

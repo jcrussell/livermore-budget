@@ -26,18 +26,14 @@ import (
 // figure on a node that no page prints, and nothing else reads it.
 type nodeBalancesTieToFacts struct{}
 
-var _ Check = (*nodeBalancesTieToFacts)(nil)
-
-func (*nodeBalancesTieToFacts) ID() string { return "node-balances-tie-to-facts" }
-func (*nodeBalancesTieToFacts) Tier() int  { return 1 }
-func (*nodeBalancesTieToFacts) Full() bool { return false }
-func (*nodeBalancesTieToFacts) Description() string {
-	return "every balance a node publishes equals the fact it cites, which is that fund's " +
-		"beginning or ending balance in the document's own slice, read from the pages its " +
-		"locators name; every node printing both balances states their change, derived, as " +
-		"ending less beginning of those two facts, and none printing one states a change; and " +
-		"on fund-sources-uses, every balance the slice prints is on its fund's node, as on the " +
-		"expansion every balance of a fund it draws is"
+func (*nodeBalancesTieToFacts) meta() meta {
+	return meta{id: "node-balances-tie-to-facts", tier: 1,
+		description: "every balance a node publishes equals the fact it cites, which is that fund's " +
+			"beginning or ending balance in the document's own slice, read from the pages its " +
+			"locators name; every node printing both balances states their change, derived, as " +
+			"ending less beginning of those two facts, and none printing one states a change; and " +
+			"on fund-sources-uses, every balance the slice prints is on its fund's node, as on the " +
+			"expansion every balance of a fund it draws is"}
 }
 
 func (*nodeBalancesTieToFacts) Run(_ context.Context, s *Subject) (Result, error) {

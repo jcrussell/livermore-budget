@@ -49,15 +49,11 @@ import (
 // made from the facts alone.
 type linkKindsMatchTheirFacts struct{}
 
-var _ Check = (*linkKindsMatchTheirFacts)(nil)
-
-func (*linkKindsMatchTheirFacts) ID() string { return "link-kinds-match-their-facts" }
-func (*linkKindsMatchTheirFacts) Tier() int  { return 1 }
-func (*linkKindsMatchTheirFacts) Full() bool { return false }
-func (*linkKindsMatchTheirFacts) Description() string {
-	return "every link carries one of the four declared kinds, and a link whose facts are all " +
-		"transfers or all fund-balance rows is not published as money crossing the city's " +
-		"boundary"
+func (*linkKindsMatchTheirFacts) meta() meta {
+	return meta{id: "link-kinds-match-their-facts", tier: 1,
+		description: "every link carries one of the four declared kinds, and a link whose facts are all " +
+			"transfers or all fund-balance rows is not published as money crossing the city's " +
+			"boundary"}
 }
 
 func (*linkKindsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, error) {

@@ -83,14 +83,14 @@ var fund101 = balanceAt{structure.ScopeFundBalancesByFund, "capital", 101, 2026,
 // runBalance runs one check over hand-built facts and nothing else: both
 // balance checks read the facts, the rule files and the subject's exceptions,
 // and a hand-built subject declares none.
-func runBalance(t *testing.T, c Check, facts []fact.Fact, files ...*mapping.File) Result {
+func runBalance(t *testing.T, c local, facts []fact.Fact, files ...*mapping.File) Result {
 	t.Helper()
 	return runBalanceExcepting(t, c, nil, facts, files...)
 }
 
 // runBalanceExcepting is runBalance with the exceptions one test declares,
 // validated as the tree's are.
-func runBalanceExcepting(t *testing.T, c Check, exceptions []structure.BalanceException,
+func runBalanceExcepting(t *testing.T, c local, exceptions []structure.BalanceException,
 	facts []fact.Fact, files ...*mapping.File) Result {
 	t.Helper()
 	if err := structure.ValidateBalanceExceptions(structure.FundBalances(), exceptions); err != nil {
@@ -480,9 +480,9 @@ func TestADeclaredBlankCellIsAbsentAndNotMissing(t *testing.T) {
 	// declared out of both identities rather than failed or summed.
 	noEnding := measureD.facts(without(without(byFundRow(), structure.CategoryFundBalanceReserveIncrease),
 		structure.CategoryFundBalanceEnding))
-	for _, c := range []Check{&fundGroupSourcesEqualUses{}, &fundBalanceIdentity{}} {
+	for _, c := range []local{&fundGroupSourcesEqualUses{}, &fundBalanceIdentity{}} {
 		if res := runBalance(t, c, noEnding, blankCells(t, true)); res.Status == StatusFail {
-			t.Errorf("%s: %s, findings %s; a declared blank ending is not a missing one", c.ID(), res.Status, said(res))
+			t.Errorf("%s: %s, findings %s; a declared blank ending is not a missing one", c.meta().id, res.Status, said(res))
 		}
 		wantFail(t, runBalance(t, c, noEnding, blankCells(t, false)), "missing "+structure.CategoryFundBalanceEnding)
 	}
@@ -492,7 +492,7 @@ func TestADeclaredBlankCellIsAbsentAndNotMissing(t *testing.T) {
 	printed := measureD.facts(replace(byFundRow(), structure.CategoryFundBalanceEnding, 123_000))
 	wantFail(t, runBalance(t, &fundBalanceIdentity{}, printed, blankCells(t, false)), "declares that cell blank")
 	n := 0
-	for _, c := range []Check{&fundGroupSourcesEqualUses{}, &fundBalanceIdentity{}} {
+	for _, c := range []local{&fundGroupSourcesEqualUses{}, &fundBalanceIdentity{}} {
 		n += strings.Count(said(runBalance(t, c, printed, blankCells(t, false))), "declares that cell blank")
 	}
 	if n != 1 {
@@ -794,13 +794,13 @@ func TestTwoFactsOnOneLineOfSourcesUsesFail(t *testing.T) {
 // tree's exceptions reach a check only on the subject Load builds.
 func TestASubjectBuiltByHandCarriesNoException(t *testing.T) {
 	t.Parallel()
-	for _, c := range []Check{&fundBalanceIdentity{}, &fundGroupSourcesEqualUses{}} {
+	for _, c := range []local{&fundBalanceIdentity{}, &fundGroupSourcesEqualUses{}} {
 		res, err := c.Run(t.Context(), &Subject{Facts: testFacts()})
 		if err != nil {
 			t.Fatal(err)
 		}
 		if res.Status != StatusPass {
-			t.Errorf("%s over a hand-built subject: %s, findings %s", c.ID(), res.Status, said(res))
+			t.Errorf("%s over a hand-built subject: %s, findings %s", c.meta().id, res.Status, said(res))
 		}
 	}
 }

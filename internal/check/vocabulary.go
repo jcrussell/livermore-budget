@@ -27,14 +27,10 @@ import (
 // vacuity.go, which is what having its own id buys.
 type factVocabulary struct{}
 
-var _ Check = (*factVocabulary)(nil)
-
-func (*factVocabulary) ID() string { return "fact-vocabulary" }
-func (*factVocabulary) Tier() int  { return 1 }
-func (*factVocabulary) Full() bool { return false }
-func (*factVocabulary) Description() string {
-	return "every category a fact carries is assignable in data/taxonomy.yaml, and every fund " +
-		"group is a type data/funds.yaml uses"
+func (*factVocabulary) meta() meta {
+	return meta{id: "fact-vocabulary", tier: 1,
+		description: "every category a fact carries is assignable in data/taxonomy.yaml, and every fund " +
+			"group is a type data/funds.yaml uses"}
 }
 
 // Run counts one subject per classification it resolves rather than one per fact,
@@ -143,13 +139,9 @@ func unassignable(v Vocabulary, slug string) string {
 // was wrong, not the comment.
 type factKindMatchesCategory struct{}
 
-var _ Check = (*factKindMatchesCategory)(nil)
-
-func (*factKindMatchesCategory) ID() string { return "fact-kind-matches-category" }
-func (*factKindMatchesCategory) Tier() int  { return 1 }
-func (*factKindMatchesCategory) Full() bool { return false }
-func (*factKindMatchesCategory) Description() string {
-	return "every fact's kind is one the category it carries declares in data/taxonomy.yaml"
+func (*factKindMatchesCategory) meta() meta {
+	return meta{id: "fact-kind-matches-category", tier: 1,
+		description: "every fact's kind is one the category it carries declares in data/taxonomy.yaml"}
 }
 
 func (*factKindMatchesCategory) Run(_ context.Context, s *Subject) (Result, error) {
@@ -227,15 +219,11 @@ func declaresKind(c registry.Category, k vocab.Kind) bool {
 // rather than against that one implementation.
 type factDepartmentsResolve struct{}
 
-var _ Check = (*factDepartmentsResolve)(nil)
-
-func (*factDepartmentsResolve) ID() string { return "fact-departments-resolve" }
-func (*factDepartmentsResolve) Tier() int  { return 1 }
-func (*factDepartmentsResolve) Full() bool { return false }
-func (*factDepartmentsResolve) Description() string {
-	return "every department a fact carries is a division or a department " +
-		"data/departments.yaml lists: a well-formed slug, spelled one way, that no " +
-		"category slug collides with"
+func (*factDepartmentsResolve) meta() meta {
+	return meta{id: "fact-departments-resolve", tier: 1,
+		description: "every department a fact carries is a division or a department " +
+			"data/departments.yaml lists: a well-formed slug, spelled one way, that no " +
+			"category slug collides with"}
 }
 
 func (*factDepartmentsResolve) Run(_ context.Context, s *Subject) (Result, error) {
@@ -309,14 +297,10 @@ func (*factDepartmentsResolve) Run(_ context.Context, s *Subject) (Result, error
 // fund" would put a fund-group total and a printed dash at one address.
 type factFundsResolve struct{}
 
-var _ Check = (*factFundsResolve)(nil)
-
-func (*factFundsResolve) ID() string { return "fact-funds-resolve" }
-func (*factFundsResolve) Tier() int  { return 1 }
-func (*factFundsResolve) Full() bool { return false }
-func (*factFundsResolve) Description() string {
-	return "every fund number a fact carries is a fund data/funds.yaml lists, with the fund " +
-		"group the fact claims"
+func (*factFundsResolve) meta() meta {
+	return meta{id: "fact-funds-resolve", tier: 1,
+		description: "every fund number a fact carries is a fund data/funds.yaml lists, with the fund " +
+			"group the fact claims"}
 }
 
 // Run also checks the fund against the fact's fund group, which is the failure a

@@ -81,14 +81,10 @@ import (
 // directory, which is the limit described above.
 type artifactsMatchManifest struct{}
 
-var _ Check = (*artifactsMatchManifest)(nil)
-
-func (*artifactsMatchManifest) ID() string { return "artifacts-match-manifest" }
-func (*artifactsMatchManifest) Tier() int  { return 0 }
-func (*artifactsMatchManifest) Full() bool { return false }
-func (*artifactsMatchManifest) Description() string {
-	return "every file under " + extractedDir + " hashes to the sha256 and size its " +
-		"manifest records, and the manifest lists every file that is there"
+func (*artifactsMatchManifest) meta() meta {
+	return meta{id: "artifacts-match-manifest", tier: 0,
+		description: "every file under " + extractedDir + " hashes to the sha256 and size its " +
+			"manifest records, and the manifest lists every file that is there"}
 }
 
 // Run hashes every artifact of every extraction: about 1,570 files and 15 MB
@@ -257,14 +253,10 @@ func short(sha string) string {
 // definition. The blank count is printed for that reason.
 type extractionEmittedEveryPage struct{}
 
-var _ Check = (*extractionEmittedEveryPage)(nil)
-
-func (*extractionEmittedEveryPage) ID() string { return "extraction-emitted-every-page" }
-func (*extractionEmittedEveryPage) Tier() int  { return 0 }
-func (*extractionEmittedEveryPage) Full() bool { return false }
-func (*extractionEmittedEveryPage) Description() string {
-	return "every extraction lists a page text and a word geometry artifact for each of the " +
-		"pages its manifest counted, and nothing else"
+func (*extractionEmittedEveryPage) meta() meta {
+	return meta{id: "extraction-emitted-every-page", tier: 0,
+		description: "every extraction lists a page text and a word geometry artifact for each of the " +
+			"pages its manifest counted, and nothing else"}
 }
 
 // Run compares the artifact map against page_count in both directions: a page with
@@ -399,14 +391,10 @@ func capped(items []string, n int) []string {
 // "reading the warnings is the human's job" becomes nobody's.
 type extractorReportedNoErrors struct{}
 
-var _ Check = (*extractorReportedNoErrors)(nil)
-
-func (*extractorReportedNoErrors) ID() string { return "extractor-reported-no-errors" }
-func (*extractorReportedNoErrors) Tier() int  { return 0 }
-func (*extractorReportedNoErrors) Full() bool { return false }
-func (*extractorReportedNoErrors) Description() string {
-	return "no extraction manifest records an extraction error, which is the extractor's own " +
-		"account of a page it could not read and did not write"
+func (*extractorReportedNoErrors) meta() meta {
+	return meta{id: "extractor-reported-no-errors", tier: 0,
+		description: "no extraction manifest records an extraction error, which is the extractor's own " +
+			"account of a page it could not read and did not write"}
 }
 
 func (*extractorReportedNoErrors) Run(_ context.Context, s *Subject) (Result, error) {
@@ -470,14 +458,10 @@ func (*extractorReportedNoErrors) Run(_ context.Context, s *Subject) (Result, er
 // and no retrieval date, which is the provenance chain broken at its first link.
 type manifestMatchesSourceRegistry struct{}
 
-var _ Check = (*manifestMatchesSourceRegistry)(nil)
-
-func (*manifestMatchesSourceRegistry) ID() string { return "manifest-matches-source-registry" }
-func (*manifestMatchesSourceRegistry) Tier() int  { return 0 }
-func (*manifestMatchesSourceRegistry) Full() bool { return false }
-func (*manifestMatchesSourceRegistry) Description() string {
-	return "every document is both listed in " + sourcesFile + " and extracted, and each " +
-		"manifest records the same source file, size, sha256 and page count the registry does"
+func (*manifestMatchesSourceRegistry) meta() meta {
+	return meta{id: "manifest-matches-source-registry", tier: 0,
+		description: "every document is both listed in " + sourcesFile + " and extracted, and each " +
+			"manifest records the same source file, size, sha256 and page count the registry does"}
 }
 
 func (*manifestMatchesSourceRegistry) Run(_ context.Context, s *Subject) (Result, error) {
@@ -588,15 +572,11 @@ func union[A, B any](a map[string]A, b map[string]B) []string {
 // were read under.
 type extractionToolchainPinned struct{}
 
-var _ Check = (*extractionToolchainPinned)(nil)
-
-func (*extractionToolchainPinned) ID() string { return "extraction-toolchain-pinned" }
-func (*extractionToolchainPinned) Tier() int  { return 0 }
-func (*extractionToolchainPinned) Full() bool { return false }
-func (*extractionToolchainPinned) Description() string {
-	return fmt.Sprintf("every extraction records extractor_version %d and poppler_version %q, "+
-		"the toolchain the committed artifacts were reviewed under",
-		corpus.PinnedExtractorVersion, corpus.PinnedPopplerVersion)
+func (*extractionToolchainPinned) meta() meta {
+	return meta{id: "extraction-toolchain-pinned", tier: 0,
+		description: fmt.Sprintf("every extraction records extractor_version %d and poppler_version %q, "+
+			"the toolchain the committed artifacts were reviewed under",
+			corpus.PinnedExtractorVersion, corpus.PinnedPopplerVersion)}
 }
 
 func (*extractionToolchainPinned) Run(_ context.Context, s *Subject) (Result, error) {
@@ -672,14 +652,10 @@ func (*extractionToolchainPinned) Run(_ context.Context, s *Subject) (Result, er
 // report carries, and the mismatch surfaces on the next run once the fetch is done.
 type sourcePDFsMatchBothRecords struct{}
 
-var _ Check = (*sourcePDFsMatchBothRecords)(nil)
-
-func (*sourcePDFsMatchBothRecords) ID() string { return "source-pdfs-match-both-records" }
-func (*sourcePDFsMatchBothRecords) Tier() int  { return 0 }
-func (*sourcePDFsMatchBothRecords) Full() bool { return true }
-func (*sourcePDFsMatchBothRecords) Description() string {
-	return "each source document on disk hashes to the sha256 both " + sourcesFile +
-		" and its extraction manifest recorded for it"
+func (*sourcePDFsMatchBothRecords) meta() meta {
+	return meta{id: "source-pdfs-match-both-records", tier: 0, full: true,
+		description: "each source document on disk hashes to the sha256 both " + sourcesFile +
+			" and its extraction manifest recorded for it"}
 }
 
 // Run compares what Load hashed. It opens nothing itself: data/pdf/ is read in

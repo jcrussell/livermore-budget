@@ -123,7 +123,7 @@ func TestTheExpansionChecksCanFail(t *testing.T) {
 	t.Parallel()
 	for _, c := range []struct {
 		name  string
-		check Check
+		check local
 		edit  func(t *testing.T, s *Subject, d *project.Document)
 		bare  func(s *Subject)
 		want  string
@@ -572,7 +572,7 @@ func TestTheExpansionChecksCanFail(t *testing.T) {
 				t.Fatal(err)
 			}
 			if green.Status != StatusPass {
-				t.Fatalf("%s over the committed corpus is %s: %v", c.check.ID(), green.Status, green.Findings)
+				t.Fatalf("%s over the committed corpus is %s: %v", c.check.meta().id, green.Status, green.Findings)
 			}
 			s := withExpansion(t, func(d *project.Document) { c.edit(t, committed(t), d) })
 			if c.bare != nil {
@@ -587,7 +587,7 @@ func TestTheExpansionChecksCanFail(t *testing.T) {
 				named = named || strings.Contains(f.Subject+" "+f.Detail, c.want)
 			}
 			if red.Status != StatusFail || !named {
-				t.Errorf("%s is %s with findings %v, want a failure naming %q", c.check.ID(), red.Status, red.Findings, c.want)
+				t.Errorf("%s is %s with findings %v, want a failure naming %q", c.check.meta().id, red.Status, red.Findings, c.want)
 			}
 		})
 	}

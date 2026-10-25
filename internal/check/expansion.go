@@ -154,16 +154,12 @@ func (x stitched) printedSide(l project.Link) (printed, rest []string) {
 // drop Completes from one of that cell's legs and it names the cell.
 type expansionOpensAsTheSpine struct{}
 
-var _ Check = (*expansionOpensAsTheSpine)(nil)
-
-func (*expansionOpensAsTheSpine) ID() string { return "expansion-opens-as-the-spine" }
-func (*expansionOpensAsTheSpine) Tier() int  { return 1 }
-func (*expansionOpensAsTheSpine) Full() bool { return false }
-func (*expansionOpensAsTheSpine) Description() string {
-	return "the expansion schedule's roots are the spine's nodes, and its leaf links folded to " +
-		"their roots draw exactly the spine's cells at the spine's cents, citing no figure of " +
-		"pp.66-67 another cell prints, and every leg of a printed cell a derived leg folds into " +
-		"names it as the set completing it"
+func (*expansionOpensAsTheSpine) meta() meta {
+	return meta{id: "expansion-opens-as-the-spine", tier: 1,
+		description: "the expansion schedule's roots are the spine's nodes, and its leaf links folded to " +
+			"their roots draw exactly the spine's cells at the spine's cents, citing no figure of " +
+			"pp.66-67 another cell prints, and every leg of a printed cell a derived leg folds into " +
+			"names it as the set completing it"}
 }
 
 func (*expansionOpensAsTheSpine) Run(_ context.Context, s *Subject) (Result, error) {
@@ -333,15 +329,11 @@ func (*expansionOpensAsTheSpine) Run(_ context.Context, s *Subject) (Result, err
 // arrives, and it names the leaf.
 type expansionSplitsTie struct{}
 
-var _ Check = (*expansionSplitsTie)(nil)
-
-func (*expansionSplitsTie) ID() string { return "expansion-splits-tie" }
-func (*expansionSplitsTie) Tier() int  { return 1 }
-func (*expansionSplitsTie) Full() bool { return false }
-func (*expansionSplitsTie) Description() string {
-	return "every split of the expansion schedule ties to its parent's printed cells by facts and " +
-		"cents, each remainder citing its cell's own figures and worth what a declared exception " +
-		"holds that cell apart by, and each hub leg repeating exactly one leaf at its member"
+func (*expansionSplitsTie) meta() meta {
+	return meta{id: "expansion-splits-tie", tier: 1,
+		description: "every split of the expansion schedule ties to its parent's printed cells by facts and " +
+			"cents, each remainder citing its cell's own figures and worth what a declared exception " +
+			"holds that cell apart by, and each hub leg repeating exactly one leaf at its member"}
 }
 
 // tieCell is one printed cell of a split's parent against its members.

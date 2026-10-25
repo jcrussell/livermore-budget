@@ -72,14 +72,10 @@ import (
 // stops tying — but it is not nothing, and no check here sees it.
 type ruleFundsMatchTheirHeadings struct{}
 
-var _ Check = (*ruleFundsMatchTheirHeadings)(nil)
-
-func (*ruleFundsMatchTheirHeadings) ID() string { return "rule-funds-match-their-headings" }
-func (*ruleFundsMatchTheirHeadings) Tier() int  { return 1 }
-func (*ruleFundsMatchTheirHeadings) Full() bool { return false }
-func (*ruleFundsMatchTheirHeadings) Description() string {
-	return "every fund number a rule declares is the fund named by the total its pages print, " +
-		"and every printed fund total on those pages is claimed by a rule"
+func (*ruleFundsMatchTheirHeadings) meta() meta {
+	return meta{id: "rule-funds-match-their-headings", tier: 1,
+		description: "every fund number a rule declares is the fund named by the total its pages print, " +
+			"and every printed fund total on those pages is claimed by a rule"}
 }
 
 // printedTotalLabel is the label half of a printed total line, and whether the

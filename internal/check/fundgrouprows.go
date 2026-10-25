@@ -28,14 +28,10 @@ import (
 // prints neither column.
 type fundGroupsAreTheirPrintedRows struct{}
 
-var _ Check = (*fundGroupsAreTheirPrintedRows)(nil)
-
-func (*fundGroupsAreTheirPrintedRows) ID() string { return "fund-groups-are-their-printed-rows" }
-func (*fundGroupsAreTheirPrintedRows) Tier() int  { return 1 }
-func (*fundGroupsAreTheirPrintedRows) Full() bool { return false }
-func (*fundGroupsAreTheirPrintedRows) Description() string {
-	return "every fund-sources-uses document's funds, summed by the fund type data/funds.yaml " +
-		"gives them, equal the fund group rows pp.186-209 print in every line, to the cent"
+func (*fundGroupsAreTheirPrintedRows) meta() meta {
+	return meta{id: "fund-groups-are-their-printed-rows", tier: 1,
+		description: "every fund-sources-uses document's funds, summed by the fund type data/funds.yaml " +
+			"gives them, equal the fund group rows pp.186-209 print in every line, to the cent"}
 }
 
 // groupCell is one printed group row's figure in one line of one column.

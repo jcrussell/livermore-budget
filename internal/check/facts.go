@@ -16,13 +16,9 @@ import (
 // factsSorted asserts the committed fact store is in canonical order.
 type factsSorted struct{}
 
-var _ Check = (*factsSorted)(nil)
-
-func (*factsSorted) ID() string { return "facts-sorted" }
-func (*factsSorted) Tier() int  { return 1 }
-func (*factsSorted) Full() bool { return false }
-func (*factsSorted) Description() string {
-	return "facts.jsonl is in the canonical order, so a rebuild diffs against it line by line"
+func (*factsSorted) meta() meta {
+	return meta{id: "facts-sorted", tier: 1,
+		description: "facts.jsonl is in the canonical order, so a rebuild diffs against it line by line"}
 }
 
 // Run defers to fact.CheckSorted rather than restating the order.
@@ -48,13 +44,9 @@ func (*factsSorted) Run(_ context.Context, s *Subject) (Result, error) {
 // factIDsUnique asserts no two facts claim the same identity.
 type factIDsUnique struct{}
 
-var _ Check = (*factIDsUnique)(nil)
-
-func (*factIDsUnique) ID() string { return "fact-ids-unique" }
-func (*factIDsUnique) Tier() int  { return 1 }
-func (*factIDsUnique) Full() bool { return false }
-func (*factIDsUnique) Description() string {
-	return "no two facts share an id, which would mean two rules assert a figure for the same cell"
+func (*factIDsUnique) meta() meta {
+	return meta{id: "fact-ids-unique", tier: 1,
+		description: "no two facts share an id, which would mean two rules assert a figure for the same cell"}
 }
 
 // Run defers to fact.CheckUniqueIDs, which also explains what a collision means:
@@ -105,14 +97,10 @@ func (*factIDsUnique) Run(_ context.Context, s *Subject) (Result, error) {
 // keeps the ids unique and makes all of them wrong.
 type factIDsRecompute struct{}
 
-var _ Check = (*factIDsRecompute)(nil)
-
-func (*factIDsRecompute) ID() string { return "fact-ids-recompute" }
-func (*factIDsRecompute) Tier() int  { return 1 }
-func (*factIDsRecompute) Full() bool { return false }
-func (*factIDsRecompute) Description() string {
-	return "every fact's id is what fact.MakeIDThrough produces from that fact's own published fields, " +
-		"its band end included where one is set, so one line of the audit trail re-derives its own address"
+func (*factIDsRecompute) meta() meta {
+	return meta{id: "fact-ids-recompute", tier: 1,
+		description: "every fact's id is what fact.MakeIDThrough produces from that fact's own published fields, " +
+			"its band end included where one is set, so one line of the audit trail re-derives its own address"}
 }
 
 // Run recomputes over the seven fields the record publishes, and the band end
@@ -163,13 +151,9 @@ func (*factIDsRecompute) Run(_ context.Context, s *Subject) (Result, error) {
 // the parser actually read, not a re-rendering of what it concluded.
 type factTokenReparses struct{}
 
-var _ Check = (*factTokenReparses)(nil)
-
-func (*factTokenReparses) ID() string { return "fact-token-reparses" }
-func (*factTokenReparses) Tier() int  { return 1 }
-func (*factTokenReparses) Full() bool { return false }
-func (*factTokenReparses) Description() string {
-	return "every fact's amount_cents is what amount.Parse makes of its own token at its own units"
+func (*factTokenReparses) meta() meta {
+	return meta{id: "fact-token-reparses", tier: 1,
+		description: "every fact's amount_cents is what amount.Parse makes of its own token at its own units"}
 }
 
 // Run compares Parse(token, units) against amount_cents directly, with no
@@ -234,13 +218,9 @@ func (*factTokenReparses) Run(_ context.Context, s *Subject) (Result, error) {
 // and still no PDF and no Python.
 type factOffsetPointsAtToken struct{}
 
-var _ Check = (*factOffsetPointsAtToken)(nil)
-
-func (*factOffsetPointsAtToken) ID() string { return "fact-offset-points-at-token" }
-func (*factOffsetPointsAtToken) Tier() int  { return 1 }
-func (*factOffsetPointsAtToken) Full() bool { return false }
-func (*factOffsetPointsAtToken) Description() string {
-	return "the extracted page text at every fact's offset is that fact's token"
+func (*factOffsetPointsAtToken) meta() meta {
+	return meta{id: "fact-offset-points-at-token", tier: 1,
+		description: "the extracted page text at every fact's offset is that fact's token"}
 }
 
 // Run bounds-checks before it slices: a fact whose offset runs off the end of its
@@ -321,13 +301,9 @@ func (*factOffsetPointsAtToken) Run(_ context.Context, s *Subject) (Result, erro
 // because their facts would be one row_label to every reader of facts.jsonl.
 type factCitationsAreDeclared struct{}
 
-var _ Check = (*factCitationsAreDeclared)(nil)
-
-func (*factCitationsAreDeclared) ID() string { return "fact-citations-are-declared" }
-func (*factCitationsAreDeclared) Tier() int  { return 1 }
-func (*factCitationsAreDeclared) Full() bool { return false }
-func (*factCitationsAreDeclared) Description() string {
-	return "two facts cite one printed figure only as a row and its declared counterpart"
+func (*factCitationsAreDeclared) meta() meta {
+	return meta{id: "fact-citations-are-declared", tier: 1,
+		description: "two facts cite one printed figure only as a row and its declared counterpart"}
 }
 
 func (*factCitationsAreDeclared) Run(_ context.Context, s *Subject) (Result, error) {
@@ -458,13 +434,9 @@ func declaresCounterpart(rule *mapping.Rule, label string) bool {
 // can read this field, which it could not have done before.
 type factTransferOrientationIsDeclared struct{}
 
-var _ Check = (*factTransferOrientationIsDeclared)(nil)
-
-func (*factTransferOrientationIsDeclared) ID() string { return "fact-transfer-orientation-is-declared" }
-func (*factTransferOrientationIsDeclared) Tier() int  { return 1 }
-func (*factTransferOrientationIsDeclared) Full() bool { return false }
-func (*factTransferOrientationIsDeclared) Description() string {
-	return "a transfer printed against its kind's direction declares sign: netted, and one declaring it is so printed"
+func (*factTransferOrientationIsDeclared) meta() meta {
+	return meta{id: "fact-transfer-orientation-is-declared", tier: 1,
+		description: "a transfer printed against its kind's direction declares sign: netted, and one declaring it is so printed"}
 }
 
 func (*factTransferOrientationIsDeclared) Run(_ context.Context, s *Subject) (Result, error) {

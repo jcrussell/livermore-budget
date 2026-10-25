@@ -30,15 +30,11 @@ const (
 // `fisc export` lays the page out.
 type debtServiceTiesToFacts struct{}
 
-var _ Check = (*debtServiceTiesToFacts)(nil)
-
-func (*debtServiceTiesToFacts) ID() string { return "debt-service-ties-to-facts" }
-func (*debtServiceTiesToFacts) Tier() int  { return 1 }
-func (*debtServiceTiesToFacts) Full() bool { return false }
-func (*debtServiceTiesToFacts) Description() string {
-	return "every figure the debt-service document publishes is the fact it cites, every fact " +
-		"of its slice is published once, each period is its facts' years and each total sums " +
-		"exactly the facts it cites"
+func (*debtServiceTiesToFacts) meta() meta {
+	return meta{id: "debt-service-ties-to-facts", tier: 1,
+		description: "every figure the debt-service document publishes is the fact it cites, every fact " +
+			"of its slice is published once, each period is its facts' years and each total sums " +
+			"exactly the facts it cites"}
 }
 
 func (*debtServiceTiesToFacts) Run(_ context.Context, s *Subject) (Result, error) {

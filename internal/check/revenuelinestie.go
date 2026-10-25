@@ -35,17 +35,11 @@ const spineGrain = structure.LevelFundGroupByCategory
 // sides together; that is fact-offset-points-at-token's to catch.
 type revenueLinesTieToTheirCategories struct{}
 
-var _ Check = (*revenueLinesTieToTheirCategories)(nil)
-
-func (*revenueLinesTieToTheirCategories) ID() string {
-	return "revenue-lines-tie-to-their-categories"
-}
-func (*revenueLinesTieToTheirCategories) Tier() int  { return 1 }
-func (*revenueLinesTieToTheirCategories) Full() bool { return false }
-func (*revenueLinesTieToTheirCategories) Description() string {
-	return "the drill-down's revenue lines sum, per category and fund group, to exactly what " +
-		"the citywide spine publishes, and each is parented to the category " +
-		"data/taxonomy.yaml declares it under"
+func (*revenueLinesTieToTheirCategories) meta() meta {
+	return meta{id: "revenue-lines-tie-to-their-categories", tier: 1,
+		description: "the drill-down's revenue lines sum, per category and fund group, to exactly what " +
+			"the citywide spine publishes, and each is parented to the category " +
+			"data/taxonomy.yaml declares it under"}
 }
 
 func (c *revenueLinesTieToTheirCategories) Run(_ context.Context, s *Subject) (Result, error) {

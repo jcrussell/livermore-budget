@@ -27,15 +27,11 @@ import (
 // pp.186-209's are funds within them, keyed by both.
 type fundGroupSourcesEqualUses struct{}
 
-var _ Check = (*fundGroupSourcesEqualUses)(nil)
-
-func (*fundGroupSourcesEqualUses) ID() string { return "fund-group-sources-equal-uses" }
-func (*fundGroupSourcesEqualUses) Tier() int  { return 1 }
-func (*fundGroupSourcesEqualUses) Full() bool { return false }
-func (*fundGroupSourcesEqualUses) Description() string {
-	return "every fund group or fund balance of a scope printing its sources and uses satisfies revenue + " +
-		"transfers in - expenditure - transfers out - reserve increase == its change, printed or ending - " +
-		"beginning, exactly, except where a declared exception pins both sides"
+func (*fundGroupSourcesEqualUses) meta() meta {
+	return meta{id: "fund-group-sources-equal-uses", tier: 1,
+		description: "every fund group or fund balance of a scope printing its sources and uses satisfies revenue + " +
+			"transfers in - expenditure - transfers out - reserve increase == its change, printed or ending - " +
+			"beginning, exactly, except where a declared exception pins both sides"}
 }
 
 // sourcesUsesColumn is one balance's terms, the fact each line it prints

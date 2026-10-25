@@ -27,16 +27,12 @@ import (
 // comparison that did not happen.
 type cutsTieAlongTheLattice struct{}
 
-var _ Check = (*cutsTieAlongTheLattice)(nil)
-
-func (*cutsTieAlongTheLattice) ID() string { return "cuts-tie-along-the-lattice" }
-func (*cutsTieAlongTheLattice) Tier() int  { return 1 }
-func (*cutsTieAlongTheLattice) Full() bool { return false }
-func (*cutsTieAlongTheLattice) Description() string {
-	return "every cut sums to the coarser cut it decomposes, or agrees with the spine " +
-		"at the grain both decompose, or ties to a schedule printing the same money in every column " +
-		"both print, to the cent, except the cells a declared exception pins on both sides to a printed residual; " +
-		"and every residue declared to restate a cut outside the reference ties to it line by line"
+func (*cutsTieAlongTheLattice) meta() meta {
+	return meta{id: "cuts-tie-along-the-lattice", tier: 1,
+		description: "every cut sums to the coarser cut it decomposes, or agrees with the spine " +
+			"at the grain both decompose, or ties to a schedule printing the same money in every column " +
+			"both print, to the cent, except the cells a declared exception pins on both sides to a printed residual; " +
+			"and every residue declared to restate a cut outside the reference ties to it line by line"}
 }
 
 func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error) {

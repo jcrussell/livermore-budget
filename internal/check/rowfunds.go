@@ -94,14 +94,10 @@ var rowAnchorPrefixes = []rowAnchorPrefix{
 //     phrase buys over the declaration is exactly the `side` field above.
 type rowFundsMatchTheirAnchors struct{}
 
-var _ Check = (*rowFundsMatchTheirAnchors)(nil)
-
-func (*rowFundsMatchTheirAnchors) ID() string { return "row-funds-match-their-anchors" }
-func (*rowFundsMatchTheirAnchors) Tier() int  { return 1 }
-func (*rowFundsMatchTheirAnchors) Full() bool { return false }
-func (*rowFundsMatchTheirAnchors) Description() string {
-	return "every fund a row's printed anchors name is one that row declares, for the " +
-		"schedules whose fund dimension is per row rather than per column"
+func (*rowFundsMatchTheirAnchors) meta() meta {
+	return meta{id: "row-funds-match-their-anchors", tier: 1,
+		description: "every fund a row's printed anchors name is one that row declares, for the " +
+			"schedules whose fund dimension is per row rather than per column"}
 }
 
 func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, error) {

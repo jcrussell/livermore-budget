@@ -302,9 +302,9 @@ func TestTheCutsCheckGoesRed(t *testing.T) {
 }
 
 // runOne runs a single check over a subject.
-func runOne(t *testing.T, s *Subject, c Check) *Report {
+func runOne(t *testing.T, s *Subject, c local) *Report {
 	t.Helper()
-	return Run(t.Context(), s, []Check{c}, ReportOptions{GeneratedBy: testVersion})
+	return Run(t.Context(), s, publish(c), ReportOptions{GeneratedBy: testVersion})
 }
 
 // TestTheCutsCheckHoldsTheStoreToEveryCut plants what each arm beyond the

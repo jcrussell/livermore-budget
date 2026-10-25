@@ -23,14 +23,10 @@ import (
 // see because a line is assignable. The label is never a match key.
 type factRevenueLinesResolve struct{}
 
-var _ Check = (*factRevenueLinesResolve)(nil)
-
-func (*factRevenueLinesResolve) ID() string { return "fact-revenue-lines-resolve" }
-func (*factRevenueLinesResolve) Tier() int  { return 1 }
-func (*factRevenueLinesResolve) Full() bool { return false }
-func (*factRevenueLinesResolve) Description() string {
-	return "every revenue row of pp.127-140 resolves to exactly one line data/taxonomy.yaml " +
-		"declares under its category, and every declared line is printed by some row"
+func (*factRevenueLinesResolve) meta() meta {
+	return meta{id: "fact-revenue-lines-resolve", tier: 1,
+		description: "every revenue row of pp.127-140 resolves to exactly one line data/taxonomy.yaml " +
+			"declares under its category, and every declared line is printed by some row"}
 }
 
 func (*factRevenueLinesResolve) Run(_ context.Context, s *Subject) (Result, error) {

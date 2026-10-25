@@ -30,14 +30,10 @@ import (
 // `scope:` says all-funds-gross when it means expenditure-by-department.
 type projectionsBuild struct{}
 
-var _ Check = (*projectionsBuild)(nil)
-
-func (*projectionsBuild) ID() string { return "projections-build" }
-func (*projectionsBuild) Tier() int  { return 1 }
-func (*projectionsBuild) Full() bool { return false }
-func (*projectionsBuild) Description() string {
-	return "every projection the fact store's slices asked for produced a graph, rather than " +
-		"refusing and taking the whole report down with it"
+func (*projectionsBuild) meta() meta {
+	return meta{id: "projections-build", tier: 1,
+		description: "every projection the fact store's slices asked for produced a graph, rather than " +
+			"refusing and taking the whole report down with it"}
 }
 
 // Run counts one subject per SLICE a projection was asked for — the built ones
@@ -115,14 +111,10 @@ func keysOf(o project.Options) []sliceKey {
 // builds, and every series is complete over the columns that remain.
 type publishedProjectionBuilt struct{}
 
-var _ Check = (*publishedProjectionBuilt)(nil)
-
-func (*publishedProjectionBuilt) ID() string { return "published-projection-built" }
-func (*publishedProjectionBuilt) Tier() int  { return 1 }
-func (*publishedProjectionBuilt) Full() bool { return false }
-func (*publishedProjectionBuilt) Description() string {
-	return "every document `fisc export` publishes was built, over every column it " +
-		"publishes it over, and is among the projections these checks were run over"
+func (*publishedProjectionBuilt) meta() meta {
+	return meta{id: "published-projection-built", tier: 1,
+		description: "every document `fisc export` publishes was built, over every column it " +
+			"publishes it over, and is among the projections these checks were run over"}
 }
 
 // Run has one subject per published document; a repository publishing nothing

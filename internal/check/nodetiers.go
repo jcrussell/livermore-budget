@@ -36,14 +36,10 @@ import (
 // between its node and its member, one slot apart, whatever their tiers.
 type nodeTiersAreDeclared struct{}
 
-var _ Check = (*nodeTiersAreDeclared)(nil)
-
-func (*nodeTiersAreDeclared) ID() string { return "node-tiers-are-declared" }
-func (*nodeTiersAreDeclared) Tier() int  { return 1 }
-func (*nodeTiersAreDeclared) Full() bool { return false }
-func (*nodeTiersAreDeclared) Description() string {
-	return "every node is of an id form the tier table declares and at that form's tier, and every link runs from a coarser tier to a finer one unless it is a revenue " +
-		"line rolled up into its category or a document-wide partition along one pair of tiers"
+func (*nodeTiersAreDeclared) meta() meta {
+	return meta{id: "node-tiers-are-declared", tier: 1,
+		description: "every node is of an id form the tier table declares and at that form's tier, and every link runs from a coarser tier to a finer one unless it is a revenue " +
+			"line rolled up into its category or a document-wide partition along one pair of tiers"}
 }
 
 func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) {

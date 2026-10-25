@@ -17,14 +17,10 @@ import (
 // not a folded chart's.
 type contraLinksNameTheirSchedule struct{}
 
-var _ Check = (*contraLinksNameTheirSchedule)(nil)
-
-func (*contraLinksNameTheirSchedule) ID() string { return "contra-links-name-their-schedule" }
-func (*contraLinksNameTheirSchedule) Tier() int  { return 1 }
-func (*contraLinksNameTheirSchedule) Full() bool { return false }
-func (*contraLinksNameTheirSchedule) Description() string {
-	return "a link the document prints negative names the schedule it is printed as a reduction " +
-		"of, in the words the page shows beside it; no other link names one"
+func (*contraLinksNameTheirSchedule) meta() meta {
+	return meta{id: "contra-links-name-their-schedule", tier: 1,
+		description: "a link the document prints negative names the schedule it is printed as a reduction " +
+			"of, in the words the page shows beside it; no other link names one"}
 }
 
 func (*contraLinksNameTheirSchedule) Run(_ context.Context, s *Subject) (Result, error) {

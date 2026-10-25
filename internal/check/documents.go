@@ -46,14 +46,10 @@ var uncheckedDocuments = map[string]string{}
 // coverage goes away rather than when someone remembers.
 type documentsAreChecked struct{}
 
-var _ Check = (*documentsAreChecked)(nil)
-
-func (*documentsAreChecked) ID() string { return "documents-are-checked" }
-func (*documentsAreChecked) Tier() int  { return 1 }
-func (*documentsAreChecked) Full() bool { return false }
-func (*documentsAreChecked) Description() string {
-	return "every projection the site publishes is one some structural check reads, or its " +
-		"shape is declared as one no check reads yet"
+func (*documentsAreChecked) meta() meta {
+	return meta{id: "documents-are-checked", tier: 1,
+		description: "every projection the site publishes is one some structural check reads, or its " +
+			"shape is declared as one no check reads yet"}
 }
 
 func (*documentsAreChecked) Run(_ context.Context, s *Subject) (Result, error) {

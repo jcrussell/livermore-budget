@@ -54,16 +54,12 @@ const categoryExcessOfRevenues = "fund-balance/excess-of-revenues"
 // excessScopes is a finding for the same reason.
 type excessOfRevenuesIdentity struct{}
 
-var _ Check = (*excessOfRevenuesIdentity)(nil)
-
-func (*excessOfRevenuesIdentity) ID() string { return "excess-of-revenues-identity" }
-func (*excessOfRevenuesIdentity) Tier() int  { return 1 }
-func (*excessOfRevenuesIdentity) Full() bool { return false }
-func (*excessOfRevenuesIdentity) Description() string {
-	return "in the ACFR's ten-year Changes in Fund Balances schedule and its General Fund " +
-		"budgetary comparison, total revenues minus total expenditures equals the printed " +
-		"excess row, and where a column prints its net change, the excess plus the transfers " +
-		"equals it, per column, exactly; an excess line at any other scope is a finding"
+func (*excessOfRevenuesIdentity) meta() meta {
+	return meta{id: "excess-of-revenues-identity", tier: 1,
+		description: "in the ACFR's ten-year Changes in Fund Balances schedule and its General Fund " +
+			"budgetary comparison, total revenues minus total expenditures equals the printed " +
+			"excess row, and where a column prints its net change, the excess plus the transfers " +
+			"equals it, per column, exactly; an excess line at any other scope is a finding"}
 }
 
 // excessScopes are the schedules printing an excess line, each one fund scope:

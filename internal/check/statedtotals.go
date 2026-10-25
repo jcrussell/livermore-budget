@@ -63,13 +63,9 @@ import (
 // build reports unchecked for the same reason.
 type factOffsetIsNotAStatedTotal struct{}
 
-var _ Check = (*factOffsetIsNotAStatedTotal)(nil)
-
-func (*factOffsetIsNotAStatedTotal) ID() string { return "fact-offset-is-not-a-stated-total" }
-func (*factOffsetIsNotAStatedTotal) Tier() int  { return 1 }
-func (*factOffsetIsNotAStatedTotal) Full() bool { return false }
-func (*factOffsetIsNotAStatedTotal) Description() string {
-	return "no fact cites a figure printed on a rule's or a rollup's stated-total line"
+func (*factOffsetIsNotAStatedTotal) meta() meta {
+	return meta{id: "fact-offset-is-not-a-stated-total", tier: 1,
+		description: "no fact cites a figure printed on a rule's or a rollup's stated-total line"}
 }
 
 // totalSpan is one resolved stated-total line: the byte range from just past its

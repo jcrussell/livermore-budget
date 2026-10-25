@@ -164,7 +164,7 @@ type Check interface {
 //     command does not yet know is visible in one place rather than scattered
 //     among the passes.
 func All() []Check {
-	return []Check{
+	return publish(
 		&artifactsMatchManifest{},
 		&extractionEmittedEveryPage{},
 		&extractorReportedNoErrors{},
@@ -221,7 +221,39 @@ func All() []Check {
 		&constraintTierVocabulary{},
 		&expansionOpensAsTheSpine{},
 		&expansionSplitsTie{},
+	)
+}
+
+// meta is what a check of this package declares about itself, once, in its
+// meta method; [Check] documents each field as the method it answers.
+type meta struct {
+	id          string
+	tier        int
+	full        bool
+	description string
+}
+
+// local is a check of this package: its claim and the meta it declares.
+type local interface {
+	meta() meta
+	Run(ctx context.Context, s *Subject) (Result, error)
+}
+
+// published is a local check as [All] hands it out, answering [Check]'s
+// identity methods from its meta.
+type published struct{ local }
+
+func (p published) ID() string          { return p.meta().id }
+func (p published) Tier() int           { return p.meta().tier }
+func (p published) Full() bool          { return p.meta().full }
+func (p published) Description() string { return p.meta().description }
+
+func publish(cs ...local) []Check {
+	out := make([]Check, len(cs))
+	for i, c := range cs {
+		out[i] = published{c}
 	}
+	return out
 }
 
 // Result is what one check concluded.

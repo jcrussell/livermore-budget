@@ -26,16 +26,10 @@ import (
 // from Peers is a finding on the pair.
 type peersOverlapOnlyByDeclaredIdentity struct{}
 
-var _ Check = (*peersOverlapOnlyByDeclaredIdentity)(nil)
-
-func (*peersOverlapOnlyByDeclaredIdentity) ID() string {
-	return "peers-overlap-only-by-declared-identity"
-}
-func (*peersOverlapOnlyByDeclaredIdentity) Tier() int  { return 1 }
-func (*peersOverlapOnlyByDeclaredIdentity) Full() bool { return false }
-func (*peersOverlapOnlyByDeclaredIdentity) Description() string {
-	return "every cell two cuts at one level both publish is covered by a declared identity " +
-		"whose two readings agree to the cent, and every declared identity covers a cell"
+func (*peersOverlapOnlyByDeclaredIdentity) meta() meta {
+	return meta{id: "peers-overlap-only-by-declared-identity", tier: 1,
+		description: "every cell two cuts at one level both publish is covered by a declared identity " +
+			"whose two readings agree to the cent, and every declared identity covers a cell"}
 }
 
 func (c *peersOverlapOnlyByDeclaredIdentity) Run(_ context.Context, s *Subject) (Result, error) {

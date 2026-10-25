@@ -20,13 +20,9 @@ import (
 // of a loop rather than a flow.
 type graphAcyclic struct{}
 
-var _ Check = (*graphAcyclic)(nil)
-
-func (*graphAcyclic) ID() string { return "graph-acyclic" }
-func (*graphAcyclic) Tier() int  { return 1 }
-func (*graphAcyclic) Full() bool { return false }
-func (*graphAcyclic) Description() string {
-	return "no projection's links form a cycle, which would be money funding itself"
+func (*graphAcyclic) meta() meta {
+	return meta{id: "graph-acyclic", tier: 1,
+		description: "no projection's links form a cycle, which would be money funding itself"}
 }
 
 func (*graphAcyclic) Run(_ context.Context, s *Subject) (Result, error) {
@@ -100,14 +96,10 @@ func findCycle(links []project.Link) []string {
 // editorial claim about public money with nothing behind it.
 type derivedNodesJustified struct{}
 
-var _ Check = (*derivedNodesJustified)(nil)
-
-func (*derivedNodesJustified) ID() string { return "derived-nodes-justified" }
-func (*derivedNodesJustified) Tier() int  { return 1 }
-func (*derivedNodesJustified) Full() bool { return false }
-func (*derivedNodesJustified) Description() string {
-	return "every node marked derived carries a rationale and a source note, and the two nodes " +
-		"the projection infers are marked derived"
+func (*derivedNodesJustified) meta() meta {
+	return meta{id: "derived-nodes-justified", tier: 1,
+		description: "every node marked derived carries a rationale and a source note, and the two nodes " +
+			"the projection infers are marked derived"}
 }
 
 // Run checks the claim in both directions.
@@ -168,14 +160,10 @@ func (*derivedNodesJustified) Run(_ context.Context, s *Subject) (Result, error)
 // number they were shown.
 type linkValuesTieToFacts struct{}
 
-var _ Check = (*linkValuesTieToFacts)(nil)
-
-func (*linkValuesTieToFacts) ID() string { return "link-values-tie-to-facts" }
-func (*linkValuesTieToFacts) Tier() int  { return 1 }
-func (*linkValuesTieToFacts) Full() bool { return false }
-func (*linkValuesTieToFacts) Description() string {
-	return "every link's value_cents equals the sum of the amounts of the facts its fact_ids " +
-		"name, so its value and its citation are of the same cell"
+func (*linkValuesTieToFacts) meta() meta {
+	return meta{id: "link-values-tie-to-facts", tier: 1,
+		description: "every link's value_cents equals the sum of the amounts of the facts its fact_ids " +
+			"name, so its value and its citation are of the same cell"}
 }
 
 // Run holds every link to project.LinkCents of its facts: their plain sum,
@@ -294,14 +282,10 @@ func strictlyAscending(ids []string) bool {
 // because the page number happened to agree.
 type linkLocatorsMatchTheirFacts struct{}
 
-var _ Check = (*linkLocatorsMatchTheirFacts)(nil)
-
-func (*linkLocatorsMatchTheirFacts) ID() string { return "link-locators-match-their-facts" }
-func (*linkLocatorsMatchTheirFacts) Tier() int  { return 1 }
-func (*linkLocatorsMatchTheirFacts) Full() bool { return false }
-func (*linkLocatorsMatchTheirFacts) Description() string {
-	return "every link's locators are exactly the (doc_id, page) pairs of the facts its " +
-		"fact_ids name, so a reader following one lands on the page the figure was read from"
+func (*linkLocatorsMatchTheirFacts) meta() meta {
+	return meta{id: "link-locators-match-their-facts", tier: 1,
+		description: "every link's locators are exactly the (doc_id, page) pairs of the facts its " +
+			"fact_ids name, so a reader following one lands on the page the figure was read from"}
 }
 
 func (*linkLocatorsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, error) {
@@ -396,15 +380,11 @@ func describeSources(ss []project.Source) string {
 // nodes and links against the arrays are a ratchet, and labelled as one.
 type countsReconcile struct{}
 
-var _ Check = (*countsReconcile)(nil)
-
-func (*countsReconcile) ID() string { return "counts-reconcile" }
-func (*countsReconcile) Tier() int  { return 1 }
-func (*countsReconcile) Full() bool { return false }
-func (*countsReconcile) Description() string {
-	return "every graph document's counts -- facts, facts_cited, facts_uncited, " +
-		"facts_cited_twice, nodes and links -- re-derived from its own links and the facts " +
-		"it was built from, and facts = facts_cited + facts_uncited"
+func (*countsReconcile) meta() meta {
+	return meta{id: "counts-reconcile", tier: 1,
+		description: "every graph document's counts -- facts, facts_cited, facts_uncited, " +
+			"facts_cited_twice, nodes and links -- re-derived from its own links and the facts " +
+			"it was built from, and facts = facts_cited + facts_uncited"}
 }
 
 func (*countsReconcile) Run(_ context.Context, s *Subject) (Result, error) {
@@ -548,14 +528,10 @@ func drawnTotalsOf(links []project.Link) drawnTotals {
 // are held there.
 type headlineTiesToFacts struct{}
 
-var _ Check = (*headlineTiesToFacts)(nil)
-
-func (*headlineTiesToFacts) ID() string { return "headline-ties-to-facts" }
-func (*headlineTiesToFacts) Tier() int  { return 1 }
-func (*headlineTiesToFacts) Full() bool { return false }
-func (*headlineTiesToFacts) Description() string {
-	return "the gross and external revenue and expenditure figures each equal the sum of the " +
-		"published links they summarise, which link-values-tie-to-facts ties to the facts"
+func (*headlineTiesToFacts) meta() meta {
+	return meta{id: "headline-ties-to-facts", tier: 1,
+		description: "the gross and external revenue and expenditure figures each equal the sum of the " +
+			"published links they summarise, which link-values-tie-to-facts ties to the facts"}
 }
 
 func (*headlineTiesToFacts) Run(_ context.Context, s *Subject) (Result, error) {
@@ -601,14 +577,10 @@ func (*headlineTiesToFacts) Run(_ context.Context, s *Subject) (Result, error) {
 // internal/mapping/transfers_p76_test.go).
 type headlineTransferResidual struct{}
 
-var _ Check = (*headlineTransferResidual)(nil)
-
-func (*headlineTransferResidual) ID() string { return "headline-transfer-residual" }
-func (*headlineTransferResidual) Tier() int  { return 1 }
-func (*headlineTransferResidual) Full() bool { return false }
-func (*headlineTransferResidual) Description() string {
-	return "internal_transfer_in and internal_transfer_out each equal the published links " +
-		"out of transfers/in and into transfers/out"
+func (*headlineTransferResidual) meta() meta {
+	return meta{id: "headline-transfer-residual", tier: 1,
+		description: "internal_transfer_in and internal_transfer_out each equal the published links " +
+			"out of transfers/in and into transfers/out"}
 }
 
 func (*headlineTransferResidual) Run(_ context.Context, s *Subject) (Result, error) {
@@ -654,14 +626,10 @@ func (*headlineTransferResidual) Run(_ context.Context, s *Subject) (Result, err
 // line by internal/project and pinned there by its own test.
 type headlineNaiveExpenditure struct{}
 
-var _ Check = (*headlineNaiveExpenditure)(nil)
-
-func (*headlineNaiveExpenditure) ID() string { return "headline-naive-expenditure" }
-func (*headlineNaiveExpenditure) Tier() int  { return 1 }
-func (*headlineNaiveExpenditure) Full() bool { return false }
-func (*headlineNaiveExpenditure) Description() string {
-	return "the external expenditure figure is not equal to naive_expenditure_cents, so the " +
-		"double count the naive figure exists to illustrate is still being netted out"
+func (*headlineNaiveExpenditure) meta() meta {
+	return meta{id: "headline-naive-expenditure", tier: 1,
+		description: "the external expenditure figure is not equal to naive_expenditure_cents, so the " +
+			"double count the naive figure exists to illustrate is still being netted out"}
 }
 
 // Run counts a projection as a subject only where the two figures CAN differ, and
@@ -723,14 +691,10 @@ func (*headlineNaiveExpenditure) Run(_ context.Context, s *Subject) (Result, err
 // disagrees with itself.
 type transferLegsPair struct{}
 
-var _ Check = (*transferLegsPair)(nil)
-
-func (*transferLegsPair) ID() string { return "transfer-legs-pair" }
-func (*transferLegsPair) Tier() int  { return 1 }
-func (*transferLegsPair) Full() bool { return false }
-func (*transferLegsPair) Description() string {
-	return "every transfer_id names exactly two links of equal value, one receiving and one paying, " +
-		"over the documents that draw each end of a movement as its own link"
+func (*transferLegsPair) meta() meta {
+	return meta{id: "transfer-legs-pair", tier: 1,
+		description: "every transfer_id names exactly two links of equal value, one receiving and one paying, " +
+			"over the documents that draw each end of a movement as its own link"}
 }
 
 func (*transferLegsPair) Run(_ context.Context, s *Subject) (Result, error) {
@@ -889,15 +853,11 @@ var sameTierContainers = map[string]string{project.NodeTransfersOut: project.Pre
 // has a hierarchy to be well-formed.
 type nodeHierarchyWellFormed struct{}
 
-var _ Check = (*nodeHierarchyWellFormed)(nil)
-
-func (*nodeHierarchyWellFormed) ID() string { return "node-hierarchy-well-formed" }
-func (*nodeHierarchyWellFormed) Tier() int  { return 1 }
-func (*nodeHierarchyWellFormed) Full() bool { return false }
-func (*nodeHierarchyWellFormed) Description() string {
-	return "every node.parent resolves to a node of the same document, at a strictly coarser " +
-		"tier or a flow endpoint drawn as a container at its own, with no node its own ancestor " +
-		"and none parented to a flow endpoint that carries a flow in that same document"
+func (*nodeHierarchyWellFormed) meta() meta {
+	return meta{id: "node-hierarchy-well-formed", tier: 1,
+		description: "every node.parent resolves to a node of the same document, at a strictly coarser " +
+			"tier or a flow endpoint drawn as a container at its own, with no node its own ancestor " +
+			"and none parented to a flow endpoint that carries a flow in that same document"}
 }
 
 func (*nodeHierarchyWellFormed) Run(_ context.Context, s *Subject) (Result, error) {
@@ -1023,14 +983,10 @@ func joinArrow(path []string) string { return strings.Join(path, " -> ") }
 // there would present an editorial classification as published data.
 type constraintTierVocabulary struct{}
 
-var _ Check = (*constraintTierVocabulary)(nil)
-
-func (*constraintTierVocabulary) ID() string { return "constraint-tier-vocabulary" }
-func (*constraintTierVocabulary) Tier() int  { return 1 }
-func (*constraintTierVocabulary) Full() bool { return false }
-func (*constraintTierVocabulary) Description() string {
-	return "every constraint_tier a node carries is one data/funds.yaml uses, with the source " +
-		"note and the restriction note it was read from"
+func (*constraintTierVocabulary) meta() meta {
+	return meta{id: "constraint-tier-vocabulary", tier: 1,
+		description: "every constraint_tier a node carries is one data/funds.yaml uses, with the source " +
+			"note and the restriction note it was read from"}
 }
 
 // Run takes the vocabulary from the loaded registry rather than from a list in
