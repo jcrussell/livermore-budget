@@ -664,6 +664,15 @@ describe("the focus indicator is painted as focus and not as text", () => {
     t.diagnostic(`the isolated mark's rule is ${rule.trim().replace(/\s+/g, " ")}`);
   });
 
+  // Mutation: drop the node rule's outline: none, or the focus rule's
+  // stroke-dasharray: none, and the matching arm goes red.
+  test("a focused mark is ringed on its bar, not its <g>'s box, and undashed though derived", () => {
+    assert.match(ruleFor("svg.sankey .node:focus-visible"), /outline:\s*none/,
+      "a focused node takes the global outline, which rings its <g>'s union box with the label in the gutter");
+    assert.match(ruleFor("svg.sankey .node:focus-visible rect"), /stroke-dasharray:\s*none/,
+      "the focus rule keeps the derived rule's dashes, so a focused derived mark rings dashed");
+  });
+
   test("a ribbon gets a drawn echo and not a box around its bounding rectangle", (t) => {
     const rule = ruleFor("svg.sankey .link:focus-visible");
     // A <path>'s outline boxes its whole bezier, so the echo is a drop-shadow.
