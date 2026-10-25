@@ -137,6 +137,27 @@ for (const year of YEARS) {
   });
 }
 
+// askAffordances reads the page's projection and frontier, which only redraw
+// sets, so a DOM-free walk cannot reach it: each split is redrawn alone,
+// behind the splits that reveal its node.
+// Mutation: make askAffordances throw on dept/*/wages-and-benefits and the
+// wages-by-divisions split is refused here.
+test("every declared split, drawn alone from the root with what reveals it, draws rather than refuses", async (t) => {
+  let drawn = 0;
+  for (const year of YEARS) {
+    const { app, document } = await bootedApp({ checkedStem: year.stem });
+    const refused = [];
+    for (const sp of app.fetched.splits) {
+      const entry = app.entryOf(sp.node, sp.key);
+      const path = app.revealChain(app.fetched, sp.node).map((c) => app.entryOf(c.node, c.key));
+      if (!app.redraw(path.concat([entry]))|| refusals(document).length) refused.push(`${year.label} ${entry}: ${refusals(document).map((b) => b.textContent).join(" | ")}`);
+      drawn++;
+    }
+    assert.deepEqual(refused, []);
+  }
+  t.diagnostic(`${drawn} split(s) redrawn across both columns`);
+});
+
 describe("the expansion's drawing", () => {
   /**
    * Root and Expand all, both columns: between them a mark of every kind
@@ -152,6 +173,8 @@ describe("the expansion's drawing", () => {
     for (const year of YEARS) {
       const { app, document } = await bootedApp({ checkedStem: year.stem });
       const chart = document.getElementById("chart");
+      // The tails Go's declared splits fold into: each one draws out.
+      const splitTails = new Set(app.fetched.splits.map((sp) => app.splitTailID(sp.node, sp.key)));
       const look = (where) => {
         const glyphs = new Map([...chart.querySelectorAll("g.glyph")].map((g) =>
           [g.__data__.id, g.classList.contains("glyph-open") ? "open" : g.classList.contains("glyph-fold") ? "fold" : "?"]));
@@ -172,6 +195,9 @@ describe("the expansion's drawing", () => {
             flag: flag ? flag.textContent : null,
             rule: app.nodeClass(d), flags: app.nodeFlags(d),
             opens, folds, expands, derived: Boolean(d.derived), glyph: glyphs.get(d.id) || "",
+            wide: Number(m.querySelector("rect")?.getAttribute("width")) > 0,
+            tabindex: m.getAttribute("tabindex"),
+            splitTail: splitTails.has(d.id),
           });
           const share = app.shareOf(d);
           if (share.includes("100.0%") || share.includes("100%")) hundreds.push(`${year.label} ${where} ${d.id}: ${share}`);
@@ -203,6 +229,20 @@ describe("the expansion's drawing", () => {
       `${tally.expands} carry "expands" and the plus`);
     assert.deepEqual(wrong.slice(0, 5), [], `${wrong.length} of ${tally.nodes} mark(s) are drawn as something they are not`);
     assert.ok(tally.opens > 0 && tally.folds > 0 && tally.expands > 0 && tally.derivedOnly > 0, "the corpus puts marks on both sides of each question");
+  });
+
+  // Mutations: drop " contra" from the drawn class, draw a rect at width 0,
+  // give a mark tabindex -1, or make a declared split's tail not expandable,
+  // and the matching arm goes red.
+  test("a mark wears nodeClass's contra, is drawn wide and focusable, and a split's tail draws out", () => {
+    const contra = (cls) => cls.split(/\s+/).includes("contra");
+    const at = (r) => `${r.where} > ${r.id}`;
+    assert.ok(records.some((r) => contra(r.rule)), "no mark is a contra, so the contra arm asserts nothing");
+    assert.deepEqual(records.filter((r) => r.classes.includes("contra") !== contra(r.rule)).map(at), []);
+    assert.deepEqual(records.filter((r) => !r.wide).map(at), []);
+    assert.deepEqual(records.filter((r) => r.tabindex !== "0").map(at), []);
+    assert.ok(records.some((r) => r.splitTail && r.id.includes("receivers/")), "no transfers-out tail is drawn");
+    assert.deepEqual(records.filter((r) => r.splitTail !== r.expands).map(at), []);
   });
 
   test("the flag tspan a mark draws carries exactly nodeFlags", (t) => {

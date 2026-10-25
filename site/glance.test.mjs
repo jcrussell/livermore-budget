@@ -225,6 +225,8 @@ test("a click pins a segment's tip, linking the page text and the PDF page of ev
   const { document } = installBrowser({ html: PAGE });
   const mod = await import(MODULE);
   mod.boot(document);
+  // Mutation: set role="img" on a segment before pinnable and this is red.
+  assert.deepEqual([...document.querySelectorAll("[data-pins]")].filter((m) => m.getAttribute("role") !== "button").map((m) => m.dataset.rank), []);
   const pages = factPages();
   let pinned = 0;
   let tails = 0;

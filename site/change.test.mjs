@@ -295,6 +295,8 @@ test("a click pins a band's tip, linking the page text and the PDF page that pri
   const { document } = installBrowser({ html: PAGE });
   const mod = await import(MODULE);
   mod.boot(document);
+  // Mutation: set role="img" on a band before pinnable and this is red.
+  assert.deepEqual([...document.querySelectorAll("[data-pins]")].filter((m) => m.getAttribute("role") !== "button").map((m) => m.dataset.rank), []);
   const whole = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
   let pinned = 0;
   let tails = 0;
