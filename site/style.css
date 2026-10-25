@@ -594,7 +594,8 @@ button[aria-pressed="true"] {
    The variables are the card's, so its width can read them; the chart body
    inherits them. The cap is app.js's --chart-max, the opening chart's width
    every chart is scaled to; 100% is the no-script state. --chart-cushion
-   is the body's 40px padding plus 16px for a classic scrollbar. Where app.js sets data-beside (its BESIDE_QUERY) on the
+   is the body's 40px padding plus 16px for a classic scrollbar. Where
+   app.js sets data-beside (its BESIDE_QUERY) on the
    body the room is what the rail leaves, and --chart-drawn, the width the
    opening chart is drawn at, is the cap: the chart is at full size and pans
    in its room. Below it --chart-panels is 0, the rail stacks above the
