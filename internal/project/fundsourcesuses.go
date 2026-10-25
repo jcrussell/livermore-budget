@@ -156,9 +156,9 @@ func (u *fundSourcesUses) Document(facts []fact.Fact, o Options) (*Document, err
 	var links []Link
 	for _, number := range sortedFundNumbers(funds) {
 		lines := funds[number]
-		fund, group, err := u.fundNode(number, lines)
-		if err != nil {
-			return nil, err
+		fund, group, nodeErr := u.fundNode(number, lines)
+		if nodeErr != nil {
+			return nil, nodeErr
 		}
 		for _, c := range fundCells {
 			f, ok := lines[cellLine{c.kind, c.category}]

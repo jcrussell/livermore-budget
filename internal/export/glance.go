@@ -215,9 +215,9 @@ func buildGlancePage(p pageCtx) (glancePageData, error) {
 		sel   yearSelect
 	)
 	for _, stem := range v.yearStems() {
-		spine, err := decodeGlanceDocument(stem, opens.Projection, o.Projections[stem])
-		if err != nil {
-			return glancePageData{}, err
+		spine, spineErr := decodeGlanceDocument(stem, opens.Projection, o.Projections[stem])
+		if spineErr != nil {
+			return glancePageData{}, spineErr
 		}
 		m := spine.Metadata
 		if strings.Join(m.Scopes, ", ") != meta.Scope() || m.GeneratedBy != meta.GeneratedBy {
@@ -226,13 +226,13 @@ func buildGlancePage(p pageCtx) (glancePageData, error) {
 					"one view is one scope and one build", v.Path, v.Projection, meta.Scope(), meta.GeneratedBy,
 				stem, strings.Join(m.Scopes, ", "), m.GeneratedBy)
 		}
-		reads, err := v.readStems(stem, ix)
-		if err != nil {
-			return glancePageData{}, err
+		reads, readErr := v.readStems(stem, ix)
+		if readErr != nil {
+			return glancePageData{}, readErr
 		}
-		funding, err := decodeGlanceDocument(reads[0], project.DepartmentFundingProjection, o.Projections[reads[0]])
-		if err != nil {
-			return glancePageData{}, err
+		funding, fundingErr := decodeGlanceDocument(reads[0], project.DepartmentFundingProjection, o.Projections[reads[0]])
+		if fundingErr != nil {
+			return glancePageData{}, fundingErr
 		}
 		if funding.Metadata.FiscalYear != m.FiscalYear || funding.Metadata.Basis != m.Basis {
 			return glancePageData{}, fmt.Errorf("view %q reads %s beside %s and they state different columns",
@@ -322,7 +322,7 @@ func buildGlancePage(p pageCtx) (glancePageData, error) {
 			if len(bar.Rows) == 0 {
 				return glancePageData{}, fmt.Errorf("view %q draws no cell into its %s bar in %s", v.Path, bar.ID, stem)
 			}
-			if err := glanceTies(bar, b.whole, b.residuals); err != nil {
+			if err = glanceTies(bar, b.whole, b.residuals); err != nil {
 				return glancePageData{}, fmt.Errorf("view %q, %s: %w", v.Path, stem, err)
 			}
 			bar.Ties = len(b.residuals) == 0

@@ -102,9 +102,9 @@ func buildCapitalPage(p pageCtx) (capitalPageData, error) {
 		for _, p := range s.Points {
 			points = append(points, p.trendPoint)
 		}
-		cells, placed, err := buildCells(points, columns, meta.Columns, cite)
-		if err != nil {
-			return capitalPageData{}, fmt.Errorf("%s series %q: %w", v.Projection, s.Label, err)
+		cells, placed, cellsErr := buildCells(points, columns, meta.Columns, cite)
+		if cellsErr != nil {
+			return capitalPageData{}, fmt.Errorf("%s series %q: %w", v.Projection, s.Label, cellsErr)
 		}
 		for i := range cells {
 			if cells[i].Missing || cells[i].Cents != 0 {
@@ -124,7 +124,7 @@ func buildCapitalPage(p pageCtx) (capitalPageData, error) {
 		rendered += placed
 		rows = append(rows, capitalRow{Fund: number, FundLabel: label, Project: project, Cells: cells})
 	}
-	if err := reconcileSeriesCounts(v.Projection, rendered, len(body.Series), meta.Counts); err != nil {
+	if err = reconcileSeriesCounts(v.Projection, rendered, len(body.Series), meta.Counts); err != nil {
 		return capitalPageData{}, err
 	}
 

@@ -99,9 +99,9 @@ func buildHistoryPage(p pageCtx) (historyPageData, error) {
 			}
 			named[i][s.Label] = true
 		}
-		cells, placed, err := buildCells(s.Points, columns, meta.Columns, cite)
-		if err != nil {
-			return historyPageData{}, fmt.Errorf("%s series %q: %w", v.Projection, s.Label, err)
+		cells, placed, cellsErr := buildCells(s.Points, columns, meta.Columns, cite)
+		if cellsErr != nil {
+			return historyPageData{}, fmt.Errorf("%s series %q: %w", v.Projection, s.Label, cellsErr)
 		}
 		rendered += placed
 		// A Category cell repeating its section's heading is the third reading
@@ -122,7 +122,7 @@ func buildHistoryPage(p pageCtx) (historyPageData, error) {
 	}
 	// The counts first: a document that disagrees with itself is refused before
 	// any question about how this view groups it.
-	if err := reconcileSeriesCounts(v.Projection, rendered, len(body.Series), meta.Counts); err != nil {
+	if err = reconcileSeriesCounts(v.Projection, rendered, len(body.Series), meta.Counts); err != nil {
 		return historyPageData{}, err
 	}
 	for i, s := range sections {

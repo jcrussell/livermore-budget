@@ -156,9 +156,9 @@ func (t *transfersByFund) Document(facts []fact.Fact, o Options) (*Document, err
 			// A printed dash is a fact and is not a flow.
 			continue
 		}
-		payer, receiver, err := r.endpoints()
-		if err != nil {
-			return nil, err
+		payer, receiver, endsErr := r.endpoints()
+		if endsErr != nil {
+			return nil, endsErr
 		}
 		if t.Out {
 			payer.from.parent = ""

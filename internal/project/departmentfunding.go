@@ -121,7 +121,7 @@ func (d *departmentFunding) Document(facts []fact.Fact, o Options) (*Document, e
 		})
 	}
 
-	if err := d.addFundGroups(nodes); err != nil {
+	if err = d.addFundGroups(nodes); err != nil {
 		return nil, err
 	}
 	out, err := drawGraph(nodes, links)

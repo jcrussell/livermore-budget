@@ -174,9 +174,9 @@ func buildChangePage(p pageCtx) (changePageData, error) {
 	placed := map[string]int{}
 	figures := make([]changeFigure, 0, len(specs))
 	for _, s := range specs {
-		rows, n, err := changeRows(s.doc, s.kind, cite)
-		if err != nil {
-			return changePageData{}, fmt.Errorf("view %q, %s: %w", v.Path, s.id, err)
+		rows, n, rowsErr := changeRows(s.doc, s.kind, cite)
+		if rowsErr != nil {
+			return changePageData{}, fmt.Errorf("view %q, %s: %w", v.Path, s.id, rowsErr)
 		}
 		placed[s.doc.stem] += n
 		figures = append(figures, changeFigure{

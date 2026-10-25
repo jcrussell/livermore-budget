@@ -134,9 +134,9 @@ func buildDebtPage(p pageCtx) (debtPageData, error) {
 			return debtFigRef{Missing: true}
 		}
 		shown++
-		cited, err := cite.page(f.DocID, f.Page)
-		if err != nil {
-			citeErr = cmp.Or(citeErr, err)
+		cited, pageErr := cite.page(f.DocID, f.Page)
+		if pageErr != nil {
+			citeErr = cmp.Or(citeErr, pageErr)
 			return debtFigRef{}
 		}
 		ref := debtFigRef{Value: amount.Cents(f.AmountCents).Dollars(), Page: f.Page, Href: cited.TextURL}

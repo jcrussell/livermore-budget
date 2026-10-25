@@ -345,10 +345,10 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*Document, error) {
 
 	// Every parent must resolve to a node in this document, even one no link
 	// touches.
-	if err := f.addParents(nodes); err != nil {
+	if err = f.addParents(nodes); err != nil {
 		return nil, err
 	}
-	if err := f.labelCategoryNamedLines(nodes, rev); err != nil {
+	if err = f.labelCategoryNamedLines(nodes, rev); err != nil {
 		return nil, err
 	}
 	nameContraLinks(links, nodes)

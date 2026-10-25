@@ -15,12 +15,6 @@ const publishedSpine = "../../mappings/livermore-budget-fy2026-2027.yaml"
 // than imported: internal/project declares it and imports this package, so the
 // dependency cannot run the other way.
 //
-// A test that means "the citywide spine" must say so with the SCOPE and never
-// with the kind. That was indistinguishable while one schedule was mapped and
-// stopped being so when fisc-5gk.1 published four transfers-only fund rules on
-// p134: a filter on KindTransferIn alone swept them into a read of pp.66-67.
-const publishedSpineScope = "all-funds-gross"
-
 // TestPublishedPartsDeclareColumnHeaders is the ratchet on an opt-in guard.
 //
 // A part with no column_headers is read exactly as it was before geometry
