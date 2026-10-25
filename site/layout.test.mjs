@@ -609,12 +609,16 @@ for (const label of Object.keys(ALIKE)) {
       };
       visit("the root", { nodes: app.laidNodes });
       // Each split opened alone, Expand all, and Expand all drawn out, each
-      // laid against the root's boxes as a reader opening it from the root
-      // gets it.
+      // laid the two ways the page lays it: cold, as a deep link does, and
+      // against the root's boxes, as a click from the root does. A state
+      // reached through another split lays against that split's boxes,
+      // which these two bracket and do not cover.
       const fromRoot = app.boxesOf(app.laidNodes);
       for (const st of expansionStates(app, app.fetched)) {
         if (!st.whole.size || st.where.startsWith("everything")) {
-          visit(st.where, layOutState(app, st, fromRoot), (d) => app.glyphAt(app.fetched, st.frontier, d));
+          const glyph = (d) => app.glyphAt(app.fetched, st.frontier, d);
+          visit(st.where + ", cold", layOutState(app, st, null), glyph);
+          visit(st.where + ", from the root", layOutState(app, st, fromRoot), glyph);
         }
       }
       // The words render() draws are the words measured above: Expand all
@@ -659,7 +663,7 @@ for (const label of Object.keys(ALIKE)) {
         `${w}: ${m.cut} of ${m.inner} interior labels cut` +
         (m.fewest ? `, fewest kept ${m.fewest.kept} in ${JSON.stringify(m.fewest.words)} (${m.fewest.id})` : "")).join("; ");
       t.diagnostic(detail);
-      assert.deepEqual({ walked: Object.keys(floor).length, short }, { walked: 2, short: [] }, detail);
+      assert.deepEqual({ walked: Object.keys(floor).length, short }, { walked: 4, short: [] }, detail);
     });
 
     // Mutation: drop glyphPlacement's arm for a short interior rect and this

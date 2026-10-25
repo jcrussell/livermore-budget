@@ -412,17 +412,19 @@ export function expansionStates(app, doc) {
 
 /**
  * One state of expansionStates shaped, filtered and laid out as the booted
- * page's redraw does, at the room the page was laid out at and against the
- * boxes of the chart a reader comes from (`prior`, boxesOf the root as a
- * walk from the root reads it), with nothing rendered: the filters' chart of
- * it laid out. layOut sets the page's laidNodes and groupIndex to the chart
- * it lays.
+ * page does, at the room the page was laid out at, with nothing rendered:
+ * the filters' chart of it laid out. `prior` is the boxes of the chart the
+ * page lays it against: null where the page lays it cold, as a deep link or
+ * a year switch carrying the expansions does, or app.boxesOf of the chart a
+ * reader opens it from. layOut sets the page's laidNodes and groupIndex to
+ * the chart it lays.
  * @param {any} app a booted app
  * @param {{frontier: Set<string>, whole: Set<string>}} st
- * @param {any} [prior] app.boxesOf of the chart the state is reached from
+ * @param {any} prior null, or app.boxesOf of the chart it is opened from
  */
 export function layOutState(app, st, prior) {
-  return app.layOut(app.filterFor(shapedAt(app, st.frontier, st.whole)).doc, prior, app.laidRoom);
+  if (prior === undefined) throw new Error("layOutState: say which chart the state is laid against, or null for none");
+  return app.layOut(app.filterFor(shapedAt(app, st.frontier, st.whole)).doc, prior || undefined, app.laidRoom);
 }
 
 /** The refusal banners on the page's <main>. */
