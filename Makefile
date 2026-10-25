@@ -296,7 +296,13 @@ codehash: ## Fingerprint FILES=... by code alone, ignoring comments
 	@go run ./tools/codehash $(FILES)
 
 .PHONY: pre-commit
-pre-commit: fmt vet narration beadrefs doccheck test lint-if-available js-if-available ## Format, vet, narration, beadrefs, doccheck, test, lint, and check app.js
+pre-commit: fmt vet narration beadrefs doccheck test verify lint-if-available js-if-available ## Format, vet, narration, beadrefs, doccheck, test, verify, lint, and check app.js
+
+# The Go tests do not re-run the checks over the committed corpus: this does,
+# as CI's verify job does.
+.PHONY: verify
+verify: build ## Run fisc verify --strict over the committed corpus
+	./$(OUT) verify --strict
 
 # A HOOK CANNOT BE COMMITTED. The hooks directory is not tracked, so "install
 # the pre-commit hook" is per-checkout setup somebody has to actually run -- and
