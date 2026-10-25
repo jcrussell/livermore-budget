@@ -125,18 +125,126 @@ func TestTheCaveatIndexStatesEachCaveatOnce(t *testing.T) {
 	}
 }
 
-// TestTwoTextsOfOneYearAreRefused: two texts of one id carried by documents
-// of the same years could not be told apart under one heading.
-//
-// Mutation: drop the Of refusal in buildCaveatIndex and it builds, heading
-// both texts "FY 2025-26 adopted".
-func TestTwoTextsOfOneYearAreRefused(t *testing.T) {
-	o, nav := caveatSite(
-		`[{"id":"x","summary":"X.","theme":"left-out","text":"One.","applies_to":[]}]`,
-		`[{"id":"x","summary":"X.","theme":"left-out","text":"Two.","applies_to":[]}]`, `[]`)
-	o.Projections["a"] = caveatDoc("FY 2025-26", `[{"id":"x","summary":"X.","theme":"left-out","text":"One.","applies_to":[]}]`)
-	if _, err := buildCaveatIndex(o, ColumnIndex{}, nav); err == nil || !strings.Contains(err.Error(), "two of them are of FY 2025-26 adopted") {
-		t.Errorf("buildCaveatIndex = %v, want two texts of one year refused", err)
+// TestTheCaveatIndexRefuses: each row is a caveatSite of three documents'
+// caveats, optionally edited, that buildCaveatIndex must refuse with an error
+// naming want.
+func TestTheCaveatIndexRefuses(t *testing.T) {
+	const x = `[{"id":"x","summary":"X.","theme":"left-out","text":"T.","applies_to":[]}]`
+	for _, row := range []struct {
+		name    string
+		a, b, c string
+		edit    func(o *Options, nav []navItem)
+		want    string
+	}{
+		// Two texts of one id carried by documents of the same years could
+		// not be told apart under one heading.
+		// Mutation: drop the Of refusal in buildCaveatIndex and it builds,
+		// heading both texts "FY 2025-26 adopted".
+		{
+			name: "TwoTextsOfOneYearAreRefused",
+			a:    `[{"id":"x","summary":"X.","theme":"left-out","text":"One.","applies_to":[]}]`,
+			b:    `[{"id":"x","summary":"X.","theme":"left-out","text":"Two.","applies_to":[]}]`, c: `[]`,
+			edit: func(o *Options, _ []navItem) {
+				o.Projections["a"] = caveatDoc("FY 2025-26", `[{"id":"x","summary":"X.","theme":"left-out","text":"One.","applies_to":[]}]`)
+			},
+			want: "two of them are of FY 2025-26 adopted",
+		},
+		// Two ids under one summary would head two entries, and two fallback
+		// lines, alike.
+		// Mutation: drop the shared-summary refusal in buildCaveatIndex and
+		// both build, headed "S.".
+		{
+			name: "TwoCaveatsTheIndexWouldHeadAlikeAreRefused",
+			a:    `[{"id":"x","summary":"S.","theme":"left-out","text":"One.","applies_to":[]},{"id":"y","summary":"S.","theme":"left-out","text":"Two.","applies_to":[]}]`,
+			b:    `[]`, c: `[]`,
+			want: "head two different caveats alike",
+		},
+		// A summary or theme that varies by document is refused, since the
+		// caveats page lists an id once.
+		// Mutation: drop buildCaveatIndex's heading arm and both rows go red.
+		{
+			name: "OneIDUnderTwoHeadingsIsRefused two summaries",
+			a:    `[{"id":"x","summary":"3 groups.","theme":"left-out","text":"Same.","applies_to":[]}]`,
+			b:    `[{"id":"x","summary":"4 groups.","theme":"left-out","text":"Same.","applies_to":[]}]`, c: `[]`,
+			want: "lists an id once",
+		},
+		{
+			name: "OneIDUnderTwoHeadingsIsRefused two themes",
+			a:    `[{"id":"x","summary":"3 groups.","theme":"left-out","text":"Same.","applies_to":[]}]`,
+			b:    `[{"id":"x","summary":"3 groups.","theme":"our-reading","text":"Same.","applies_to":[]}]`, c: `[]`,
+			want: "lists an id once",
+		},
+		// The caveats page lists a caveat under its theme, so one of no theme
+		// would be listed nowhere.
+		// Mutation: drop buildCaveatIndex's theme arm and it builds.
+		{
+			name: "ACaveatOfNoThemeIsRefused",
+			a:    `[{"id":"x","summary":"X.","theme":"caveat","text":"T.","applies_to":[]}]`, b: `[]`, c: `[]`,
+			want: "none of project.CaveatThemes",
+		},
+		// The caveat index refuses a view drawing a schedule its year lacks,
+		// as [View.drawnStems] does.
+		// Mutation: have flaggedStems skip such a view and it builds, flagging
+		// nothing.
+		{
+			name: "ASankeyViewWhoseYearDrawsNoScheduleIsRefused",
+			a:    x, b: `[]`, c: `[]`,
+			edit: func(o *Options, _ []navItem) {
+				o.Views[0].Template, o.Views[0].Draws = SankeyTemplate, "fund-flows"
+			},
+			want: "carries none",
+		},
+		// A theme list's anchor "caveats-on-<view>--<theme>" collides with a
+		// view at "<view>--<theme>".
+		// Mutation: drop the claim on a section's groups and it builds, one
+		// fragment on two lists.
+		{
+			name: "ASectionsThemeAnchorIsClaimedLikeAnyOther",
+			a:    x,
+			b:    `[{"id":"y","summary":"Y.","theme":"left-out","text":"T.","applies_to":[]}]`, c: `[]`,
+			edit: func(o *Options, nav []navItem) {
+				o.Views[1].Path, nav[1].Path = "a--left-out.html", "a--left-out.html"
+				o.Views[0], o.Views[1] = o.Views[1], o.Views[0]
+				nav[0], nav[1] = nav[1], nav[0]
+			},
+			want: "is claimed by both",
+		},
+		// A text of one id carried by two years and another carried by one of
+		// them would head two texts with that year.
+		// Mutation: compare whole Of strings rather than each year and it
+		// builds, FY 2024-25 heading both texts.
+		{
+			name: "OneYearInTwoTextsIsRefused",
+			a:    `[{"id":"x","summary":"X.","theme":"left-out","text":"Both.","applies_to":[]}]`,
+			b:    `[{"id":"x","summary":"X.","theme":"left-out","text":"Both.","applies_to":[]}]`, c: `[]`,
+			edit: func(o *Options, _ []navItem) {
+				o.Projections["c"] = caveatDoc("FY 2024-25", `[{"id":"x","summary":"X.","theme":"left-out","text":"Other.","applies_to":[]}]`)
+			},
+			want: "two of them are of FY 2024-25 adopted",
+		},
+		// A data-files or checked caveat naming a node is refused, as
+		// validateCaveats does.
+		// Mutation: drop the arm and both rows build.
+		{
+			name: "ACaveatNoPageCountsNamesNoNode data-files",
+			a:    `[{"id":"x","summary":"X.","theme":"data-files","text":"T.","applies_to":["fund/100"]}]`, b: `[]`, c: `[]`,
+			want: "names nodes",
+		},
+		{
+			name: "ACaveatNoPageCountsNamesNoNode checked",
+			a:    `[{"id":"x","summary":"X.","theme":"checked","text":"T.","applies_to":["fund/100"]}]`, b: `[]`, c: `[]`,
+			want: "names nodes",
+		},
+	} {
+		t.Run(row.name, func(t *testing.T) {
+			o, nav := caveatSite(row.a, row.b, row.c)
+			if row.edit != nil {
+				row.edit(o, nav)
+			}
+			if _, err := buildCaveatIndex(o, ColumnIndex{}, nav); err == nil || !strings.Contains(err.Error(), row.want) {
+				t.Errorf("buildCaveatIndex = %v, want a refusal naming %q", err, row.want)
+			}
+		})
 	}
 }
 
@@ -200,55 +308,6 @@ func TestADataFilesCaveatIsStatedOnNoPageAndACheckIsNoLimit(t *testing.T) {
 	}
 }
 
-// TestTwoCaveatsTheIndexWouldHeadAlikeAreRefused: two ids under one summary
-// would head two entries, and two fallback lines, alike.
-//
-// Mutation: drop the shared-summary refusal in buildCaveatIndex and both
-// build, headed "S.".
-func TestTwoCaveatsTheIndexWouldHeadAlikeAreRefused(t *testing.T) {
-	o, nav := caveatSite(
-		`[{"id":"x","summary":"S.","theme":"left-out","text":"One.","applies_to":[]},{"id":"y","summary":"S.","theme":"left-out","text":"Two.","applies_to":[]}]`,
-		`[]`, `[]`,
-	)
-	_, err := buildCaveatIndex(o, ColumnIndex{}, nav)
-	if err == nil || !strings.Contains(err.Error(), "head two different caveats alike") {
-		t.Errorf("buildCaveatIndex = %v, want two headings alike refused", err)
-	}
-}
-
-// TestOneIDUnderTwoHeadingsIsRefused: a summary or theme that varies by
-// document is refused, since the caveats page lists an id once.
-//
-// Mutation: drop buildCaveatIndex's heading arm and both go red with
-// "buildCaveatIndex = nil".
-func TestOneIDUnderTwoHeadingsIsRefused(t *testing.T) {
-	for name, b := range map[string]string{
-		"two summaries": `[{"id":"x","summary":"4 groups.","theme":"left-out","text":"Same.","applies_to":[]}]`,
-		"two themes":    `[{"id":"x","summary":"3 groups.","theme":"our-reading","text":"Same.","applies_to":[]}]`,
-	} {
-		t.Run(name, func(t *testing.T) {
-			o, nav := caveatSite(
-				`[{"id":"x","summary":"3 groups.","theme":"left-out","text":"Same.","applies_to":[]}]`, b, `[]`)
-			_, err := buildCaveatIndex(o, ColumnIndex{}, nav)
-			if err == nil || !strings.Contains(err.Error(), "lists an id once") {
-				t.Errorf("buildCaveatIndex = %v, want one id under two headings refused", err)
-			}
-		})
-	}
-}
-
-// TestACaveatOfNoThemeIsRefused: the caveats page lists a caveat under its
-// theme, so one of no theme would be listed nowhere.
-//
-// Mutation: drop buildCaveatIndex's theme arm and it goes red with
-// "buildCaveatIndex = nil".
-func TestACaveatOfNoThemeIsRefused(t *testing.T) {
-	o, nav := caveatSite(`[{"id":"x","summary":"X.","theme":"caveat","text":"T.","applies_to":[]}]`, `[]`, `[]`)
-	if _, err := buildCaveatIndex(o, ColumnIndex{}, nav); err == nil || !strings.Contains(err.Error(), "none of project.CaveatThemes") {
-		t.Errorf("buildCaveatIndex = %v, want a theme of no set refused", err)
-	}
-}
-
 // TestASiteWithNoCaveatsPageLinksNoCaveat: with no caveats view every href
 // is empty and the line carries the headings the fallback list prints.
 func TestASiteWithNoCaveatsPageLinksNoCaveat(t *testing.T) {
@@ -284,52 +343,6 @@ func TestTheHeadingsRefusalNamesOnePairEveryRun(t *testing.T) {
 	}
 }
 
-// TestASankeyViewWhoseYearDrawsNoScheduleIsRefused: the caveat index refuses
-// a view drawing a schedule its year lacks, as [View.drawnStems] does.
-//
-// Mutation: have flaggedStems skip such a view and it builds, flagging nothing.
-func TestASankeyViewWhoseYearDrawsNoScheduleIsRefused(t *testing.T) {
-	o, nav := caveatSite(`[{"id":"x","summary":"X.","theme":"left-out","text":"T.","applies_to":[]}]`, `[]`, `[]`)
-	o.Views[0].Template, o.Views[0].Draws = SankeyTemplate, "fund-flows"
-	_, err := buildCaveatIndex(o, ColumnIndex{}, nav)
-	if err == nil || !strings.Contains(err.Error(), "carries none") {
-		t.Errorf("buildCaveatIndex = %v, want the year with no fund-flows refused", err)
-	}
-}
-
-// TestASectionsThemeAnchorIsClaimedLikeAnyOther: a theme list's anchor
-// "caveats-on-<view>--<theme>" collides with a view at "<view>--<theme>".
-//
-// Mutation: drop the claim on a section's groups and it builds, one fragment
-// on two lists.
-func TestASectionsThemeAnchorIsClaimedLikeAnyOther(t *testing.T) {
-	o, nav := caveatSite(
-		`[{"id":"x","summary":"X.","theme":"left-out","text":"T.","applies_to":[]}]`,
-		`[{"id":"y","summary":"Y.","theme":"left-out","text":"T.","applies_to":[]}]`, `[]`)
-	o.Views[1].Path, nav[1].Path = "a--left-out.html", "a--left-out.html"
-	o.Views[0], o.Views[1] = o.Views[1], o.Views[0]
-	nav[0], nav[1] = nav[1], nav[0]
-	_, err := buildCaveatIndex(o, ColumnIndex{}, nav)
-	if err == nil || !strings.Contains(err.Error(), "is claimed by both") {
-		t.Errorf("buildCaveatIndex = %v, want caveats-on-a--left-out claimed twice", err)
-	}
-}
-
-// TestOneYearInTwoTextsIsRefused: a text of one id carried by two years and
-// another carried by one of them would head two texts with that year.
-//
-// Mutation: compare whole Of strings rather than each year and it builds,
-// FY 2024-25 heading both texts.
-func TestOneYearInTwoTextsIsRefused(t *testing.T) {
-	o, nav := caveatSite(
-		`[{"id":"x","summary":"X.","theme":"left-out","text":"Both.","applies_to":[]}]`,
-		`[{"id":"x","summary":"X.","theme":"left-out","text":"Both.","applies_to":[]}]`, `[]`)
-	o.Projections["c"] = caveatDoc("FY 2024-25", `[{"id":"x","summary":"X.","theme":"left-out","text":"Other.","applies_to":[]}]`)
-	if _, err := buildCaveatIndex(o, ColumnIndex{}, nav); err == nil || !strings.Contains(err.Error(), "two of them are of FY 2024-25 adopted") {
-		t.Errorf("buildCaveatIndex = %v, want one year under two texts refused", err)
-	}
-}
-
 // TestATextOfADocumentStatingNoYearIsHeadedByItsStem: a document stating no
 // fiscal year is named by its stem rather than dropped from the heading.
 //
@@ -351,19 +364,6 @@ func TestATextOfADocumentStatingNoYearIsHeadedByItsStem(t *testing.T) {
 	}
 	if diff := cmp.Diff([]string{"FY 2024-25 adopted", "FY 2025-26 adopted, c"}, ofs); diff != "" {
 		t.Errorf("variants' Of (-want +got):\n%s", diff)
-	}
-}
-
-// TestACaveatNoPageCountsNamesNoNode: a data-files or checked caveat naming
-// a node is refused, as validateCaveats does.
-//
-// Mutation: drop the arm and both build.
-func TestACaveatNoPageCountsNamesNoNode(t *testing.T) {
-	for _, theme := range []string{"data-files", "checked"} {
-		o, nav := caveatSite(`[{"id":"x","summary":"X.","theme":"`+theme+`","text":"T.","applies_to":["fund/100"]}]`, `[]`, `[]`)
-		if _, err := buildCaveatIndex(o, ColumnIndex{}, nav); err == nil || !strings.Contains(err.Error(), "names nodes") {
-			t.Errorf("%s: buildCaveatIndex = %v, want a caveat naming nodes refused", theme, err)
-		}
 	}
 }
 

@@ -144,72 +144,73 @@ func TestTheHistoryViewGroupsRowsUnderPrintedHeadings(t *testing.T) {
 	}
 }
 
-// TestTheHistoryViewRefusesASeriesNoSectionClaims: an unclaimed series is an
-// error rather than a guess.
-func TestTheHistoryViewRefusesASeriesNoSectionClaims(t *testing.T) {
-	_, err := writeHistorySite(t, historyDoc(balancesFixture()...),
-		[]export.Section{{Heading: "General Fund", Kind: "fund_balance", FundGroup: "general"}})
-	if err == nil {
-		t.Fatal("a series no section claims was accepted")
-	}
-	if !strings.Contains(err.Error(), "no section of view") {
-		t.Errorf("error %q does not name the unclaimed series", err)
+// TestTheHistoryViewRefuses: each row is a document and a view's sections
+// that do not claim each other's rows one to one, and wants the refusal to
+// name the mismatch rather than the page to guess.
+func TestTheHistoryViewRefuses(t *testing.T) {
+	for _, row := range []struct {
+		name     string
+		doc      func(t *testing.T) []byte
+		sections func() []export.Section
+		want     string
+	}{
+		// An unclaimed series is an error rather than a guess.
+		{"TheHistoryViewRefusesASeriesNoSectionClaims", balancesDoc, func() []export.Section {
+			return []export.Section{{Heading: "General Fund", Kind: "fund_balance", FundGroup: "general"}}
+		}, "no section of view"},
+		// A heading over nothing says the schedule prints a block it does not.
+		{"TheHistoryViewRefusesASectionClaimingNoSeries", balancesDoc, func() []export.Section {
+			return append(balancesSections(), export.Section{Heading: "Revenues", Kind: "revenue"})
+		}, "carries no such series"},
+		// A contested key is refused rather than settled by declaration order.
+		{"TheHistoryViewRefusesTwoSectionsForOneKey", balancesDoc, func() []export.Section {
+			return append(balancesSections(),
+				export.Section{Heading: "General Fund again", Kind: "fund_balance", FundGroup: "general"})
+		}, "cannot land under both headings"},
+		// A document whose counts promise more series than it carries is
+		// refused: the page would render fewer rows than the document claims.
+		// Three series, so the dropped one empties no heading and only the
+		// count reconciliation can catch it.
+		{"TheHistoryViewRefusesADocumentShortASeries", func(t *testing.T) []byte {
+			raw := historyDoc(append(balancesFixture(),
+				historySeries{label: "Assigned", kind: "fund_balance", group: "general"})...)
+			var doc map[string]any
+			if err := json.Unmarshal(raw, &doc); err != nil {
+				t.Fatal(err)
+			}
+			doc["series"] = doc["series"].([]any)[:2]
+			short, err := json.Marshal(doc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return short
+		}, balancesSections, "lost a figure"},
+		// A second series at the excess section's key is caught only by the
+		// section's Rows; it would render under the excess heading silently.
+		{"TheHistoryViewRefusesASeriesItsSectionDoesNotName", func(*testing.T) []byte {
+			return historyDoc(append(changesFixture(),
+				historySeries{label: "Net change in fund balances", kind: "fund_balance", group: ""})...)
+		}, changesSections, "do not name it"},
+		// A Rows key matching no series is an error.
+		{"TheHistoryViewRefusesARowNameMatchingNoSeries", func(*testing.T) []byte {
+			return historyDoc(changesFixture()...)
+		}, func() []export.Section {
+			sections := changesSections()
+			sections[1].Rows["Net change in fund balances"] = ""
+			return sections
+		}, "names row"},
+	} {
+		t.Run(row.name, func(t *testing.T) {
+			_, err := writeHistorySite(t, row.doc(t), row.sections())
+			if err == nil || !strings.Contains(err.Error(), row.want) {
+				t.Errorf("Write = %v, want a refusal naming %q", err, row.want)
+			}
+		})
 	}
 }
 
-// TestTheHistoryViewRefusesASectionClaimingNoSeries: a heading over nothing
-// says the schedule prints a block it does not.
-func TestTheHistoryViewRefusesASectionClaimingNoSeries(t *testing.T) {
-	_, err := writeHistorySite(t, historyDoc(balancesFixture()...),
-		append(balancesSections(), export.Section{Heading: "Revenues", Kind: "revenue"}))
-	if err == nil {
-		t.Fatal("a section claiming no series was accepted")
-	}
-	if !strings.Contains(err.Error(), "carries no such series") {
-		t.Errorf("error %q does not name the empty section", err)
-	}
-}
-
-// TestTheHistoryViewRefusesTwoSectionsForOneKey: a contested key is refused
-// rather than settled by declaration order.
-func TestTheHistoryViewRefusesTwoSectionsForOneKey(t *testing.T) {
-	_, err := writeHistorySite(t, historyDoc(balancesFixture()...),
-		append(balancesSections(),
-			export.Section{Heading: "General Fund again", Kind: "fund_balance", FundGroup: "general"}))
-	if err == nil {
-		t.Fatal("two sections for one (kind, fund group) were accepted")
-	}
-	if !strings.Contains(err.Error(), "cannot land under both headings") {
-		t.Errorf("error %q does not name the contested key", err)
-	}
-}
-
-// TestTheHistoryViewRefusesADocumentShortASeries: a document whose counts
-// promise more series than it carries is refused.
-func TestTheHistoryViewRefusesADocumentShortASeries(t *testing.T) {
-	// Three series, so the dropped one empties no heading and only the count
-	// reconciliation can catch it.
-	raw := historyDoc(append(balancesFixture(),
-		historySeries{label: "Assigned", kind: "fund_balance", group: "general"})...)
-	var doc map[string]any
-	if err := json.Unmarshal(raw, &doc); err != nil {
-		t.Fatal(err)
-	}
-	series := doc["series"].([]any)
-	doc["series"] = series[:2]
-	short, err := json.Marshal(doc)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = writeHistorySite(t, short, balancesSections())
-	if err == nil {
-		t.Fatal("a document short a series was accepted; the page would render fewer " +
-			"rows than the document claims")
-	}
-	if !strings.Contains(err.Error(), "lost a figure") {
-		t.Errorf("error %q does not reconcile the counts", err)
-	}
-}
+// balancesDoc is the balances fixture as a history document.
+func balancesDoc(*testing.T) []byte { return historyDoc(balancesFixture()...) }
 
 // changesFixture is p168 in miniature: an open revenue block, and the single
 // excess row whose printed label is the tail of a three-line wrap.
@@ -255,35 +256,6 @@ func TestTheHistoryViewDisplaysADeclaredRowLabel(t *testing.T) {
 	}
 	if !strings.Contains(html, `<th scope="row">Sales taxes</th>`) {
 		t.Error("a row named with an empty display label lost its printed label")
-	}
-}
-
-// TestTheHistoryViewRefusesASeriesItsSectionDoesNotName: a second series at
-// the excess section's key is caught only by the section's Rows.
-func TestTheHistoryViewRefusesASeriesItsSectionDoesNotName(t *testing.T) {
-	series := append(changesFixture(),
-		historySeries{label: "Net change in fund balances", kind: "fund_balance", group: ""})
-	_, err := writeHistorySite(t, historyDoc(series...), changesSections())
-	if err == nil {
-		t.Fatal("a fund_balance series the section does not name was accepted; it would " +
-			"render under the excess heading silently")
-	}
-	if !strings.Contains(err.Error(), "do not name it") {
-		t.Errorf("error %q does not name the absorbed series", err)
-	}
-}
-
-// TestTheHistoryViewRefusesARowNameMatchingNoSeries: a Rows key matching no
-// series is an error.
-func TestTheHistoryViewRefusesARowNameMatchingNoSeries(t *testing.T) {
-	sections := changesSections()
-	sections[1].Rows["Net change in fund balances"] = ""
-	_, err := writeHistorySite(t, historyDoc(changesFixture()...), sections)
-	if err == nil {
-		t.Fatal("a row name matching no series was accepted")
-	}
-	if !strings.Contains(err.Error(), "names row") {
-		t.Errorf("error %q does not name the unmatched row declaration", err)
 	}
 }
 

@@ -46,9 +46,9 @@ func trendsDoc(pages ...int) []byte {
 		})
 	}
 	// The columns follow the points, so a fixture built with no pages is a
-	// document with no columns -- which is the state
-	// TestTheTableViewRefusesADocumentWithNoColumns is about, and it would
-	// assert nothing against a hard-coded list.
+	// document with no columns -- the state the first row of
+	// TestTheTableViewRefusesADocumentItCannotDrawWhole is about, and it
+	// would assert nothing against a hard-coded list.
 	columns := make([]map[string]any, 0, len(points))
 	for i := range points {
 		columns = append(columns, map[string]any{
@@ -741,25 +741,6 @@ func TestTheTableViewRendersWhatTheDocumentPublishes(t *testing.T) {
 	}
 }
 
-// TestTheTableViewRefusesADocumentWithNoColumns: an empty column list would
-// render a table with a Line and a Category and no figures at all, which
-// looks like a page rather than a defect.
-func TestTheTableViewRefusesADocumentWithNoColumns(t *testing.T) {
-	_, err := writeSite(export.Options{
-		Dir:         t.TempDir(),
-		Projections: map[string][]byte{"sankey": goldenSankey(t), "revenue-trends": trendsDoc()},
-		Views: []export.View{
-			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"},
-			{Path: "table.html", Nav: "Revenue table", Template: export.HistoryTemplate, Sections: tableSections, Projection: "revenue-trends"},
-		},
-		Docs:        budgetDocs(),
-		GeneratedBy: "fisc test",
-	})
-	if err == nil || !strings.Contains(err.Error(), "publishes no columns") {
-		t.Fatalf("Write = %v, want a refusal naming the missing columns", err)
-	}
-}
-
 // TestTheTableViewIsNotRefusedForLackingAHeadline is the seam decodeSankey's
 // split exists for: its two refusals -- no fiscal_year_label, no headline
 // expenditure -- are correct for a spine document and wrong for this one,
@@ -989,7 +970,7 @@ func TestTheMarkReachesTheRenderedPage(t *testing.T) {
 
 // writeTrends packages one trends document and returns whatever Write said.
 //
-// It exists so the refusal tests below differ only in the document they hand
+// It exists so the refusal rows below differ only in the document they hand
 // over, which is the whole of what each is about.
 func writeTrends(t *testing.T, raw []byte, pages ...int) error {
 	t.Helper()
@@ -1009,120 +990,80 @@ func writeTrends(t *testing.T, raw []byte, pages ...int) error {
 	return err
 }
 
-// TestADocumentThatLosesAFigureBetweenProjectionAndPageIsRefused: a point in
-// no published column is refused rather than dropped while the lede counts it.
-// Built by hand: internal/project filters points on the same columns.
-func TestADocumentThatLosesAFigureBetweenProjectionAndPageIsRefused(t *testing.T) {
-	// Two columns and two points, then the SECOND column removed -- leaving a
-	// point that belongs to no column the page will draw.
-	var doc map[string]any
-	if err := json.Unmarshal(trendsDoc(127, 128), &doc); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-	meta := doc["metadata"].(map[string]any)
-	cols := meta["columns"].([]any)
-	meta["columns"] = cols[:1]
-	raw, err := json.Marshal(doc)
-	if err != nil {
-		t.Fatalf("encode: %v", err)
-	}
-
-	err = writeTrends(t, raw, 127, 128)
-	if err == nil {
-		t.Fatal("Write accepted a document whose second point lands in no column, want a refusal")
-	}
-	// BOTH NUMBERS, because a refusal that says only "these disagree" leaves the
-	// reader to go and count.
-	for _, want := range []string{"counts.points 2", "carry 1"} {
-		if !strings.Contains(err.Error(), want) {
-			t.Errorf("Write error = %q, want it to name %q", err, want)
-		}
-	}
-}
-
-// TestALedeClaimingMoreFiguresThanTheTableShowsIsRefused: the lede prints
-// counts.facts, so facts 2 over one rendered cell is refused even though
-// counts.points reconciles. Unreachable through internal/project; built by hand.
-func TestALedeClaimingMoreFiguresThanTheTableShowsIsRefused(t *testing.T) {
-	var doc map[string]any
-	if err := json.Unmarshal(trendsDoc(127, 128), &doc); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-	series := doc["series"].([]any)[0].(map[string]any)
-	series["points"] = []any{series["points"].([]any)[1]}
-	// counts.points FOLLOWS the document, so the arm beside this one stays
-	// green and only the lede's number is left disagreeing. Without this line
-	// the test would pass for the wrong reason.
-	doc["metadata"].(map[string]any)["counts"].(map[string]any)["points"] = 1
-	raw, err := json.Marshal(doc)
-	if err != nil {
-		t.Fatalf("encode: %v", err)
-	}
-
-	err = writeTrends(t, raw, 127, 128)
-	if err == nil {
-		t.Fatal("Write accepted a lede claiming more figures than the table shows, want a refusal")
-	}
-	// BOTH NUMBERS, so the reader does not have to go and count.
-	for _, want := range []string{"counts.facts 2", "carry 1 cells"} {
-		if !strings.Contains(err.Error(), want) {
-			t.Errorf("Write error = %q, want it to name %q", err, want)
-		}
-	}
-}
-
-// TestTwoPointsInOneColumnAreRefused: two points in one column would keep the
-// last and drop the first with the counts still reconciling, so this has its
-// own refusal.
-func TestTwoPointsInOneColumnAreRefused(t *testing.T) {
-	var doc map[string]any
-	if err := json.Unmarshal(trendsDoc(127, 128), &doc); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-	series := doc["series"].([]any)[0].(map[string]any)
-	points := series["points"].([]any)
-	// Re-file the second point in the FIRST point's column, keeping the counts
-	// honest at two so this cannot pass through the counts arm instead.
-	second := points[1].(map[string]any)
-	first := points[0].(map[string]any)
-	second["fiscal_year"] = first["fiscal_year"]
-	second["basis"] = first["basis"]
-	raw, err := json.Marshal(doc)
-	if err != nil {
-		t.Fatalf("encode: %v", err)
-	}
-
-	err = writeTrends(t, raw, 127, 128)
-	if err == nil {
-		t.Fatal("Write accepted two points in one column, want a refusal")
-	}
-	if !strings.Contains(err.Error(), "two points publish") {
-		t.Errorf("Write error = %q, want it to name the collision", err)
-	}
-}
-
-// TestASeriesCountThatDisagreesWithTheSeriesIsRefused covers the other half of
-// the reconciliation. counts.series feeds the page's own "231 rows" line, so a
-// document that carries a different number of series prints a figure about
-// itself that is wrong.
-func TestASeriesCountThatDisagreesWithTheSeriesIsRefused(t *testing.T) {
-	var doc map[string]any
-	if err := json.Unmarshal(trendsDoc(127), &doc); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-	meta := doc["metadata"].(map[string]any)
-	meta["counts"].(map[string]any)["series"] = 2
-	raw, err := json.Marshal(doc)
-	if err != nil {
-		t.Fatalf("encode: %v", err)
-	}
-
-	err = writeTrends(t, raw, 127)
-	if err == nil {
-		t.Fatal("Write accepted counts.series 2 over one series, want a refusal")
-	}
-	if !strings.Contains(err.Error(), "counts.series 2 and carries 1") {
-		t.Errorf("Write error = %q, want it to name both counts", err)
+// TestTheTableViewRefusesADocumentItCannotDrawWhole: each row edits a trends
+// document of the listed pages' columns into one the table view would draw
+// short or wrong, and wants the refusal to name each of its strings.
+func TestTheTableViewRefusesADocumentItCannotDrawWhole(t *testing.T) {
+	for _, c := range []struct {
+		name  string
+		pages []int
+		edit  func(doc map[string]any)
+		want  []string
+	}{
+		// An empty column list would render a table with a Line and a
+		// Category and no figures at all, which looks like a page rather than
+		// a defect.
+		{name: "TheTableViewRefusesADocumentWithNoColumns", want: []string{"publishes no columns"}},
+		// A point in no published column is refused rather than dropped while
+		// the lede counts it: two columns and two points, then the SECOND
+		// column removed. Built by hand: internal/project filters points on
+		// the same columns. BOTH NUMBERS, because a refusal that says only
+		// "these disagree" leaves the reader to go and count.
+		{"ADocumentThatLosesAFigureBetweenProjectionAndPageIsRefused", []int{127, 128}, func(doc map[string]any) {
+			meta := doc["metadata"].(map[string]any)
+			meta["columns"] = meta["columns"].([]any)[:1]
+		}, []string{"counts.points 2", "carry 1"}},
+		// The lede prints counts.facts, so facts 2 over one rendered cell is
+		// refused even though counts.points reconciles. Unreachable through
+		// internal/project; built by hand. counts.points FOLLOWS the document,
+		// so the counts arm stays green and only the lede's number is left
+		// disagreeing; without that edit the row would pass for the wrong
+		// reason.
+		{"ALedeClaimingMoreFiguresThanTheTableShowsIsRefused", []int{127, 128}, func(doc map[string]any) {
+			series := doc["series"].([]any)[0].(map[string]any)
+			series["points"] = []any{series["points"].([]any)[1]}
+			doc["metadata"].(map[string]any)["counts"].(map[string]any)["points"] = 1
+		}, []string{"counts.facts 2", "carry 1 cells"}},
+		// Two points in one column would keep the last and drop the first with
+		// the counts still reconciling, so this has its own refusal. The second
+		// point is re-filed in the FIRST point's column, keeping the counts
+		// honest at two so this cannot pass through the counts arm instead.
+		{"TwoPointsInOneColumnAreRefused", []int{127, 128}, func(doc map[string]any) {
+			points := doc["series"].([]any)[0].(map[string]any)["points"].([]any)
+			second, first := points[1].(map[string]any), points[0].(map[string]any)
+			second["fiscal_year"] = first["fiscal_year"]
+			second["basis"] = first["basis"]
+		}, []string{"two points publish"}},
+		// The other half of the reconciliation. counts.series feeds the page's
+		// own "231 rows" line, so a document that carries a different number
+		// of series prints a figure about itself that is wrong.
+		{"ASeriesCountThatDisagreesWithTheSeriesIsRefused", []int{127}, func(doc map[string]any) {
+			doc["metadata"].(map[string]any)["counts"].(map[string]any)["series"] = 2
+		}, []string{"counts.series 2 and carries 1"}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			raw := trendsDoc(c.pages...)
+			if c.edit != nil {
+				var doc map[string]any
+				if err := json.Unmarshal(raw, &doc); err != nil {
+					t.Fatalf("decode: %v", err)
+				}
+				c.edit(doc)
+				var err error
+				if raw, err = json.Marshal(doc); err != nil {
+					t.Fatalf("encode: %v", err)
+				}
+			}
+			err := writeTrends(t, raw, c.pages...)
+			if err == nil {
+				t.Fatal("Write accepted the document, want a refusal")
+			}
+			for _, want := range c.want {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("Write error = %q, want it to name %q", err, want)
+				}
+			}
+		})
 	}
 }
 
@@ -1401,37 +1342,37 @@ func TestACallersOwnTitleSurvivesEveryYear(t *testing.T) {
 	}
 }
 
-// TestAYearStemOnAnotherScopeIsRefused: the lede's scope is not repainted,
-// so years disagreeing on scope are refused.
-func TestAYearStemOnAnotherScopeIsRefused(t *testing.T) {
-	_, err := twoYearSankey(t, export.View{}, func(meta map[string]any) {
-		meta["scopes"] = []string{"revenue-by-fund"}
-	})
-	if err == nil {
-		t.Fatal("a year stem on another scope was exported; the page would state " +
-			"the opening year's scope under every year")
-	}
-	for _, want := range []string{"sankey-2027", "revenue-by-fund", "all-funds-gross"} {
-		if !strings.Contains(err.Error(), want) {
-			t.Errorf("the refusal does not name %q: %v", want, err)
-		}
-	}
-}
-
-// TestAYearStemBuiltByAnotherProjectionIsRefused: a view's years that
-// disagree about the tool that built them are refused rather than drawn as one
-// view, because the documents disagree about their own provenance.
-func TestAYearStemBuiltByAnotherProjectionIsRefused(t *testing.T) {
-	_, err := twoYearSankey(t, export.View{}, func(meta map[string]any) {
-		meta["generated_by"] = "fisc some-other-build"
-	})
-	if err == nil {
-		t.Fatal("a year stem built by another projection was exported as one view")
-	}
-	for _, want := range []string{"sankey-2027", "fisc some-other-build"} {
-		if !strings.Contains(err.Error(), want) {
-			t.Errorf("the refusal does not name %q: %v", want, err)
-		}
+// TestAYearStemThatDisagreesIsRefused: a view's years are drawn as one view,
+// so a second year whose metadata disagrees with the first is refused, the
+// refusal naming the stem and both sides it can.
+func TestAYearStemThatDisagreesIsRefused(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		edit func(meta map[string]any)
+		want []string
+	}{
+		// The lede's scope is not repainted, so the page would state the
+		// opening year's scope under every year.
+		{"AYearStemOnAnotherScopeIsRefused", func(meta map[string]any) {
+			meta["scopes"] = []string{"revenue-by-fund"}
+		}, []string{"sankey-2027", "revenue-by-fund", "all-funds-gross"}},
+		// Years disagreeing about the tool that built them disagree about
+		// their own provenance.
+		{"AYearStemBuiltByAnotherProjectionIsRefused", func(meta map[string]any) {
+			meta["generated_by"] = "fisc some-other-build"
+		}, []string{"sankey-2027", "fisc some-other-build"}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			_, err := twoYearSankey(t, export.View{}, c.edit)
+			if err == nil {
+				t.Fatal("the disagreeing year stem was exported as one view")
+			}
+			for _, want := range c.want {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("the refusal does not name %q: %v", want, err)
+				}
+			}
+		})
 	}
 }
 
@@ -1873,62 +1814,42 @@ func TestRecordsBaseStaysSiteRelativeUnderSourceBrowseURL(t *testing.T) {
 	}
 }
 
-// TestWriteRefusesARecordsBaseTheEntriesContradict catches a caller filling
-// RecordsBase from a different source than PageIndex, whose only symptom is
-// the chart's records links 404ing.
-func TestWriteRefusesARecordsBaseTheEntriesContradict(t *testing.T) {
-	_, err := provenanceSite(t, func(o *export.Options) {
-		o.RecordsBase = map[string]string{budgetDocID: "facts/somewhere-else/pages/"}
-	})
-	if err == nil {
-		t.Fatal("Write accepted a records base that no page index entry is under")
-	}
-	if !strings.Contains(err.Error(), "has its records in") {
-		t.Errorf("got %v, want the base-contradicts-entry refusal", err)
-	}
-}
-
-// TestWriteRefusesARecordsBaseWithNoTrailingSeparator: "facts/d/pages" is a
-// string prefix of its entries, but the client would compose
-// "facts/d/pagesp0066.jsonl" -- path.Join drops the separator.
-func TestWriteRefusesARecordsBaseWithNoTrailingSeparator(t *testing.T) {
-	_, err := provenanceSite(t, func(o *export.Options) {
-		o.RecordsBase = map[string]string{budgetDocID: "facts/d/pages"}
-	})
-	if err == nil {
-		t.Fatal("Write accepted a records base the client cannot append a filename to")
-	}
-	if !strings.Contains(err.Error(), "has its records in") {
-		t.Errorf("got %v, want the wrong-directory refusal", err)
-	}
-}
-
-// TestWriteRefusesAnAncestorRecordsBase: "facts/" is a prefix ending in a
-// separator, but the client would compose "facts/p0066.jsonl"; the base must
-// be the entry's directory.
-func TestWriteRefusesAnAncestorRecordsBase(t *testing.T) {
-	_, err := provenanceSite(t, func(o *export.Options) {
-		o.RecordsBase = map[string]string{budgetDocID: "facts/"}
-	})
-	if err == nil {
-		t.Fatal("Write accepted a records base that is an ancestor of where the shards are")
-	}
-	if !strings.Contains(err.Error(), "has its records in") {
-		t.Errorf("got %v, want the wrong-directory refusal", err)
-	}
-}
-
-// TestWriteRefusesARecordsBaseForADocumentItPublishesNothingOf is the other
-// direction: a base the client would build links from and nothing would answer.
-func TestWriteRefusesARecordsBaseForADocumentItPublishesNothingOf(t *testing.T) {
-	_, err := provenanceSite(t, func(o *export.Options) {
-		o.RecordsBase["acfr-fy2024"] = "facts/acfr-fy2024/pages/"
-	})
-	if err == nil {
-		t.Fatal("Write accepted a records base for a document with no page index entry")
-	}
-	if !strings.Contains(err.Error(), "which no page index entry does") {
-		t.Errorf("got %v, want the unknown-document refusal", err)
+// TestWriteRefusesABadRecordsBase: a records base the page index entries do
+// not bear out is refused, since the client composes the chart's records
+// links from it and its only symptom would be those links 404ing.
+func TestWriteRefusesABadRecordsBase(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		edit func(*export.Options)
+		want string
+	}{
+		// A caller filling RecordsBase from a different source than PageIndex.
+		{"WriteRefusesARecordsBaseTheEntriesContradict", func(o *export.Options) {
+			o.RecordsBase = map[string]string{budgetDocID: "facts/somewhere-else/pages/"}
+		}, "has its records in"},
+		// "facts/d/pages" is a string prefix of its entries, but the client
+		// would compose "facts/d/pagesp0066.jsonl" -- path.Join drops the
+		// separator.
+		{"WriteRefusesARecordsBaseWithNoTrailingSeparator", func(o *export.Options) {
+			o.RecordsBase = map[string]string{budgetDocID: "facts/d/pages"}
+		}, "has its records in"},
+		// "facts/" is a prefix ending in a separator, but the client would
+		// compose "facts/p0066.jsonl"; the base must be the entry's directory.
+		{"WriteRefusesAnAncestorRecordsBase", func(o *export.Options) {
+			o.RecordsBase = map[string]string{budgetDocID: "facts/"}
+		}, "has its records in"},
+		// The other direction: a base the client would build links from and
+		// nothing would answer.
+		{"WriteRefusesARecordsBaseForADocumentItPublishesNothingOf", func(o *export.Options) {
+			o.RecordsBase["acfr-fy2024"] = "facts/acfr-fy2024/pages/"
+		}, "which no page index entry does"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			_, err := provenanceSite(t, c.edit)
+			if err == nil || !strings.Contains(err.Error(), c.want) {
+				t.Errorf("got %v, want a refusal naming %q", err, c.want)
+			}
+		})
 	}
 }
 
