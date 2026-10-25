@@ -117,38 +117,47 @@ var packagedBy = regexp.MustCompile(`Packaged by [^<\n]*`)
 
 const configOpen, configClose = "window.FISC_CONFIG = ", ";</script>"
 
-// splitPage cuts a page into its markup either side of FISC_CONFIG and the
-// config itself.
-func splitPage(page []byte) (markup []byte, config []byte, err error) {
-	before, rest, ok := bytes.Cut(page, []byte(configOpen))
+// pageConfig is where a page carries its config, and the schema the config
+// answers to.
+type pageConfig struct{ open, close, schema string }
+
+var (
+	flowsConfig      = pageConfig{configOpen, configClose, schema.Page}
+	departmentConfig = pageConfig{`<script type="application/json" id="department-config">`, "</script>", schema.Department}
+)
+
+// split cuts a page into its markup either side of its config, build stamps
+// blanked, and the config itself.
+func (c pageConfig) split(page []byte) (markup []byte, config []byte, err error) {
+	before, rest, ok := bytes.Cut(page, []byte(c.open))
 	if !ok {
-		return nil, nil, fmt.Errorf("carries no %q", configOpen)
+		return nil, nil, fmt.Errorf("carries no %q", c.open)
 	}
-	body, after, ok := bytes.Cut(rest, []byte(configClose))
+	body, after, ok := bytes.Cut(rest, []byte(c.close))
 	if !ok {
-		return nil, nil, fmt.Errorf("never closes FISC_CONFIG")
+		return nil, nil, fmt.Errorf("never closes %q", c.open)
 	}
-	markup = slices.Concat(before, []byte(configOpen+"…"+configClose), after)
+	markup = slices.Concat(before, []byte(c.open+"…"+c.close), after)
 	return packagedBy.ReplaceAll(markup, []byte("Packaged by")), body, nil
 }
 
-// pageFixtureFaults is every way fixture fails to be the page served is: the
-// same markup and the same decoded config, build stamps aside. The config is
-// compared whole because the markup renders its figures -- the hero, the
-// caveats, the page links -- so a config free to differ would describe a page
-// its own markup contradicts.
-func pageFixtureFaults(served, fixture []byte) []string {
+// faults is every way fixture fails to be the page served is: the same
+// markup and the same decoded config, build stamps aside, and a config its
+// schema accepts. The config is compared whole because the markup renders its
+// figures -- the hero, the caveats, the page links -- so a config free to
+// differ would describe a page its own markup contradicts.
+func (c pageConfig) faults(served, fixture []byte) []string {
 	var faults []string
-	sMarkup, sBody, err := splitPage(served)
+	sMarkup, sBody, err := c.split(served)
 	if err != nil {
 		return []string{"the served page " + err.Error()}
 	}
-	fMarkup, fBody, err := splitPage(fixture)
+	fMarkup, fBody, err := c.split(fixture)
 	if err != nil {
 		return []string{"the fixture " + err.Error()}
 	}
 	if !bytes.Equal(sMarkup, fMarkup) {
-		faults = append(faults, "the markup outside FISC_CONFIG is not the template's:\n"+
+		faults = append(faults, "the markup outside the config is not the template's:\n"+
 			cmp.Diff(strings.Split(string(sMarkup), "\n"), strings.Split(string(fMarkup), "\n")))
 	}
 	var sCfg, fCfg map[string]any
@@ -158,8 +167,8 @@ func pageFixtureFaults(served, fixture []byte) []string {
 	if err := json.Unmarshal(fBody, &fCfg); err != nil {
 		return append(faults, "the fixture's config does not decode: "+err.Error())
 	}
-	if err := schema.Validate(schema.Page, fCfg); err != nil {
-		faults = append(faults, "the fixture's config does not match "+schema.Page+": "+err.Error())
+	if err := schema.Validate(c.schema, fCfg); err != nil {
+		faults = append(faults, "the fixture's config does not match "+c.schema+": "+err.Error())
 	}
 	delete(sCfg, "exported_by")
 	delete(fCfg, "exported_by")
@@ -167,6 +176,94 @@ func pageFixtureFaults(served, fixture []byte) []string {
 		faults = append(faults, "the fixture's config is not the one Go writes (-go +fixture):\n"+diff)
 	}
 	return faults
+}
+
+// leaveCopies has a failing t leave each served file under dir (keyed to its
+// testdata/ name) in bin/client-fixtures, and print the cp -f that takes it.
+func leaveCopies(t *testing.T, dir string, files map[string]string) {
+	t.Helper()
+	out := filepath.Join(repoRootForTest(t), "bin", "client-fixtures")
+	t.Cleanup(func() {
+		if !t.Failed() {
+			return
+		}
+		if err := os.MkdirAll(out, 0o750); err != nil {
+			t.Error(err)
+			return
+		}
+		var copies []string
+		for _, served := range slices.Sorted(maps.Keys(files)) {
+			b, err := os.ReadFile(filepath.Join(dir, served)) // #nosec G304 -- the temp site the test wrote.
+			if err == nil {
+				err = os.WriteFile(filepath.Join(out, files[served]), b, 0o600)
+			}
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			copies = append(copies, "cp -f "+filepath.Join(out, files[served])+" testdata/"+files[served])
+		}
+		t.Logf("the export's files are in %s -- regenerate with\n  %s\nand read the diff before committing it",
+			out, strings.Join(copies, "\n  "))
+	})
+}
+
+// holdGolden holds testdata/<golden> to the page Go writes at served under
+// dir, byte for byte but the build stamp.
+func holdGolden(t *testing.T, dir, served, golden string) {
+	t.Helper()
+	leaveCopies(t, dir, map[string]string{served: golden})
+	page := []byte(readFile(t, dir, served))
+	fixture, err := os.ReadFile(filepath.Join(repoRootForTest(t), "testdata", golden)) // #nosec G304 -- testdata/.
+	if err != nil {
+		t.Fatalf("read the fixture: %v", err)
+	}
+	page, fixture = packagedBy.ReplaceAll(page, nil), packagedBy.ReplaceAll(fixture, nil)
+	if !bytes.Equal(page, fixture) {
+		t.Errorf("testdata/%s is not the page Go writes (-go +fixture):\n%s", golden,
+			cmp.Diff(strings.Split(string(page), "\n"), strings.Split(string(fixture), "\n")))
+	}
+}
+
+// TestTheGlanceFixtureIsWhatGoWrites holds testdata/index.golden.html, which
+// site/glance.test.mjs runs the client over, to the glance page Go writes at
+// index.html over clientSubset. clientSubset keeps every fund group with a
+// figure in a budget year whole, so the fixture's rows are every cell the
+// site shows, and its wholes the spine's own figures.
+func TestTheGlanceFixtureIsWhatGoWrites(t *testing.T) {
+	holdGolden(t, clientExport(t), "index.html", "index.golden.html")
+}
+
+// TestTheCapitalFixtureIsWhatGoWrites holds testdata/capital.golden.html,
+// which site/capital.test.mjs runs the client over, to the capital page Go
+// writes over clientSubset. clientSubset keeps cip-project-listing whole, so
+// the fixture is every project the site shows.
+func TestTheCapitalFixtureIsWhatGoWrites(t *testing.T) {
+	holdGolden(t, clientExport(t), "capital.html", "capital.golden.html")
+}
+
+// TestTheChangeFixtureIsWhatGoWrites holds testdata/change.golden.html, which
+// site/change.test.mjs runs the client over, to the change page Go writes
+// over clientSubset. clientSubset drops funds from the revenue-by-fund scope,
+// so the budget figure's rows are the subset's and the audited figures',
+// which drop nothing, are the site's.
+func TestTheChangeFixtureIsWhatGoWrites(t *testing.T) {
+	holdGolden(t, clientExport(t), "change.html", "change.golden.html")
+}
+
+// TestTheSidesFixtureIsWhatGoWrites holds testdata/ledger.golden.html, which
+// site/sides.test.mjs runs the form module over, to the page Go writes over
+// clientSubset. The page carries no figure: it fetches the pinned columns, so
+// the fixture pins the config and the markup the client fills.
+func TestTheSidesFixtureIsWhatGoWrites(t *testing.T) {
+	holdGolden(t, clientExport(t), "ledger.html", "ledger.golden.html")
+}
+
+// TestTheCaveatsFixtureIsWhatGoWrites holds testdata/caveats.golden.html,
+// which site/theme.test.mjs opens fragments on, to the page Go writes over
+// clientSubset.
+func TestTheCaveatsFixtureIsWhatGoWrites(t *testing.T) {
+	holdGolden(t, clientExport(t), "caveats.html", "caveats.golden.html")
 }
 
 // columnFixtureFaults is every way one column fixture fails to be served, the
@@ -408,7 +505,7 @@ func storeByID(t *testing.T) map[string]fact.Fact {
 // pageStamp is the exported_by a page's config carries.
 func pageStamp(t *testing.T, page []byte) string {
 	t.Helper()
-	_, body, err := splitPage(page)
+	_, body, err := flowsConfig.split(page)
 	if err != nil {
 		t.Fatalf("page %v", err)
 	}
@@ -424,7 +521,7 @@ func pageStamp(t *testing.T, page []byte) string {
 // pageColumns is the column stems a page's years fetch.
 func pageColumns(t *testing.T, page []byte) []string {
 	t.Helper()
-	_, body, err := splitPage(page)
+	_, body, err := flowsConfig.split(page)
 	if err != nil {
 		t.Fatalf("page %v", err)
 	}
@@ -451,34 +548,11 @@ func TestTheClientFixturesHoldWhatTheClientReads(t *testing.T) {
 	root := repoRootForTest(t)
 	// On any failure, a missing or unreadable fixture included, the export's
 	// files are left where a cp -f takes them.
-	t.Cleanup(func() {
-		if !t.Failed() {
-			return
-		}
-		out := filepath.Join(root, "bin", "client-fixtures")
-		if err := os.MkdirAll(out, 0o750); err != nil {
-			t.Error(err)
-			return
-		}
-		files := map[string]string{"flows.html": "flows.golden.html"}
-		for _, stem := range clientFixtureColumns {
-			files[stem+".json"] = stem + ".column.json"
-		}
-		var copies []string
-		for _, served := range slices.Sorted(maps.Keys(files)) {
-			b, err := os.ReadFile(filepath.Join(dir, served)) // #nosec G304 -- the temp site this test wrote.
-			if err == nil {
-				err = os.WriteFile(filepath.Join(out, files[served]), b, 0o600)
-			}
-			if err != nil {
-				t.Error(err)
-				return
-			}
-			copies = append(copies, "cp -f "+filepath.Join(out, files[served])+" testdata/"+files[served])
-		}
-		t.Logf("the export's files are in %s -- regenerate with\n  %s\nand read the diff before committing it",
-			out, strings.Join(copies, "\n  "))
-	})
+	files := map[string]string{"flows.html": "flows.golden.html"}
+	for _, stem := range clientFixtureColumns {
+		files[stem+".json"] = stem + ".column.json"
+	}
+	leaveCopies(t, dir, files)
 	read := func(path string) []byte {
 		t.Helper()
 		b, err := os.ReadFile(path) // #nosec G304 -- the temp site and testdata/.
@@ -489,7 +563,7 @@ func TestTheClientFixturesHoldWhatTheClientReads(t *testing.T) {
 	}
 	servedPage := read(filepath.Join(dir, "flows.html"))
 	fixturePage := read(filepath.Join(root, "testdata", "flows.golden.html"))
-	faults := pageFixtureFaults(servedPage, fixturePage)
+	faults := flowsConfig.faults(servedPage, fixturePage)
 
 	if got := pageColumns(t, fixturePage); !slices.Equal(got, clientFixtureColumns) {
 		faults = append(faults, fmt.Sprintf("the page fixture's years fetch %v and testdata/ carries %v", got, clientFixtureColumns))
@@ -520,7 +594,7 @@ func TestTheClientFixtureChecksCanFail(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if faults := pageFixtureFaults(servedPage, fixturePage); len(faults) != 0 {
+	if faults := flowsConfig.faults(servedPage, fixturePage); len(faults) != 0 {
 		t.Fatalf("the unbroken page fixture is refused, so no row below means anything: %v", faults)
 	}
 	reconfigured := func(t *testing.T, edit func(cfg map[string]any)) []byte {
@@ -559,7 +633,7 @@ func TestTheClientFixtureChecksCanFail(t *testing.T) {
 		name, want string
 		page       func(t *testing.T) []byte
 	}{
-		{"one byte of markup", "markup outside FISC_CONFIG", func(*testing.T) []byte {
+		{"one byte of markup", "markup outside the config", func(*testing.T) []byte {
 			return bytes.Replace(fixturePage, []byte(`id="year-select"`), []byte(`id="year-selec"`), 1)
 		}},
 		{"a wording key dropped", "not the one Go writes", func(t *testing.T) []byte {
@@ -596,7 +670,7 @@ func TestTheClientFixtureChecksCanFail(t *testing.T) {
 		}},
 	} {
 		t.Run("page/"+c.name, func(t *testing.T) {
-			faults := strings.Join(pageFixtureFaults(servedPage, c.page(t)), "\n")
+			faults := strings.Join(flowsConfig.faults(servedPage, c.page(t)), "\n")
 			if !strings.Contains(faults, c.want) {
 				t.Errorf("not refused for %q; faults:\n%s", c.want, faults)
 			}
@@ -792,7 +866,7 @@ func TestTheClientSubsetServesThePageConfigTheStoreDoes(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, body, err := splitPage(page)
+		_, body, err := flowsConfig.split(page)
 		if err != nil {
 			t.Fatalf("page %v", err)
 		}

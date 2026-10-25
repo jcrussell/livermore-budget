@@ -1,7 +1,6 @@
 package export
 
 import (
-	"path/filepath"
 	"slices"
 	"testing"
 
@@ -20,10 +19,7 @@ import (
 // its scope's document still draws, is red here. It names the documents that
 // draw a declared residue.
 func TestEveryPublishedDocumentSelectsExactlyItsCutsFootprint(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
-	if err != nil {
-		t.Fatalf("resolve repo root: %v", err)
-	}
+	root := repoRootForTest(t)
 	_, facts, err := readFactStore(root)
 	if err != nil {
 		t.Fatalf("read the fact store: %v", err)

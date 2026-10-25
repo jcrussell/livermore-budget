@@ -66,7 +66,7 @@ func servedProse(dir string) (prose []servedText, kinds map[string]int, err erro
 		}
 		switch filepath.Ext(path) {
 		case ".html":
-			markup, config, cerr := splitPage(raw)
+			markup, config, cerr := flowsConfig.split(raw)
 			if cerr != nil {
 				markup, config = raw, nil
 			}

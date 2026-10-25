@@ -1,7 +1,6 @@
 package export
 
 import (
-	"path/filepath"
 	"testing"
 
 	"github.com/jcrussell/livermore-budget/internal/export"
@@ -17,10 +16,7 @@ import (
 // metadata names and be found there under its projection's name, and a series
 // document must fold into none.
 func TestEveryPublishedStemRoundTripsToItsSchedule(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
-	if err != nil {
-		t.Fatalf("resolve repo root: %v", err)
-	}
+	root := repoRootForTest(t)
 	built, err := buildProjections(root)
 	if err != nil {
 		t.Fatalf("buildProjections: %v", err)

@@ -20,10 +20,7 @@ import (
 // committedStore reads the real facts/facts.jsonl, both ways.
 func committedStore(t *testing.T) ([]byte, []fact.Fact) {
 	t.Helper()
-	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
-	if err != nil {
-		t.Fatalf("resolve repo root: %v", err)
-	}
+	root := repoRootForTest(t)
 	raw, facts, err := readFactStore(root)
 	if err != nil {
 		t.Fatalf("read the fact store: %v", err)
@@ -501,10 +498,7 @@ func TestTheFactIndexEnumeratesEveryShardAndIsNotOnTheResolutionPath(t *testing.
 // side. The empty-store guard below is the half that can fail: without it this
 // test passes on a store with no pages at all.
 func TestEveryShardedPageHasItsExtractedText(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
-	if err != nil {
-		t.Fatalf("resolve repo root: %v", err)
-	}
+	root := repoRootForTest(t)
 	raw, facts := committedStore(t)
 	assets, err := buildFactAssets(raw, facts, "fisc test")
 	if err != nil {
@@ -544,10 +538,7 @@ func TestEveryShardedPageHasItsExtractedText(t *testing.T) {
 // would have stayed green. This closes that for the store specifically: every
 // key under facts/ is either a row of the page index or an offered download.
 func TestTheSiteLinksEveryShardItShips(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
-	if err != nil {
-		t.Fatalf("resolve repo root: %v", err)
-	}
+	root := repoRootForTest(t)
 	built, err := buildAll(root)
 	if err != nil {
 		t.Fatalf("buildAll: %v", err)
@@ -588,10 +579,7 @@ func TestTheSiteLinksEveryShardItShips(t *testing.T) {
 // the real view set, which TestViewsOpensOnTheSpineAndGivesYearsToItsCharts
 // deliberately does not (it passes a Result with no page index).
 func TestTheProvenanceViewIsPublishedWhenThereIsAStore(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
-	if err != nil {
-		t.Fatalf("resolve repo root: %v", err)
-	}
+	root := repoRootForTest(t)
 	built, err := buildAll(root)
 	if err != nil {
 		t.Fatalf("buildAll: %v", err)
@@ -638,10 +626,7 @@ func TestTheProvenanceViewIsPublishedWhenThereIsAStore(t *testing.T) {
 // every path facts/index.json names is a file the site actually wrote. It runs
 // over both modes because the defect existed in exactly one of them.
 func TestTheIndexNamesOnlyFilesTheSiteWrites(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
-	if err != nil {
-		t.Fatalf("resolve repo root: %v", err)
-	}
+	root := repoRootForTest(t)
 	for _, browse := range []string{"", "https://example.invalid/blob/main"} {
 		name := "shipping the page text"
 		if browse != "" {
@@ -720,10 +705,7 @@ func TestTheIndexNamesOnlyFilesTheSiteWrites(t *testing.T) {
 // driven through the page-text arm because that is the one that got left
 // behind. export.Prepare resolves everything; only I/O can fail after it.
 func TestCleanDoesNotDestroyASiteOverAFaultItCouldHaveSeen(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
-	if err != nil {
-		t.Fatalf("resolve repo root: %v", err)
-	}
+	root := repoRootForTest(t)
 	dir := filepath.Join(t.TempDir(), "dist")
 	opts := func() *Options {
 		io, _, _, _ := iostreams.Test()
@@ -791,10 +773,7 @@ const budgetDocIDForTest = "livermore-budget-fy2026-2027"
 // draws, and only the records links vanish. This is where that is caught, over
 // what fisc export actually ships.
 func TestEveryShippedDocumentCanResolveItsRecords(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
-	if err != nil {
-		t.Fatalf("resolve repo root: %v", err)
-	}
+	root := repoRootForTest(t)
 	built, err := buildAll(root)
 	if err != nil {
 		t.Fatalf("buildAll: %v", err)
@@ -822,10 +801,7 @@ func TestEveryShippedDocumentCanResolveItsRecords(t *testing.T) {
 // page actually published -- otherwise "the rule is spelled once" would be a
 // comment rather than a property.
 func TestTheRecordsBaseComposesBackToTheShardPath(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
-	if err != nil {
-		t.Fatalf("resolve repo root: %v", err)
-	}
+	root := repoRootForTest(t)
 	built, err := buildAll(root)
 	if err != nil {
 		t.Fatalf("buildAll: %v", err)
