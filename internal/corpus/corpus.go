@@ -34,8 +34,7 @@ const SchemaVersion = 2
 const ManifestFile = "manifest.json"
 
 // The extraction toolchain, pinned: the versions that produced the committed
-// artifacts under data/extracted/. A Go constant, not a parse of the prose in
-// requirements.txt.
+// artifacts under data/extracted/.
 //
 // These are NOT gated in [Open] as SchemaVersion is: SchemaVersion is a read
 // contract, while an extraction from another toolchain is still readable and
