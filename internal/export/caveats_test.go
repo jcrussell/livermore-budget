@@ -200,7 +200,7 @@ func TestADataFilesCaveatIsStatedOnNoPageAndACheckIsNoLimit(t *testing.T) {
 		t.Fatalf("render caveats.html: %v", err)
 	}
 	_, k, _ := strings.Cut(string(html), `id="caveat-k"`)
-	k, _, _ = strings.Cut(k, "</article>")
+	k, _, _ = strings.Cut(k, "</details>")
 	if !strings.Contains(k, "Checked for") || strings.Contains(k, "Stated on") {
 		t.Errorf("caveats.html's entry for the checked k does not say which page it was checked for: %s", k)
 	}
