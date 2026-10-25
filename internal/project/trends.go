@@ -22,30 +22,11 @@ const TrendsScope = structure.ScopeRevenueByFund
 const TrendsProjection = "revenue-trends"
 
 // TrendsColumns is the four columns pp.127-140 print, which is what the site
-// publishes this document over.
-//
-// IT IS STATED AND NOT DERIVED, and the difference is the whole reason it
-// exists. [Trends.Slices] reads its columns off the fact store, exhaustively --
-// so the document and the corpus agree by construction, and a corpus that lost
-// FY2023-24 entirely would build a three-column document that every check passes
-// over. trend-series-are-complete compares each series against the columns its
-// document was BUILT over, so all 231 series would be complete over three and
-// the check goes green while counts.facts falls from 924 to 693.
-//
-// This list is the declared floor that closes that hole from the publishing
-// side: it says what the SITE PROMISES, which a corpus cannot contradict without
-// something going red. It is not a claim about what the corpus holds, which no
-// page states; it is the same species of declaration as [PublishedFiscalYears].
-//
-// The bases are the ones the schedule prints and are NOT one measurement: an
-// actual, a mid-year re-forecast, and two years of one adopted two-year budget.
-// docs/revenue-trends-contract.md carries the table. FY2024 here is the Budget
-// Book's own restatement, never [vocab.BasisAudited], which is a different
-// basis and is fisc-4ua.4's business.
-//
-// A fifth mapped column is a change to what the site publishes, so it belongs
-// here, in a commit that says so. TestPublishedDocumentsAreWhatTheCorpusBuilds
-// is what refuses to let one arrive silently.
+// publishes this document over. Stated, not derived: [Trends.Slices] reads its
+// columns off the facts, so this is the floor a corpus that lost a column
+// cannot pass. FY2024 is the Budget Book's actual, never [vocab.BasisAudited]
+// (fisc-4ua.4). TestPublishedDocumentsAreWhatTheCorpusBuilds refuses a fifth
+// column arriving silently.
 func TrendsColumns() []Column {
 	return []Column{
 		{FiscalYear: 2024, Basis: vocab.BasisActual},
@@ -56,12 +37,7 @@ func TrendsColumns() []Column {
 }
 
 // Trends is the four printed columns of pp.127-140 as one series per printed
-// row.
-//
-// It is the first document this project publishes that is NOT a graph: it has
-// no nodes and no links, so nothing in internal/check's graph checks reads it,
-// and it is not defective for that. The contract is
-// docs/revenue-trends-contract.md.
+// row: not a graph. The contract is docs/revenue-trends-contract.md.
 type Trends struct {
 	// Labels resolves the fund name and the category label the document
 	// publishes. Nil is allowed and means both fall back, so a build never
@@ -99,13 +75,8 @@ type TrendsDocument struct {
 	Series        []Series       `json:"series"`
 }
 
-// trendsMetadata is this document's metadata block.
-//
-// It embeds [Envelope] and carries NONE of the spine's fiscal_year,
-// fiscal_year_label, basis or headline. Those are singular or spine-specific
-// and this document is of four columns and three bases; publishing them zeroed
-// to keep a familiar shape would be exactly the absent-is-not-zero error this
-// project refuses everywhere else.
+// trendsMetadata is this document's metadata block. It carries none of the
+// spine's singular keys, which zeroed would be absent read as zero.
 type trendsMetadata struct {
 	Envelope
 	// Columns are the printed columns, in the order the schedule prints them.
@@ -115,23 +86,9 @@ type trendsMetadata struct {
 	Caveats []Caveat      `json:"caveats"`
 }
 
-// trendCounts is how much of the corpus this document accounts for.
-//
-// THERE IS NO facts_cited HERE, and its absence is the considered answer rather
-// than an omission. [Counts] publishes one because on the spine it is genuinely
-// smaller than facts -- a zero-valued cell earns no link and a stock row earns
-// none either -- so the gap is a quantity a check can assert. In this document
-// every fact in the slice becomes a point: no netting, nothing dropped for being
-// zero, no stocks. A facts_cited here would be a third name for a number already
-// published twice, which is the "never name a key for a concept the code does
-// not compute" rule failing from the other direction.
-//
-// WHAT facts AND points BEING EQUAL IS WORTH is that they are computed
-// independently -- facts off the selection, points off the series actually
-// built -- so a document that dropped a series publishes points below facts. The
-// same divergence is caught directly, and with the row named, by
-// trend-points-tie-to-facts; this is the form of it a reader can see in the file
-// without running anything.
+// trendCounts is how much of the corpus this document accounts for. No
+// facts_cited: every fact becomes a point. facts and points are computed
+// independently, off the selection and off the built series.
 type trendCounts struct {
 	Facts  int `json:"facts"`
 	Series int `json:"series"`
@@ -145,17 +102,8 @@ type trendColumn struct {
 	FiscalYearLabel string `json:"fiscal_year_label"`
 	Basis           string `json:"basis"`
 	// ComparableGroup names the columns this one may be compared with
-	// arithmetically. Two columns are comparable when they were produced by the
-	// same process, so it is COMPUTED FROM THE BASIS and today equals it: the
-	// two adopted years share a group and the actual and revised columns each
-	// stand alone.
-	//
-	// It is a separate key from Basis because it is a separate claim -- basis
-	// says how a figure was produced, this says what it may be set beside -- and
-	// because it is what a consumer enforces on. The document publishes no
-	// growth or CAGR of its own (see the contract), so this is the only thing
-	// standing between a reader and a percentage across an actual and an
-	// intention.
+	// arithmetically. Computed from the basis, and a separate key because it is
+	// a separate claim, the one a consumer enforces on.
 	ComparableGroup string `json:"comparable_group"`
 }
 
@@ -164,42 +112,25 @@ type Series struct {
 	SeriesID string `json:"series_id"`
 	// Label is the row's printed label, the city's own words.
 	Label string `json:"label"`
-	// Fund and FundName identify which fund's section the row sits in. They are
-	// published because Label is NOT unique across funds: "Property Taxes" is
-	// printed by four of them and "Use of Money & Prop" by thirty-eight, so a
-	// series named by its row alone is ambiguous on sight.
-	//
-	// Fund is null where the row sits under no numbered fund: the ACFR's
-	// fund-balance schedules print a fund's components and an aggregate across
-	// funds, never a fund. It is fact.Fact.Fund carried through, for that
-	// field's reason -- 0 would be a fund, and no fund is numbered 0.
+	// Fund and FundName identify which fund's section the row sits in, since
+	// Label is not unique across funds. Fund is null where the row sits under
+	// no numbered fund, as fact.Fact.Fund.
 	Fund      *int   `json:"fund"`
 	FundName  string `json:"fund_name"`
 	FundGroup string `json:"fund_group"`
 	Kind      string `json:"kind"`
 	Category  string `json:"category"`
-	// CategoryLabel is the taxonomy's words for Category, published rather than
-	// looked up client-side so the site does not have to ship data/taxonomy.yaml
-	// beside the document to render a legend.
+	// CategoryLabel is the taxonomy's words for Category.
 	CategoryLabel string  `json:"category_label"`
 	Points        []Point `json:"points"`
 }
 
-// Point is one printed cell: one fact, cited in full.
-//
-// EVERY POINT CARRIES ITS OWN PROVENANCE rather than deferring to the series.
-// It is what lets a single figure be cited on its own, and it is what makes the
-// comparability problem visible in the data instead of only in prose -- a point
-// knows which basis it was produced on without its reader consulting a column
-// header.
+// Point is one printed cell: one fact, cited in full, its basis included.
 type Point struct {
 	FiscalYear int    `json:"fiscal_year"`
 	Basis      string `json:"basis"`
-	// AmountCents is SIGNED. The eight contra rows this schedule prints -- the
-	// General Fund's ERAF and RPTTF Reduction, printed in parentheses -- carry
-	// negative amounts, and unlike the Sankey this document does not net them
-	// into a parent category, because a series is a printed ROW and those two
-	// rows are printed.
+	// AmountCents is signed: a parenthesized contra row is a printed row and
+	// is not netted.
 	AmountCents int64  `json:"amount_cents"`
 	FactID      string `json:"fact_id"`
 	DocID       string `json:"doc_id"`
@@ -221,19 +152,9 @@ func (t *Trends) Document(facts []fact.Fact, o Options) (*TrendsDocument, error)
 	return t.spec().document(facts, o)
 }
 
-// The caveats this document ships, and the reason each is owed.
-//
-// NONE OF THEM IS ABOUT A SERIES BEING WRONG. Every one of the 924 figures is
-// printed and every series has a point in every column. They are owed because a
-// reader who SUMS this document into fund groups and sets it beside the city's
-// own summary table -- p63 Table 2, Total Sources -- finds four of the seven
-// groups tie exactly and three do not, and a document that leaves those
-// differences to be rediscovered reads as wrong.
-//
-// The figures are read off pages, never derived as one total minus another;
-// that distinction is what keeps a caveat a statement about the document rather
-// than a restatement of its own arithmetic. Full reconciliation, all 28 cells,
-// is in docs/revenue-trends-contract.md.
+// The caveats this document ships: where its fund-group sums do not tie to
+// p63 Table 2. Their figures are read off pages, never derived as one total
+// minus another. The reconciliation is in docs/revenue-trends-contract.md.
 var (
 	caveatGeneralFundTransfersIn = Caveat{
 		ID:      "no-general-fund-transfers-in-row",

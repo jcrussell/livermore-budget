@@ -239,56 +239,27 @@ const (
 // actually used (byob-interfaces.2, as internal/mapping/resolve.go does with
 // its doc interface).
 //
-// The key is a data/taxonomy.yaml category slug, never a node id, because a
-// node id is prefixed by the axis it sits on and the taxonomy has no such
-// prefixes. Nodes with no category behind them — the fund groups, whose
-// names are data/funds.yaml fund types, and the two nodes we inferred — are
-// never looked up here at all, so the two vocabularies never share a key
-// space. That matters more than it looks: "debt-service" is a fund type and
-// "debt-services" an object category, and data/taxonomy.yaml is explicit that
-// one string spanning two axes is the near-miss it exists to prevent.
+// The key is a data/taxonomy.yaml category slug, never a node id; fund groups
+// and inferred nodes are never looked up here, so fund types and categories
+// ("debt-service", "debt-services") never share a key space.
 type labels interface {
 	// Label returns the city's own words for a category slug, and whether the
-	// registry knows the slug at all. A miss is not an error: an unlabelled
-	// node falls back to a slug-derived label so a newly mapped category
-	// renders as something readable instead of failing the build.
+	// registry knows it. A miss falls back to a slug-derived label.
 	Label(slug string) (string, bool)
-	// FundName returns the city's own name for a fund number.
-	//
-	// It is here because a document keyed on FUNDS needs it and the Sankey does
-	// not: the spine's finest fund axis is the fund GROUP, whose names come from
-	// the pp.66-67 column headers and are built in. What needs it is the revenue
-	// trends (docs/revenue-trends-contract.md), where a printed row label is not
-	// unique across funds -- "Property Taxes" is printed by four of them and
-	// "Use of Money & Prop" by thirty-eight -- so a series labelled by its row
-	// alone is ambiguous on sight.
-	//
-	// A miss is not an error, as with Label: the number is shown instead.
+	// FundName returns the city's own name for a fund number. A miss shows
+	// the number.
 	FundName(number int) (string, bool)
-	// FundType is the fund type data/funds.yaml records, and whether the
-	// registry knows the fund at all.
-	//
-	// IT IS THE PARENT EDGE OF THE TIER HIERARCHY. A tier-3 fund node's parent
-	// is fund-group/<type>, and the type comes from HERE and never from the
-	// fact's own fund_group: funds.yaml's `type:` is transcribed from the
-	// appendix pp.253-257 while a fact's fund_group is read off the section
-	// header its row sits under, and comparing two independent records is the
-	// only version of that comparison that says anything.
-	//
-	// A miss IS an error to the caller, unlike Label and FundName: a node
-	// parented to `fund-group/` is parented to nothing.
+	// FundType is the fund type data/funds.yaml records: a fund node's parent
+	// edge, never the fact's own fund_group, which is an independent record.
+	// A miss is an error to the caller.
 	FundType(number int) (string, bool)
 	// FundGroup reports whether a data/funds.yaml fund has this type, which
 	// is what a fund-group/<type> node must answer before it is drawn.
 	FundGroup(name string) bool
-	// ConstraintTier is how tightly a fund's money is tied down, and it is
-	// DERIVED -- our reading of the Description of Funds narrative, pp.258-261.
-	// A node publishing one must publish a source note and a rationale beside
-	// it; see docs/sankey-contract.md's constraint_tier section.
-	//
-	// "" for a fund the registry does not list is a DIFFERENT answer from the
-	// tier "unknown", which is a real classification meaning the document does
-	// not establish a restriction. Do not collapse them.
+	// ConstraintTier is how tightly a fund's money is tied down, derived from
+	// pp.258-261; a node publishing one publishes a source note and rationale
+	// (docs/sankey-contract.md). "" for an unlisted fund is not the tier
+	// "unknown".
 	ConstraintTier(fund int) string
 	// RestrictionNote is the sentence a constraint tier was read from, which is
 	// what a node carrying one publishes as its rationale.
@@ -316,19 +287,9 @@ type derived struct {
 }
 
 // derivedNodes is the complete list of nodes this package infers rather
-// than reads off a page, and it has exactly two entries on purpose.
-//
-// The city prints CHANGE IN WORKING CAPITAL once per column, signed — the
-// General Fund's FY2026 figure is "(1,034,154)" — and pp.186-209 print each
-// fund's beginning and ending balance, whose difference is its change. A
-// Sankey cannot draw a negative link, so the sign is decomposed into two
-// nodes. That decomposition is ours, not the city's, and the distinction
-// between published and derived is the site's entire premise, so both nodes
-// carry a rationale and a source note and fisc verify fails on a derived node
-// that does not.
-//
-// ONE NOTE SERVES EVERY DOCUMENT DRAWING THE NODE, because a column's node
-// table states a node once and refuses two schedules that disagree about it.
+// than reads off a page: the sign-decomposition of a printed change in balance,
+// since a Sankey draws no negative link. One note serves every document
+// drawing the node, since a column's node table states a node once.
 var derivedNodes = map[string]derived{
 	NodeFundBalanceDraw: {
 		rationale: "Our sign-decomposition of a published change in balance: a negative " +
@@ -346,18 +307,9 @@ var derivedNodes = map[string]derived{
 	},
 }
 
-// builtinLabels covers the nodes no category registry answers for.
-//
-// The fund groups are here because data/funds.yaml binds a fund to a type
-// and stops: it records no label for the type itself. These are the column
-// headers Budget Book pp.66-67 print over the columns this projection reads,
-// so they are the city's words rather than ours, and hard-coding them here
-// beats leaving the diagram's central boxes labelled "General" and
-// "Internal Service".
-//
-// The last two exist in no data file at all, because we inferred them.
-//
-// A built-in wins over the registry; nodeLabel says why.
+// builtinLabels covers the nodes no category registry answers for: the fund
+// groups, in pp.66-67's column headers, and the two inferred nodes. A built-in
+// wins over the registry; nodeLabel says why.
 var builtinLabels = map[string]string{
 	PrefixFundGroup + registry.FundTypeGeneral:         "General Fund",
 	PrefixFundGroup + registry.FundTypeSpecialRevenue:  "Special Revenue Funds",
@@ -370,15 +322,8 @@ var builtinLabels = map[string]string{
 	NodeFundBalanceDraw:         "Fund Balance Draw",
 	NodeFundBalanceContribution: "Fund Balance Contribution",
 
-	// These three have taxonomy entries, and the entries agree with the words
-	// below for the first two. They are repeated here so that a build with no
-	// registry attached still labels the flow endpoints rather than rendering
-	// the last segment of their ids as "In", "Out" and "Reserve Increase".
-	//
-	// The third disagrees: p66 prints ADDITION TO RESERVES over the figures
-	// this projection reads, while data/taxonomy.yaml labels the category
-	// "Reserve Increase / (Use)" — the p75 column header it was merged with.
-	// The built-in wins, so every build shows p66's words.
+	// Repeated so a build with no registry labels the flow endpoints. The
+	// third is p66's words, not the taxonomy's "Reserve Increase / (Use)".
 	"transfers/in":                     "Transfers In",
 	"transfers/out":                    "Transfers Out",
 	CategoryFundBalanceReserveIncrease: "Addition to Reserves",
@@ -414,24 +359,13 @@ type Node struct {
 	ID    string `json:"id"`
 	Label string `json:"label"`
 	Tier  int    `json:"tier"`
-	// Parent and ConstraintTier are "" on every node THE SPINE produces, and
-	// that is correct rather than lazy: data/funds.yaml records a constraint
-	// tier per fund, and pp.66-67 publish only fund groups, whose columns hold
-	// funds of several tiers, so filling one in would present an editorial
-	// classification as published data.
-	//
-	// THIS TYPE HAS MORE THAN ONE PRODUCER, so the sentence above is about the
-	// schedule and not about the field. A document drawing funds populates both.
-	// When it populates ConstraintTier it must also set SourceNote and
-	// Rationale, because the node is published while the tier is our reading of
-	// pp.258-261 — see docs/sankey-contract.md's constraint_tier section, which
-	// carries the argument and the "" / "unknown" distinction.
+	// Parent and ConstraintTier are "" on every spine node, whose fund groups
+	// hold funds of several tiers. A node populating ConstraintTier sets
+	// SourceNote and Rationale (docs/sankey-contract.md).
 	Parent         string `json:"parent"`
 	ConstraintTier string `json:"constraint_tier"`
 	Role           string `json:"role"`
-	// Derived is true when we inferred the node and false when the city
-	// printed it. It is stated on every node rather than left to be read off a
-	// missing key, because the distinction is the site's whole premise.
+	// Derived is true when we inferred the node, stated on every node.
 	Derived    bool   `json:"derived"`
 	Rationale  string `json:"rationale"`
 	SourceNote string `json:"source_note"`
@@ -502,26 +436,10 @@ type Link struct {
 	FactIDs []string `json:"fact_ids"`
 	// Locators cite the same facts BY PAGE: the (doc_id, page) pairs they were
 	// read from, documents ascending, pages ascending within each, each page
-	// once, never nil.
-	//
-	// IT IS NOT A REDUNDANT SPELLING OF FactIDs, and the difference is the
-	// whole reason this field exists. fact.MakeID hashes rule_id, so splitting
-	// or revising a rule moves every id on the pages it covers -- a citation
-	// by id would 404 after a change that altered no figure. (doc_id, page)
-	// cannot move, and the fact store's shard path is COMPUTED from it
-	// (docs/fact-store-contract.md), so a client holding this can resolve the
-	// records behind one mark in a single fetch with no lookup. Holding
-	// FactIDs it can resolve nothing: it has no index and must not be given
-	// one.
-	//
-	// Both are published because neither substitutes for the other. A page
-	// holds facts from several rules, so a locator cannot say WHICH facts this
-	// link summed -- which is what link-values-tie-to-facts, counts-reconcile
-	// and citedFacts all need.
-	//
-	// This is a PAGE locator, not the (doc_id, page, offset) triple that
-	// document names: offset addresses one printed figure and a link is an
-	// aggregate.
+	// once, never nil. Not redundant with FactIDs: ids move when a rule is
+	// revised, while (doc_id, page) is what the fact store's shard path is
+	// computed from (docs/fact-store-contract.md). A page locator, not the
+	// offset triple: a link is an aggregate.
 	Locators []Source `json:"locators"`
 	Derived  bool     `json:"derived"`
 	// Partition says the ribbon divides one printed table along a second axis
@@ -564,10 +482,8 @@ type Link struct {
 
 // sankey projects the citywide spine as a flow diagram.
 type sankey struct {
-	// Labels supplies the city's own words for a category slug. It is optional
-	// and a field rather than a constructor argument because Registry hands
-	// back projections before the composition root has loaded data/: a nil
-	// Labels degrades to a readable slug rather than to no document.
+	// Labels supplies the city's own words for a category slug. Optional: nil
+	// degrades to a readable slug.
 	Labels labels
 }
 
@@ -576,12 +492,8 @@ var _ Projection = (*sankey)(nil)
 // Name is the file stem: sankey.json.
 func (*sankey) Name() string { return "sankey" }
 
-// Slices is one graph per (fiscal year, basis) the spine schedule carries.
-//
-// The scope is fixed rather than derived. It selects the SCHEDULE, and the
-// schedule is what makes this projection a Sankey of the citywide spine rather
-// than of whatever else the store happens to carry: a department-by-category
-// page is a different scope and its rows would be added on top of the spine's.
+// Slices is one graph per (fiscal year, basis) the spine schedule carries, at
+// the fixed spine scope.
 func (*sankey) Slices(facts []fact.Fact, version string) []Options {
 	return columnsCarrying(facts, []string{PublishedScope}, []string{PublishedScope}, nil, version)
 }
@@ -821,21 +733,9 @@ func headlineOver(v structure.View, facts []fact.Fact) Headline {
 }
 
 // SelectFacts keeps the facts this projection is of: the scope, and any one of
-// the columns.
-//
-// Both selectors are applied. Filtering on the columns alone would let a
-// department schedule's rows land on top of the citywide spine's, and filtering
-// on the scope alone would fold every year the store carries into one document
-// — both of which produce a graph that balances and is wrong.
-//
-// The column test is membership rather than equality because a document may be
-// of several columns. What it is not is a wildcard: an Options with no columns
-// selects NOTHING here, and [Options.Validate] refuses one before it can.
-//
-// With ThroughCuts set a fact must also be one the scopes' view admits, and a
-// view that does not build is an error rather than an empty selection: a
-// caller that skipped validate would otherwise draw an empty chart, or run a
-// check over nothing and pass it.
+// the columns, and the kinds. An Options with no columns selects nothing, not
+// everything. With ThroughCuts set a fact must also be one the scopes' view
+// admits, and a view that does not build is an error, not an empty selection.
 func SelectFacts(facts []fact.Fact, o Options) ([]fact.Fact, error) {
 	var view *structure.View
 	if o.ThroughCuts {
@@ -923,10 +823,8 @@ func netCells(facts []fact.Fact) (map[cellKey]*cell, error) {
 	return cells, nil
 }
 
-// sortedCellKeys puts cells in a total order so the build does not depend on
-// map iteration. Links are sorted again at the end; this is what makes the
-// intermediate steps — headline accumulation, node creation — deterministic
-// too.
+// sortedCellKeys puts cells in a total order so the intermediate steps do not
+// depend on map iteration.
 func sortedCellKeys(cells map[cellKey]*cell) []cellKey {
 	return slices.SortedFunc(maps.Keys(cells), func(a, b cellKey) int {
 		return cmp.Or(cmp.Compare(a.kind, b.kind), cmp.Compare(a.category, b.category),
@@ -986,20 +884,11 @@ func (s *sankey) label(id, slug string) string { return nodeLabel(s.Labels, id, 
 // nodeLabel resolves a node to the words a reader sees, by one cascade for
 // every document: a built-in, then a fund's name, then a division's or a
 // department's, then the registry's words for the node's category, and
-// otherwise a readable transform of the id. The last case is a placeholder,
-// not a translation — the point of the registry is that the site shows the
-// city's words rather than ours.
+// otherwise a readable transform of the id.
 //
-// builtinLabels wins over the registry, which is the opposite of what you
-// would expect from a curated data file and is deliberate. A taxonomy label
-// names a CATEGORY, which may span several schedules; the words on a node have
-// to be the words on the page this projection read.
-// fund-balance/reserve-increase is the case: the taxonomy calls it "Reserve
-// Increase / (Use)", after the p75 column header the category was merged with,
-// while p66 — the page these figures come from — prints ADDITION TO RESERVES.
-// Letting the registry win would also mean the rendered site and
-// testdata/sankey.golden.json disagreed for any node listed both places, which
-// would quietly retire the golden file as a contract test.
+// builtinLabels wins over the registry: a taxonomy label names a category that
+// may span schedules, and a node's words are the page's
+// (fund-balance/reserve-increase).
 func nodeLabel(l labels, id, slug string) string {
 	if b, ok := builtinLabels[id]; ok {
 		return b
@@ -1069,16 +958,9 @@ func sortLinks(links []Link) {
 }
 
 // checkDistinctLinks refuses two links of one kind between the same pair of
-// nodes.
-//
-// d3-sankey draws them stacked and indistinguishable, and a reader hovering
-// one would see a value that is not the flow between those two boxes. It can
-// only happen if two cells collapse onto one pair, which means a classification
-// is wrong upstream, so it is an error rather than a silent merge.
-//
-// One ribbon per kind is allowed, so a ribbon's kind is true of all of it.
-// On the expansion schedule one per repeated leaf is too: those are each one
-// cited leaf, and the client's fold merges them into the ribbon it draws.
+// nodes, which d3-sankey would draw indistinguishably; it means a
+// classification is wrong upstream. On the expansion schedule one per
+// repeated leaf is allowed; the client's fold merges them.
 func checkDistinctLinks(links []Link) error {
 	for i := 1; i < len(links); i++ {
 		if links[i].Source == links[i-1].Source && links[i].Target == links[i-1].Target &&
@@ -1110,17 +992,8 @@ func fiscalYearLabel(year int) string {
 
 // Caveats that hold whatever the facts say. The first two are statements about
 // what the model does, not about which numbers arrived, so neither is
-// conditional; the third is emitted only by a document that draws such a link.
-//
-// THE TEXTS ARE UNCHANGED FROM WHEN THESE WERE BARE STRINGS. Only ids and
-// summaries were added, so the diff a reader of the golden file has to check is
-// "every text byte-identical, nothing else in the old field".
-//
-// AppliesTo IS EMPTY ON THE FIRST TWO AND NOT ON THE THIRD, and that is the
-// distinction the field exists for. A stock that carries no link and a fund type
-// with no column are properties of the SCHEDULE -- no node is responsible for
-// either, and naming one would be inventing a culprit. Internal service charges
-// are a property of one drawn node, so the chart can mark it.
+// conditional; the third is emitted only by a document that draws such a link,
+// and names the one node it is about.
 var (
 	caveatStocks = Caveat{
 		ID:      "working-capital-is-a-stock",
@@ -1153,22 +1026,13 @@ var (
 
 // contestedTotal is a fund group's total that the SPINE PAGE PRINTS and other
 // schedules of the same document contradict, together with what they say
-// instead.
+// instead: a declaration, not a correction.
 //
-// IT IS A DECLARATION, NOT A CORRECTION. This projection publishes what pp.66-67
-// print, because that is where the spine's facts are read from and "published
-// and derived are different things" is the invariant the whole project rests on.
-// What a reader is owed is not our arithmetic but the knowledge that the city's
-// own book disagrees with itself here.
-//
-// THE FIGURES ARE THE EXCEPTION'S. Column, FundGroup, Published and Elsewhere
-// are read off the structure.Exception named by Exception -- a fund-group
-// cell held apart against the spine, both sides printed -- so the caveat and
-// cuts-tie-along-the-lattice cannot name two different pairs. What this
-// declaration adds is the prose: PrintedBy and ImpliedBy are separate so a
-// derived figure is never cited as a printed one. The caveat is emitted only
-// when the graph draws Published; TestContestedTotalsAreStillContested keeps an
-// entry from going stale.
+// The figures are read off the structure.Exception named by Exception, so the
+// caveat and cuts-tie-along-the-lattice cannot name two different pairs.
+// PrintedBy and ImpliedBy are separate so a derived figure is never cited as
+// printed. The caveat is emitted only when the graph draws Published;
+// TestContestedTotalsAreStillContested keeps an entry from going stale.
 type contestedTotal struct {
 	// Exception names the structure.BudgetBookExceptions entry the figures
 	// are read from.

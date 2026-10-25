@@ -275,18 +275,8 @@ func (s stubFunds) FundName(number int) (string, bool) {
 
 // goldenLabels is every category label data/taxonomy.yaml carries for the
 // spine, transcribed, so the golden comparison exercises the same path a build
-// with a real registry attached will.
-//
-// Two sets of labels are deliberately absent. The six fund groups have no
-// label anywhere in data/ — funds.yaml binds a fund to a type and records no
-// words for the type — and the two fund-balance nodes we inferred are in no
-// data file at all; both come from builtinLabels.
-//
-// `fund-balance/reserve-increase` is absent for a different reason: the
-// taxonomy labels it "Reserve Increase / (Use)", the p75 column header, while
-// testdata/sankey.golden.json shows p66's "Addition to Reserves". Listing the
-// taxonomy's label here would fail the golden comparison, which is the
-// disagreement rather than a bug in either side.
+// with a real registry attached will. The fund groups, the inferred nodes and
+// fund-balance/reserve-increase are absent: builtinLabels answers for them.
 var goldenLabels = stubLabels{
 	"taxes/property":            "Property Taxes",
 	"taxes/sales":               "Sales Taxes",

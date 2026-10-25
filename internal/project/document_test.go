@@ -32,21 +32,9 @@ func jsonTags(t *testing.T, v any) []string {
 	return out
 }
 
-// TestValidateCaveatsRefusesEveryShapeThatWouldRender, and that it refuses
-// EVERY such shape is the point of it.
-//
-// THE GUARD HAD NO TEST AT ALL: adding `if true { return nil }` as its first
-// statement left `go test ./...` entirely green.
-// All five refusals were unverified in a function three
-// builders call.
-//
-// EVERY CASE HERE IS A FAILURE THAT RENDERS, which is why the guard exists at
-// build time rather than being left to a page to notice. An empty id publishes
-// an anchor of "#caveat-<stem>--", which every summary on the site would then
-// share; an empty summary a blank line in a list; a repeated id two paragraphs
-// under one anchor, of which the reader sees whichever the browser finds first;
-// and an AppliesTo naming an absent node marks nothing, which is
-// indistinguishable from having nothing to mark.
+// TestValidateCaveatsRefusesEveryShapeThatWouldRender: every case is a failure
+// that renders. Mutation: `if true { return nil }` as validateCaveats' first
+// statement fails each case.
 func TestValidateCaveatsRefusesEveryShapeThatWouldRender(t *testing.T) {
 	ok := Caveat{ID: "a", Theme: ThemeLeftOut, Summary: "s", Text: "t", AppliesTo: []string{}}
 	nodes := map[string]struct{}{"fund-group/general": {}}

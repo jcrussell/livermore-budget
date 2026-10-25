@@ -132,21 +132,10 @@ func buildFundFlows(t *testing.T, facts []fact.Fact, l labels) *Document {
 	return doc
 }
 
-// TestTheFundParentComesFromTheRegistryAndNotTheFact is the claim without which
-// the whole hierarchy is a tautology.
-//
-// fisc-gkv put it in writing: "the tier-3 node's parent comes from
-// data/funds.yaml type: and NOT from the fact's fund_group, or
-// aggregation-invariance is a tautology". The two are independent records of one
-// claim -- funds.yaml's type: is transcribed from the appendix pp.253-257, while
-// a fact's fund_group is read off the section header its row sits under on
-// pp.131-140 -- and comparing two independent records is the only version of the
-// comparison that says anything.
-//
-// The test makes them DISAGREE and asserts the node follows the registry. If the
-// projection ever reads fund_group instead, this is the only thing in the tree
-// that notices: every check stays green, because fact-funds-resolve pins the two
-// equal over the committed corpus and a tautology passes.
+// TestTheFundParentComesFromTheRegistryAndNotTheFact makes data/funds.yaml's
+// type and the fact's fund_group disagree and asserts the fund node follows
+// the registry (fisc-gkv). It is the only guard: over the committed corpus the
+// two are equal.
 func TestTheFundParentComesFromTheRegistryAndNotTheFact(t *testing.T) {
 	labels := fundFlowsLabels()
 	labels.types[500] = "capital" // the registry says capital...

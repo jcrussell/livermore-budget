@@ -206,31 +206,20 @@ type Source struct {
 // [Caveat.Summary] a page lists, a [Caveat.Text] the caveats page prints, and
 // a [Caveat.Theme] that page groups it under.
 //
-// THE ID IS A PUBLISHED URL FRAGMENT, which is why [ValidateCaveats] refuses a
-// document that repeats one. Two caveats sharing an anchor is a link that lands
-// on the wrong paragraph, and it fails silently -- the page renders, the anchor
-// resolves, and the reader is shown a sentence about something else.
-//
-// ONE ID IS ONE HEADING ACROSS EVERY DOCUMENT: the caveats page lists an id
-// once, so its Summary and Theme must not vary by year or schedule, and a
-// figure that does belongs in Text. The export refuses an id that breaks this.
+// The id is a published URL fragment, so a document may not repeat one, and
+// one id is one heading across every document: its Summary and Theme must not
+// vary by year or schedule. The export refuses an id that breaks this.
 type Caveat struct {
-	// ID is a stable slug. Stable is the load-bearing word: it outlives edits
-	// to Summary and Text, because a URL somebody has bookmarked or cited must
-	// not stop resolving because a sentence was reworded.
+	// ID is a stable slug that outlives edits to Summary and Text.
 	ID string `json:"id"`
-	// Summary is one line, written to be skimmed in a list of its peers. It is
-	// authored beside Text rather than derived from it -- a first sentence is
-	// not a summary, and truncating a paragraph produces neither.
+	// Summary is one line, authored beside Text, not derived from it.
 	Summary string `json:"summary"`
 	// Text is the caveat in full.
 	Text string `json:"text"`
 	// Theme is which kind of limit this is, one of [CaveatThemes].
 	Theme CaveatTheme `json:"theme"`
 	// AppliesTo names the node ids this caveat is about, so a chart can mark
-	// them. EMPTY MEANS DOCUMENT-WIDE, not "not filled in yet" -- most of these
-	// are statements about what a schedule does not contain, which no single
-	// node is responsible for.
+	// them. Empty means document-wide.
 	AppliesTo []string `json:"applies_to"`
 }
 
@@ -308,25 +297,11 @@ func revenueSchedulePublishedTwiceCaveat() Caveat {
 	}
 }
 
-// validateCaveats refuses a set no page could render honestly.
-//
-// IT RUNS AT BUILD TIME, in every document builder, because every failure below
-// is invisible downstream: a missing id publishes an anchor of "", a missing
-// summary publishes a blank line in a list, a repeated id publishes two
-// paragraphs under one anchor of which a reader sees whichever the browser finds
-// first, and an [Caveat.AppliesTo] entry naming nothing simply never marks
-// anything. None of them stops a page rendering, so none would be found by a
-// page that rendered. Nor does a tracker id in a summary or a text: it prints
-// as a pointer the reader cannot follow, in place of the decision it names.
-//
-// nodes IS THE DOCUMENT'S OWN NODE IDS, and passing it is what makes AppliesTo a
-// checkable claim rather than a hopeful one. A mistyped id is the worst of the
-// failures here precisely because it is the quietest: the chart draws, the
-// caveat lists, and the mark it was written to flag is simply never flagged --
-// a test asserting "this node carries no caveat" passes whether the id is wrong
-// or the caveat genuinely does not apply. A caller with no nodes to offer --
-// a document that is not a graph -- passes nil, and the arm is skipped rather
-// than being made to fail on every entry.
+// validateCaveats refuses a set no page could render honestly, at build time,
+// since none of its failures stops a page rendering: a missing id or summary,
+// a repeated id, a tracker id in the prose, an [Caveat.AppliesTo] entry naming
+// no node. nodes is the document's own node ids; a document that is not a
+// graph passes nil and that arm is skipped.
 func validateCaveats(caveats []Caveat, nodes map[string]struct{}) error {
 	seen := make(map[string]struct{}, len(caveats))
 	for i, c := range caveats {
