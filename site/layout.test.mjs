@@ -185,12 +185,12 @@ function labelFit(app, graph) {
  * label's node": the glyph's box (glyphPlacement, GLYPH_R) against each
  * label's line and block.
  */
-function glyphsOnLabels(app, fits) {
+function glyphsOnLabels(app, fits, glyph = (d) => app.glyphOf(d)) {
   const slots = app.slotsOf(fits.map((f) => f.node), app.RENDER_TIERS);
   const last = fits.length ? fits[0].last : 0;
   const out = [];
   for (const f of fits) {
-    if (!app.glyphOf(f.node)) continue;
+    if (!glyph(f.node)) continue;
     const at = app.glyphPlacement(slots, f.node, last, f.width);
     const r = app.GLYPH_R;
     for (const g of fits) {
@@ -571,12 +571,12 @@ function atFloor(app, fits) {
 
 for (const label of Object.keys(ALIKE)) {
   describe(`${label}: the root and every split the page offers, measured for what a label does to its neighbours`, () => {
-    let views, overlapped, alike, wider, floor, glyphed, glyphs;
+    let views, overlapped, alike, wider, floor, glyphed, glyphs, drawnApart, drawnCut;
     before(async () => {
       // Found by label, so a year the page no longer ships fails by name.
       const year = pageFixture().config.years.find((y) => y.label === label);
       if (!year) throw new Error(`the pinned page ships no year labelled ${JSON.stringify(label)}`);
-      const { app } = await bootedApp({ checkedStem: year.stem });
+      const { app, document } = await bootedApp({ checkedStem: year.stem });
       overlapped = {};
       alike = {};
       wider = {};
@@ -584,14 +584,15 @@ for (const label of Object.keys(ALIKE)) {
       glyphed = {};
       glyphs = 0;
       views = 0;
-      const visit = (where, graph) => {
+      // A state's glyphs are its own frontier's, not the chart on screen's.
+      const visit = (where, graph, glyph = (d) => app.glyphOf(d)) => {
         views++;
         const fits = labelFit(app, graph);
         if (where.startsWith("everything")) floor[where] = atFloor(app, fits);
         const touching = touchingStacks(fits);
         if (touching.length) overlapped[where] = touching;
-        glyphs += fits.filter((f) => app.glyphOf(f.node)).length;
-        const onLabels = glyphsOnLabels(app, fits);
+        glyphs += fits.filter((f) => glyph(f.node)).length;
+        const onLabels = glyphsOnLabels(app, fits, glyph);
         if (onLabels.length) glyphed[where] = onLabels;
         const over = fits.filter((f) => f.clearance < 0);
         if (over.length) {
@@ -609,8 +610,32 @@ for (const label of Object.keys(ALIKE)) {
       visit("the root", { nodes: app.laidNodes });
       // Each split opened alone, Expand all, and Expand all drawn out.
       for (const st of expansionStates(app, app.fetched)) {
-        if (!st.whole.size || st.where.startsWith("everything")) visit(st.where, layOutState(app, st));
+        if (!st.whole.size || st.where.startsWith("everything")) {
+          visit(st.where, layOutState(app, st), (d) => app.glyphAt(app.fetched, st.frontier, d));
+        }
       }
+      // The words render() draws are the words measured above: Expand all
+      // drawn, where labels are cut, each mark's tspans against labelFit's.
+      if (!app.expandAll()) throw new Error("Expand all split nothing");
+      await settle();
+      const fitted = new Map(labelFit(app, { nodes: app.laidNodes }).map((f) => [f.id, f.words]));
+      drawnApart = [];
+      drawnCut = 0;
+      for (const m of document.querySelectorAll("#chart g.node")) {
+        const text = [...m.children].find((c) => c.tagName === "text" && c.getAttribute("class") === "halo");
+        const said = text ? [...text.children].slice(0, 3).map((c) => c.textContent).join("") : "";
+        const id = m.__data__.id;
+        if (said !== fitted.get(id)) drawnApart.push(`${id}: drew ${JSON.stringify(said)}, measured ${JSON.stringify(fitted.get(id))}`);
+        if (said !== m.__data__.label && [...m.children].some((c) => c.tagName === "title")) drawnCut++;
+      }
+    });
+
+    // Mutation: fit sankey.js's drawn words at a wider room than labelRoom,
+    // and the drawn words part from the measured ones.
+    test("the words render() draws are the words this walk measures", (t) => {
+      t.diagnostic(`${drawnCut} drawn label(s) cut after Expand all`);
+      assert.ok(drawnCut > 0, "Expand all drew no cut label, so this compares nothing that fitting changes");
+      assert.deepEqual(drawnApart, []);
     });
 
     // fisc-8cx0: every split's labels against their room, not four frontiers'.

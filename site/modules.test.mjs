@@ -4,6 +4,7 @@
 // without testlib: loading d3 or a page first would hide the defect.
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
+import { readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -16,7 +17,12 @@ describe("the shipped modules hold no state", () => {
     delete globalThis.FISC_CONFIG;
     delete globalThis.d3;
     assert.equal(typeof globalThis.document, "undefined", "nothing installed a DOM before the import");
-    for (const name of ["capital", "change", "department", "format", "glance", "ledger", "sides", "theme"]) {
+    // Every shipped module but app.js, core.js and sankey.js, which are
+    // imported on their own terms, so a new page module is held here unasked.
+    const own = new Set(["app", "core", "sankey"]);
+    const names = readdirSync(HERE).filter((f) => /^[a-z]+\.js$/.test(f)).map((f) => f.slice(0, -3)).filter((n) => !own.has(n));
+    assert.ok(names.includes("sides") && names.includes("format"), names.join());
+    for (const name of names) {
       const mod = await import(pathToFileURL(path.join(HERE, `${name}.js`)).href);
       const loose = Object.entries(mod).filter(([, v]) => typeof v === "object" && !Object.isFrozen(v)).map(([k]) => k);
       assert.deepEqual(loose, [], `${name}.js exports a binding every test would share`);

@@ -584,6 +584,7 @@ test("a row on Bars pins a tip linking its pages, by P or, where it opens, by a 
   const all = [...document.querySelectorAll(MARK.ledger)];
   assert.deepEqual(all.map((m) => m.dataset.id).sort(), [...tiles.keys()].sort());
   const rows = [all.find((m) => !m.classList.contains("can-open")), all.find((m) => m.classList.contains("can-open"))];
+  assert.ok(rows[0] && rows[1], "the Bars fixture lacks a row that opens or one that does not, so an arm covers nothing");
   let openers = 0;
   for (const m of rows) {
     const want = textsOf(config, tiles.get(m.dataset.id));

@@ -725,13 +725,26 @@ export function foldable(d) {
 }
 
 /**
- * The glyph a node carries: "open" (⊕) where activating it splits it,
- * "fold" (⊖) where it is a split's hub, else "".
+ * The glyph a node carries at a frontier of the expansion `doc`: "open" (⊕)
+ * where activating it splits it, "fold" (⊖) where it is a split's hub, else
+ * "". splittable and foldable answer it for the chart on screen.
+ * @param {FiscProjection | null} doc
+ * @param {Set<string> | null} front
+ * @param {{id: string}} d
+ * @returns {"open" | "fold" | ""}
+ */
+export function glyphAt(doc, front, d) {
+  if (!front || !doc || !front.has(d.id) || !splitsHere(d).length) return "";
+  return core.openSplitOf(doc, front, d.id) === "" ? "open" : "fold";
+}
+
+/**
+ * The glyph a node carries on the chart on screen (glyphAt).
  * @param {{id: string}} d
  * @returns {"open" | "fold" | ""}
  */
 export function glyphOf(d) {
-  return splittable(d) ? "open" : foldable(d) ? "fold" : "";
+  return glyphAt(fetched, frontier, d);
 }
 
 /**

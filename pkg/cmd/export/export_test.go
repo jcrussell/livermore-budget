@@ -2531,3 +2531,20 @@ func TestAPageThatDisclaimsAuditAssuranceDoesNotClaimItInItsProse(t *testing.T) 
 		}
 	}
 }
+
+// TestEveryProjectionBuildsToTheSameBytesTwice builds every projection of
+// the committed store twice and holds each to the same bytes: an order taken
+// from a map, in a builder, a caveat list or a split, differs between runs.
+// Mutation: range over a map where a builder emits its splits or caveats and
+// this goes red on that projection.
+func TestEveryProjectionBuildsToTheSameBytesTwice(t *testing.T) {
+	first, second := builtStemsForTest(t), builtStemsForTest(t)
+	if len(first) == 0 {
+		t.Fatal("the committed store builds no projection, so nothing is compared")
+	}
+	for stem, b := range first {
+		if !bytes.Equal(b, second[stem]) {
+			t.Errorf("%s builds to different bytes on a second build", stem)
+		}
+	}
+}
