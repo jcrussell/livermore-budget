@@ -1,20 +1,7 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{.Title}}</title>
-<meta name="description" content="Every City of Livermore department as a bar, longest first, split by the fund groups that pay for it; open one for what it spends under each object heading, every fund together, and which funds pay for it, as two sides of bars, each figure naming the Budget Book page it was read from.">
-<meta name="color-scheme" content="light dark">
-<link rel="stylesheet" href="style.css">
-{{template "theme-stamp"}}
-<script type="application/json" id="department-config">{{.ConfigJSON}}</script>
-</head>
-<body>
-
-<div class="wip-banner" role="status">⚠️ Work in progress — early preview, coverage is incomplete.</div>
-
-{{template "topbar" .}}
+{{define "description"}}Every City of Livermore department as a bar, longest first, split by the fund groups that pay for it; open one for what it spends under each object heading, every fund together, and which funds pay for it, as two sides of bars, each figure naming the Budget Book page it was read from.{{end -}}
+{{define "head-extra"}}
+<script type="application/json" id="department-config">{{.ConfigJSON}}</script>{{end -}}
+{{template "head" .}}
 
 <header class="page-head">
   <div>

@@ -1,19 +1,6 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{.Title}}</title>
-<meta name="description" content="Every figure this site publishes, as records you can download, indexed by the page of the city's own document it was read from.">
-<meta name="color-scheme" content="light dark">
-<link rel="stylesheet" href="style.css">
-{{template "theme-stamp"}}
-</head>
-<body class="prose-page">
-
-<div class="wip-banner" role="status">⚠️ Work in progress — early preview, coverage is incomplete.</div>
-
-{{template "topbar" .}}
+{{define "description"}}Every figure this site publishes, as records you can download, indexed by the page of the city's own document it was read from.{{end -}}
+{{define "body-class"}} class="prose-page"{{end -}}
+{{template "head" .}}
 
 <header class="page-head">
   <div>

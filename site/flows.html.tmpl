@@ -1,19 +1,5 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{.Title}}</title>
-<meta name="description" content="Every figure on this page is traced to a page of the City of Livermore's published budget, and what we inferred is marked as inferred.">
-<meta name="color-scheme" content="light dark">
-<link rel="stylesheet" href="style.css">
-{{template "theme-stamp"}}
-</head>
-<body>
-
-<div class="wip-banner" role="status">⚠️ Work in progress — early preview, coverage is incomplete.</div>
-
-{{template "topbar" .}}
+{{define "description"}}Every figure on this page is traced to a page of the City of Livermore's published budget, and what we inferred is marked as inferred.{{end -}}
+{{template "head" .}}
 
 {{- /* ABOVE THE CHART ONLY WHAT OPERATES IT: the title, and in the card the
        toolbar and the filter line; the year is the year bar's, under the nav. The lede, the hairline and

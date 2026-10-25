@@ -1,22 +1,9 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{.Title}}</title>
-<meta name="description" content="Where the City of Livermore's budgeted money comes from, what it buys and which department spends it, each figure a sum of cells the city printed.">
-<meta name="color-scheme" content="light dark">
-<link rel="stylesheet" href="style.css">
-{{template "theme-stamp"}}
+{{define "description"}}Where the City of Livermore's budgeted money comes from, what it buys and which department spends it, each figure a sum of cells the city printed.{{end -}}
+{{define "head-extra"}}
 <!-- A module is deferred, so it runs once the tables below are parsed;
      importing glance.js runs nothing, so boot() is called here. -->
-<script type="module">import { boot } from "./glance.js"; boot(document);</script>
-</head>
-<body>
-
-<div class="wip-banner" role="status">⚠️ Work in progress — early preview, coverage is incomplete.</div>
-
-{{template "topbar" .}}
+<script type="module">import { boot } from "./glance.js"; boot(document);</script>{{end -}}
+{{template "head" .}}
 
 <header class="page-head">
   <div>

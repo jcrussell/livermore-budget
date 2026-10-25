@@ -1,22 +1,9 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{.Title}}</title>
-<meta name="description" content="Every project in the City of Livermore's Capital Improvement Program, by the fund paying for it, each figure linked to the page it was read from.">
-<meta name="color-scheme" content="light dark">
-<link rel="stylesheet" href="style.css">
-{{template "theme-stamp"}}
+{{define "description"}}Every project in the City of Livermore's Capital Improvement Program, by the fund paying for it, each figure linked to the page it was read from.{{end -}}
+{{define "head-extra"}}
 <!-- A module is deferred, so it runs once the table below is parsed; importing
      capital.js runs nothing, so boot() is called here. -->
-<script type="module">import { boot } from "./capital.js"; boot(document);</script>
-</head>
-<body>
-
-<div class="wip-banner" role="status">⚠️ Work in progress — early preview, coverage is incomplete.</div>
-
-{{template "topbar" .}}
+<script type="module">import { boot } from "./capital.js"; boot(document);</script>{{end -}}
+{{template "head" .}}
 
 <header class="page-head">
   <div>

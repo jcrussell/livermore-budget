@@ -1,6 +1,12 @@
 {{- /* The parts every page shares above its own content. renderPage parses
        this file before the page.
 
+       "head" opens every page, from the doctype through the top bar,
+       executed against the page's own data. The page defines "description"
+       (its meta description), and may define "head-extra" (written after
+       the theme stamp: a boot script, a config block) and "body-class" (the
+       body's class attribute, leading space included).
+
        "theme-stamp" goes in the head. Inline and tiny on purpose: it stamps
        the saved theme before first paint, which a deferred script cannot do
        without painting the page in the wrong mode first.
@@ -27,6 +33,22 @@
        own under the nav, in the same place on every page that offers more
        than one year. It SHIPS DISABLED for the same reason; the page's
        script enables it (format.js wireYearSelect). */ -}}
+{{define "head"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}}</title>
+<meta name="description" content="{{template "description" .}}">
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="style.css">
+{{template "theme-stamp"}}{{block "head-extra" .}}{{end}}
+</head>
+<body{{block "body-class" .}}{{end}}>
+
+<div class="wip-banner" role="status">⚠️ Work in progress — early preview, coverage is incomplete.</div>
+
+{{template "topbar" .}}{{end}}
 {{define "theme-stamp"}}<script>
   try {
     var t = localStorage.getItem("fisc-theme");

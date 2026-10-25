@@ -1,19 +1,6 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{.Title}}</title>
-<meta name="description" content="Every reason a figure on this site does not say what it looks like it says, in full, with the document each one belongs to.">
-<meta name="color-scheme" content="light dark">
-<link rel="stylesheet" href="style.css">
-{{template "theme-stamp"}}
-</head>
-<body class="prose-page">
-
-<div class="wip-banner" role="status">⚠️ Work in progress — early preview, coverage is incomplete.</div>
-
-{{template "topbar" .}}
+{{define "description"}}Every reason a figure on this site does not say what it looks like it says, in full, with the document each one belongs to.{{end -}}
+{{define "body-class"}} class="prose-page"{{end -}}
+{{template "head" .}}
 
 <header class="page-head">
   <div>

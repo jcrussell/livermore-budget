@@ -2579,11 +2579,11 @@ func TestThePageOpensOnTheYearItDeclaresWhileListingThemOldestFirst(t *testing.T
 	}
 }
 
-// TestEveryPageExecutesTheSharedTopBarAndHoldsNoCopy: the top bar and the
-// head's theme stamp are chrome.html.tmpl's, once. A page template that
-// stops executing either loses the theme toggle or paints in the wrong mode
-// first; one that spells the nav, the toggle or the stamp itself is a copy
-// that drifts from the partial.
+// TestEveryPageExecutesTheSharedTopBarAndHoldsNoCopy: the head, its theme
+// stamp, the banner and the top bar are chrome.html.tmpl's "head", executed
+// once. A page template that stops executing it loses the theme toggle or
+// paints in the wrong mode first; one that spells the nav, the toggle, the
+// stamp or the banner itself is a copy that drifts from the partial.
 func TestEveryPageExecutesTheSharedTopBarAndHoldsNoCopy(t *testing.T) {
 	entries, err := fs.ReadDir(site.FS(), ".")
 	if err != nil {
@@ -2601,12 +2601,11 @@ func TestEveryPageExecutesTheSharedTopBarAndHoldsNoCopy(t *testing.T) {
 			t.Fatalf("read %s: %v", name, err)
 		}
 		src := string(b)
-		for _, call := range []string{`{{template "theme-stamp"}}`, `{{template "topbar" .}}`} {
-			if strings.Count(src, call) != 1 {
-				t.Errorf("%s executes %s %d times, want once", name, call, strings.Count(src, call))
-			}
+		const call = `{{template "head" .}}`
+		if n := strings.Count(src, call); n != 1 {
+			t.Errorf("%s executes %s %d times, want once", name, call, n)
 		}
-		for _, copied := range []string{`class="site-nav"`, `id="theme-toggle"`, `"fisc-theme"`, `./theme.js`} {
+		for _, copied := range []string{`class="site-nav"`, `id="theme-toggle"`, `"fisc-theme"`, `./theme.js`, `class="wip-banner"`, `<!doctype`, `{{template "theme-stamp"}}`, `{{template "topbar" .}}`} {
 			if strings.Contains(src, copied) {
 				t.Errorf("%s spells %s itself rather than through %s", name, copied, export.ChromePartial)
 			}

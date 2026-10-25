@@ -1,19 +1,5 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{.Title}}</title>
-<meta name="description" content="What the City of Livermore budgets to pay on each debt, and the principal and interest its debt agreements schedule through 2055, every figure linked to the budget page it was read from.">
-<meta name="color-scheme" content="light dark">
-<link rel="stylesheet" href="style.css">
-{{template "theme-stamp"}}
-</head>
-<body>
-
-<div class="wip-banner" role="status">⚠️ Work in progress — early preview, coverage is incomplete.</div>
-
-{{template "topbar" .}}
+{{define "description"}}What the City of Livermore budgets to pay on each debt, and the principal and interest its debt agreements schedule through 2055, every figure linked to the budget page it was read from.{{end -}}
+{{template "head" .}}
 
 <header class="page-head">
   <div>
