@@ -608,10 +608,13 @@ for (const label of Object.keys(ALIKE)) {
         }
       };
       visit("the root", { nodes: app.laidNodes });
-      // Each split opened alone, Expand all, and Expand all drawn out.
+      // Each split opened alone, Expand all, and Expand all drawn out, each
+      // laid against the root's boxes as a reader opening it from the root
+      // gets it.
+      const fromRoot = app.boxesOf(app.laidNodes);
       for (const st of expansionStates(app, app.fetched)) {
         if (!st.whole.size || st.where.startsWith("everything")) {
-          visit(st.where, layOutState(app, st), (d) => app.glyphAt(app.fetched, st.frontier, d));
+          visit(st.where, layOutState(app, st, fromRoot), (d) => app.glyphAt(app.fetched, st.frontier, d));
         }
       }
       // The words render() draws are the words measured above: Expand all

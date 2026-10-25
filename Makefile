@@ -304,7 +304,8 @@ pre-commit: fmt vet narration beadrefs doccheck test facts verify lint-if-availa
 facts: build ## Rebuild facts.jsonl from the mappings and compare it to the committed one
 	./$(OUT) build --output bin/facts-rebuilt.jsonl
 	@cmp -s bin/facts-rebuilt.jsonl facts/facts.jsonl || { \
-		echo "facts/facts.jsonl is not what the mappings produce: rebuild it and read the diff" >&2; exit 1; }
+		echo "facts/facts.jsonl is not what the mappings produce; the first of the difference:" >&2; \
+		diff -u facts/facts.jsonl bin/facts-rebuilt.jsonl | head -n 50 >&2; exit 1; }
 
 verify: build ## Run fisc verify --strict over the committed corpus
 	./$(OUT) verify --strict
