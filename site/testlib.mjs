@@ -113,6 +113,40 @@ function servedPage(name) {
   return { html, config: JSON.parse(rest.slice(0, j)) };
 }
 
+/** testdata/<name>.golden.html and the JSON config in its `<script id>`. */
+export function configuredPage(name, id) {
+  const html = readFileSync(join(repoRoot, "testdata", name + ".golden.html"), "utf8");
+  const open = `<script type="application/json" id="${id}">`;
+  const i = html.indexOf(open);
+  if (i < 0) throw new Error(`the pinned ${name} page carries no ${id}`);
+  const rest = html.slice(i + open.length);
+  return { html, config: JSON.parse(rest.slice(0, rest.indexOf("</script>"))) };
+}
+
+/** A fresh jsdom over `html`, at `url` when given, with `module` imported and booted on its document. */
+export async function bootedDocument(html, module, url) {
+  const dom = new JSDOM(html, url ? { url } : undefined);
+  const mod = await import(module);
+  const doc = dom.window.document;
+  mod.boot(doc);
+  return { mod, doc, window: dom.window };
+}
+
+/**
+ * installBrowser over `html` at `hash`, `boot` run on its window fetching
+ * `plan`, settled. The hash is settled before boot: a fragment navigation
+ * fires popstate in its own task, so the page never hears the test's.
+ */
+export async function bootedAt(html, boot, hash, plan, stamp) {
+  const browser = installBrowser({ html });
+  if (hash) browser.window.location.hash = hash;
+  await settle();
+  browser.window.fetch = plannedFetch(plan, stamp);
+  await boot(browser.window);
+  await settle();
+  return browser;
+}
+
 /**
  * Fixture stems: each year's served path less .json.
  * @returns {string[]}

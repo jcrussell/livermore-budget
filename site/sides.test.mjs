@@ -4,10 +4,9 @@
 // drawn.
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { columnFixture, installBrowser, plannedFetch, repoRoot, settle, sideTiles } from "./testlib.mjs";
+import { bootedAt, columnFixture, configuredPage, installBrowser, plannedFetch, settle, sideTiles } from "./testlib.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -21,14 +20,7 @@ const forms = {
 };
 
 /** The pinned page of one form and the config cut out of it. */
-function sidesPage(form) {
-  const html = readFileSync(path.join(repoRoot, "testdata", form + ".golden.html"), "utf8");
-  const open = '<script type="application/json" id="sides-config">';
-  const i = html.indexOf(open);
-  if (i < 0) throw new Error(`the pinned ${form} page carries no sides config`);
-  const rest = html.slice(i + open.length);
-  return { html, config: JSON.parse(rest.slice(0, rest.indexOf("</script>"))) };
-}
+const sidesPage = (form) => configuredPage(form, "sides-config");
 
 /** The pinned columns the pages' years fetch. */
 const PINNED = ["fy2026-adopted", "fy2027-adopted"];
@@ -39,13 +31,7 @@ const MARK = { ledger: "li.bar-row" };
 /** Boots one form's pinned page at a hash, every pinned column planned or as `plan` says. */
 async function booted(form, hash, plan = {}) {
   const { html, config } = sidesPage(form);
-  const browser = installBrowser({ html });
-  if (hash) browser.window.location.hash = hash;
-  await settle();
-  browser.window.fetch = plannedFetch(plan, config.exported_by);
-  await forms[form].boot(browser.window);
-  await settle();
-  return { ...browser, config };
+  return { ...await bootedAt(html, forms[form].boot, hash, plan, config.exported_by), config };
 }
 
 /** The expansion schedule of a pinned column. */

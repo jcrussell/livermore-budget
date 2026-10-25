@@ -11,19 +11,14 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { JSDOM } from "jsdom";
 import { NAMED, TAIL_LABEL } from "./format.js";
+import { bootedDocument } from "./testlib.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const MODULE = pathToFileURL(path.join(HERE, "change.js")).href;
 const PAGE = readFileSync(path.join(HERE, "..", "testdata", "change.golden.html"), "utf8");
 
 /** A fresh document over the pinned page, booted. */
-async function booted() {
-  const dom = new JSDOM(PAGE);
-  const mod = await import(MODULE);
-  const doc = dom.window.document;
-  mod.boot(doc);
-  return { mod, doc };
-}
+const booted = () => bootedDocument(PAGE, MODULE);
 
 /** The figure sections, by id. */
 function figures(doc) {

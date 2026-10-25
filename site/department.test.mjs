@@ -2,10 +2,9 @@
 // imported with no globals, so reading one at import fails first.
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { columnFixture, installBrowser, plannedFetch, repoRoot, settle, stylesheet } from "./testlib.mjs";
+import { bootedAt, columnFixture, configuredPage, installBrowser, plannedFetch, settle, stylesheet } from "./testlib.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -15,14 +14,7 @@ const mod = await import(pathToFileURL(path.join(HERE, "department.js")).href);
 const { dollars, share } = await import(pathToFileURL(path.join(HERE, "format.js")).href);
 
 /** The pinned page and the config cut out of it. */
-function departmentPage() {
-  const html = readFileSync(path.join(repoRoot, "testdata", "department.golden.html"), "utf8");
-  const open = '<script type="application/json" id="department-config">';
-  const i = html.indexOf(open);
-  if (i < 0) throw new Error("the pinned page carries no department config");
-  const rest = html.slice(i + open.length);
-  return { html, config: JSON.parse(rest.slice(0, rest.indexOf("</script>"))) };
-}
+const departmentPage = () => configuredPage("department", "department-config");
 
 /** The columns pinned under testdata/, by served path less .json. */
 const PINNED = ["fy2024-actual", "fy2026-adopted", "fy2027-adopted"];
@@ -30,17 +22,9 @@ const PINNED = ["fy2024-actual", "fy2026-adopted", "fy2027-adopted"];
 /** Boots the pinned page at a hash, every pinned column planned, `over` replacing a stem's plan entry. */
 async function booted(hash, over = {}) {
   const { html, config } = departmentPage();
-  const browser = installBrowser({ html });
-  // A fragment navigation fires popstate in its own task; settled before
-  // boot, so the page's own listener never hears the test's navigation.
-  if (hash) browser.window.location.hash = hash;
-  await settle();
   const plan = {};
   for (const stem of PINNED) plan[stem + ".json"] = stem in over ? over[stem] : { doc: columnFixture(stem) };
-  browser.window.fetch = plannedFetch(plan, config.exported_by);
-  await mod.boot(browser.window);
-  await settle();
-  return { ...browser, config };
+  return { ...await bootedAt(html, mod.boot, hash, plan, config.exported_by), config };
 }
 
 /** The bars drawn on one side, `funding` or `spending`, as plain values. */
@@ -161,16 +145,8 @@ describe("a spending row is a transfer because its links say so", () => {
   // and third clicks on the refused department close and then open its bar
   // over police's sides.
   test("a department whose sides are refused opens no bar over another's sides, however often it is clicked", async () => {
-    const { html } = departmentPage();
-    const browser = installBrowser({ html });
-    browser.window.location.hash = "#y=fy2024-actual&d=department/police-department";
-    await settle();
-    const plan = {};
-    for (const stem of PINNED) plan[stem + ".json"] = { doc: columnFixture(stem) };
-    plan["fy2024-actual.json"] = { doc: edited("fy2024-actual", "transfers/out", (l) => { delete l.kind; }) };
-    browser.window.fetch = plannedFetch(plan, config.exported_by);
-    await mod.boot(browser.window);
-    await settle();
+    const browser = await booted("#y=fy2024-actual&d=department/police-department",
+      { "fy2024-actual": { doc: edited("fy2024-actual", "transfers/out", (l) => { delete l.kind; }) } });
     const doc = browser.document;
     assert.match(doc.getElementById("department-heading").textContent, /^Police Department, /);
     const row = () => doc.querySelector(`#department-list > li[data-department="${works}"] .department-row`);
@@ -186,16 +162,8 @@ describe("a spending row is a transfer because its links say so", () => {
   });
 
   test("the reader is told the department could not be drawn", async () => {
-    const { html } = departmentPage();
-    const browser = installBrowser({ html });
-    browser.window.location.hash = "#y=fy2024-actual&d=department/public-works";
-    await settle();
-    const plan = {};
-    for (const stem of PINNED) plan[stem + ".json"] = { doc: columnFixture(stem) };
-    plan["fy2024-actual.json"] = { doc: edited("fy2024-actual", "transfers/out", (l) => { delete l.kind; }) };
-    browser.window.fetch = plannedFetch(plan, config.exported_by);
-    await mod.boot(browser.window);
-    await settle();
+    const browser = await booted("#y=fy2024-actual&d=department/public-works",
+      { "fy2024-actual": { doc: edited("fy2024-actual", "transfers/out", (l) => { delete l.kind; }) } });
     const refusal = browser.document.getElementById("department-refusal");
     assert.ok(refusal !== null, "no refusal was said");
     assert.match(refusal.textContent, /could not be drawn: .*transfers\/out/);
@@ -868,16 +836,8 @@ describe("the opening view writes the hash only for a view it shows", () => {
   });
 
   test("a refused opening column leaves the hash as the reader wrote it", async () => {
-    const { html, config } = departmentPage();
     for (const hash of ["", "#y=fy2024-actual"]) {
-      const browser = installBrowser({ html });
-      if (hash) browser.window.location.hash = hash;
-      await settle();
-      const plan = {};
-      for (const stem of PINNED) plan[stem + ".json"] = null;
-      browser.window.fetch = plannedFetch(plan, config.exported_by);
-      await mod.boot(browser.window);
-      await settle();
+      const browser = await booted(hash, Object.fromEntries(PINNED.map((stem) => [stem, null])));
       const refusal = browser.document.getElementById("department-refusal");
       assert.ok(refusal !== null, `${hash || "no hash"}: no refusal was said`);
       assert.match(refusal.textContent, /could not be drawn/);

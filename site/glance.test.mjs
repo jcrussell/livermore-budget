@@ -10,19 +10,14 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { JSDOM } from "jsdom";
 import { NAMED, TAIL_LABEL } from "./format.js";
+import { bootedDocument } from "./testlib.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const MODULE = pathToFileURL(path.join(HERE, "glance.js")).href;
 const PAGE = readFileSync(path.join(HERE, "..", "testdata", "index.golden.html"), "utf8");
 
 /** A fresh document over the pinned page, booted. */
-async function booted() {
-  const dom = new JSDOM(PAGE);
-  const mod = await import(MODULE);
-  const doc = dom.window.document;
-  mod.boot(doc);
-  return { mod, doc, window: dom.window };
-}
+const booted = (url) => bootedDocument(PAGE, MODULE, url);
 
 /** Cents of a figure as Go prints it: "$254,095,412" or "$1,234.56". */
 function centsOf(text) {
@@ -292,10 +287,7 @@ test("the year select shows one year at a time and carries it to the other pages
   const shown = (doc) => [...doc.querySelectorAll("section.glance-year")].filter((s) => !s.hidden).map((s) => s.dataset.year);
   const bare = new JSDOM(PAGE).window.document;
   assert.equal([...bare.querySelectorAll("section.glance-year[hidden]")].length, 0, "the template hides a year");
-  const dom = new JSDOM(PAGE, { url: "http://x/index.html" });
-  const { window } = dom;
-  const doc = window.document;
-  (await import(MODULE)).boot(doc);
+  const { window, doc } = await booted("http://x/index.html");
   const select = doc.getElementById("year-select");
   assert.ok(select && !select.disabled, "the year select is missing or left disabled");
   assert.deepEqual(shown(doc), [select.value]);
@@ -312,9 +304,8 @@ test("the year select shows one year at a time and carries it to the other pages
   window.dispatchEvent(new window.HashChangeEvent("hashchange"));
   assert.deepEqual(shown(doc), [other]);
 
-  const asked = new JSDOM(PAGE, { url: "http://x/index.html#y=" + other });
-  (await import(MODULE)).boot(asked.window.document);
-  assert.deepEqual(shown(asked.window.document), [other]);
+  const asked = await booted("http://x/index.html#y=" + other);
+  assert.deepEqual(shown(asked.doc), [other]);
 });
 
 // A year switch unpins a tip over the year it hides, or the tip would state

@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { JSDOM } from "jsdom";
+import { bootedDocument } from "./testlib.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const MODULE = pathToFileURL(path.join(HERE, "capital.js")).href;
@@ -15,13 +15,7 @@ const { dollars } = await import(pathToFileURL(path.join(HERE, "format.js")).hre
 const PAGE = readFileSync(path.join(HERE, "..", "testdata", "capital.golden.html"), "utf8");
 
 /** A fresh document over the pinned page at `hash`, booted. */
-async function booted(hash = "") {
-  const dom = new JSDOM(PAGE, { url: "https://capital.test/capital.html" + hash });
-  const mod = await import(MODULE);
-  const doc = dom.window.document;
-  mod.boot(doc);
-  return { mod, doc };
-}
+const booted = (hash = "") => bootedDocument(PAGE, MODULE, "https://capital.test/capital.html" + hash);
 
 /** Sets a control's value and fires the event capital.js listens for. */
 function set(doc, id, value, event) {
