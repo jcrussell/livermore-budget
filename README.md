@@ -143,6 +143,28 @@ re-runs that check.
 - [2025-2030 Capital Improvement Plan](https://www.livermoreca.gov/home/showpublisheddocument/12793)
 - [FY 2024-25 Annual Comprehensive Financial Report](https://www.livermoreca.gov/home/showpublisheddocument/13545)
 
+### Retrieving them
+
+`www.livermoreca.gov` is behind Akamai bot protection and returns **HTTP 403 to
+a bare `curl`** (an `AkamaiGHost` error page, not a network failure). A full
+browser header set gets through:
+
+```bash
+curl -sSL --compressed \
+  -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" \
+  -H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8" \
+  -H "Accept-Language: en-US,en;q=0.9" \
+  -H "Sec-Fetch-Dest: document" -H "Sec-Fetch-Mode: navigate" \
+  -H "Sec-Fetch-Site: none" -H "Sec-Fetch-User: ?1" \
+  -H "Upgrade-Insecure-Requests: 1" \
+  "https://www.livermoreca.gov/home/showpublisheddocument/12813" -o budget.pdf
+```
+
+Document permalinks take the form `/home/showpublisheddocument/<id>`. The
+longer form with a trailing .NET-ticks value is a cache-buster; both serve the
+same bytes, and `data/sources.yaml` records each. LFS uses sha256 as its
+object ID, so the LFS OIDs are a second copy of the registry's hashes.
+
 This is an independent project and is not affiliated with or endorsed by the
 City of Livermore.
 

@@ -71,9 +71,8 @@ bd prime                          # workflow context, commands, and memories
 bd ready --exclude-type=byob,epic # claimable work; byob decisions and epics hidden
 ```
 
-- Read [`docs/m0-spike.md`](docs/m0-spike.md) before touching extraction: which
-  substrate is usable, which is a trap, and how to re-download the PDFs past the
-  city site's bot protection.
+- Read [`docs/extraction-substrate.md`](docs/extraction-substrate.md) before
+  touching extraction: what each substrate carries and which is a trap.
 - Read [`testdata/README.md`](testdata/README.md) before writing a parser. Every
   fixture exists for a named failure mode.
 - `bd list --type=byob --no-parent` is the architectural decisions this project
@@ -593,4 +592,4 @@ rm -rf directory       # NOT: rm -r directory
 `www.livermoreca.gov` sits behind Akamai bot protection and returns HTTP 403 to a
 bare `curl` — an error page, not a network failure, so it is easy to misdiagnose
 as a proxy problem. The full browser header set that works is in
-[`docs/m0-spike.md`](docs/m0-spike.md).
+[`README.md`](README.md), "Retrieving them".

@@ -1,7 +1,6 @@
 // Package mapping models the curated rules that say which rows of which
 // extracted pages become which facts: the human judgment layer, kept in
-// reviewable YAML. See docs/m0-spike.md for the document quirks the schema
-// answers.
+// reviewable YAML.
 package mapping
 
 import (

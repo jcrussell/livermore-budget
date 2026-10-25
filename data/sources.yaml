@@ -71,4 +71,4 @@ sources:
 # www.livermoreca.gov sits behind Akamai bot protection and returns HTTP 403 to
 # a bare curl. A full browser header set gets through — User-Agent, Accept,
 # Accept-Language, Sec-Fetch-Dest/Mode/Site/User, Upgrade-Insecure-Requests.
-# See docs/m0-spike.md.
+# The full set is in README.md, "Retrieving them".

@@ -28,7 +28,7 @@ rules:
       (4 values per row). p67 continues the same rows for the other four fund
       groups with nothing but numbers, so its row identity is positional
       against p66. Verified: all 16 column totals tie exactly to the totals
-      the document prints. See docs/m0-spike.md.
+      the document prints.
     parts:
       - page: 66
         section: "REVENUES:"

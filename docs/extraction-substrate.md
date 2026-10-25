@@ -93,6 +93,16 @@ the `toks[:ncols]` two lines below.
 Nobody has enumerated what is left once all four defences are in play. A
 block-final row backed by an unlabelled total line is the obvious candidate.
 
+## p67's row count caught our own pipeline dropping a row
+
+p67 prints no row labels: it continues p66's ten revenue rows for four more
+fund groups, so its row identity is positional against p66. A read of 72
+values where 10 rows x 8 columns requires 80 failed closed. `pdftotext -bbox`
+puts ten rows on p67 at p66's ten y-positions; rows 8-10 are three consecutive
+all-dash lines, and the extractor of the day deleted the third as repeated
+boilerplate (`fisc-c00`). On a positional page a row our own pipeline drops
+mismaps every row beneath it, and `row_label` is part of the fact id.
+
 ## Two parties record the hash
 
 `tools/extract.py` deliberately does not read `data/sources.yaml`. It discovers
