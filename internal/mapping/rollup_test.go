@@ -270,39 +270,40 @@ func TestARollupMayCoverOneRule(t *testing.T) {
 	}
 }
 
-// TestARollupMayNotBeAnchoredOnACoveredRulesOwnTotal holds that `" Total"`,
-// which passes the parser's string and uniqueness guards on a one-division
-// page, is refused for resolving to the division's own Total.
-func TestARollupMayNotBeAnchoredOnACoveredRulesOwnTotal(t *testing.T) {
-	f, r := councilResolver(t, " Total", cityCouncilPage)
-	if _, err := r.CheckRollup(&f.Rollups[0]); err == nil {
-		t.Fatal("a rollup anchored on its covered rule's own Total was asserted; " +
-			"it compares a figure with itself and can never fail")
-	} else if !strings.Contains(err.Error(), "same printed line") {
-		t.Errorf("error = %v, want it to say the two anchors name one line", err)
-	}
-}
-
 // TestRollupsRefuseWhatTheyCannotMean states the parser's refusals. Every one
 // is a declaration that would otherwise report a number nobody could act on.
 func TestRollupsRefuseWhatTheyCannotMean(t *testing.T) {
-	for _, tc := range []struct{ name, covers, want string }{
+	covering := func(covers string) string {
+		return strings.Replace(adminServicesRules, "    #COVERS", covers, 1)
+	}
+	// The total_row taken off Human Resources only.
+	noTotal := covering(adminCovers)
+	i := strings.Index(noTotal, "  - id: div-human-resources")
+	noTotal = noTotal[:i] + mustReplace(t, noTotal[i:], "    total_row: \"Total\"\n", "")
+	for _, tc := range []struct{ name, src, want string }{
 		{"naming a rule that does not exist",
-			"    covers: [div-finance, div-nonesuch]",
+			covering("    covers: [div-finance, div-nonesuch]"),
 			`no rule "div-nonesuch" in this file`},
 		{"counting a rule twice",
-			"    covers: [div-finance, div-finance, div-human-resources]",
+			covering("    covers: [div-finance, div-finance, div-human-resources]"),
 			`"div-finance" is listed twice`},
 		{"asserting and declining at once",
-			adminCovers + "\n    unassertable: \"cannot be checked\"",
+			covering(adminCovers + "\n    unassertable: \"cannot be checked\""),
 			"is declared alongside covers"},
 		{"saying nothing at all",
-			"    note: \"\"",
+			covering("    note: \"\""),
 			"is empty and no reason is declared"},
+		// A covered rule with no total_row is refused rather than silently
+		// dropped from the sum.
+		{"NeedsEveryCoveredRuleToPrintATotal", noTotal,
+			`rule "div-human-resources" declares no total_row`},
+		// The parser and the build must both trim the reason.
+		{"AWhitespaceUnassertable",
+			covering(adminCovers + "\n    unassertable: \" \""),
+			"is whitespace; omit it or give the reason"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			src := strings.Replace(adminServicesRules, "    #COVERS", tc.covers, 1)
-			if _, err := parse(strings.NewReader(src), "admin.yaml"); err == nil {
+			if _, err := parse(strings.NewReader(tc.src), "admin.yaml"); err == nil {
 				t.Fatal("accepted")
 			} else if !strings.Contains(err.Error(), tc.want) {
 				t.Errorf("error = %v, want it to contain %q", err, tc.want)
@@ -311,285 +312,145 @@ func TestRollupsRefuseWhatTheyCannotMean(t *testing.T) {
 	}
 }
 
-// TestARollupNeedsEveryCoveredRuleToPrintATotal holds that a covered rule
-// with no total_row is refused rather than silently dropped from the sum.
-func TestARollupNeedsEveryCoveredRuleToPrintATotal(t *testing.T) {
-	src := strings.Replace(adminServicesRules, "    #COVERS", adminCovers, 1)
-	// Take the total_row off Human Resources only.
-	i := strings.Index(src, "  - id: div-human-resources")
-	src = src[:i] + strings.Replace(src[i:], "    total_row: \"Total\"\n", "", 1)
-	if _, err := parse(strings.NewReader(src), "admin.yaml"); err == nil {
-		t.Fatal("accepted a rollup covering a rule that prints no total")
-	} else if !strings.Contains(err.Error(), `rule "div-human-resources" declares no total_row`) {
-		t.Errorf("error = %v", err)
-	}
-}
+// twoDivisionRules rolls div-one, on p1 under FY2026, and div-two, whose
+// #BASIS and #PARTS each case fills, into p1's DEPARTMENT TOTAL.
+const twoDivisionRules = `schema_version: 1
+doc_id: two-doc
 
-// TestARollupAnchorMustNameOnePrintedLine keeps the read off the wrong line.
-// A rollup has no block to search after, unlike a rule's total_row, so an
-// ambiguous anchor would take whichever occurrence came first.
-func TestARollupAnchorMustNameOnePrintedLine(t *testing.T) {
-	for _, tc := range []struct{ name, page, want string }{
-		{"absent", strings.Replace(adminServicesPage,
-			"ADMINISTRATIVE SERVICES TOTAL", "ADMINISTRATIVE SERVCIES TOTAL", 1),
-			"does not occur on the page"},
-		{"twice", adminServicesPage +
-			"ADMINISTRATIVE SERVICES TOTAL          $6,311,564\n",
-			"occurs more than once on the page"},
+rules:
+  - id: div-one
+    kind: expenditure
+    basis: adopted
+    scope: all-funds-gross
+    grain: fund-group-by-category
+    units: dollars
+    total_row: "Total"
+    rows:
+      - {label: "Wages", category: wages-and-benefits}
+    parts:
+      - page: 1
+        section: "Division One"
+        stop_at: "Total"
+        columns:
+          - {fund_group: general, fiscal_year: 2026}
+
+  - id: div-two
+    kind: expenditure
+    basis: #BASIS
+    scope: all-funds-gross
+    grain: fund-group-by-category
+    units: dollars
+    total_row: "Total"
+    rows:
+      - {label: "Wages", category: wages-and-benefits}
+    parts:
+#PARTS
+rollups:
+  - id: dept-total
+    page: 1
+    total_row: "DEPARTMENT TOTAL"
+    covers: [div-one, div-two]
+`
+
+// continuedParts is div-two read from p2's figures under p3's labels, its
+// total-bearing part on p3 declaring #COLUMNS.
+const continuedParts = `      - page: 2
+        labels_from: 3
+        section: "CONTINUED"
+        stop_at: "END"
+        columns:
+          - {fund_group: general, fiscal_year: 2026}
+      - page: 3
+        section: "Division Two"
+        stop_at: "Total"
+        columns:
+#COLUMNS
+`
+
+// TestCheckRollupRefuses holds each refusal CheckRollup makes over a parsed
+// file and its pages. A panic fails a row as surely as an acceptance does.
+func TestCheckRollupRefuses(t *testing.T) {
+	two := func(basis, parts string) string {
+		return strings.NewReplacer("#BASIS", basis, "#PARTS", parts).Replace(twoDivisionRules)
+	}
+	continued := func(columns string) string {
+		return two("adopted", strings.Replace(continuedParts, "#COLUMNS", columns, 1))
+	}
+	admin := strings.Replace(adminServicesRules, "    #COVERS", adminCovers, 1)
+	divisionOne := "Division One\nWages 100\nTotal $100\nDEPARTMENT TOTAL $400\n"
+	for _, tc := range []struct {
+		name  string
+		src   string
+		pages map[int]string
+		want  []string
+	}{
+		// `" Total"` passes the parser's string and uniqueness guards on a
+		// one-division page, and resolves to the division's own Total, a figure
+		// compared with itself.
+		{name: "MayNotBeAnchoredOnACoveredRulesOwnTotal",
+			src:   strings.Replace(cityCouncilRules, "#ANCHOR", " Total", 1),
+			pages: map[int]string{167: cityCouncilPage},
+			want:  []string{"same printed line"}},
+		// A rollup has no block to search after, so an ambiguous anchor would
+		// take whichever occurrence came first.
+		{name: "AnchorMustNameOnePrintedLine/absent", src: admin,
+			pages: map[int]string{168: strings.Replace(adminServicesPage,
+				"ADMINISTRATIVE SERVICES TOTAL", "ADMINISTRATIVE SERVCIES TOTAL", 1)},
+			want: []string{"does not occur on the page"}},
+		{name: "AnchorMustNameOnePrintedLine/twice", src: admin,
+			pages: map[int]string{168: adminServicesPage +
+				"ADMINISTRATIVE SERVICES TOTAL          $6,311,564\n"},
+			want: []string{"occurs more than once on the page"}},
+		// A covered rule whose total-bearing part (not Parts[0]) declares a
+		// different column count errors rather than panicking.
+		{name: "WhoseRulesStateDifferentWidthsFailsClosed",
+			src: continued("          - {fund_group: general, fiscal_year: 2026}\n" +
+				"          - {fund_group: general, fiscal_year: 2027}"),
+			pages: map[int]string{1: divisionOne, 2: "CONTINUED\n50\nEND\n",
+				3: "Division Two\nWages 300 400\nTotal $300 $400\n"},
+			want: []string{"states 1 columns"}},
+		// fisc-7fe: both rules state one column, but the bearing parts are
+		// FY2026 and FY2027 and the printed $400 is exactly 100 + 300. Mutation:
+		// compare only column counts and the rollup ties. The parser compares
+		// Parts[0] and cannot see it. Both rules and both columns are named, so
+		// the author need not work out which declaration is the wrong one.
+		{name: "WhoseRulesStateDifferentColumnsFailsClosed",
+			src: continued("          - {fund_group: general, fiscal_year: 2027}"),
+			pages: map[int]string{1: divisionOne, 2: "CONTINUED\n50\nEND\n",
+				3: "Division Two\nWages 300\nTotal $300\n"},
+			want: []string{"div-one", "div-two", "FY2026", "FY2027", "column 1"}},
+		// Every Column compares equal, but Column.Basis is an override and the
+		// rule's basis fills it. Mutation: compare Column values alone and it
+		// ties at $400.
+		{name: "AcrossTwoBasesFailsClosed",
+			src: two("revised", `      - page: 2
+        section: "Division Two"
+        stop_at: "Total"
+        columns:
+          - {fund_group: general, fiscal_year: 2026}
+`),
+			pages: map[int]string{1: divisionOne, 2: "Division Two\nWages 300\nTotal $300\n"},
+			want:  []string{"adopted", "revised"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			src := strings.Replace(adminServicesRules, "    #COVERS", adminCovers, 1)
-			f, err := parse(strings.NewReader(src), "admin.yaml")
+			f, err := parse(strings.NewReader(tc.src), "rollup.yaml")
 			if err != nil {
 				t.Fatalf("Parse: %v", err)
 			}
-			r, err := NewResolver(inlineDoc(t, f.DocID, map[int]string{168: tc.page}), f)
+			r, err := NewResolver(inlineDoc(t, f.DocID, tc.pages), f)
 			if err != nil {
 				t.Fatalf("NewResolver: %v", err)
 			}
-			if _, err := r.CheckRollup(&f.Rollups[0]); err == nil {
+			_, err = r.CheckRollup(&f.Rollups[0])
+			if err == nil {
 				t.Fatal("accepted")
-			} else if !strings.Contains(err.Error(), tc.want) {
-				t.Errorf("error = %v, want it to contain %q", err, tc.want)
+			}
+			for _, want := range tc.want {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("error = %v, want it to contain %q", err, want)
+				}
 			}
 		})
-	}
-}
-
-// TestARollupWhoseRulesStateDifferentWidthsFailsClosed holds that a covered
-// rule whose total-bearing part (not Parts[0]) declares a different column
-// count errors rather than panicking.
-func TestARollupWhoseRulesStateDifferentWidthsFailsClosed(t *testing.T) {
-	pages := map[int]string{
-		1: "Division One\nWages 100\nTotal $100\nDEPARTMENT TOTAL $400\n",
-		2: "CONTINUED\n50\nEND\n",
-		3: "Division Two\nWages 300 400\nTotal $300 $400\n",
-	}
-	const src = `schema_version: 1
-doc_id: widths-doc
-
-rules:
-  - id: div-one
-    kind: expenditure
-    basis: adopted
-    scope: all-funds-gross
-    grain: fund-group-by-category
-    units: dollars
-    total_row: "Total"
-    rows:
-      - {label: "Wages", category: wages-and-benefits}
-    parts:
-      - page: 1
-        section: "Division One"
-        stop_at: "Total"
-        columns:
-          - {fund_group: general, fiscal_year: 2026}
-
-  - id: div-two
-    kind: expenditure
-    basis: adopted
-    scope: all-funds-gross
-    grain: fund-group-by-category
-    units: dollars
-    total_row: "Total"
-    rows:
-      - {label: "Wages", category: wages-and-benefits}
-    parts:
-      - page: 2
-        labels_from: 3
-        section: "CONTINUED"
-        stop_at: "END"
-        columns:
-          - {fund_group: general, fiscal_year: 2026}
-      - page: 3
-        section: "Division Two"
-        stop_at: "Total"
-        columns:
-          - {fund_group: general, fiscal_year: 2026}
-          - {fund_group: general, fiscal_year: 2027}
-
-rollups:
-  - id: dept-total
-    page: 1
-    total_row: "DEPARTMENT TOTAL"
-    covers: [div-one, div-two]
-`
-	f, err := parse(strings.NewReader(src), "widths.yaml")
-	if err != nil {
-		t.Fatalf("Parse: %v", err)
-	}
-	r, err := NewResolver(inlineDoc(t, f.DocID, pages), f)
-	if err != nil {
-		t.Fatalf("NewResolver: %v", err)
-	}
-	// The assertion is that this RETURNS rather than panicking.
-	_, err = r.CheckRollup(&f.Rollups[0])
-	if err == nil {
-		t.Fatal("a rollup over rules stating 1 and 2 columns was accepted")
-	}
-	if !strings.Contains(err.Error(), "states 1 columns") {
-		t.Errorf("error = %v, want it to name the two widths", err)
-	}
-}
-
-// TestAWhitespaceUnassertableIsRefused holds that `unassertable: " "` is
-// refused, as the parser and the build must both trim the reason.
-func TestAWhitespaceUnassertableIsRefused(t *testing.T) {
-	src := strings.Replace(adminServicesRules, "    #COVERS",
-		adminCovers+"\n    unassertable: \" \"", 1)
-	if _, err := parse(strings.NewReader(src), "admin.yaml"); err == nil {
-		t.Fatal("accepted a whitespace-only unassertable")
-	} else if !strings.Contains(err.Error(), "is whitespace; omit it or give the reason") {
-		t.Errorf("error = %v", err)
-	}
-}
-
-// TestARollupWhoseRulesStateDifferentColumnsFailsClosed is fisc-7fe: both
-// rules state one column, but the bearing parts are FY2026 and FY2027 and the
-// printed $400 is exactly 100 + 300. Mutation: compare only column counts and
-// the rollup ties. The parser compares Parts[0] and cannot see it.
-func TestARollupWhoseRulesStateDifferentColumnsFailsClosed(t *testing.T) {
-	pages := map[int]string{
-		1: "Division One\nWages 100\nTotal $100\nDEPARTMENT TOTAL $400\n",
-		2: "CONTINUED\n50\nEND\n",
-		3: "Division Two\nWages 300\nTotal $300\n",
-	}
-	const src = `schema_version: 1
-doc_id: columns-doc
-
-rules:
-  - id: div-one
-    kind: expenditure
-    basis: adopted
-    scope: all-funds-gross
-    grain: fund-group-by-category
-    units: dollars
-    total_row: "Total"
-    rows:
-      - {label: "Wages", category: wages-and-benefits}
-    parts:
-      - page: 1
-        section: "Division One"
-        stop_at: "Total"
-        columns:
-          - {fund_group: general, fiscal_year: 2026}
-
-  - id: div-two
-    kind: expenditure
-    basis: adopted
-    scope: all-funds-gross
-    grain: fund-group-by-category
-    units: dollars
-    total_row: "Total"
-    rows:
-      - {label: "Wages", category: wages-and-benefits}
-    parts:
-      - page: 2
-        labels_from: 3
-        section: "CONTINUED"
-        stop_at: "END"
-        columns:
-          - {fund_group: general, fiscal_year: 2026}
-      - page: 3
-        section: "Division Two"
-        stop_at: "Total"
-        columns:
-          - {fund_group: general, fiscal_year: 2027}
-
-rollups:
-  - id: dept-total
-    page: 1
-    total_row: "DEPARTMENT TOTAL"
-    covers: [div-one, div-two]
-`
-	f, err := parse(strings.NewReader(src), "columns.yaml")
-	if err != nil {
-		t.Fatalf("Parse: %v", err)
-	}
-	r, err := NewResolver(inlineDoc(t, f.DocID, pages), f)
-	if err != nil {
-		t.Fatalf("NewResolver: %v", err)
-	}
-	_, err = r.CheckRollup(&f.Rollups[0])
-	if err == nil {
-		t.Fatal("a rollup summing an FY2026 total into an FY2027 one reported a clean tie")
-	}
-	// Naming both rules and both columns, because "the columns differ" leaves
-	// the author to work out which of the two declarations is the wrong one.
-	for _, want := range []string{"div-one", "div-two", "FY2026", "FY2027", "column 1"} {
-		if !strings.Contains(err.Error(), want) {
-			t.Errorf("error does not mention %q: %v", want, err)
-		}
-	}
-}
-
-// TestARollupAcrossTwoBasesFailsClosed holds that two rules on different
-// bases are refused although every Column compares equal: Column.Basis is an
-// override and the rule's basis fills it. Mutation: compare Column values
-// alone and it ties at $400.
-func TestARollupAcrossTwoBasesFailsClosed(t *testing.T) {
-	pages := map[int]string{
-		1: "Division One\nWages 100\nTotal $100\nDEPARTMENT TOTAL $400\n",
-		2: "Division Two\nWages 300\nTotal $300\n",
-	}
-	const src = `schema_version: 1
-doc_id: bases-doc
-
-rules:
-  - id: div-one
-    kind: expenditure
-    basis: adopted
-    scope: all-funds-gross
-    grain: fund-group-by-category
-    units: dollars
-    total_row: "Total"
-    rows:
-      - {label: "Wages", category: wages-and-benefits}
-    parts:
-      - page: 1
-        section: "Division One"
-        stop_at: "Total"
-        columns:
-          - {fund_group: general, fiscal_year: 2026}
-
-  - id: div-two
-    kind: expenditure
-    basis: revised
-    scope: all-funds-gross
-    grain: fund-group-by-category
-    units: dollars
-    total_row: "Total"
-    rows:
-      - {label: "Wages", category: wages-and-benefits}
-    parts:
-      - page: 2
-        section: "Division Two"
-        stop_at: "Total"
-        columns:
-          - {fund_group: general, fiscal_year: 2026}
-
-rollups:
-  - id: dept-total
-    page: 1
-    total_row: "DEPARTMENT TOTAL"
-    covers: [div-one, div-two]
-`
-	f, err := parse(strings.NewReader(src), "bases.yaml")
-	if err != nil {
-		t.Fatalf("Parse: %v", err)
-	}
-	r, err := NewResolver(inlineDoc(t, f.DocID, pages), f)
-	if err != nil {
-		t.Fatalf("NewResolver: %v", err)
-	}
-	_, err = r.CheckRollup(&f.Rollups[0])
-	if err == nil {
-		t.Fatal("a rollup summing a revised total into an adopted one reported a clean tie")
-	}
-	for _, want := range []string{"adopted", "revised"} {
-		if !strings.Contains(err.Error(), want) {
-			t.Errorf("error does not name the %s basis: %v", want, err)
-		}
 	}
 }
 
