@@ -253,6 +253,24 @@ describe("the expansion's drawing", () => {
     assert.deepEqual(misnoted, []);
   });
 
+  // Mutation: drop the partition chip from chipsOf and this goes red; the
+  // tooltip and the panel both wear what chipsOf returns.
+  test("a planted printed reduction across a cross-tab wears the kind, printed, reduction and cross-tab chips, in order", async () => {
+    const { app } = await loadApp();
+    const kind = Object.keys(CONFIG.kind_labels)[0];
+    const planted = {
+      fact_ids: [], kind, derived: false, contra: "reduces X", partition: true,
+      source: { derived: false }, target: { derived: false },
+    };
+    const words = { printed: "printed_chip", inferred: "inferred_chip" };
+    assert.deepEqual(app.chipsOf(planted, words, { again: false }), [
+      { cls: "chip", words: CONFIG.kind_labels[kind] },
+      { cls: "chip", words: CONFIG.wording.printed_chip },
+      { cls: "chip contra", words: "reduction" },
+      { cls: "chip partition", words: "cross-tab" },
+    ]);
+  });
+
   test("the legend is the fund groups the marks are in, in Go's order, and a swatch follows the group across its funds", async (t) => {
     const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem });
     const chart = document.getElementById("chart");

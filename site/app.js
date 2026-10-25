@@ -2252,6 +2252,47 @@ export function caveatsFor(id) {
 }
 
 /**
+ * The chips the tooltip and the detail panel both wear for a mark, in order.
+ * `words` names the say() keys for printed and inferred; `again` and `share`
+ * are a link's drawsAgain and a node's shareOf, passed in so this reads no
+ * state.
+ * @param {LaidLink | LaidNode} d
+ * @param {{printed: string, inferred: string}} words
+ * @param {{again?: boolean, share?: string}} seen
+ * @returns {{cls: string, words: string}[]}
+ */
+export function chipsOf(d, words, seen) {
+  /** @type {{cls: string, words: string}[]} */
+  const out = [];
+  const chip = (/** @type {string} */ cls, /** @type {string} */ w) => out.push({ cls, words: w });
+  if (isLink(d)) {
+    const l = /** @type {LaidLink} */ (d);
+    const kind = kindLabel(l.kind);
+    if (kind) chip("chip", kind);
+    const lent = Boolean(l.source.derived || l.target.derived);
+    chip(l.derived || lent || seen.again ? "chip derived" : "chip",
+      say(l.derived ? words.inferred : seen.again ? "repeats_chip" : lent ? "carried_chip" : words.printed));
+    if (l.contra) chip("chip contra", "reduction");
+    if (l.partition) chip("chip partition", "cross-tab");
+  } else {
+    const n = /** @type {LaidNode} */ (d);
+    chip("chip", n.role.replace(/_/g, " "));
+    if (n.constraint_tier) chip("chip", "constraint: " + n.constraint_tier);
+    chip(n.derived ? "chip derived" : "chip", say(n.derived ? words.inferred : words.printed));
+    // chip derived: a share is computed, never printed.
+    if (seen.share) chip("chip derived", seen.share);
+  }
+  return out;
+}
+
+/** @param {LaidLink | LaidNode} d */
+function seenOf(d) {
+  return isLink(d)
+    ? { again: drawsAgain(/** @type {LaidLink} */ (d), leafDraws(projection)) }
+    : { share: shareOf(/** @type {LaidNode} */ (d)) };
+}
+
+/**
  * @param {MouseEvent | FocusEvent} event
  * @param {LaidLink | LaidNode} d
  */
@@ -2277,27 +2318,15 @@ export function showTip(event, d) {
       : nameOf(/** @type {LaidNode} */ (d))));
   tip.append(label);
 
+  const chips = chipsOf(d, { printed: "printed_chip", inferred: "inferred_chip" }, seenOf(d));
+  // A caveat about a node, said at the mark.
+  const cavs = asLink ? [] : caveatsFor(/** @type {LaidNode} */ (d).id);
+  if (cavs.length) chips.push({ cls: "chip caveat", words: say("caveat_chip", { n: cavs.length }) });
   const meta = h("div", "tip-meta");
+  chips.forEach((c, i) => meta.append(...(i ? [" "] : []), h("span", c.cls, c.words)));
+  tip.append(meta);
   if (asLink) {
     const l = /** @type {LaidLink} */ (d);
-    const kind = kindLabel(l.kind);
-    if (kind) {
-      meta.append(h("span", "chip", kind));
-      meta.append(document.createTextNode(" "));
-    }
-    const lentTo = Boolean(l.source.derived || l.target.derived);
-    const again = drawsAgain(l, leafDraws(projection));
-    meta.append(h("span", l.derived || lentTo || again ? "chip derived" : "chip",
-      say(l.derived ? "inferred_chip" : again ? "repeats_chip" : lentTo ? "carried_chip" : "printed_chip")));
-    if (l.contra) {
-      meta.append(document.createTextNode(" "));
-      meta.append(h("span", "chip contra", "reduction"));
-    }
-    if (l.partition) {
-      meta.append(document.createTextNode(" "));
-      meta.append(h("span", "chip partition", "cross-tab"));
-    }
-    tip.append(meta);
     // The chip says what kind of row; the sentence says what it reduces.
     if (l.contra) tip.append(h("div", "tip-meta", l.contra));
     if (l.partition) tip.append(h("div", "tip-meta", PARTITION_NOTE));
@@ -2305,26 +2334,6 @@ export function showTip(event, d) {
     tip.append(h("div", "facts", l.fact_ids.join(" ")));
   } else {
     const n = /** @type {LaidNode} */ (d);
-    meta.append(h("span", "chip", n.role.replace(/_/g, " ")));
-    if (n.constraint_tier) {
-      meta.append(document.createTextNode(" "));
-      meta.append(h("span", "chip", "constraint: " + n.constraint_tier));
-    }
-    meta.append(document.createTextNode(" "));
-    meta.append(h("span", n.derived ? "chip derived" : "chip", say(n.derived ? "inferred_chip" : "printed_chip")));
-    const share = shareOf(n);
-    if (share) {
-      meta.append(document.createTextNode(" "));
-      // chip derived: a share is computed, never printed.
-      meta.append(h("span", "chip derived", share));
-    }
-    // A caveat about this mark, said at the mark.
-    const cavs = caveatsFor(n.id);
-    if (cavs.length) {
-      meta.append(document.createTextNode(" "));
-      meta.append(h("span", "chip caveat", say("caveat_chip", { n: cavs.length })));
-    }
-    tip.append(meta);
     for (const b of balancesOf(n)) {
       const said = h("div", "tip-meta", b.words);
       if (b.derived) said.append(" ", h("span", "chip derived", say("inferred_chip")));
@@ -2551,17 +2560,11 @@ export function paintDetail(d) {
     : nameOf(/** @type {LaidNode} */ (d))));
 
   const chips = h("div", "prov");
+  chips.append(...chipsOf(d, { printed: "printed_by_city", inferred: "our_inference" }, seenOf(d))
+    .map((c) => h("span", c.cls, c.words)));
+  panel.append(chips);
   if (asLink) {
     const l = /** @type {LaidLink} */ (d);
-    const kind = kindLabel(l.kind);
-    if (kind) chips.append(h("span", "chip", kind));
-    const lent = Boolean(l.source.derived || l.target.derived);
-    const again = drawsAgain(l, leafDraws(projection));
-    chips.append(h("span", l.derived || lent || again ? "chip derived" : "chip",
-      say(l.derived ? "our_inference" : again ? "repeats_chip" : lent ? "carried_chip" : "printed_by_city")));
-    if (l.contra) chips.append(h("span", "chip contra", "reduction"));
-    if (l.partition) chips.append(h("span", "chip partition", "cross-tab"));
-    panel.append(chips);
     if (l.contra) panel.append(h("p", "why", l.contra));
     if (l.partition) panel.append(h("p", "why", PARTITION_NOTE));
     if (l.merged) panel.append(h("p", "why", l.merged));
@@ -2571,12 +2574,6 @@ export function paintDetail(d) {
     else if (l.derived && end.source_note) panel.append(h("p", "subtle", end.source_note));
   } else {
     const n = /** @type {LaidNode} */ (d);
-    chips.append(h("span", "chip", n.role.replace(/_/g, " ")));
-    if (n.constraint_tier) chips.append(h("span", "chip", "constraint: " + n.constraint_tier));
-    chips.append(h("span", n.derived ? "chip derived" : "chip", say(n.derived ? "our_inference" : "printed_by_city")));
-    const share = shareOf(n);
-    if (share) chips.append(h("span", "chip derived", share));
-    panel.append(chips);
     // A printed balance cites its own fact and pages; a derived change says why.
     for (const b of balancesOf(n)) {
       const said = h("p", "subtle", b.words + " ");
