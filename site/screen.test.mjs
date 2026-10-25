@@ -5,7 +5,7 @@
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { loadApp, bootedApp, split, settle, fire, drawnBody, stylesheet, pageFixture, refusals, listenerErrors } from "./testlib.mjs";
+import { loadApp, bootedApp, split, settle, fire, drawnBody, cssPx, stylesheet, pageFixture, refusals, listenerErrors } from "./testlib.mjs";
 
 /**
  * Stubs the Fullscreen API on a loaded page, as a browser offering it does:
@@ -95,14 +95,14 @@ describe("full screen on the chart's card", () => {
     const full = { body: read(), viewBox: viewBoxWidth(document), scale: drawnScale(document, window).scale };
     const max = app.widthOf(app.openingColumns());
     t.diagnostic(`at 1400px the room is ${before.body.room}px; full screen at ${screen}px it is ${full.body.room}px ` +
-      `(cushion ${app.SCREEN_CUSHION}, rail ${app.RAIL_WIDTH}) against --chart-max ${max}px; the split chart draws ` +
+      `(cushion ${cssPx("--screen-cushion")}, rail ${cssPx("--rail-width")}) against --chart-max ${max}px; the split chart draws ` +
       `${full.body.drawn * full.body.stretch}px wide, viewBox ${full.viewBox}`);
     assert.deepEqual({
       full: full.body.full, beside: full.body.beside, room: full.body.room, wider: full.body.room > max,
       fits: full.body.drawn * full.body.stretch <= full.body.room, panned: before.body.drawn * before.body.stretch > before.body.room,
       scale: Number(full.scale.toFixed(9)), viewBox: full.viewBox,
     }, {
-      full: true, beside: true, room: screen - app.SCREEN_CUSHION - app.RAIL_WIDTH, wider: true, fits: true, panned: true,
+      full: true, beside: true, room: screen - cssPx("--screen-cushion") - cssPx("--rail-width"), wider: true, fits: true, panned: true,
       scale: Number(before.scale.toFixed(9)), viewBox: before.viewBox,
     });
     assert.equal(Number(full.scale.toFixed(9)), 1);

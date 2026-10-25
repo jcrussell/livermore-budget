@@ -1,7 +1,6 @@
 // pins.test.mjs — every literal the client shares with Go or with the
 // stylesheet is held to the other party's copy, so neither can move alone:
-// the fund-group role, the mark prefixes, the viewport's and full screen's
-// cushions, the rail's width, the hue slots a column's fund groups are
+// the fund-group role, the mark prefixes, the hue slots a column's fund groups are
 // numbered into, and the ramp steps a ranked page's groups are drawn in.
 
 import { describe, test } from "node:test";
@@ -30,27 +29,6 @@ describe("the literals the client shares", () => {
     t.diagnostic(`the schema's id pattern is ${pattern}; the client's prefixes are ${JSON.stringify(prefixes)}`);
     assert.ok(m, `the id pattern ${pattern} is not ^(a|b|c)`);
     assert.deepEqual(m[1].split("|"), prefixes);
-  });
-
-  test("CHART_CUSHION is the stylesheet's --chart-cushion", async (t) => {
-    const { app } = await loadApp();
-    const found = [...stylesheet().matchAll(/--chart-cushion:\s*(\d+)px/g)].map((m) => Number(m[1]));
-    t.diagnostic(`style.css sets --chart-cushion ${found.join(", ")}px; the client's CHART_CUSHION is ${app.CHART_CUSHION}`);
-    assert.deepEqual(found, [app.CHART_CUSHION]);
-  });
-
-  test("SCREEN_CUSHION is the stylesheet's --screen-cushion", async (t) => {
-    const { app } = await loadApp();
-    const found = [...stylesheet().matchAll(/--screen-cushion:\s*(\d+)px/g)].map((m) => Number(m[1]));
-    t.diagnostic(`style.css sets --screen-cushion ${found.join(", ")}px; the client's SCREEN_CUSHION is ${app.SCREEN_CUSHION}`);
-    assert.deepEqual(found, [app.SCREEN_CUSHION]);
-  });
-
-  test("RAIL_WIDTH is the stylesheet's --rail-width", async (t) => {
-    const { app } = await loadApp();
-    const found = [...stylesheet().matchAll(/--rail-width:\s*(\d+)px/g)].map((m) => Number(m[1]));
-    t.diagnostic(`style.css sets --rail-width ${found.join(", ")}px; the client's RAIL_WIDTH is ${app.RAIL_WIDTH}`);
-    assert.deepEqual(found, [app.RAIL_WIDTH]);
   });
 
   test("every hue slot a published column numbers its fund groups into has a --fund-slot in the stylesheet", (t) => {

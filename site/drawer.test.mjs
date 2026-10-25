@@ -5,7 +5,7 @@
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { loadApp, bootedApp, split, settle, fire, drawnBody, stylesheet } from "./testlib.mjs";
+import { loadApp, bootedApp, split, settle, fire, drawnBody, cssPx, stylesheet } from "./testlib.mjs";
 
 /** A page booted at `viewport`, its window's innerWidth that wide too. */
 async function at(viewport, o = {}) {
@@ -218,7 +218,7 @@ describe("the rail", () => {
 
 describe("the width arithmetic beside the chart", () => {
   // Mutations: restore BESIDE_QUERY to the opening chart's width plus
-  // CHART_CUSHION and RAIL_WIDTH, and this goes red: at 1440px the rail
+  // --chart-cushion and --rail-width, and this goes red: at 1440px the rail
   // stacks; add the drawer's width back to --chart-panels, and the room
   // read is refused.
   test("at 1440px the rail sits beside the chart at full size, open, split or collapsed, and the chart pans in the room it leaves", async (t) => {
@@ -240,13 +240,13 @@ describe("the width arithmetic beside the chart", () => {
     fire(document.getElementById("rail-toggle"), "click");
     const collapsed = read();
     t.diagnostic(`BESIDE_QUERY ${app.BESIDE_QUERY}: at ${px}px the opening chart ${full}px draws in a room of ` +
-      `${open.room}px with the rail open and ${collapsed.room}px with it collapsed (cushion ${app.CHART_CUSHION}, rail ` +
-      `${app.RAIL_WIDTH})`);
-    const room = px - app.CHART_CUSHION;
+      `${open.room}px with the rail open and ${collapsed.room}px with it collapsed (cushion ${cssPx("--chart-cushion")}, rail ` +
+      `${cssPx("--rail-width")})`);
+    const room = px - cssPx("--chart-cushion");
     const want = { beside: true, scale: 1, fits: true };
     assert.deepEqual({ open, split1, collapsed }, {
-      open: { ...want, room: room - app.RAIL_WIDTH },
-      split1: { ...want, room: room - app.RAIL_WIDTH, moved: false },
+      open: { ...want, room: room - cssPx("--rail-width") },
+      split1: { ...want, room: room - cssPx("--rail-width"), moved: false },
       collapsed: { ...want, room: Math.min(full, room - drawnBody(document, window).tab) },
     });
     assert.ok(collapsed.room > open.room, "collapsing the rail did not widen the chart's room");

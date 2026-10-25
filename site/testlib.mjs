@@ -19,6 +19,13 @@ export function stylesheet() {
   return readFileSync(join(here, "style.css"), "utf8");
 }
 
+/** The px the stylesheet declares once for a custom property, as `--name: Npx`. */
+export function cssPx(name) {
+  const found = [...stylesheet().matchAll(new RegExp(`${name}:\\s*(\\d+)px`, "g"))].map((m) => Number(m[1]));
+  if (found.length !== 1) throw new Error(`style.css sets ${name} ${found.length} times`);
+  return found[0];
+}
+
 /**
  * How style.css lays the chart's body out at the window's innerWidth, from
  * what app.js hands it: whether the rail sits beside the chart, the px it

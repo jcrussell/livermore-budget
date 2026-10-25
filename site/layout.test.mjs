@@ -509,13 +509,11 @@ describe("where a label is anchored", () => {
     const detail = allowance.px === null
       ? allowance.why
       : `style.css caps the chart's card through --chart-max, which app.js set to ${allowance.px}px, ` +
-        `the opening chart's width, for the ${columns} columns it lays out at ${app.widthOf(columns)}px; the cushion is ` +
-        `${allowance.cushion}px in the stylesheet against app.js's ${app.CHART_CUSHION}px`;
+        `the opening chart's width, for the ${columns} columns it lays out at ${app.widthOf(columns)}px`;
     t.diagnostic(detail);
     assert.ok(columns > 3, "the chart split to its finest grain is no wider than the spine");
     assert.equal(app.chartWidth(3), NARROW_DESIGN_WIDTH);
-    assert.deepEqual({ px: allowance.px, cushion: allowance.cushion },
-      { px: app.widthOf(app.openingColumns()), cushion: app.CHART_CUSHION }, detail);
+    assert.equal(allowance.px, app.widthOf(app.openingColumns()), detail);
   });
 });
 

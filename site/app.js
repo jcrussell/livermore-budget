@@ -306,20 +306,6 @@ export let wholeSplits = new Set();
 export const ALTERNATIVE_MARK = "~";
 
 /**
- * The px `100vw` counts that the window does not: body padding plus a classic
- * scrollbar. The page's, not a form's; style.css records it independently as
- * --chart-cushion.
- */
-export const CHART_CUSHION = 56;
-
-/**
- * The px `100vw` counts that the chart's card full screen does not: its own
- * padding plus a classic scrollbar, with no body padding around it.
- * style.css records it independently as --screen-cushion.
- */
-export const SCREEN_CUSHION = 48;
-
-/**
  * The px under the chart its room keeps clear (roomHeight): the classic
  * scrollbar under a chart wider than its card, which pans.
  */
@@ -385,12 +371,6 @@ export function openingColumns() {
 export function chartStretch(n) {
   return widthOf(n) / widthOf(openingColumns());
 }
-
-/**
- * The px the rail beside the chart takes when open, its gap to the chart
- * included. style.css records it independently as --rail-width.
- */
-export const RAIL_WIDTH = 208;
 
 /**
  * The viewport the rail sits beside the chart on, and opens by default on: a
