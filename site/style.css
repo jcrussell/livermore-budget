@@ -1,40 +1,21 @@
 /*
  * fisc site stylesheet.
  *
- * Colour is not hand-picked here. Every value below comes from the dataviz
- * skill's reference palette, and the six fund-group hues are its categorical
- * slots 1-6 in slot order. The order the funds sit in — internal service,
- * capital, general, special revenue, enterprise, debt service — is not
- * cosmetic: it is the ordering whose *measured* worst adjacent pair, over the
- * fund pairs that actually touch in this graph, clears the gates in both
- * modes (CVD dE 9.1 light / 8.4 dark against a target of 8; normal-vision
- * 19.6 light / 19.3 dark against a floor of 15). app.js pins the layout to
- * that order; changing either without re-running the validator breaks the
- * guarantee.
+ * Colours are the dataviz reference palette; the fund-group hues are its
+ * categorical slots 1-6, and their order (internal service, capital,
+ * general, special revenue, enterprise, debt service) is the one whose
+ * worst touching pair clears the CVD gate in both modes. app.js pins the
+ * layout to it: re-run the validator before changing either.
  *
- * SIX IS THE PALETTE'S CAPACITY, NOT THE CITY'S GROUP COUNT. A column can
- * ship a group with slot 0 -- fund-group/permanent, in every column's
- * fund_groups -- and it draws --muted, last, in the legend and in the
- * filter panel. There is no seventh hue: the six were chosen by enumerating
- * all 720 orderings against the CVD validator, a seventh slot means
- * re-running all 5040 to keep the measured worst pair above, and the group
- * it would colour draws a figure in the FY2023-24 actual column only
- * (fisc-zojk).
+ * Six is the palette's capacity: a slot-0 group (fund-group/permanent)
+ * draws --muted, last. A seventh hue means re-validating 5040 orderings for
+ * one FY2023-24 actual group (fisc-zojk).
  *
- * Three light-mode slots sit below 3:1 against the light surface, which the
- * validator reports as a relief obligation rather than a pass: every node
- * on Flows carries a visible direct label with its figure, and every mark and
- * ribbon states its name and figure in its tooltip and the detail panel,
- * which is the relief.
+ * Three light slots are under 3:1 on the surface; the relief is every
+ * node's direct label and every mark's tooltip and detail panel.
  *
- * One exception to the first paragraph: --warn-bg/-fg/-edge are chrome, not a
- * data encoding, so the categorical palette does not govern them. The light
- * pair is carried over from solvent-streets' banner; the dark pair is a
- * re-step for this page's dark surface rather than a flip of the light one,
- * the same way the fund hues are. Both were measured, not eyeballed: 6.4:1
- * light and 8.1:1 dark for text, either side of the 4.5 floor. The edge token
- * exists because the light fill is 1.06:1 against the plane and would
- * otherwise not read as a band at all.
+ * --warn-bg/-fg/-edge are chrome, not data, and measured separately; the
+ * edge exists because the light fill is invisible against the plane.
  */
 
 :root {
@@ -64,10 +45,8 @@
   --fund-slot-5: #e87ba4;
   --fund-slot-6: #008300;
 
-  /* The glance page's ordinal ramp, one hue light->dark by rank, six steps
-     for the five groups rank() names and the sixth it names rather than
-     fold alone, and the gray its folded tail wears. Validated against
-     --surface-1 as an ordinal ramp. */
+  /* The glance page's ordinal ramp by rank (six steps, the sixth named not
+     folded) and its tail's gray, validated against --surface-1. */
   --glance-1: #104281;
   --glance-2: #1a57a2;
   --glance-3: #266dc3;
@@ -79,24 +58,15 @@
   --link-opacity: 0.42;
   --link-opacity-derived: 0.24;
   --radius: 8px;
-  /* ONE MEASURE FOR PROSE, and it is a token because it was three numbers.
-     .lede carried 68ch, .caveat carried 46em, and everything else -- list
-     items, the footer, provenance's rows -- inherited main's 1180px, which is
-     the width of the page's widest non-prose element rather than of a line of
-     text. Three measures applied by hand is what a reader sees as lines of
-     three different lengths on one page.
-
-     DECLARED ONCE, IN :root ONLY. The dark blocks below redeclare colour
-     tokens on purpose; a second --measure there would be a second answer to a
-     question that has nothing to do with the surface. */
+  /* One measure for prose, declared once in :root: the dark blocks
+     redeclare colours only. */
   --measure: 68ch;
   --font: system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
-/* The dark steps are the same six hues re-stepped for the dark surface, and
-   validated as a set against it — not an automatic flip of the light values.
-   Declared under both scopes so the OS setting and the page's own toggle each
+/* Dark: the six hues re-stepped and validated for the dark surface, not
+   flipped. Declared under both scopes so the OS setting and the toggle each
    win where they should. */
 @media (prefers-color-scheme: dark) {
   :root:where(:not([data-theme="light"])) {
@@ -200,9 +170,7 @@ footer {
   margin: 0 auto;
 }
 
-/* A page of prose alone, the caveats and the sources, draws its column at
-   the reading measure and centred in the frame, not as a measure-wide column
-   at the left of a 1180px box. */
+/* Prose pages centre their column at the reading measure. */
 .prose-page main,
 .prose-page .page-head {
   max-width: var(--measure);
@@ -253,11 +221,8 @@ html {
   margin-top: 16px;
 }
 
-/* Sticky rather than fixed: the page has no other fixed element, so staying in
-   flow keeps the banner visible without a height custom property that every
-   rule below would have to offset against. The sticky `th` of a table
-   lives inside .table-scroll, which is `overflow: auto` and therefore its own
-   containing block, so the two never compete. */
+/* Sticky, not fixed, so no offset property is needed; a table's sticky th
+   lives in .table-scroll's own containing block, so the two never compete. */
 .wip-banner {
   position: sticky;
   top: 0;
@@ -268,21 +233,16 @@ html {
   padding: 5px 12px;
   background: var(--warn-bg);
   color: var(--warn-fg);
-  /* The pale amber sits ~1.06:1 against the light plane, which is to say the
-     band itself is invisible even though its text is not. The edge is what
-     makes it read as a bar rather than as a tinted paragraph. */
+  /* The edge makes the near-invisible amber fill read as a bar. */
   border-bottom: 1px solid var(--warn-edge);
   text-align: center;
   font-size: 13px;
   font-weight: 600;
 }
 
-/* The banner app.js raises when it declines to draw: a schema_version it does
-   not understand, or a projection it could not load. It is prepended to <main>
-   rather than written only into the provenance drawer because on a narrow
-   viewport the drawer sits below the chart, and an empty diagram with nothing above it reads as "still
-   loading". Deliberately not sticky and not full-bleed: .wip-banner is the
-   permanent chrome, and a second bar in the same place would compete with it. */
+/* app.js's refusal, atop <main> because on a narrow viewport the drawer is
+   below the chart and an empty diagram reads as "still loading". Not
+   sticky: a second bar would compete with .wip-banner. */
 .refusal {
   margin: 16px 0;
   padding: 12px 14px;
@@ -312,10 +272,8 @@ html {
   padding: 32px 0 8px;
 }
 
-/* The Flows page's head is one row, title and year, so the chart under it
-   starts high enough for its opening height to fit the window (app.js
-   roomHeight). The year control keeps its width, and goes under the title
-   where the two do not fit on one row. */
+/* Flows' head is one row so the chart's opening height fits the window
+   (roomHeight); the year control wraps under the title when it must. */
 .chart-head {
   flex-wrap: wrap;
   align-items: center;
@@ -409,9 +367,7 @@ button[aria-pressed="true"] {
   background: var(--wash);
 }
 
-/* inline-block, because the mark key under the rail sets its swatches in a
-   plain span of text, where an inline box takes no width and drew as a 2px
-   sliver. */
+/* inline-block: inside the mark key's plain span an inline box drew a 2px sliver. */
 .legend .key {
   display: inline-block;
   vertical-align: -1px;
@@ -431,9 +387,8 @@ button[aria-pressed="true"] {
   border: 1.5px solid var(--muted);
 }
 
-/* The heading over the fund-group buttons, in the filter panel's summary
-   type: the buttons follow one group's money, which their swatches alone do
-   not say beside the checkboxes that hide groups. */
+/* Says the buttons follow a group's money, which swatches beside the hiding
+   checkboxes do not. */
 .legend-head {
   display: block;
   margin: 0 0 4px;
@@ -582,25 +537,13 @@ button[aria-pressed="true"] {
   outline: 1px solid var(--rule);
 }
 
-/* THE CHART'S CARD BREAKS OUT OF main's 1180px AND NOTHING ELSE DOES, with
-   the rail when it sits beside the chart: a viewBox inside a narrower box
-   shrinks every label on the wide viewport that was the reason to draw
-   another column. The card is the chart body's width plus its own padding
-   and border (--card-chrome), centred on main by the negative margin, so the
-   rail, the chart and the drawer all sit inside it; where the viewport is
-   narrow, min() collapses the body to the room there is and the card to
-   main's width.
-
-   The variables are the card's, so its width can read them; the chart body
-   inherits them. The cap is app.js's --chart-max, the opening chart's width
-   every chart is scaled to; 100% is the no-script state. --chart-cushion
-   is the body's 40px padding plus 16px for a classic scrollbar. Where
-   app.js sets data-beside (its BESIDE_QUERY) on the
-   body the room is what the rail leaves, and --chart-drawn, the width the
-   opening chart is drawn at, is the cap: the chart is at full size and pans
-   in its room. Below it --chart-panels is 0, the rail stacks above the
-   chart, and the chart is drawn at its room up to the cap. The provenance
-   drawer is always below the chart and takes no width from it. */
+/* Only the chart's card (with the rail beside it) breaks out of main's
+   1180px: a narrower viewBox shrinks every label. Body width plus
+   --card-chrome, centred by the negative margin; min() collapses it on a
+   narrow viewport. The cap is app.js's --chart-max (100% without script);
+   --chart-cushion is the body's padding plus a classic scrollbar. With
+   data-beside the chart is drawn at --chart-drawn and pans in what the rail
+   leaves; below it --chart-panels is 0 and the rail stacks above. */
 #chart-card {
   --chart-cushion: 56px;
   --screen-cushion: 48px;
@@ -629,10 +572,9 @@ button[aria-pressed="true"] {
   margin-inline: calc(50% - (var(--chart-room) + var(--chart-panels)) / 2);
 }
 
-/* The rail left, spanning the chart and the drawer under it. Collapsed, the
-   rail is a tab and its width goes to the chart's room; the chart keeps its
-   scale. The second row is 1fr so a rail taller than the chart opens its
-   extra height under the drawer, not between the chart and the drawer. */
+/* The rail spans chart and drawer; collapsed, its width goes to the chart's
+   room at the same scale. Row two is 1fr so a tall rail extends below the
+   drawer, not between chart and drawer. */
 .chart-body[data-beside] {
   display: grid;
   grid-template-columns: var(--rail-now) var(--chart-room);
@@ -640,11 +582,8 @@ button[aria-pressed="true"] {
   align-items: start;
 }
 
-/* FULL SCREEN USES THE SCREEN'S WIDTH: the room is uncapped, so a chart a
-   split widened draws further before it pans, and --chart-drawn keeps every
-   chart at the one scale. The cushion is the card's own 16px padding each
-   side plus 16px for its classic scrollbar; there is no body padding here.
-   The card fills the screen rather than its breakout width. */
+/* Full screen uncaps the room; --chart-drawn keeps the one scale. The
+   cushion is the card's padding plus its scrollbar; no body padding here. */
 #chart-card:fullscreen {
   --chart-room: calc(100vw - var(--screen-cushion) - var(--chart-panels));
   width: auto;
@@ -754,14 +693,9 @@ button[aria-pressed="true"] {
   padding-top: 4px;
 }
 
-/* ONE SCALE FOR EVERY CHART: the card is --chart-room wide whatever the
-   columns (app.js hands --chart-max the opening chart's width, its
-   openingColumns), and the svg is --chart-drawn times app.js's --chart-stretch,
-   the chart's laid width over the opening one. So every chart is at full
-   size beside the rail and wherever the viewport has room for it alone,
-   a split moves no column it leaves and rescales nothing, and a chart wider
-   than the card runs past its right edge, panned by a drag (app.js's wirePan), a sideways wheel
-   or trackpad, or the scrollbar. No text is selected by a drag. */
+/* One scale for every chart: the svg is --chart-drawn times app.js's
+   --chart-stretch, so a split rescales nothing and a wider chart pans by
+   drag (wirePan), wheel or scrollbar. A drag selects no text. */
 .chart-scroll > svg.sankey {
   width: calc(var(--chart-drawn) * var(--chart-stretch, 1));
   cursor: grab;
@@ -853,9 +787,8 @@ svg.sankey .link.derived {
   stroke-dasharray: 5 4;
 }
 
-/* A contra ribbon, printed as a reduction of its category. The sign on the
-   figure is the first signal and this hue the second. Wins over the stroke
-   attribute paint() writes. */
+/* A contra ribbon: the sign is the first signal, this hue the second. Wins
+   over paint()'s stroke attribute. */
 svg.sankey .link.contra {
   stroke: var(--critical);
 }
@@ -874,19 +807,15 @@ svg.sankey .link.hot {
   stroke-opacity: 0.78;
 }
 
-/* A ribbon under a pixel of its canvas (sankey.js HAIRLINE) is drawn one
-   screen pixel wide at every zoom, wider than its share, which
-   #hairline-line says; its hit target is a wider transparent stroke above
-   it, so the pointer finds it. */
+/* A hairline (sankey.js HAIRLINE): one screen pixel at every zoom, with a
+   wider transparent hit stroke above it. */
 svg.sankey .link.hairline {
   stroke-width: 1px;
   vector-effect: non-scaling-stroke;
 }
 
-/* A ribbon narrowing into a clamped fund's mark (sankey.js taperPath) is a
-   filled band: its fill takes the opacities a stroked ribbon's stroke does,
-   in the colour paint() hands it as --ribbon, and its stroke is drawn only
-   where a derived or partition ribbon's dash needs an outline to dash. */
+/* A tapered ribbon (taperPath) is a filled band coloured by --ribbon; its
+   stroke only outlines a derived or partition dash. */
 svg.sankey .link.taper {
   fill: var(--ribbon, none);
   fill-opacity: var(--link-opacity);
@@ -955,17 +884,15 @@ svg.sankey .node.derived rect {
   stroke-dasharray: 4 3;
 }
 
-/* The isolated mark's own paint: dimming the rest shows nothing where a node
-   has one neighbour. BEFORE THE FOCUS RULE at equal specificity, so focus wins;
-   AFTER .node.derived rect, so a derived mark keeps its dash. */
+/* The isolated mark's paint. Before the focus rule (equal specificity) so
+   focus wins; after .node.derived rect so the dash stays. */
 svg.sankey .node[aria-pressed="true"] rect {
   stroke: var(--ink-1);
   stroke-width: 2.5;
 }
 
-/* THE FOCUS RING GOES ON THE RECT, NOT ON THE <g>: the group's outline spans
-   the label too and floats into the gutter. IT MUST FOLLOW .node.derived rect
-   (equal specificity) so its dasharray reset wins. */
+/* The focus ring is on the rect, not the <g>, whose outline floats into the
+   gutter. After .node.derived rect so its dasharray reset wins. */
 svg.sankey .node:focus-visible {
   outline: none;
 }
@@ -976,9 +903,8 @@ svg.sankey .node:focus-visible rect {
   stroke-dasharray: none;
 }
 
-/* A GLOW, NOT AN OUTLINE OR A STROKE: a <path>'s outline is the whole bezier's
-   bounding box, and its stroke and dash already carry the data. drop-shadow
-   traces the ribbon's own shape. */
+/* A glow: a path's outline is its bezier's bounding box, and its stroke and
+   dash carry data. drop-shadow traces the ribbon. */
 svg.sankey .link:focus-visible {
   outline: none;
   stroke-opacity: 1;
@@ -1006,9 +932,7 @@ svg.sankey .node.dim {
   opacity: 0.3;
 }
 
-/* THE TRACE: while the pointer is on a mark, what is off its path fades as
-   an isolation dims, through the same 120ms transition, and comes back on
-   the pointer's leave. */
+/* The trace: off-path marks fade as an isolation dims, same 120ms. */
 svg.sankey.tracing .link:not(.on-path) {
   stroke-opacity: 0.07;
 }
@@ -1102,10 +1026,8 @@ svg.sankey .node {
 
 .tooltip {
   position: absolute;
-  /* Above .wip-banner's 10. .chart-wrap is `position: relative` with no
-     z-index, so it opens no stacking context and this value competes with the
-     banner's directly: at 5 a tooltip on a top-row node was drawn behind the
-     sticky bar once the page had scrolled. */
+  /* Above .wip-banner's 10: .chart-wrap opens no stacking context, so at 5 a
+     top-row tooltip drew behind the sticky bar. */
   z-index: 20;
   min-width: 200px;
   max-width: 340px;
@@ -1193,10 +1115,8 @@ svg.sankey .node {
   border-style: dashed;
 }
 
-/* A caveat about the mark under the pointer. --warn rather than --critical:
-   this is something a reader has to know about a figure, not something wrong
-   with it, and the two must not look alike on a site whose whole subject is
-   which figures can be trusted. */
+/* --warn, not --critical: something to know about a figure, not something
+   wrong with it. */
 .chip.caveat {
   color: var(--warn-fg);
   background: var(--warn-bg);
@@ -1354,10 +1274,8 @@ details > summary {
   margin: 14px 0 4px;
 }
 
-/* One caveat, folded under its summary. The left rule is the same mark
-   .caveats li carries on a page with no caveats page, so the two read as one
-   kind of thing. NO display ON THE SUMMARY: the list marker is the disclosure
-   triangle, and display: flex or block removes it (see .apparatus). */
+/* One folded caveat, with the same left rule as .caveats li. No display on
+   the summary: it would remove the disclosure triangle (see .apparatus). */
 .caveat {
   background: var(--surface-1);
   border: 1px solid var(--border);
@@ -1389,16 +1307,13 @@ details > summary {
   font-size: 13px;
 }
 
-/* :target is the caveat a reader followed a link to, which wireTargets has
-   opened. It is the only feedback that the link did anything on a long
-   page. */
+/* :target is the caveat wireTargets opened: the only feedback a link worked. */
 .caveat:target {
   border-left-color: var(--critical);
 }
 
-/* One file on Sources and data, folded under its name: opening it says
-   what the file is, and only the link at its foot downloads it. The same
-   box as a caveat, without the rule, because it is not a warning. */
+/* A Sources file, folded: only the link at its foot downloads. A caveat's
+   box without the rule, as it is no warning. */
 .files {
   display: grid;
   gap: 8px;
@@ -1440,19 +1355,11 @@ details > summary {
 
 /* ---------- the measure ---------- */
 
-/* THE PROSE THAT HAD NO MEASURE. Everything below inherited main's 1180px,
-   which is roughly twice a comfortable line for reading.
-
-   WHAT IS DELIBERATELY NOT HERE, because these are figures rather than prose
-   and clamping them would be the defect this rule is meant to fix: main and
-   .page-head keep 1180px, and .card,
-   .table-scroll and table keep the full container; .chart-wrap takes more. A chart or a
-   seven-column table narrowed to a reading measure is unreadable in a
-   different way.
-
-   NOTHING IN THIS TREE RENDERS OR PARSES CSS (fisc-6at), so no check can say
-   this rule matched an element. TestTheStylesheetHasOneTextMeasure witnesses
-   ONE DECLARATION, not one rendering. */
+/* The prose that had no measure. Figures keep their width: main and
+   .page-head stay 1180px; .card, .table-scroll and table the container;
+   .chart-wrap more. Nothing here renders CSS (fisc-6at):
+   TestTheStylesheetHasOneTextMeasure witnesses one declaration, not a
+   rendering. */
 .caveats li,
 .derived-list li,
 .file,
@@ -1466,29 +1373,21 @@ footer > p {
 
 /* ---------- the disclosed apparatus ---------- */
 
-/* The <h2> is kept inside the <summary> because the outline is what a screen
-   reader navigates by; the sizes below are the only thing that makes it read as
-   a disclosure rather than as a section that happens to be foldable. */
+/* The <h2> stays in the <summary> for screen-reader outline navigation. */
 .apparatus {
   margin-top: 20px;
   border-top: 1px solid var(--grid);
 }
 
-/* NO display: flex HERE, AND THAT IS THE WHOLE RULE. A <summary> is
-   display: list-item by default and the list marker IS the disclosure triangle;
-   setting flex (or block, or grid) removes it in Chrome and Safari, and with
-   all three panels shipping closed the reader is left with three bare headings
-   and nothing that says they open. The heading and the hint are made inline
-   instead, which puts them on the marker's line without taking the marker
-   away. */
+/* No display: flex here: a <summary>'s list-item marker is the disclosure
+   triangle, and flex, block or grid removes it in Chrome and Safari. The
+   heading and hint go inline instead. */
 .apparatus > summary {
   padding: 12px 0;
 }
 
-/* h2 AND h3 BECAUSE THE FOOTER'S DISCLOSURE IS AN h3. Its heading sits under
-   the page's <h2>s in the outline and must stay there; without display: inline
-   here it would drop the hint to its own line and take the summary's list
-   marker off the heading's line with it. */
+/* h3 too: the footer's disclosure heading is an h3, and must stay inline to
+   keep the hint and marker on its line. */
 .apparatus > summary h2,
 .apparatus > summary h3 {
   display: inline;
@@ -1497,9 +1396,7 @@ footer > p {
   color: var(--ink-1);
 }
 
-/* The footer's disclosure is furniture, not a panel: it sits under a border the
-   <footer> already draws, so a second one above it reads as a rule with nothing
-   between the two. */
+/* No second border: the <footer> already draws one. */
 footer > .apparatus {
   margin-top: 0;
   border-top: 0;
@@ -1520,9 +1417,7 @@ footer > .apparatus > summary h3 {
   font-size: 14px;
 }
 
-/* An open panel is indented under its own summary, so the boundary between
-   "what I asked to see" and the next disclosure is visible without a second
-   border. */
+/* Indented under its summary, so the boundary needs no border. */
 .apparatus[open] > :not(summary) {
   margin-left: 14px;
 }
@@ -1559,10 +1454,8 @@ noscript p {
   }
 }
 
-/* Forced-colors: hue is gone, so identity falls back to the direct labels and
-   the tooltips, and the derived/published distinction falls back to GrayText
-   plus the dash pattern, which forced-colors preserves. A partition ribbon is
-   published and keeps CanvasText. */
+/* Forced-colors: identity falls back to labels and tooltips, derived to
+   GrayText plus the preserved dash; a partition ribbon keeps CanvasText. */
 @media (forced-colors: active) {
   svg.sankey .link {
     stroke-opacity: 1;
@@ -1590,10 +1483,8 @@ noscript p {
     display: none;
   }
 
-  /* The banner is NOT hidden: a printed copy is exactly the artefact that
-     outlives the caveat, so it should still say so. But its negative margins
-     are tuned to body's 20px side padding, which the rule above zeroes, and
-     sticky means nothing on paper. */
+  /* The banner prints (a copy outlives the caveat), but its margins assume
+     body padding zeroed above, and sticky means nothing on paper. */
   .wip-banner,
   .site-nav {
     position: static;
@@ -1603,16 +1494,9 @@ noscript p {
     padding-inline: 0;
   }
 
-  /* AND THE DISCLOSURES OPEN, for the banner's own reason one paragraph up. A
-     reader holding a sheet of paper cannot click, so a closed <details> takes
-     the footer's sources and provenance.html's page table off the copy
-     without saying it did.
-
-     TWO RULES BECAUSE ENGINES USE TWO MECHANISMS: one hides the non-summary
-     children with a UA display:none, the other hides a ::details-content slot
-     with content-visibility. Whether either override works is NOT witnessed by
-     anything here -- nothing in this tree renders CSS -- so it is confirmed in
-     a browser's print preview and nowhere else. fisc-yj4w.18. */
+  /* The disclosures open on paper, which cannot click. Two rules for two
+     engine mechanisms (UA display:none; ::details-content with
+     content-visibility); confirmed only in print preview. fisc-yj4w.18. */
   details > *:not(summary) {
     display: block;
   }
@@ -1623,18 +1507,11 @@ noscript p {
   }
 }
 
-/* ---- The site nav, and the revenue table --------------------------------
-   Both are new with the second view. The nav is on every page because the set
-   of views has to be visible from any one of them; the table is the revenue
-   view's whole body, and it ships no JavaScript, so everything below has to
-   work from the markup alone. */
+/* ---- The site nav, and the revenue table: the table ships no script. ---- */
 
-/* THE NAV IS A FULL-BLEED BAR, its rule running the window's width as the
-   banner's does, while its items stay in the frame main and the head share:
-   the negative margin cancels body's 20px side padding, and the padding puts
-   back whatever the frame leaves either side. The rule is the nav's, not the
-   list's, so it runs under the theme toggle too and is still there on a
-   one-view site, which lists no views. The toggle ends the one row. */
+/* The nav is full-bleed: the negative margin cancels body padding, the
+   padding returns the frame. The rule is the nav's, so it runs under the
+   toggle on a one-view site too. */
 .site-nav {
   display: flex;
   align-items: center;
@@ -1661,16 +1538,13 @@ noscript p {
   margin: 4px 0 4px auto;
   flex: none;
 }
-/* THE MENU BUTTON SHOWS ONLY WHERE THE LIST FOLDS: below the frame's width, once
-   theme.js has marked the nav data-menu. Folded, the list is gone until the
-   reader opens it, and then it is a column of full-width rows under the
-   button and the theme toggle. */
+/* The menu button shows only where theme.js marked data-menu; open, the
+   list is a column of full-width rows. */
 .site-nav #nav-toggle {
   display: none;
 }
-/* 1199px: below the frame's full 1180px the views and the toggle no
-   longer fit one row, and a nav of two rows is the wrap the menu exists to
-   end. On screen only: a printed copy lists every view. */
+/* 1199px: below the 1180px frame the nav wraps to two rows. Screen only:
+   print lists every view. */
 @media screen and (max-width: 1199px) {
   .site-nav[data-menu] #nav-toggle {
     display: inline-flex;
@@ -1790,12 +1664,8 @@ noscript p {
   font-size: 12px;
   z-index: 1;
 }
-/* The bare `th` rule earlier in this file makes every th sticky with an opaque
-   background, which is right for a column header and wrong for a row one. Left
-   unreset, the Fund cell painted its own --surface-1 over the row-hover tint --
-   a hole in the highlight on all 231 rows, and hover is the mark's full-contrast
-   state -- and inside .table-scroll each fund name stuck at top: 0 and slid out
-   of alignment with its own row while the reader scrolled. */
+/* Resets the bare th rule's sticky opaque background for a row header: it
+   holed the row-hover tint and slid fund names out of their rows. */
 .series-table tbody th {
   position: static;
   background: none;
@@ -1807,30 +1677,23 @@ noscript p {
   text-align: right;
   white-space: nowrap;
 }
-/* A printed block heading on the history tables — "Revenues", "General Fund".
-   It carries the block's identity, which for p167's two same-labelled
-   component lists is the only thing telling them apart, so it takes full ink
-   and a heavier rule above rather than relying on spacing. */
+/* A printed block heading: for p167's two same-labelled lists it is the
+   only distinction, so full ink and a heavier rule. */
 .series-table tr.block-head th {
   color: var(--ink-1);
   font-weight: 600;
   padding-top: 14px;
   border-top: 1px solid var(--rule);
 }
-/* The boundary between comparable groups. FY2023-24 is money that moved and
-   FY2025-26 is an intention; a reader running an eye across the row should
-   meet something where the measurement changes, and the rule is that
-   something. It is a border rather than a colour for the same reason as
-   above. */
+/* Actual (FY2023-24) to intention (FY2025-26): a border where the
+   measurement changes. */
 .series-table .group-start {
   border-left: 2px solid var(--rule);
 }
 .series-table td.group-start {
   border-left: 2px solid var(--rule);
 }
-/* A column this row is not printed in. It is NOT a zero -- a printed dash is a
-   published zero and this is the absence of a line -- so it is muted rather
-   than styled like a figure, and it carries a title saying which. */
+/* Not printed in this column: absent, not zero, so muted and titled. */
 .series-table .missing {
   color: var(--muted);
 }
@@ -1841,13 +1704,8 @@ noscript p {
   color: var(--muted);
   text-transform: lowercase;
 }
-/* A contra row — the General Fund's ERAF and RPTTF Reduction — is printed in
-   parentheses by the city and published signed by the document. The CELL keeps
-   its minus sign rather than borrowing the city's parentheses, because screen
-   readers do not announce parentheses at default settings and would read the
-   figure aloud as positive; the colour here is a second signal and never the
-   only one. The mark beside it carries the direction geometrically, with the
-   bar hanging below the baseline. */
+/* A contra row keeps its minus sign, not the city's parentheses, which
+   screen readers do not announce; colour is a second signal. */
 .series-table .contra a {
   color: var(--critical);
 }
@@ -1860,53 +1718,21 @@ noscript p {
   text-decoration-color: currentColor;
 }
 
-/* THE SHAPE COLUMN.
-   ------------------------------------------------------------------------
-   The mark draws the row's own four figures at the row's own scale. It is a
-   RENDERING of numbers that are already on the page as linked text, not a
-   figure of its own, which is what lets it carry no citation: the citation is
-   the cell beside it.
+/* The shape column renders the row's own figures, so the cell beside it is
+   its citation. Hue encodes nothing: a seventh fund-group hue would break
+   the measured palette (fisc-u8o). Bars are text colour, contra --critical.
 
-   HUE ENCODES NOTHING HERE, deliberately. The obvious move is to colour by
-   fund group, and the palette above holds six hues chosen by enumerating all
-   720 orderings against a CVD validator -- while the revenue-by-fund scope
-   carries SEVEN groups (permanent has four facts and no spine column,
-   fisc-u8o). A seventh hue would invalidate a measured result to decorate a
-   mark whose categorical axis is already the row it sits in. So the bars take
-   the text colour, the contra ones take the same --critical the figures beside
-   them take, and the palette is untouched.
-
-   MEASURED, not assumed, against WCAG 1.4.11's 3:1 for a graphical object --
-   which is the right threshold here and a different one from the 4.5:1 these
-   same values already meet as text:
-
-                                light    dark
+   Against WCAG 1.4.11's 3:1, light / dark:
      bar        --ink-2        7.73:1   9.72:1
      bar hover  --ink-1       19.17:1  17.42:1
      zero dot   --ink-2        7.73:1   9.72:1
      contra     --critical     4.68:1   5.39:1
      baseline   --muted        3.50:1   4.85:1
      group rule --muted        3.50:1   4.85:1
+   Nothing reads these (fisc-6at): re-derive by hand after changing a token.
 
-   NOTHING READS THESE SIX NUMBERS (fisc-6at). No Go test and no client test
-   parses this file, so changing --ink-2, --ink-1, --critical or --muted in any
-   of the three palette blocks falsifies the table above in silence. Re-derive by
-   hand; do not treat it as a gate.
-
-   Worst case 3.50:1, the baseline in light. THE BASELINE AND THE RULES ARE IN
-   THAT TABLE because they were not, and that omission was the finding: they
-   were var(--border) at 1.24:1 light and 1.34:1 dark under a comment claiming
-   the whole mark had been measured. A load-bearing element -- the caption
-   defines a zero as a dot ON the line, and in a contra row the line is the only
-   thing separating up from down -- is exactly the one that must be in the
-   table.
-
-   Contra against resting is only
-   1.65:1 light / 1.80:1 dark, and that is fine rather than overlooked: the two
-   never have to be told apart by hue, because they sit on opposite sides of the
-   baseline. POSITION carries the sign and colour only reinforces it, which is
-   also why the mark survives being printed in greyscale. Bars are separated by
-   a 3-unit gap rather than by colour, so no bar-against-bar ratio applies. */
+   Contra against resting is under 2:1, which is fine: position across the
+   baseline carries the sign, so it survives greyscale. */
 .series-table th.mark-head,
 .series-table td.mark {
   width: 1%;
@@ -1920,15 +1746,8 @@ noscript p {
   line-height: 0;
 }
 .series-table td.mark svg {
-  /* The viewBox carries the geometry and this carries the size, so the mark
-     follows the table's type without any number in the Go changing.
-
-     2.2em AND NOT 1.6em, which is a measurement rather than a preference. The
-     box is markHeight = 30 viewBox units tall; at 1.6em over this table's 13px
-     type that is 20.8px, so one unit was 0.69 CSS PX -- every distinction the
-     geometry makes was sub-pixel and survived only as antialiasing. 2.2em is
-     28.6px, just under one px per unit, which is the floor for the smallest
-     thing drawn here (markMinBar, two units) to be a mark a reader can see. */
+  /* 2.2em, not 1.6em: the 30-unit box is then about 1px per unit, the floor
+     for markMinBar's two units to be visible. */
   height: 2.2em;
   width: auto;
   overflow: visible;
@@ -1936,42 +1755,28 @@ noscript p {
 .mark-bar {
   fill: var(--ink-2);
 }
-/* A published zero -- a dash the city printed, which is a figure -- is a DOT on
-   the line, not a short bar. Three states, three shapes: nothing at all for a
-   column this row does not appear in, a dot for a printed zero, a rectangle for
-   money. Distinguishing them by HEIGHT failed at this scale -- one viewBox unit
-   is about a pixel -- and a difference in kind cannot be eroded by rounding or
-   lost in greyscale. */
+/* A printed zero is a dot on the line: three kinds (nothing, dot, bar),
+   since height differences round away at a pixel per unit. */
 .mark-zero {
   fill: var(--ink-2);
 }
 .mark-bar.contra {
   fill: var(--critical);
 }
-/* THE BASELINE IS LOAD-BEARING, so it is a real line and not a hairline hint.
-   The caption defines a published zero as "a dot on the line", and in a contra
-   row the baseline is the only thing separating up from down. It was
-   var(--border) -- 1.24:1 light, 1.34:1 dark, fainter than the table's own
-   rules and well under 3:1 -- and the MEASURED table above did not list it,
-   which is how a load-bearing element ends up unmeasured in a block that claims
-   a worst case. --muted is the lightest value in the palette that clears 3:1 on
-   both surfaces: 3.50:1 light, 4.85:1 dark. */
+/* The baseline is load-bearing (a zero is a dot on it; it splits up from
+   down in a contra row): --muted is the lightest token clearing 3:1 on both
+   surfaces. */
 .mark-base {
   stroke: var(--muted);
   stroke-width: 1;
 }
-/* The boundary between comparable groups, at the same columns the headers rule.
-   Dashed, so it reads as a caution rather than as another bar, and beneath the
-   bars in paint order so it never cuts one in half. */
+/* Dashed and beneath the bars, so it reads as a caution and cuts none. */
 .mark-rule {
   stroke: var(--muted);
   stroke-width: 1;
   stroke-dasharray: 2 2;
 }
-/* A row under the pointer gets its mark at full strength. The resting state is
-   deliberately quiet: 231 of these run down the page and a column of
-   full-contrast bars reads as the page's subject, which it is not -- the
-   figures are. */
+/* Quiet at rest: 231 full-contrast bars would read as the page's subject. */
 .series-table tbody tr:hover .mark-bar {
   fill: var(--ink-1);
 }
@@ -2034,9 +1839,8 @@ noscript p {
   min-width: 0;
 }
 
-/* A department's two sides are the ledger form's bars (ledger.js); a fund's
-   bar wears its fund group's hue, the legend's sixth among them, and a
-   transfer's is hatched as not an expenditure. */
+/* A department's ledger bars: a fund wears its group's hue; a transfer is
+   hatched as not an expenditure. */
 .department-side .bar-row[data-rank="6"] .bar-fill { background: var(--glance-6); }
 /* A bar no legend entry holds wears no group's hue, not the tail's grey. */
 :where(.department-side) .bar-row:not([data-rank]) .bar-fill { background: var(--ink-2); }
@@ -2125,9 +1929,7 @@ noscript p {
 .department-row[aria-expanded="false"] .department-name::before {
   content: "\25b8\00a0";
 }
-/* A track as long as its sum against the longest's, each segment its share of
-   the track (department.js); the separator is drawn inside a segment, so it
-   adds no width. */
+/* The separator is inside a segment, so it adds no width. */
 .department-track {
   display: flex;
   height: 18px;
@@ -2349,9 +2151,8 @@ noscript p {
 
 /* end the glance page */
 
-/* ledger.html, the sides page, whose bars department.html draws too. Only
-   their rules go in this block. The ranks wear the glance page's ordinal
-   ramp. */
+/* ledger.html's rules, which department.html's bars share; ranks wear the
+   ordinal ramp. */
 .sides-how {
   max-width: var(--measure);
   color: var(--ink-2);
@@ -2396,9 +2197,7 @@ noscript p {
 .bar-row:focus-visible {
   box-shadow: inset 0 0 0 2px var(--focus);
 }
-/* A long label wraps rather than ending in an ellipsis: the words cut would
-   be its tail, "(inferred)" or "(internal service)", which is the point of
-   the suffix. */
+/* Wraps, not ellipsised: the cut would lose "(inferred)" or "(internal service)". */
 .bar-label {
   font-size: 13px;
   overflow-wrap: anywhere;
@@ -2649,12 +2448,8 @@ noscript p {
 
 /* end debt.html */
 
-/* AN EDGE THAT HIDES MORE FADES OUT: format.js scrollCues marks a sideways
-   scroller with the edges that hide more, and the mask fades the last 48px
-   inside its padding box there, so a table or chart cut at its card's edge
-   reads as continuing rather than as broken. The two solid layers make the
-   border a ring the fade does not touch: border-box exclude padding-box,
-   then the fade added inside it. */
+/* A hiding edge fades (format.js scrollCues), so a cut box reads as
+   continuing. The two solid layers keep the border a ring the fade misses. */
 .table-scroll[data-more],
 .chart-scroll[data-more] {
   --fade: linear-gradient(#000 0 0);
@@ -2678,12 +2473,9 @@ noscript p {
 }
 
 
-/* FLOWS ON A NARROW SCREEN: the note pointing to the bars shows and the
-   chart's card folds, until the reader asks for the chart anyway (app.js
-   sets data-chart-anyway on the root). Both turn only once app.js has
-   shown the note's button, so with no script, where no screen draws the
-   chart, the card and its noscript pointer to the data stay, and only on screen, so paper keeps the chart.
-   Under 700px the opening chart's labels draw too small to read. */
+/* Flows under 700px: labels are too small, so the card folds behind a note
+   until data-chart-anyway. Only once app.js showed the button, so without
+   script the card stays; screen only, so paper keeps the chart. */
 .narrow-note {
   display: none;
 }
@@ -2704,10 +2496,8 @@ noscript p {
   }
 }
 
-/* HOW-TO-READ PROSE FOLDS ON A NARROW SCREEN: each block is a <details>
-   shipped open, with its summary hidden where there is room, so a wide page
-   reads it unfolded. Under 760px the summary shows and the script folds the
-   block, so the figures come first. With no script it stays open. */
+/* How-to-read folds under 760px so figures come first; wide, the summary is
+   hidden and the block open; without script it stays open. */
 .how-to-read > summary {
   display: none;
 }
@@ -2721,10 +2511,8 @@ noscript p {
   }
 }
 
-/* A TIGHTER PAGE HEAD ON A NARROW SCREEN: a smaller title, and the lede held
-   to three lines until the reader asks for the rest. Only a lede theme.js
-   wireLede marks data-clamp is held, since only it can offer "More", and
-   only on screen, so no script and no printed copy loses the lede's end. */
+/* Narrow page head: smaller title, lede clamped to three lines only where
+   wireLede marked data-clamp; screen only. */
 @media (max-width: 760px) {
   .page-head h1 {
     font-size: 1.55em;
