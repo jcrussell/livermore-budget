@@ -363,9 +363,9 @@ func TestASourcesLegsRunFromItsMembers(t *testing.T) {
 	}
 }
 
-// TestASplitInAnyFormButExtendIsRefusedAtTheWrite: a split in another form is
-// refused by schema/enums.schema.json's split_form, naming the form.
-func TestASplitInAnyFormButExtendIsRefusedAtTheWrite(t *testing.T) {
+// TestASplitIsRefusedAtTheWrite: a split declaring a value schema/enums.schema.json
+// does not list is refused at the write, naming the field.
+func TestASplitIsRefusedAtTheWrite(t *testing.T) {
 	d := committedDocs(t, 2026)[ExpansionProjection]
 	if d == nil || len(d.Splits) == 0 {
 		t.Fatal("the committed store builds no FY2026 expansion schedule with a split, so this test holds nothing")
@@ -373,80 +373,72 @@ func TestASplitInAnyFormButExtendIsRefusedAtTheWrite(t *testing.T) {
 	if _, err := encode(d, ExpansionProjection, schema.Projection); err != nil {
 		t.Fatalf("the committed schedule is refused at the write: %v", err)
 	}
-	for _, form := range []string{"refine", "sideways", ""} {
-		bad := *d
-		bad.Splits = slices.Clone(d.Splits)
-		bad.Splits[0].Form = form
-		_, err := encode(&bad, ExpansionProjection, schema.Projection)
-		switch {
-		case err == nil:
-			t.Errorf("a split of %s declared %q was written", bad.Splits[0].Node, form)
-		case !strings.Contains(err.Error(), "form"):
-			t.Errorf("a split declared %q was refused, but not for its form: %v", form, err)
-		}
+	for _, tc := range []struct {
+		name, field string
+		values      []string
+		set         func(*Split, string)
+	}{
+		// A split in any form but extend is refused by split_form.
+		{"ASplitInAnyFormButExtendIsRefusedAtTheWrite", "form", []string{"refine", "sideways", ""},
+			func(s *Split, v string) { s.Form = v }},
+		// A split with another side, or none, is refused by split_side.
+		{"ASplitOnNoSideIsRefusedAtTheWrite", "side", []string{"left", ""},
+			func(s *Split, v string) { s.Side = v }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, v := range tc.values {
+				bad := *d
+				bad.Splits = slices.Clone(d.Splits)
+				tc.set(&bad.Splits[0], v)
+				_, err := encode(&bad, ExpansionProjection, schema.Projection)
+				switch {
+				case err == nil:
+					t.Errorf("a split of %s declaring %s %q was written", bad.Splits[0].Node, tc.field, v)
+				case !strings.Contains(err.Error(), tc.field):
+					t.Errorf("a split declaring %s %q was refused, but not for its %s: %v", tc.field, v, tc.field, err)
+				}
+			}
+		})
 	}
 }
 
-// TestASplitOnNoSideIsRefusedAtTheWrite: a split with another side, or none, is
-// refused by schema/enums.schema.json's split_side, naming the side.
-func TestASplitOnNoSideIsRefusedAtTheWrite(t *testing.T) {
-	d := committedDocs(t, 2026)[ExpansionProjection]
-	if d == nil || len(d.Splits) == 0 {
-		t.Fatal("the committed store builds no FY2026 expansion schedule with a split, so this test holds nothing")
-	}
-	for _, side := range []string{"left", ""} {
-		bad := *d
-		bad.Splits = slices.Clone(d.Splits)
-		bad.Splits[0].Side = side
-		_, err := encode(&bad, ExpansionProjection, schema.Projection)
-		switch {
-		case err == nil:
-			t.Errorf("a split of %s declared on side %q was written", bad.Splits[0].Node, side)
-		case !strings.Contains(err.Error(), "side"):
-			t.Errorf("a split on side %q was refused, but not for its side: %v", side, err)
-		}
-	}
-}
-
-// TestAFlowBetweenAHubsMembersIsRefused: re-pointed onto the group, a flow
-// between two members would be a circular link, so the stitch refuses it.
-// Mutation: drop extendHubs' refusal and the stitch draws fund/610 ->
-// fund-group/enterprise beside the group's leg to fund/610.
-func TestAFlowBetweenAHubsMembersIsRefused(t *testing.T) {
+// TestExtendHubsRefuses: each row is a flow extendHubs must refuse rather than
+// re-point onto a hub.
+func TestExtendHubsRefuses(t *testing.T) {
 	const group = "fund-group/enterprise"
-	st := &stitch{nodes: map[string]Node{
-		group:      {ID: group, Role: RoleFundGroup},
-		"fund/600": {ID: "fund/600", Role: RoleFund, Parent: group},
-		"fund/610": {ID: "fund/610", Role: RoleFund, Parent: group},
-	}, links: []Link{{Source: "fund/610", Target: "fund/600", ValueCents: 1, Kind: KindExternal}}}
-	err := extendHubs(st, map[string]bool{group: true})
-	if err == nil || !strings.Contains(err.Error(), "runs between two members of "+group) {
-		t.Fatalf("extendHubs is %v over a flow between two of %s's funds, want it refused", err, group)
-	}
-}
-
-// TestALeafBetweenAHubAndItsOwnMemberIsRefused: a flow between a hub and its own
-// member, on either side, would run from the hub into itself.
-// Mutation: drop extendHubs' refusal of it and the stitch draws
-// fund-group/enterprise -> fund-group/enterprise, after the hub and before it.
-func TestALeafBetweenAHubAndItsOwnMemberIsRefused(t *testing.T) {
-	const group = "fund-group/enterprise"
-	for _, c := range []struct {
+	for _, tc := range []struct {
 		name           string
 		source, target string
 		takesIn        bool
+		want           string
 	}{
-		{"after the hub", group, "fund/600", true},
-		{"before the hub", "fund/600", group, false},
+		// Re-pointed onto the group, a flow between two members would be a
+		// circular link, so the stitch refuses it.
+		// Mutation: drop extendHubs' refusal and the stitch draws fund/610 ->
+		// fund-group/enterprise beside the group's leg to fund/610.
+		{"AFlowBetweenAHubsMembersIsRefused", "fund/610", "fund/600", true,
+			"runs between two members of " + group},
+		// A flow between a hub and its own member, on either side, would run
+		// from the hub into itself.
+		// Mutation: drop extendHubs' refusal of it and the stitch draws
+		// fund-group/enterprise -> fund-group/enterprise, after the hub and
+		// before it.
+		{"ALeafBetweenAHubAndItsOwnMemberIsRefused/after the hub", group, "fund/600", true,
+			"would be drawn from it back into it"},
+		{"ALeafBetweenAHubAndItsOwnMemberIsRefused/before the hub", "fund/600", group, false,
+			"would be drawn from it back into it"},
 	} {
-		st := &stitch{nodes: map[string]Node{
-			group:      {ID: group, Role: RoleFundGroup},
-			"fund/600": {ID: "fund/600", Role: RoleFund, Parent: group},
-		}, links: []Link{{Source: c.source, Target: c.target, ValueCents: 1, Kind: KindExternal}}}
-		err := extendHubs(st, map[string]bool{group: c.takesIn})
-		if err == nil || !strings.Contains(err.Error(), "would be drawn from it back into it") {
-			t.Errorf("%s: extendHubs is %v over %s -> %s, want it refused; links %+v", c.name, err, c.source, c.target, st.links)
-		}
+		t.Run(tc.name, func(t *testing.T) {
+			st := &stitch{nodes: map[string]Node{
+				group:      {ID: group, Role: RoleFundGroup},
+				"fund/600": {ID: "fund/600", Role: RoleFund, Parent: group},
+				"fund/610": {ID: "fund/610", Role: RoleFund, Parent: group},
+			}, links: []Link{{Source: tc.source, Target: tc.target, ValueCents: 1, Kind: KindExternal}}}
+			err := extendHubs(st, map[string]bool{group: tc.takesIn})
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("extendHubs is %v over %s -> %s, want it refused; links %+v", err, tc.source, tc.target, st.links)
+			}
+		})
 	}
 }
 

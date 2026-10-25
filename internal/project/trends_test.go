@@ -225,47 +225,51 @@ func TestTrendsSlicesAreEmptyWithoutItsSchedule(t *testing.T) {
 	}
 }
 
-// TestTrendsRefusesAnotherSchedulesScope guards the doubling the scope axis
-// exists to prevent, from this document's side.
-func TestTrendsRefusesAnotherSchedulesScope(t *testing.T) {
-	o := trendsOptions()
-	o.Scopes = []string{PublishedScope}
-	if _, err := (&Trends{}).Document(trendsFixture(t), o); err == nil {
-		t.Fatal("Document over the spine's scope = nil error, want a refusal")
+// TestTrendsRefuses: each row is a store or a scope Document must refuse
+// rather than publish, and the refusal must say what is wrong.
+func TestTrendsRefuses(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		// corrupt returns the facts and options Document is called with.
+		corrupt func([]fact.Fact, Options) ([]fact.Fact, Options)
+		want    string
+	}{{
+		// Guards the doubling the scope axis exists to prevent, from this
+		// document's side.
+		name: "AnotherSchedulesScope",
+		corrupt: func(facts []fact.Fact, o Options) ([]fact.Fact, Options) {
+			o.Scopes = []string{PublishedScope}
+			return facts, o
+		},
+		want: `scope is "` + PublishedScope + `"`,
+	}, {
+		// Two printed rows hashing to one series id is an error, not a
+		// document. Same series tuple, different fund: only reachable by
+		// corrupting the store, which is the point -- the refusal is what makes
+		// the id's uniqueness a checked property rather than an assumption.
+		name: "ASeriesThatIsTwoRows",
+		corrupt: func(facts []fact.Fact, o Options) ([]fact.Fact, Options) {
+			facts[1].Fund = fact.FundNumber(999)
+			return facts, o
+		},
+		want: "two different rows",
+	}, {
+		// A second fact of one series in a column it already fills.
+		// Mutation: drop the series builder's one-point-per-column arm and the
+		// series publishes both points.
+		name: "TwoPointsInOneColumn",
+		corrupt: func(facts []fact.Fact, o Options) ([]fact.Fact, Options) {
+			again := facts[0]
+			again.ID = "fisc-f-again000000"
+			return append(facts, again), o
+		},
+		want: "has two points in",
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			facts, o := tc.corrupt(trendsFixture(t), trendsOptions())
+			if _, err := (&Trends{}).Document(facts, o); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("Document = %v, want a refusal containing %q", err, tc.want)
+			}
+		})
 	}
-}
-
-// TestTrendsRefusesASeriesThatIsTwoRows: two printed rows hashing to one series
-// id is an error, not a document.
-func TestTrendsRefusesASeriesThatIsTwoRows(t *testing.T) {
-	facts := trendsFixture(t)
-	// Same series tuple, different fund: only reachable by corrupting the store,
-	// which is the point -- the refusal is what makes the id's uniqueness a
-	// checked property rather than an assumption.
-	facts[1].Fund = fact.FundNumber(999)
-	_, err := buildTrendsErr(t, facts)
-	if err == nil {
-		t.Fatal("Document = nil error over a series carrying two different rows")
-	}
-	if !strings.Contains(err.Error(), "two different rows") {
-		t.Errorf("error %v does not say what is wrong", err)
-	}
-}
-
-// TestTrendsRefusesTwoPointsInOneColumn: a second fact of one series in a
-// column it already fills. Mutation: drop the series builder's one-point-per-
-// column arm and the series publishes both points.
-func TestTrendsRefusesTwoPointsInOneColumn(t *testing.T) {
-	facts := trendsFixture(t)
-	again := facts[0]
-	again.ID = "fisc-f-again000000"
-	_, err := buildTrendsErr(t, append(facts, again))
-	if err == nil || !strings.Contains(err.Error(), "has two points in") {
-		t.Fatalf("Document = %v over a series with two points in one column, want a refusal", err)
-	}
-}
-
-func buildTrendsErr(t *testing.T, facts []fact.Fact) (*TrendsDocument, error) {
-	t.Helper()
-	return (&Trends{}).Document(facts, trendsOptions())
 }

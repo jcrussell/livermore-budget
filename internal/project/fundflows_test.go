@@ -878,88 +878,6 @@ func TestNoRevenueLineReadsAsItsCategory(t *testing.T) {
 	}
 }
 
-// TestARevenueLineReadingAsItsCategoryIsRefused: a line labelled as its category
-// in another case and spacing, sharing no term with it, is refused.
-// Mutation: drop the refusal of a line reading as its parent, and the node is
-// returned reading "charges for services ".
-func TestARevenueLineReadingAsItsCategoryIsRefused(t *testing.T) {
-	f := &fundFlows{Labels: termsLabels{
-		stubFundFlows: stubFundFlows{stubLabels: stubLabels{"charges": "Charges for Services"}},
-		terms: map[string][]string{
-			"charges":         {"charges for services"},
-			"charges/charges": {"chgs for svcs"},
-		},
-	}}
-	parent := PrefixRevenue + "charges"
-	line := PrefixRevenueLine + "charges/charges"
-	nodes := map[string]Node{
-		parent: {ID: parent, Label: "Charges for Services"},
-		line:   {ID: line, Label: "charges for services ", Parent: parent},
-	}
-	rev := map[revKey]*cellSum{
-		{kind: vocab.KindRevenue, category: "charges", line: "charges/charges", fund: 100}: {cents: 1},
-	}
-	err := f.labelCategoryNamedLines(nodes, rev)
-	want := `revenue line revenue-line/charges/charges reads "charges for services " under revenue/charges`
-	if err == nil || !strings.Contains(err.Error(), want) {
-		t.Fatalf("got %v (label %q), want an error containing %q", err, nodes[line].Label, want)
-	}
-}
-
-// TestARevenueLineSpelledAsItsCategoryInAnotherCaseIsRelabelled: it shares the
-// category's term, so it is relabelled as the category's one row.
-// Mutation: compare terms byte for byte in sharesTerm, and the line is refused
-// for reading "Charges For Services" under "Charges for Services".
-func TestARevenueLineSpelledAsItsCategoryInAnotherCaseIsRelabelled(t *testing.T) {
-	f := &fundFlows{Labels: termsLabels{
-		stubFundFlows: stubFundFlows{stubLabels: stubLabels{"charges": "Charges for Services"}},
-		terms: map[string][]string{
-			"charges":         {"Charges for Services"},
-			"charges/charges": {"Charges For Services"},
-		},
-	}}
-	parent := PrefixRevenue + "charges"
-	line := PrefixRevenueLine + "charges/charges"
-	nodes := map[string]Node{
-		parent: {ID: parent, Label: "Charges for Services"},
-		line:   {ID: line, Label: "Charges For Services", Parent: parent},
-	}
-	rev := map[revKey]*cellSum{
-		{kind: vocab.KindRevenue, category: "charges", line: "charges/charges", fund: 100}: {cents: 1},
-	}
-	if err := f.labelCategoryNamedLines(nodes, rev); err != nil {
-		t.Fatalf("got %v, want the line relabelled", err)
-	}
-	if diff := cmp.Diff("Charges for Services"+OneRow, nodes[line].Label); diff != "" {
-		t.Errorf("label (-want +got):\n%s", diff)
-	}
-}
-
-// TestTwoRevenueLinesReadingAlikeInAnotherCaseAreRefused: labels differing only
-// in case and trailing space read alike.
-// Mutation: key the collision refusal on the exact label, and the two lines are
-// returned reading "Grant State" and "grant state ".
-func TestTwoRevenueLinesReadingAlikeInAnotherCaseAreRefused(t *testing.T) {
-	f := &fundFlows{Labels: termsLabels{stubFundFlows: stubFundFlows{stubLabels: stubLabels{"intergov": "Intergovernmental"}}}}
-	parent := PrefixRevenue + "intergov"
-	a, b := PrefixRevenueLine+"intergov/grant-a", PrefixRevenueLine+"intergov/grant-b"
-	nodes := map[string]Node{
-		parent: {ID: parent, Label: "Intergovernmental"},
-		a:      {ID: a, Label: "Grant State", Parent: parent},
-		b:      {ID: b, Label: "grant state ", Parent: parent},
-	}
-	rev := map[revKey]*cellSum{
-		{kind: vocab.KindRevenue, category: "intergov", line: "intergov/grant-a", fund: 100}: {cents: 1},
-		{kind: vocab.KindRevenue, category: "intergov", line: "intergov/grant-b", fund: 100}: {cents: 1},
-	}
-	err := f.labelCategoryNamedLines(nodes, rev)
-	want := `revenue lines revenue-line/intergov/grant-a and revenue-line/intergov/grant-b under revenue/intergov ` +
-		`read "Grant State" and "grant state "`
-	if err == nil || !strings.Contains(err.Error(), want) {
-		t.Fatalf("got %v, want an error containing %q", err, want)
-	}
-}
-
 // termsLabels is stubFundFlows answering Terms from its own map, so a fixture
 // can print a line under its category's name.
 type termsLabels struct {
@@ -969,48 +887,107 @@ type termsLabels struct {
 
 func (s termsLabels) Terms(slug string) []string { return s.terms[slug] }
 
-// TestTwoRevenueLinesReadingAlikeAreRefused: two lines that would both read
-// "<category>, one row" are refused.
-// Mutation: drop the collision refusal from labelCategoryNamedLines and the two
-// nodes are returned reading alike.
-func TestTwoRevenueLinesReadingAlikeAreRefused(t *testing.T) {
-	f := &fundFlows{Labels: termsLabels{
-		stubFundFlows: stubFundFlows{stubLabels: stubLabels{"charges": "Charges for Services"}},
-		terms: map[string][]string{
-			"charges":           {"charges for services"},
-			"charges/charges-a": {"charges for services"},
-			"charges/charges-b": {"charges for services"},
-		},
-	}}
-	parent := PrefixRevenue + "charges"
-	nodes := map[string]Node{
-		parent:                                  {ID: parent, Label: "Charges for Services"},
-		PrefixRevenueLine + "charges/charges-a": {ID: PrefixRevenueLine + "charges/charges-a", Label: "Charges for Services", Parent: parent},
-		PrefixRevenueLine + "charges/charges-b": {ID: PrefixRevenueLine + "charges/charges-b", Label: "Charges for Svcs", Parent: parent},
-	}
-	rev := map[revKey]*cellSum{
-		{kind: vocab.KindRevenue, category: "charges", line: "charges/charges-a", fund: 100}: {cents: 1},
-		{kind: vocab.KindRevenue, category: "charges", line: "charges/charges-b", fund: 500}: {cents: 1},
-	}
-	err := f.labelCategoryNamedLines(nodes, rev)
-	want := `revenue lines revenue-line/charges/charges-a and revenue-line/charges/charges-b under revenue/charges ` +
-		`read "Charges for Services, one row" and "Charges for Services, one row"`
-	if err == nil || !strings.Contains(err.Error(), want) {
-		t.Fatalf("got %v, want an error containing %q", err, want)
-	}
+// namedLine is one revenue line of a labelCategoryNamedLines fixture: its slug
+// under the category, the label it is drawn with, and the fund printing it.
+type namedLine struct {
+	slug, label string
+	fund        int
+}
 
-	// One fund printing both lines itemizes them, and the two read apart.
-	for k := range rev {
-		if k.fund == 500 {
-			delete(rev, k)
-			k.fund = 100
-			rev[k] = &cellSum{cents: 1}
-		}
+// TestLabelCategoryNamedLines: labelCategoryNamedLines over one category and
+// its lines, each row stating the mutation that turns it red.
+func TestLabelCategoryNamedLines(t *testing.T) {
+	charges := map[string][]string{
+		"charges":           {"charges for services"},
+		"charges/charges-a": {"charges for services"},
+		"charges/charges-b": {"charges for services"},
 	}
-	nodes[PrefixRevenueLine+"charges/charges-a"] = Node{ID: PrefixRevenueLine + "charges/charges-a", Label: "Charges for Services", Parent: parent}
-	nodes[PrefixRevenueLine+"charges/charges-b"] = Node{ID: PrefixRevenueLine + "charges/charges-b", Label: "Charges for Svcs", Parent: parent}
-	if err := f.labelCategoryNamedLines(nodes, rev); err != nil {
-		t.Fatalf("two itemized lines: %v", err)
+	for _, tc := range []struct {
+		name, category, label string
+		terms                 map[string][]string
+		lines                 []namedLine
+		// wantErr is a substring of the refusal; empty, the call succeeds and
+		// each line in wantLabels reads as stated.
+		wantErr    string
+		wantLabels map[string]string
+	}{{
+		// A line labelled as its category in another case and spacing, sharing
+		// no term with it, is refused.
+		// Mutation: drop the refusal of a line reading as its parent, and the
+		// node is returned reading "charges for services ".
+		name: "ARevenueLineReadingAsItsCategoryIsRefused", category: "charges", label: "Charges for Services",
+		terms: map[string][]string{"charges": {"charges for services"}, "charges/charges": {"chgs for svcs"}},
+		lines: []namedLine{{"charges", "charges for services ", 100}},
+		wantErr: `revenue line revenue-line/charges/charges reads "charges for services " ` +
+			`under revenue/charges`,
+	}, {
+		// It shares the category's term, so it is relabelled as the category's
+		// one row.
+		// Mutation: compare terms byte for byte in sharesTerm, and the line is
+		// refused for reading "Charges For Services" under "Charges for Services".
+		name: "ARevenueLineSpelledAsItsCategoryInAnotherCaseIsRelabelled", category: "charges",
+		label:      "Charges for Services",
+		terms:      map[string][]string{"charges": {"Charges for Services"}, "charges/charges": {"Charges For Services"}},
+		lines:      []namedLine{{"charges", "Charges For Services", 100}},
+		wantLabels: map[string]string{"charges": "Charges for Services" + OneRow},
+	}, {
+		// Labels differing only in case and trailing space read alike.
+		// Mutation: key the collision refusal on the exact label, and the two
+		// lines are returned reading "Grant State" and "grant state ".
+		name: "TwoRevenueLinesReadingAlikeInAnotherCaseAreRefused", category: "intergov",
+		label: "Intergovernmental",
+		lines: []namedLine{{"grant-a", "Grant State", 100}, {"grant-b", "grant state ", 100}},
+		wantErr: `revenue lines revenue-line/intergov/grant-a and revenue-line/intergov/grant-b under ` +
+			`revenue/intergov read "Grant State" and "grant state "`,
+	}, {
+		// Two lines that would both read "<category>, one row" are refused.
+		// Mutation: drop the collision refusal from labelCategoryNamedLines and
+		// the two nodes are returned reading alike.
+		name: "TwoRevenueLinesReadingAlikeAreRefused", category: "charges", label: "Charges for Services",
+		terms: charges,
+		lines: []namedLine{{"charges-a", "Charges for Services", 100}, {"charges-b", "Charges for Svcs", 500}},
+		wantErr: `revenue lines revenue-line/charges/charges-a and revenue-line/charges/charges-b under ` +
+			`revenue/charges read "Charges for Services, one row" and "Charges for Services, one row"`,
+	}, {
+		// One fund printing both lines itemizes them, and the two read apart.
+		// Mutation: never take the itemized branch, and both lines read
+		// "Charges for Services, one row" and are refused.
+		name: "OneFundPrintingBothLinesItemizesThem", category: "charges",
+		label: "Charges for Services", terms: charges,
+		lines: []namedLine{{"charges-a", "Charges for Services", 100}, {"charges-b", "Charges for Svcs", 100}},
+		wantLabels: map[string]string{
+			"charges-a": "Charges for Services" + SoNamed, "charges-b": "Charges for Svcs" + SoNamed},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := &fundFlows{Labels: termsLabels{
+				stubFundFlows: stubFundFlows{stubLabels: stubLabels{tc.category: tc.label}},
+				terms:         tc.terms,
+			}}
+			parent := PrefixRevenue + tc.category
+			nodes := map[string]Node{parent: {ID: parent, Label: tc.label}}
+			rev := map[revKey]*cellSum{}
+			for _, l := range tc.lines {
+				slug := tc.category + "/" + l.slug
+				id := PrefixRevenueLine + slug
+				nodes[id] = Node{ID: id, Label: l.label, Parent: parent}
+				rev[revKey{kind: vocab.KindRevenue, category: tc.category, line: slug, fund: l.fund}] = &cellSum{cents: 1}
+			}
+			err := f.labelCategoryNamedLines(nodes, rev)
+			if tc.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+					t.Fatalf("got %v, want an error containing %q", err, tc.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("got %v, want no error", err)
+			}
+			for slug, want := range tc.wantLabels {
+				if diff := cmp.Diff(want, nodes[PrefixRevenueLine+tc.category+"/"+slug].Label); diff != "" {
+					t.Errorf("%s label (-want +got):\n%s", slug, diff)
+				}
+			}
+		})
 	}
 }
 
