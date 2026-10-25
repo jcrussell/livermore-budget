@@ -338,7 +338,7 @@ func validateCaveats(caveats []Caveat, nodes map[string]struct{}) error {
 	return nil
 }
 
-// nodeIDs is the set [ValidateCaveats] checks AppliesTo against.
+// nodeIDs is the set [validateCaveats] checks AppliesTo against.
 func nodeIDs(nodes []Node) map[string]struct{} {
 	out := make(map[string]struct{}, len(nodes))
 	for _, n := range nodes {

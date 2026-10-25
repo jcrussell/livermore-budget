@@ -62,7 +62,7 @@ facts are byte-identical.
 A caveat carries an `id`, a one-line `summary`, its `text`, a `theme` from
 `project.CaveatThemes`, and `applies_to`: the node ids it is about, empty for a
 caveat about the schedule rather than a mark. Every id in `applies_to` names a
-node this document carries (`project.ValidateCaveats`).
+node this document carries (`project`'s `validateCaveats`).
 
 The id is in published URL fragments: `caveats.html#caveat-<id>` on the first
 copy, `caveats.html#caveats-on-<view>--caveat-<id>` on each later one, and

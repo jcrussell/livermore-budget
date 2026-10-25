@@ -1229,7 +1229,7 @@ func contestedCaveat(c contestedTotal, col Column, links []Link) (Caveat, bool) 
 	}
 	// THE ID EMBEDS THE FUND GROUP, and it is not decoration. contestedTotals
 	// is a list; two entries for two groups in one column would otherwise both
-	// publish the anchor "contested-total", ValidateCaveats would refuse the
+	// publish the anchor "contested-total", validateCaveats would refuse the
 	// build, and the shortest way out of that refusal is the wrong one --
 	// dropping a caveat rather than naming it. One entry today; the list is
 	// meant to stay short, not to stay length one.

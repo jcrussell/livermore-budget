@@ -295,7 +295,7 @@ func groupByTheme(entries []*caveatEntry, anchor string) []caveatGroup {
 // document carrying one id twice, one id under two summaries or themes, two
 // ids under one summary, two texts of one id sharing a year, and two
 // fragments the caveats page would emit alike.
-// project.ValidateCaveats never sees a document decoded from bytes, which is
+// project's validateCaveats never sees a document decoded from bytes, which is
 // every document here.
 func buildCaveatIndex(o *Options, ix ColumnIndex, nav []navItem) (*caveatIndex, error) {
 	cx := &caveatIndex{base: caveatsPathOf(o), byRef: map[caveatKey]*caveatEntry{}}

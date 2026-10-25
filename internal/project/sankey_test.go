@@ -735,7 +735,7 @@ func TestTheTransferCaveatMarksTheLegsTheGraphDRAWS(t *testing.T) {
 
 	// One leg drawn, the other only in the totals. The caveat still fires --
 	// caveats() gates on either side being non-zero -- and must mark only what
-	// is there, or ValidateCaveats aborts the build.
+	// is there, or validateCaveats aborts the build.
 	inOnly := both[:1]
 	if diff := cmp.Diff([]string{NodeTransfersIn},
 		transferCaveat(h, inOnly, cipTransfers{}).AppliesTo); diff != "" {

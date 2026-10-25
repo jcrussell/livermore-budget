@@ -50,18 +50,18 @@ func TestValidateCaveatsRefusesEveryShapeThatWouldRender(t *testing.T) {
 		{"no summary", []Caveat{{ID: "a", Theme: ThemeLeftOut, Text: "t"}}, nodes, "has no summary"},
 		{"no text", []Caveat{{ID: "a", Theme: ThemeLeftOut, Summary: "s"}}, nodes, "has no text"},
 		// Mutation: drop the theme arm of validateCaveats and both go red
-		// with "ValidateCaveats = nil".
+		// with "validateCaveats = nil".
 		{"no theme", []Caveat{{ID: "a", Summary: "s", Text: "t"}}, nodes, "which is none of CaveatThemes"},
 		{"a theme of no set", []Caveat{{ID: "a", Theme: "caveats", Summary: "s", Text: "t"}}, nodes, "which is none of CaveatThemes"},
 		// A data-files caveat is stated on no page, so no chart may mark one.
-		// Mutation: drop the data-files arm -- "ValidateCaveats = nil".
+		// Mutation: drop the data-files arm -- "validateCaveats = nil".
 		{
 			"a data-files caveat naming a node",
 			[]Caveat{{ID: "a", Theme: ThemeDataFiles, Summary: "s", Text: "t", AppliesTo: []string{"fund-group/general"}}},
 			nodes, "is of theme data-files and names nodes",
 		},
 		// Mutation: drop ThemeChecked from that arm and this goes red with
-		// "ValidateCaveats = nil".
+		// "validateCaveats = nil".
 		{
 			"a checked caveat naming a node",
 			[]Caveat{{ID: "a", Theme: ThemeChecked, Summary: "s", Text: "t", AppliesTo: []string{"fund-group/general"}}},
@@ -96,7 +96,7 @@ func TestValidateCaveatsRefusesEveryShapeThatWouldRender(t *testing.T) {
 		},
 		// A byob decision is a tracker row a reader cannot open either.
 		// Mutation: drop beadid.Cited's byob arm and both go red with
-		// "ValidateCaveats = nil".
+		// "validateCaveats = nil".
 		{
 			"a byob id",
 			[]Caveat{{ID: "a", Theme: ThemeLeftOut, Summary: "s", Text: "The layout follows byob-layout.1.", AppliesTo: []string{}}},
@@ -154,11 +154,11 @@ func TestValidateCaveatsRefusesEveryShapeThatWouldRender(t *testing.T) {
 			err := validateCaveats(tc.in, tc.nodes)
 			switch {
 			case tc.wantErr == "" && err != nil:
-				t.Errorf("ValidateCaveats = %v, want no error", err)
+				t.Errorf("validateCaveats = %v, want no error", err)
 			case tc.wantErr != "" && err == nil:
-				t.Errorf("ValidateCaveats = nil, want an error naming %q", tc.wantErr)
+				t.Errorf("validateCaveats = nil, want an error naming %q", tc.wantErr)
 			case tc.wantErr != "" && !strings.Contains(err.Error(), tc.wantErr):
-				t.Errorf("ValidateCaveats = %q, want it to name %q", err, tc.wantErr)
+				t.Errorf("validateCaveats = %q, want it to name %q", err, tc.wantErr)
 			}
 		})
 	}
