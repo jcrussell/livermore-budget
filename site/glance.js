@@ -95,11 +95,11 @@ export function rank(groups) {
 export function draw(section, tips = tipper(section.ownerDocument)) {
   const doc = section.ownerDocument;
   const table = section.querySelector("table");
-  const figure = section.querySelector("figure.glance-figure");
+  const figure = /** @type {HTMLElement | null} */ (section.querySelector("figure.glance-figure"));
   const track = figure && figure.querySelector(".glance-track");
   const legend = figure && figure.querySelector(".glance-legend");
   const caption = figure && figure.querySelector(".glance-sum");
-  if (!(table instanceof doc.defaultView.HTMLTableElement) || !figure || !track || !legend || !caption) {
+  if (!(table instanceof /** @type {Window & typeof globalThis} */ (doc.defaultView).HTMLTableElement) || !figure || !track || !legend || !caption) {
     throw new Error("a glance bar has no table, or no figure with a track, a legend and a caption to fill");
   }
   const rows = readRows(table);
@@ -118,7 +118,7 @@ export function draw(section, tips = tipper(section.ownerDocument)) {
   legend.replaceChildren();
   segments.forEach((s, i) => {
     const rank = String(s.id ? i + 1 : 0);
-    const seg = clone(doc, "glance-segment");
+    const seg = /** @type {HTMLElement} */ (clone(doc, "glance-segment"));
     seg.dataset.rank = rank;
     seg.style.flexGrow = String(s.cents);
     seg.setAttribute("aria-label", `${s.label}: ${dollars(s.cents)}, ◇ ${share(s.cents, whole)}, our share`);
@@ -152,7 +152,7 @@ export function draw(section, tips = tipper(section.ownerDocument)) {
   figure.hidden = false;
   // The table was the bar's data; the figure now says what it held.
   const cells = section.querySelector(".glance-cells");
-  if (cells instanceof doc.defaultView.HTMLElement) cells.hidden = true;
+  if (cells instanceof /** @type {Window & typeof globalThis} */ (doc.defaultView).HTMLElement) cells.hidden = true;
   return { segments, whole, rows: rows.length };
 }
 

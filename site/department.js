@@ -374,7 +374,7 @@ function clearSides(doc) {
 }
 
 /**
- * @param {HTMLElement} el
+ * @param {Element} el
  * @param {string} sel
  * @returns {HTMLElement}
  */
@@ -401,7 +401,7 @@ export function drawBars(doc, config, column, yearPath) {
   if (!legend || !list) throw new Error("the page carries no department legend or list to draw into");
   legend.replaceChildren();
   for (const g of drawn.groups) {
-    const li = clone(doc, "department-key");
+    const li = /** @type {HTMLElement} */ (clone(doc, "department-key"));
     li.dataset.rank = String(g.rank);
     li.dataset.cents = String(g.cents);
     part(li, ".department-key-name").textContent = g.id ? g.label : `${g.label}: ${g.members.join(", ")}`;
@@ -411,7 +411,7 @@ export function drawBars(doc, config, column, yearPath) {
   list.replaceChildren();
   const longest = drawn.bars.length ? drawn.bars[0].cents : 0;
   drawn.bars.forEach((b, i) => {
-    const li = clone(doc, "department-bar");
+    const li = /** @type {HTMLElement} */ (clone(doc, "department-bar"));
     li.dataset.department = b.id;
     const row = part(li, ".department-row");
     const detail = part(li, ".department-detail");
@@ -428,7 +428,7 @@ export function drawBars(doc, config, column, yearPath) {
     groups.setAttribute("aria-label", `Who pays for ${b.label}, by fund group`);
     for (const s of b.segments) {
       const named = drawn.groups[s.key].id ? s.label : `${s.label}: ${s.members.join(", ")}`;
-      const seg = clone(doc, "department-seg");
+      const seg = /** @type {HTMLElement} */ (clone(doc, "department-seg"));
       seg.dataset.rank = String(s.rank);
       seg.dataset.cents = String(s.cents);
       seg.dataset.factIds = s.factIds.join(" ");
@@ -436,7 +436,7 @@ export function drawBars(doc, config, column, yearPath) {
       seg.title = `${named}: ${dollars(s.cents)}, ◇ our ${share(s.cents, b.cents)} of ${b.label}`;
       track.append(seg);
 
-      const g = clone(doc, "department-group");
+      const g = /** @type {HTMLElement} */ (clone(doc, "department-group"));
       g.dataset.rank = String(s.rank);
       part(g, ".department-group-name").textContent = named;
       const v = part(g, ".department-group-value");
@@ -473,7 +473,7 @@ export function openBar(doc, department, open) {
 
 /**
  * Resolves once the opening view is drawn or refused.
- * @param {any} [win]
+ * @param {Window & typeof globalThis} [win]
  */
 export async function boot(win = globalThis.window) {
   const doc = win.document;

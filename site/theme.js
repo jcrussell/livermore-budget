@@ -16,7 +16,7 @@ const OS_DARK = "(prefers-color-scheme: dark)";
 
 /**
  * Stamped theme, then the OS; matchMedia is missing in some headless renderers.
- * @param {Window} win
+ * @param {Window & typeof globalThis} win
  * @returns {boolean}
  */
 export function prefersDark(win) {
@@ -29,7 +29,7 @@ export function prefersDark(win) {
 /**
  * The label is the click's action, so no aria-pressed: "Light mode,
  * pressed" on a dark page would announce the wrong state.
- * @param {Window} win
+ * @param {Window & typeof globalThis} win
  */
 export function syncTheme(win) {
   const button = win.document.getElementById("theme-toggle");
@@ -41,7 +41,7 @@ export function syncTheme(win) {
 /**
  * The narrow-screen menu: data-menu lets style.css fold the list, data-open
  * while open; Escape closes and refocuses the button. No script, no fold.
- * @param {Window} win
+ * @param {Window & typeof globalThis} win
  */
 export function wireMenu(win) {
   const doc = win.document;
@@ -71,7 +71,7 @@ const NARROW = "(max-width: 760px)";
 /**
  * Folds details.how-to-read narrow, opens it wide: there the summary is
  * hidden, so closed would hide the prose for good. No matchMedia: as shipped.
- * @param {Window} win
+ * @param {Window & typeof globalThis} win
  */
 export function wireHowTo(win) {
   if (typeof win.matchMedia !== "function") return;
@@ -89,7 +89,7 @@ export function wireHowTo(win) {
 /**
  * "More" under a lede the narrow clamp cuts; a press drops the clamp
  * (data-full) for good.
- * @param {Window} win
+ * @param {Window & typeof globalThis} win
  */
 export function wireLede(win) {
   const doc = win.document;
@@ -119,7 +119,7 @@ export function wireLede(win) {
 /**
  * Opens the <details> the fragment names or is inside: browsers scroll to a
  * fragment but do not reliably open it.
- * @param {Window} win
+ * @param {Window & typeof globalThis} win
  */
 function openTarget(win) {
   let id = "";
@@ -141,7 +141,7 @@ function openTarget(win) {
 /**
  * Also on a click of the fragment already in the URL, which fires no
  * hashchange: a reader who closed it and follows the link again sees it open.
- * @param {Window} win
+ * @param {Window & typeof globalThis} win
  */
 export function wireTargets(win) {
   openTarget(win);
@@ -158,7 +158,7 @@ export function wireTargets(win) {
 /**
  * The toggle follows the OS so the button never announces the opposite of
  * what it does.
- * @param {Window} [win]
+ * @param {Window & typeof globalThis} [win]
  */
 export function boot(win = globalThis.window) {
   wireMenu(win);

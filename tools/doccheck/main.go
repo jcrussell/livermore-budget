@@ -265,8 +265,8 @@ func run(args []string, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "")
 		fmt.Fprintln(stderr, "doccheck: the schema references above resolve to nothing.")
 		fmt.Fprintln(stderr, "  site/app.js's typedefs name the shape they stand for by its schema")
-		fmt.Fprintln(stderr, "  path and state none of its fields, so a path the schema no longer has")
-		fmt.Fprintln(stderr, "  is the one way one can drift. Re-point it at the shape's path now.")
+		fmt.Fprintln(stderr, "  path, and a path the schema no longer has holds one to nothing.")
+		fmt.Fprintln(stderr, "  Re-point it at the shape's path now.")
 		fmt.Fprintln(stderr, "  See AGENTS.md, \"Where writing goes\".")
 	}
 	if fail {

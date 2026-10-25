@@ -495,7 +495,7 @@ export function scrollCues(doc) {
     mark(el);
     el.addEventListener("scroll", () => mark(el), { passive: true });
     if (observes) {
-      const ro = new win.ResizeObserver(() => mark(el));
+      const ro = new /** @type {Window & typeof globalThis} */ (win).ResizeObserver(() => mark(el));
       ro.observe(el);
       if (el.firstElementChild) ro.observe(el.firstElementChild);
     }
@@ -510,7 +510,7 @@ export function scrollCues(doc) {
  */
 export function clone(doc, id) {
   const tmpl = doc.getElementById(id);
-  if (!(tmpl instanceof doc.defaultView.HTMLTemplateElement)) {
+  if (!(tmpl instanceof /** @type {Window & typeof globalThis} */ (doc.defaultView).HTMLTemplateElement)) {
     throw new Error(`the page carries no <template id="${id}"> to clone`);
   }
   const el = tmpl.content.firstElementChild;

@@ -52,7 +52,7 @@ export const LEDGER = Object.freeze({
    * opens (Shift: next alternative), else pins its tip; P always pins.
    */
   draw(section, side, ctx) {
-    const figure = section.querySelector("figure.sides-figure");
+    const figure = /** @type {HTMLElement | null} */ (section.querySelector("figure.sides-figure"));
     if (!figure) throw new Error("the side has no figure to draw into");
     const list = /** @type {HTMLElement} */ (ctx.clone("ledger-list"));
     list.setAttribute("aria-label", listLabel(side));
@@ -128,7 +128,7 @@ export const LEDGER = Object.freeze({
   },
 });
 
-/** @param {Window} [win] */
+/** @param {Window & typeof globalThis} [win] */
 export function boot(win = globalThis.window) {
   return bootSides(win, LEDGER);
 }

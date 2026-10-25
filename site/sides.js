@@ -8,6 +8,11 @@
 import * as core from "./core.js";
 import { clone, columnLoader, configOf, hashYear, sayRefusal, dollars, share, hashFields, hashValue, citedPages, pageLinks, selectYear, tipHead, tipHint, tipLine, tipper, wireYearSelect, yearKey } from "./format.js";
 
+/**
+ * app.js's typedefs, each the shape it names by its schema/ path there.
+ * @typedef {import("./app.js").FiscProjection} FiscProjection
+ */
+
 /** The hash's fields: the column and the opened nodes, in order. */
 const HASH_FIELDS = ["y", "o"];
 
@@ -204,7 +209,7 @@ export function fillTip(doc, tip, tile, side, docs, pinned) {
 }
 
 /**
- * @param {Window} win
+ * @param {Window & typeof globalThis} win
  * @param {any} config
  * @param {any} column
  * @param {SidesState} st
@@ -214,7 +219,7 @@ export function fillTip(doc, tip, tile, side, docs, pinned) {
  */
 export function render(win, config, column, st, renderer, toggle, tips) {
   const doc = win.document;
-  const { frontier, refused } = frontierOf(core.scheduleOf(column, config.primary) || { nodes: [], links: [], projection: config.primary }, st.opened);
+  const { frontier, refused } = frontierOf(core.scheduleOf(column, config.primary) || /** @type {any} */ ({ nodes: [], links: [], projection: config.primary }), st.opened);
   const { sides } = sidesAt(config, column, frontier, renderer);
   const largest = Math.max(1, ...sides.flatMap((s) => s.tree.roots.map((r) => r.size)));
   /** @type {DrawContext} */
@@ -261,7 +266,7 @@ function focusDrawn(doc, sides, id, tips) {
 
 /**
  * Resolves once the opening view is drawn or refused.
- * @param {Window} win
+ * @param {Window & typeof globalThis} win
  * @param {SidesRenderer} renderer
  */
 export async function boot(win, renderer) {
@@ -286,7 +291,7 @@ export async function boot(win, renderer) {
   /** @type {SidesState} */
   let state = { year: config.years[config.years.length - 1].path, opened: [] };
   /** The schedule of the column drawn, which a gesture closes against. */
-  /** @type {FiscProjection | undefined} */
+  /** @type {FiscProjection | null | undefined} */
   let schedule;
   let shown = 0;
   /** @param {SidesState} st @param {boolean} push */
@@ -302,7 +307,7 @@ export async function boot(win, renderer) {
       if (refocus.ticket === ticket) focusDrawn(doc, drawn.sides, refocus.id, tips);
       // The state keeps what the schedule drew, so the hash never names an
       // entry the next load would refuse again.
-      const kept = frontierOf(schedule, st.opened).kept;
+      const kept = frontierOf(/** @type {FiscProjection} */ (schedule), st.opened).kept;
       state = { year: st.year, opened: kept };
       if (drawn.refused.length) {
         // After what restore() said of the year, so a hash wrong in both is

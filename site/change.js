@@ -146,11 +146,11 @@ export function totals(bands, columns) {
 export function draw(section, tips = tipper(section.ownerDocument)) {
   const doc = section.ownerDocument;
   const table = section.querySelector("table");
-  const figure = section.querySelector("figure.change-chart");
+  const figure = /** @type {HTMLElement | null} */ (section.querySelector("figure.change-chart"));
   const holder = figure && figure.querySelector(".change-columns");
   const legend = figure && figure.querySelector(".change-legend");
   const caption = figure && figure.querySelector(".change-sum");
-  if (!(table instanceof doc.defaultView.HTMLTableElement) || !figure || !holder || !legend || !caption) {
+  if (!(table instanceof /** @type {Window & typeof globalThis} */ (doc.defaultView).HTMLTableElement) || !figure || !holder || !legend || !caption) {
     throw new Error("a change figure has no table, or no chart with columns, a legend and a caption to fill");
   }
   const { rows, columns } = readRows(table);
@@ -179,8 +179,8 @@ export function draw(section, tips = tipper(section.ownerDocument)) {
     const sum = sums[i];
     if (sum !== null) col.dataset.cents = String(sum);
     if (th.classList.contains("group-start")) col.dataset.new = "true";
-    const above = col.querySelector(".change-above");
-    const below = col.querySelector(".change-below");
+    const above = /** @type {HTMLElement | null} */ (col.querySelector(".change-above"));
+    const below = /** @type {HTMLElement | null} */ (col.querySelector(".change-below"));
     const total = col.querySelector(".change-total");
     const year = col.querySelector(".change-year");
     if (!above || !below || !total || !year) throw new Error("the column template lacks a stack, a total or a year");
@@ -194,7 +194,7 @@ export function draw(section, tips = tipper(section.ownerDocument)) {
     for (const b of bands) {
       const c = b.cents[i];
       if (!c) continue;
-      const seg = clone(doc, "change-segment");
+      const seg = /** @type {HTMLElement} */ (clone(doc, "change-segment"));
       seg.dataset.rank = String(b.rank);
       seg.dataset.cents = String(c);
       seg.style.height = px(c) + "px";
@@ -248,7 +248,7 @@ export function draw(section, tips = tipper(section.ownerDocument)) {
   figure.hidden = false;
   // The table was the chart's data; the chart now says what it held.
   const cells = section.querySelector(".change-cells");
-  if (cells instanceof doc.defaultView.HTMLElement) cells.hidden = true;
+  if (cells instanceof /** @type {Window & typeof globalThis} */ (doc.defaultView).HTMLElement) cells.hidden = true;
   return { bands, sums };
 }
 

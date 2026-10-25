@@ -11,6 +11,16 @@ import {
 } from "./core.js";
 import { share } from "./format.js";
 
+/**
+ * app.js's typedefs, each the shape it names by its schema/ path there.
+ * @typedef {import("./app.js").FiscChart} FiscChart
+ * @typedef {import("./app.js").FiscNode} FiscNode
+ * @typedef {import("./app.js").FiscProjection} FiscProjection
+ * @typedef {import("./app.js").FormRenderer} FormRenderer
+ * @typedef {import("./app.js").LaidLink} LaidLink
+ * @typedef {import("./app.js").LaidNode} LaidNode
+ */
+
 export const NODE_WIDTH = 14;
 
 export const NODE_PADDING = 14;
@@ -452,7 +462,7 @@ export function expansionSlots(expansion, tiers) {
  * tails' ribbons, and slots stamped. A tail sits in its members' slot under
  * their node.
  * @param {FiscProjection} expansion
- * @param {Iterable<string>} frontier
+ * @param {Iterable<string> | null} frontier
  * @param {FiscChart} chart the overview
  * @param {ReadonlySet<string>} whole node\u001fkey of splits drawn uncapped
  * @returns {FiscProjection}

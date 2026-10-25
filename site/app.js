@@ -28,12 +28,13 @@ export * from "./sankey.js";
 /**
  * schema/projection.schema.json#/properties/nodes/items, plus fixedValue (the
  * figure d3-sankey sizes the node at where its ribbons fall short) and slot.
- * @typedef {Record<string, any> & {fixedValue?: number, slot?: number}} FiscNode
+ * @typedef {Record<string, any> & {id: string, label: string, tier: number, fixedValue?: number, slot?: number}} FiscNode
  */
-/** schema/mark.schema.json, a node this client makes: an aggregate or a smaller-flows mark. @typedef {Record<string, any>} FiscMark */
+/** schema/mark.schema.json, a node this client makes: an aggregate or a smaller-flows mark. @typedef {Record<string, any> & {id: string, label: string, tier: number}} FiscMark */
 
-/** schema/projection.schema.json#/properties/links/items. @typedef {Record<string, any>} FiscLink */
-/** schema/locator.schema.json. @typedef {Record<string, any>} FiscSource */
+/** schema/projection.schema.json#/properties/links/items, the fields both a link and a laid link carry. @typedef {{kind: string, value_cents: number, locators: FiscSource[], contra: string}} LinkFields */
+/** schema/projection.schema.json#/properties/links/items. @typedef {Record<string, any> & LinkFields} FiscLink */
+/** schema/locator.schema.json. @typedef {{doc_id: string, pages: number[]}} FiscSource */
 /** schema/projection.schema.json#/properties/metadata. @typedef {Record<string, any>} FiscMetadata */
 /** schema/caveat.schema.json. @typedef {Record<string, any>} FiscCaveat */
 /** schema/page.schema.json#/properties/years/items/properties/caveats/items. @typedef {Record<string, any>} FiscCaveatRef */
@@ -42,7 +43,7 @@ export * from "./sankey.js";
 /** schema/page.schema.json#/properties/years/items. @typedef {Record<string, any>} FiscYear */
 /** schema/page.schema.json, the page's window.FISC_CONFIG. @typedef {Record<string, any>} FiscConfig */
 /** schema/page.schema.json#/properties/overview, the page's own chart: its form and hints. @typedef {Record<string, any>} FiscChart */
-/** schema/projection.schema.json, as scheduleOf assembles it from a column document. @typedef {Record<string, any>} FiscProjection */
+/** schema/projection.schema.json, as scheduleOf assembles it from a column document. @typedef {Record<string, any> & {nodes: FiscNode[], links: FiscLink[], metadata: FiscMetadata}} FiscProjection */
 
 /**
  * A node as d3-sankey laid it out. layer is d3's column, not depth.
@@ -52,7 +53,7 @@ export * from "./sankey.js";
  */
 
 /**
- * @typedef {Omit<FiscLink,"source"|"target"> & {source:LaidNode, target:LaidNode,
+ * @typedef {Record<string, any> & LinkFields & {source:LaidNode, target:LaidNode,
  *   value:number, width:number, y0:number, y1:number, index:number, w0?:number, w1?:number}} LaidLink
  */
 
@@ -135,7 +136,7 @@ export function undrawableForm() {
 
 /**
  * The drawn column's fund groups, in Go's order; an open set.
- * @returns {{id: string, slug: string}[]}
+ * @returns {{id: string, slot: number}[]}
  */
 export function fundGroups() {
   return (column && Array.isArray(column.fund_groups)) ? column.fund_groups : [];
@@ -553,7 +554,7 @@ export function foldable(d) {
  * "open" (⊕), "fold" (⊖) or "". splittable and foldable read it, so the
  * glyph drawn and the click are one rule.
  * @param {FiscProjection | null} doc
- * @param {Set<string> | null} front
+ * @param {ReadonlySet<string> | null} front
  * @param {{id: string}} d
  * @returns {"open" | "fold" | ""}
  */
@@ -587,7 +588,7 @@ export function focusInChart() {
   const active = document.activeElement;
   const chart = maybeEl("chart");
   return Boolean(active) && Boolean(chart) &&
-    (active === chart || (typeof chart.contains === "function" && chart.contains(active)));
+    (active === chart || (typeof /** @type {HTMLElement} */ (chart).contains === "function" && /** @type {HTMLElement} */ (chart).contains(active)));
 }
 
 /**
@@ -955,7 +956,7 @@ function openMenu(o) {
     });
     menu.append(choice);
     if (c.refused) {
-      choice.disabled = true;
+      /** @type {HTMLButtonElement} */ (choice).disabled = true;
       const why = h("span", "chart-menu-why", c.refused);
       why.id = o.element + "-why-" + menu.childElementCount;
       choice.setAttribute("aria-describedby", why.id);
@@ -1049,9 +1050,9 @@ export function openNodeMenu(d, at, mark, from) {
     label: say("node_menu", { label: nameOf(d) }),
     back: from || "g.node",
     at: at || (box ? { left: box.right + 4, top: box.top } : null),
-    choices: [
+    choices: /** @type {MenuChoice[]} */ ([
       { words: say("follow_money"), doing: "follow this money", data: { act: "follow" }, act: () => followNode(id) },
-    ].concat(projection && projection.nodes.some((n) => n.id === id) ? [
+    ]).concat(projection && projection.nodes.some((n) => n.id === id) ? [
       { words: say("filter_out_node"), doing: "filter this out", data: { act: "out" }, act: () => filterOutNode(id),
         refused: filterRefusal(filterOutStep(id)) },
       { words: say("show_only_node"), doing: "show only this", data: { act: "only" }, act: () => showOnlyNode(id),
@@ -1286,12 +1287,12 @@ export function paintChartHint() {
   if (!hint) return;
   if (!expanding()) return;
   const chart = chartDrawn();
-  const anyOpens = Boolean(chart) && chart.nodes.some(splittable);
+  const anyOpens = Boolean(chart) && /** @type {FiscProjection} */ (chart).nodes.some(splittable);
   // The trace, the pin and Escape are named on every view: they are what an
   // activation does where nothing opens.
   const follow = " " + say("follow");
   // A sentence of its own: the tail can be the only thing a chart offers.
-  const tails = Boolean(chart) && chart.nodes.some(expandable);
+  const tails = Boolean(chart) && /** @type {FiscProjection} */ (chart).nodes.some(expandable);
   const expands = tails ? " " + say("expand") : "";
   const folds = expansions.length ? " " + say("fold_back") : "";
   const legend = maybeEl("legend");
@@ -1411,7 +1412,7 @@ export function layOut(doc, prior, room = layRoom()) {
 /**
  * layOut, assigning nothing.
  * @param {FiscProjection} doc
- * @param {Map<string, Box>} [prior]
+ * @param {Map<string, Box> | undefined} prior
  * @param {number} room
  * @returns {{graph: {nodes:LaidNode[], links:LaidLink[]}, index: Map<string, FiscNode>}}
  */
@@ -1858,7 +1859,7 @@ export function setIsolated(id) {
  */
 export function isGroupID(id, index = groupIndex) {
   const n = index.get(id);
-  return Boolean(n) && isFundGroup(n);
+  return Boolean(n) && isFundGroup(/** @type {FiscNode} */ (n));
 }
 
 /**
@@ -1905,8 +1906,8 @@ export function applyEmphasis(state = filter) {
   // leave, and the isolation under it must be there when it is.
   const path = traced ? pathOf(traced) : null;
   svg.classed("tracing", Boolean(path));
-  svg.selectAll("path.link").classed("on-path", /** @param {LaidLink} d */ (d) => Boolean(path) && path.links.has(d));
-  svg.selectAll("g.node").classed("on-path", /** @param {LaidNode} d */ (d) => Boolean(path) && path.nodes.has(d));
+  svg.selectAll("path.link").classed("on-path", /** @param {LaidLink} d */ (d) => Boolean(path) && /** @type {NonNullable<typeof path>} */ (path).links.has(d));
+  svg.selectAll("g.node").classed("on-path", /** @param {LaidNode} d */ (d) => Boolean(path) && /** @type {NonNullable<typeof path>} */ (path).nodes.has(d));
 }
 
 /**
@@ -2247,7 +2248,7 @@ export function caveatsFor(id) {
     return false;
   };
   // Every document is scheduleOf's, which gives metadata a caveats list.
-  return projection.metadata.caveats.filter((c) =>
+  return projection.metadata.caveats.filter((/** @type {FiscCaveat} */ c) =>
     Array.isArray(c.applies_to) && c.applies_to.some(reaches));
 }
 
@@ -2391,7 +2392,7 @@ function hideTipOf(event) {
 /**
  * Tooltip, and under the pointer a drawer preview. Keyboard focus pins via
  * the form's focus handler; the pointer's does not (`unasked`).
- * @param {Event} event
+ * @param {MouseEvent | FocusEvent} event
  * @param {LaidLink | LaidNode} d
  */
 export function hover(event, d) {
@@ -2637,7 +2638,7 @@ export function drawnGroups() {
  */
 export function groupLabel(id) {
   const n = groupIndex.get(id) ||
-    (column && Array.isArray(column.nodes) ? column.nodes.find((x) => x && x.id === id) : null);
+    (column && Array.isArray(column.nodes) ? column.nodes.find((/** @type {any} */ x) => x && x.id === id) : null);
   return n && n.label ? n.label : id;
 }
 
@@ -3699,7 +3700,7 @@ export async function loadColumn(path, superseded) {
     if (superseded()) return null;
     // A rejected fetch is likely file://. `e.name`, not instanceof: another
     // realm's error fails instanceof.
-    fail(e && e.name === "SyntaxError"
+    fail(e && /** @type {any} */ (e).name === "SyntaxError"
       ? "Could not read " + path + ": the file is not valid JSON, so it is " +
         "truncated or was not the document this page expected."
       : "Could not load " + path + ". If you opened this file directly, the browser " +
@@ -3778,6 +3779,7 @@ export function paintSplitsLine(year, dropped, from) {
     line.setAttribute("hidden", "");
     return;
   }
+  /** @type {string[]} */
   const labels = [];
   for (const entry of dropped) {
     const e = parseEntry(from, entry);

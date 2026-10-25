@@ -12,6 +12,18 @@
 
 import { pageOf } from "./format.js";
 
+/**
+ * app.js's typedefs, each the shape it names by its schema/ path there.
+ * @typedef {import("./app.js").FiscConfig} FiscConfig
+ * @typedef {import("./app.js").FiscLink} FiscLink
+ * @typedef {import("./app.js").FiscMark} FiscMark
+ * @typedef {import("./app.js").FiscNode} FiscNode
+ * @typedef {import("./app.js").FiscProjection} FiscProjection
+ * @typedef {import("./app.js").FiscSource} FiscSource
+ * @typedef {import("./app.js").LaidLink} LaidLink
+ * @typedef {import("./app.js").LaidNode} LaidNode
+ */
+
 /** @returns {FiscConfig} */
 export function config() {
   return /** @type {any} */ (globalThis).FISC_CONFIG;
@@ -34,7 +46,7 @@ export const PROJECTION_VERSION = 1;
  */
 export function say(key, vars) {
   const template = config().wording[key];
-  return template.replace(/\{(\w+)(?::([^|}]*)\|([^}]*))?\}/g, (whole, name, one, many) => {
+  return template.replace(/\{(\w+)(?::([^|}]*)\|([^}]*))?\}/g, (/** @type {string} */ whole, /** @type {string} */ name, /** @type {string | undefined} */ one, /** @type {string | undefined} */ many) => {
     if (!vars || !(name in vars)) return whole;
     const v = vars[name];
     return one === undefined ? String(v) : v + " " + (v === 1 ? one : many);
@@ -290,7 +302,7 @@ function assembleSchedule(column, key) {
 
   // A malformed schedule throws below, before showYear writes a word.
 
-  const nodes = sched.nodes.map((n) => {
+  const nodes = sched.nodes.map((/** @type {any} */ n) => {
     const base = table[n.node] || {};
     const node = {
       id: base.id, label: base.label, tier: base.tier,
@@ -307,7 +319,7 @@ function assembleSchedule(column, key) {
     if (base.fund) Object.assign(node, { fund: base.fund });
     return n.balances ? Object.assign(node, { balances: n.balances }) : node;
   });
-  const links = sched.links.map((l) => {
+  const links = sched.links.map((/** @type {any} */ l) => {
     const from = table[l.from] || {};
     const to = table[l.to] || {};
     const link = {
@@ -328,7 +340,7 @@ function assembleSchedule(column, key) {
     return l.alternative ? Object.assign(link, { alternative: l.alternative }) : link;
   });
   const splits = Array.isArray(sched.splits)
-    ? sched.splits.map((sp) => ({
+    ? sched.splits.map((/** @type {any} */ sp) => ({
       node: (table[sp.node] || {}).id, key: sp.key, form: sp.form, alternative: Boolean(sp.alternative), side: sp.side,
     }))
     : null;
@@ -379,6 +391,7 @@ export function withinNode(doc, id) {
   const byID = new Map(doc.nodes.map((n) => [n.id, n]));
   const inside = new Set();
   for (const n of doc.nodes) {
+    /** @type {FiscNode | undefined} */
     let at = n;
     for (let hops = 0; at && hops < 9; hops++) {
       if (at.id === id) {
@@ -1042,8 +1055,8 @@ export function reveal(doc, frontier, id) {
 /**
  * Splits every unsplit node by its first split, repeatedly, up to 16 passes.
  * @param {FiscProjection} doc the expansion schedule
- * @param {Set<string>} frontier
- * @returns {{splits: {node: string, key: string}[], frontier: Set<string>}}
+ * @param {ReadonlySet<string>} frontier
+ * @returns {{splits: {node: string, key: string}[], frontier: ReadonlySet<string>}}
  */
 export function expandAllFrom(doc, frontier) {
   let open = frontier;
@@ -1567,7 +1580,7 @@ export function reducedOf(arriving, leaving) {
 /**
  * Inferred if the node or any link is; the shared reduction words. Fails
  * closed on mixed reduction, which would misplace the sum in a share.
- * @param {{derived?: boolean}} node
+ * @param {Record<string, any> & {derived?: boolean}} node
  * @param {{derived?: boolean, contra?: string}[]} links
  * @param {string} what names the sum, for the refusal
  * @returns {{derived: boolean, contra: string}}
