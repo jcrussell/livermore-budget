@@ -17,43 +17,29 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
-// doc is the view of an extracted document a resolver needs. It is declared
-// here, in the consumer, and kept to the methods actually used
-// (byob-interfaces.1, byob-interfaces.2). That is why this package does not
-// import internal/corpus at all: rules are resolved against a document
-// identity and the two substrates the extractor emits, and nothing else. The
-// geometry type is named through internal/geom, which is a leaf both this
-// package and the artifact reader depend on, so naming it here does not put
-// the artifact reader above the judgment layer.
-//
-// Geometry is a required method rather than an optional capability discovered
-// by type assertion, and the difference is the whole argument. With an
-// assertion, a document that did not implement it would resolve with the
-// column guard silently switched off -- and a guard that can be absent without
-// anything saying so is the quiet degradation this package exists to refuse. A
-// part that does not ask for the guard simply never calls it.
+// doc is the view of an extracted document a resolver needs, declared in the
+// consumer (byob-interfaces.1, byob-interfaces.2), so this package does not
+// import internal/corpus. Geometry is a required method rather than a type
+// assertion, so the column guard can never be silently absent.
 type doc interface {
 	DocID() string
 	Page(n int) (string, error)
 	Geometry(n int) (*geom.Page, error)
 }
 
-// Resolution failures, distinguishable with errors.Is because they call for
-// different responses: a locator that found nothing may need re-anchoring,
-// while one that found several needs the rule to say which.
+// Resolution failures, distinguishable with errors.Is: a locator that found
+// nothing may need re-anchoring, one that found several needs an ordinal.
 var (
 	// ErrNotFound reports a locator that resolved to nothing.
 	ErrNotFound = errors.New("locator did not resolve")
 	// ErrAmbiguous reports a locator that resolved to more than one candidate.
 	ErrAmbiguous = errors.New("locator resolved to more than one candidate")
 	// ErrNoStatedTotals reports a part the document prints no total for. It is
-	// not a defect — most schedules print none — but it is not a pass either,
-	// so it is a distinct value rather than a silent nil.
+	// not a defect, but it is not a pass either.
 	ErrNoStatedTotals = errors.New("part has no stated totals to check against")
 )
 
-// resolveError locates a resolution failure in both the rule and the document,
-// because either one can be what is wrong.
+// resolveError locates a resolution failure in both the rule and the document.
 type resolveError struct {
 	DocID  string
 	RuleID string
@@ -82,53 +68,33 @@ func (e *resolveError) Error() string {
 func (e *resolveError) Unwrap() error { return e.Err }
 
 // Resolver reads the parts of one rule file against one extracted document.
-//
-// It is constructed per (document, rule file) pair so the doc_id agreement can
-// be checked once, at the seam, rather than trusted at every call: resolving
-// the ACFR's rules against the Budget Book's pages would not fail loudly, it
-// would produce confident wrong figures carrying working-looking provenance.
+// It is constructed per (document, rule file) pair so doc_id agreement is
+// checked once, at the seam.
 type Resolver struct {
 	doc  doc
 	file *File
 
 	// mu guards pages and parts, which are the resolver's two memos.
 	mu sync.Mutex
-	// pages caches page text. A rule file resolves the same handful of pages
-	// many times over — every part reads its page, and checking a part's
-	// totals reads it again — and re-decoding a page per call turned one
-	// CheckTotals into four reads of the same file.
+	// pages caches page text.
 	pages map[int]string
-	// parts caches each part's read, which is the expensive half of the work
-	// the page cache does not cover.
+	// parts caches each part's read.
 	parts map[partKey]*resolvedPart
-	// pairings caches each page's two substrates reconciled against each other,
-	// which is what the column guard reads. See Resolver.pairing.
+	// pairings caches each page's two substrates reconciled; see Resolver.pairing.
 	pairings map[int]*pairing
 }
 
-// partKey identifies one part of the rule file this resolver reads. The rule
-// id and page suffice: a resolver is built per rule file, rule ids are unique
-// within one, and the parser rejects a rule that lists a page twice. A rule
-// assembled in memory has not been through the parser, so a caller that builds
-// one by hand and gives two parts the same page gets the first part's figures
-// for both — the same class of caveat the negative-ordinal branch of anchor
-// carries.
+// partKey identifies one part of the rule file. Rule id and page suffice
+// because the parser rejects a rule listing a page twice; a rule built in
+// memory that does so gets the first part's figures for both.
 type partKey struct {
 	rule string
 	page int
 }
 
-// resolvedPart memoizes one part's read, error included. A part that failed
-// must fail identically when it is asked again: retrying would make the answer
-// depend on how many times a caller happened to ask, and a caller that got a
-// different answer the second time could publish either one.
-//
-// Caching the error deliberately contradicts what page does one field above,
-// which returns before storing so that a failed read IS retried. The two are
-// not symmetric and should not be read as such: a page read is I/O and may fail
-// transiently, while a part read is a pure function of page text and a rule, so
-// a second attempt can only differ if the page text did — and for a single-shot
-// CLI over local files, a page that changed mid-run is not a case to paper over.
+// resolvedPart memoizes one part's read, error included, so a part that
+// failed fails identically when asked again. page, by contrast, does not cache
+// an error: a page read is I/O, a part read is a pure function of page text.
 type resolvedPart struct {
 	cells     []Value
 	omissions []Omission
@@ -168,8 +134,8 @@ func (r *Resolver) page(n int) (string, error) {
 // the part's section and stop_at anchors.
 type block struct {
 	Page int
-	// Start and End are byte offsets into the page text. End is where the
-	// stop_at anchor begins, which is also where a stated totals row starts.
+	// End is where the stop_at anchor begins, also where a stated totals row
+	// starts.
 	Start, End int
 	Text       string
 }
@@ -180,24 +146,19 @@ type Value struct {
 	Cents  amount.Cents
 	Row    Row
 	Column Column
-	// RowIndex is the row's position in the rule's row list, and ColumnIndex
-	// its column's position in the part's columns, so a caller can rebuild the
-	// grid. RowIndex deliberately indexes the rule's rows rather than the
-	// part's active rows: two parts of one table print different rows, and
-	// two indexing bases would collide the moment a row another page prints
-	// sat anywhere but at the end.
+	// RowIndex indexes the rule's rows, not the part's active rows, so two
+	// parts printing different rows share one indexing base; ColumnIndex indexes
+	// the part's columns.
 	RowIndex, ColumnIndex int
 	Page                  int
-	// Offset is the byte offset of the token within the page text, and Token
-	// is the text that was parsed. Both exist so a provenance link can point
-	// at the figure rather than at the page.
+	// Offset is the byte offset of Token within the page text, so provenance
+	// points at the figure.
 	Offset int
 	Token  string
 }
 
 // Category is the category this figure's facts carry: its column's on a rule
-// whose columns carry the category, its row's otherwise. Parse refuses a rule
-// that puts one on both axes, so the precedence decides nothing it admits.
+// whose columns carry the category, its row's otherwise.
 func (v Value) Category() string {
 	if v.Column.Category != "" {
 		return v.Column.Category
@@ -215,14 +176,9 @@ func (v Value) Kind(rule *Rule) vocab.Kind {
 }
 
 // Omission is one cell of a row a part prints that the page leaves blank,
-// declared by Part.OmittedCells. A row the part does not print is no
-// omission: another page prints it, and Row.Page says which.
-//
-// Whether a blank becomes a fact (as a zero) is deliberately not decided here.
-// The argument for it is conditional: with one blank and a column total that
-// ties, the tie proves the missing cell is zero — but with two blanks in one
-// column it proves nothing, and "absent is not zero" is a project invariant.
-// The fact model decides; resolution only reports what was declared.
+// declared by Part.OmittedCells. Whether a blank becomes a fact (as a zero) is
+// the fact model's decision; with two blanks in one column a tie proves
+// nothing, and absent is not zero.
 type Omission struct {
 	Row      Row
 	RowIndex int
@@ -282,8 +238,7 @@ func (r *Resolver) anchor(rule *Rule, p *Part, field, text string, from int, nee
 		i += j + len(needle)
 	}
 
-	// A stop_at is counted from the block's start, not the page's, and its
-	// message says so: an author recounting from the top gets another number.
+	// A stop_at is counted from the block's start, and its message says so.
 	where := "on the page"
 	if from > 0 {
 		where = "after the block's start"
@@ -295,9 +250,7 @@ func (r *Resolver) anchor(rule *Rule, p *Part, field, text string, from int, nee
 
 	switch {
 	case ordinal < 0:
-		// The parser rejects this, but a rule built in memory has not been
-		// through the parser, and a negative index here would panic rather
-		// than report anything.
+		// The parser rejects this; a rule built in memory would panic.
 		return fail(ErrNotFound, fmt.Sprintf("ordinal %d; ordinals count from 1", ordinal),
 			"leave the ordinal unset to require a unique match")
 	case len(at) == 0:
@@ -323,9 +276,7 @@ func (r *Resolver) anchor(rule *Rule, p *Part, field, text string, from int, nee
 	return at[ordinal-1], nil
 }
 
-// describeAt renders up to three candidate offsets as "#N line L: <context>",
-// which is what makes an ambiguity message actionable: the reader needs to see
-// which occurrence is which without opening the page.
+// describeAt renders up to three candidate offsets as "#N line L: <context>".
 func describeAt(text string, at []int) string {
 	const max = 3
 	var b strings.Builder
@@ -361,34 +312,17 @@ func context(text string, off int) string {
 // Values reads the figures a part yields, in row-major order, along with the
 // cells the part declares the page leaves blank.
 //
-// Two shapes of page need two reads. Where the part carries its own row labels,
-// each label anchors the figures that follow it, and the text between rows must
-// be empty — that check is what catches a row the rule failed to map, on the
-// majority of pages that print no total to fall back on. Where the part is a
-// label-less continuation, there is nothing to anchor on and the read is
-// positional, guarded by the value count.
+// A part with its own labels is read by label, and the text between rows must
+// be empty; that is what catches an unmapped row on pages with no total. A
+// label-less continuation is read positionally, guarded by the value count.
+// Positional reading is confined to label-less parts: over Budget Book p127 it
+// reads 14 rows where there are 13, because labels there contain "-" and
+// digits.
 //
-// The positional read is confined to label-less parts on purpose. Run it over a
-// labelled block and it silently invents rows: on Budget Book p127 it reads 14
-// rows where there are 13, because labels there contain "-" (which this corpus
-// spells zero) and digits ("Prop 172 - Public Sfty Augmnt").
-//
-// A part is read at most once per resolver. That is a performance change and
-// not a correctness one: the page memo already made a second read deterministic,
-// so a build's figures and the figures CheckTotals corroborates agreed before
-// this cache existed. What it buys is that they agree without doing the work
-// twice, which is what matters as coverage grows past ten parts. The one
-// behavioural difference is on the failing path, described on resolvedPart.
-//
-// The slices returned are copies, so a caller may sort or rewrite them without
-// changing what the next caller sees. The copy is shallow: a Value's Row
-// shares its Counterpart and SubtotalDeltas with the rule, and a caller must
-// not write through them.
-//
-// The values are the cells cellPublishes admits. The read yields every cell
-// the part prints, skipped ones included, because a printed subtotal adds
-// them (Cells); the one predicate for which of those become facts is applied
-// here and nowhere after.
+// A part is read at most once per resolver. The returned slices are shallow
+// copies: a Value's Row shares Counterpart and SubtotalDeltas with the rule.
+// The values are the cells cellPublishes admits, applied here and nowhere
+// after.
 func (r *Resolver) Values(rule *Rule, p *Part) ([]Value, []Omission, error) {
 	rp := r.resolvePart(rule, p)
 	if rp.err != nil {
@@ -403,9 +337,8 @@ func (r *Resolver) Values(rule *Rule, p *Part) ([]Value, []Omission, error) {
 	return values, slices.Clone(rp.omissions), nil
 }
 
-// Cells is every amount the part reads, in Values' order: its values, and the
-// figures under a skipped row or column, which publish nothing but which a
-// printed subtotal still adds.
+// Cells is every amount the part reads, in Values' order, including figures
+// under a skipped row or column, which a printed subtotal still adds.
 func (r *Resolver) Cells(rule *Rule, p *Part) ([]Value, error) {
 	rp := r.resolvePart(rule, p)
 	if rp.err != nil {
@@ -414,14 +347,10 @@ func (r *Resolver) Cells(rule *Rule, p *Part) ([]Value, error) {
 	return slices.Clone(rp.cells), nil
 }
 
-// resolvePart returns the memoized read of one part, performing it on the first
-// ask.
-//
-// The lock is deliberately not held across the read: the read calls page,
-// which takes the same lock, and a sync.Mutex is not reentrant. Two callers
-// racing on one part therefore both do the work — and the first result stored
-// is the one both of them see, so the memo stays single-valued, which is the
-// property callers depend on.
+// resolvePart returns the memoized read of one part, performing it on the
+// first ask. The lock is not held across the read (page takes it, and
+// sync.Mutex is not reentrant); racing callers both read, and the first result
+// stored wins.
 func (r *Resolver) resolvePart(rule *Rule, p *Part) *resolvedPart {
 	key := partKey{rule: rule.ID, page: p.Page}
 	if rp, ok := r.cachedPart(key); ok {
@@ -439,8 +368,7 @@ func (r *Resolver) cachedPart(key partKey) (*resolvedPart, bool) {
 	return rp, ok
 }
 
-// storePart records rp under key and returns whichever result is now canonical,
-// which is an earlier one if a racing caller got there first.
+// storePart records rp under key and returns whichever result is canonical.
 func (r *Resolver) storePart(key partKey, rp *resolvedPart) *resolvedPart {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -457,8 +385,7 @@ func (r *Resolver) readPart(rule *Rule, p *Part) ([]Value, []Omission, error) {
 		return nil, nil, err
 	}
 
-	// Built once per part. A part that declares no column_headers gets a nil
-	// guard and is read by text alone.
+	// A part with no column_headers gets a nil guard and is read by text alone.
 	guard, err := r.guard(rule, p)
 	if err != nil {
 		return nil, nil, err
@@ -476,16 +403,13 @@ func (r *Resolver) readPart(rule *Rule, p *Part) ([]Value, []Omission, error) {
 	return values, Omissions(rule, p), nil
 }
 
-// Omissions is the cells a part declares the page leaves blank, in row order.
-// It reads the declaration alone, so a caller with no page in hand gets what
-// Values would, and internal/check reads its blanks from here and matches
-// nothing of its own.
+// Omissions is the cells a part declares the page leaves blank, in row order,
+// from the declaration alone; internal/check reads its blanks from here.
 func Omissions(rule *Rule, p *Part) []Omission {
 	if len(p.OmittedCells) == 0 {
 		return nil
 	}
-	// Keyed on Identity(), the key the rule's rows are unique on. Matching
-	// the bare Label here would report a blank on every row sharing it.
+	// Keyed on Identity(); the bare Label would mark every row sharing it.
 	var out []Omission
 	for i, row := range rule.Rows {
 		for c := range p.ColumnHeaders {
@@ -498,9 +422,8 @@ func Omissions(rule *Rule, p *Part) []Omission {
 	return out
 }
 
-// headerAt names column c by its header, and by the header's ordinal where
-// the part prints that header over several columns -- "Principal #2" -- the
-// way an omitted_cells entry with column_ordinal names it.
+// headerAt names column c by its header, with its ordinal ("Principal #2")
+// where the part prints that header over several columns.
 func headerAt(p *Part, c int) string {
 	text := p.ColumnHeaders[c].Text
 	n, at := 0, 0
@@ -574,10 +497,8 @@ func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *block, guard *column
 				row.PrintedLabel(), len(toks), len(cols)), "check the part's columns against the page")
 		}
 		toks = toks[:len(cols)]
-		// A ROW'S FIGURES ARE ON ITS LABEL'S LINE. Taken wherever they fall, a
-		// short row borrows the next line's. The column guard refuses that
-		// with the page's line numbers; this is the same rule for a part
-		// that declares no column_headers and so has no guard.
+		// A row's figures are on its label's line. The column guard enforces this
+		// with line numbers; this is the same rule for a part with no guard.
 		if guard == nil && len(toks) > 0 {
 			if last := toks[len(toks)-1]; strings.Contains(blk.Text[after:last.off-blk.Start], "\n") {
 				return nil, fail("rows", fmt.Sprintf(
@@ -599,9 +520,8 @@ func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *block, guard *column
 		}
 	}
 
-	// Anything after the last row's figures is a row the rule did not map --
-	// unless the page wrapped a label there, which is the same shape as a gap
-	// between two rows and is declared the same way.
+	// Anything after the last row's figures is an unmapped row, unless it is
+	// declared like a gap between rows.
 	if rest := strings.TrimSpace(blk.Text[cursor:]); rest != "" && !declaredGap(p, blk.Text[cursor:], used, true, nil) {
 		return nil, fail("rows", fmt.Sprintf(
 			"%q follows the last mapped row but is not mapped", rest),
@@ -610,9 +530,7 @@ func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *block, guard *column
 				"wrapped a label onto its own line, in headings if it is a section "+
 				"heading, or in unmapped_text if it is a figure belonging to no row")
 	}
-	// A declared fragment the page did not use is a claim about the document
-	// that has stopped being true. Same direction as a stated_total_delta that
-	// now ties exactly: remove the declaration rather than let it pass.
+	// A declared fragment the page did not use is stale.
 	for _, w := range p.WrappedLabels {
 		if !used[w] {
 			return nil, fail("wrapped_labels", fmt.Sprintf(
@@ -631,12 +549,8 @@ func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *block, guard *column
 					"declaration when the page stops printing it there")
 		}
 	}
-	// Its own arm, and its own message. Told that a figure "is declared but
-	// does not appear", a reader who saw the wrapped_labels wording would go
-	// looking for a wrapped label -- and the whole reason these are two
-	// declarations rather than one is that they say different things about the
-	// page. This is the ONLY thing standing over an unmapped_text entry: see
-	// Part.UnmappedText on why the class is the weakest here.
+	// Its own arm and message, since a heading is not a wrapped label, and the
+	// only guard over an unmapped_text entry (see Part.UnmappedText).
 	for _, u := range p.UnmappedText {
 		if !used[u.Text] {
 			return nil, fail("unmapped_text", fmt.Sprintf(
@@ -650,48 +564,17 @@ func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *block, guard *column
 
 // checkGap enforces what may sit between one row's last figure and the next
 // row's label. Before the first row the block may carry column headers, which
-// are words; between rows nothing at all may intervene, because anything that
-// does is a row the rule has not mapped. raised is declaredGap's, for a gap
-// between two rows.
+// are words; between rows only declared text may intervene. raised is
+// declaredGap's, for a gap between two rows.
 func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int,
 	used map[string]bool, raised func(off int) bool) error {
 	if i == 0 {
-		// A LABEL WRAPPED BEFORE THE FIRST MAPPED ROW IS DECLARABLE HERE, and
-		// until fisc-2jk it was the one place a fragment was invisible either
-		// way: declaring it failed as a stale declaration, because only the
-		// between-rows and after-last-row paths marked anything used, and NOT
-		// declaring it passed silently. A shape that can be neither stated nor
-		// omitted is not a choice the author gets to make.
-		//
-		// The permissiveness below is kept rather than tightened, and the reason
-		// is specific: this gap is also where COLUMN HEADERS live, which are
-		// words, are printed on every schedule, and are declared through
-		// column_headers rather than here. Requiring a declaration for undeclared
-		// leading text would demand one for every header on every part.
-		// A total printed ABOVE its rows puts the block's own stated totals in
-		// this gap, on the section anchor's line, so the digit refusal below
-		// would fire on the very figures the rule went there to read. Skip that
-		// ONE line and no more: everything after it is still refused, so "the
-		// block starts too early" keeps its whole meaning for a rule that
-		// starts two lines early instead of one.
-		//
-		// THE SKIP RUNS BEFORE THE wrapped_labels TEST. Matched against the
-		// whole gap, a label wrapped between the total's line and the first
-		// row could be declared only with the total's figures glued to the
-		// front of it, which no author writes, so the declaration would never
-		// be marked used and would fail as stale -- while the same fragment
-		// undeclared is accepted, as any undeclared words before the first
-		// row are. Skipping first leaves every check below looking at the
-		// same shape it sees on every other rule, and for a rule without the
-		// flag the skip is a no-op.
-		//
-		// IndexByte-guarded, deliberately, and not strings.Cut: Cut returns an
-		// empty remainder when there is no newline at all, which would make the
-		// refusal below pass VACUOUSLY on a gap that lies entirely on the
-		// anchor's line. That gap is not the safe case -- it is the case where
-		// the first row's label was found on the same printed line as the
-		// total, which means the anchors matched something other than the block
-		// this rule describes.
+		// Before the first row, words are allowed because column headers live here;
+		// a wrapped label there is still declarable. Under total_row_above the
+		// section anchor's line carries the stated totals, so exactly that one line is
+		// skipped, before the wrapped_labels test, and everything after it is still
+		// refused. IndexByte rather than strings.Cut: with no newline the first row is
+		// on the total's line, which is refused rather than passed vacuously.
 		if rule.TotalRowAbove {
 			nl := strings.IndexByte(gap, '\n')
 			if nl < 0 {
@@ -708,13 +591,8 @@ func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int,
 		if declaredGap(p, gap, used, false, nil) {
 			return nil
 		}
-		// NOTE: unmapped_text is deliberately NOT honoured here. This gap is
-		// where column headers live and is already permissive about words, so
-		// the digit refusal is the ONLY guard standing over it; letting a
-		// declared figure through would retire that guard, and with the
-		// total-line skip above there would be nothing left. A stray figure
-		// before the first row therefore still cannot be declared -- a real gap,
-		// and fisc-0cff rather than an oversight. No page in the corpus needs it.
+		// unmapped_text is not honoured here: the digit refusal is the only guard
+		// over this gap (fisc-0cff).
 		if strings.ContainsFunc(gap, unicode.IsDigit) {
 			return hint.With(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
 				Page: p.Page, Field: "section", Err: ErrNotFound,
@@ -761,26 +639,15 @@ func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int,
 			"that does not add up")
 }
 
-// declaredGap reports whether a trimmed gap is text the part declares, and
-// marks what it used. The gap is either one declared wrapped label or several
-// declared lines: Budget Book p222 ends one row's description and begins the
-// next row's on the two lines between their figures, and p190 prints a
-// footnote marker above a heading. Each line is matched whole and trimmed, as
-// a wrapped label, a heading, or -- when figures is set -- an unmapped_text
-// figure, so the declaration names lines rather than the run of spaces between
-// them, and a line that is not declared refuses the whole gap.
+// declaredGap reports whether a gap is text the part declares, and marks what
+// it used: one declared wrapped label, or several declared lines, each matched
+// whole and trimmed as a wrapped label, a heading or, when figures is set, an
+// unmapped_text figure. An undeclared line refuses the whole gap.
 //
-// A declared figure must be the whole gap, or a footnote marker in a gap of
-// headings and such markers alone, on the line immediately above a heading or
-// on the gap's last line, keying the row below it (p194). A marker is what
-// raised says the page prints as one, given the line's offset in gap; it is
-// nil after the last row, where no row follows for a marker to key, and
-// before the first. A wrapped label never shares a gap with a figure, so the
-// declaration cannot admit a row broken over two lines, nor a two-digit figure
-// printed among a label's fragments.
-//
-// figures is false only before the first row, where unmapped_text is not
-// honoured; see checkGap.
+// A declared figure must be the whole gap, or a footnote marker (raised says
+// the page prints it as one) on the line above a heading or the gap's last
+// line (p194). raised is nil before the first row and after the last. A
+// wrapped label never shares a gap with a figure.
 func declaredGap(p *Part, gap string, used map[string]bool, figures bool, raised func(off int) bool) bool {
 	if trimmed := strings.TrimSpace(gap); slices.Contains(p.WrappedLabels, trimmed) {
 		used[trimmed] = true
@@ -854,9 +721,7 @@ func wordRune(r rune) bool { return unicode.IsLetter(r) || unicode.IsDigit(r) }
 
 // findFields finds the first run of s that is tail's whitespace-separated
 // fields in order, separated by spaces or tabs and never by a line break, and
-// returns its offset and length, or -1. A tail spanning several printed fields
-// names each field and not the kerning between them, which is what p222's
-// "600       Airport" after a label of "601" needs.
+// returns its offset and length, or -1.
 func findFields(s, tail string) (int, int) {
 	fields := strings.Fields(tail)
 	for from := 0; ; {
@@ -885,12 +750,8 @@ func findFields(s, tail string) (int, int) {
 	}
 }
 
-// declaresUnmapped reports whether the part declares this exact printed line as
+// declaresUnmapped reports whether the part declares this exact trimmed line as
 // a figure belonging to no row.
-//
-// It takes one whole trimmed line, exactly as the wrapped_labels and headings
-// tests do, so a declaration covers a line and never part of one; declaredGap
-// says which gaps such a line may share.
 func declaresUnmapped(p *Part, trimmed string) bool {
 	for _, u := range p.UnmappedText {
 		if u.Text == trimmed {
@@ -910,10 +771,8 @@ func precedingRow(rows []Row, i int) string {
 // parseRow reads one row's tokens, toks[k] filed under column cols[k].
 func (r *Resolver) parseRow(rule *Rule, p *Part, row Row, rowIndex int, toks []token,
 	cols []int, guard *columnGuard) ([]Value, error) {
-	// The column check happens here rather than in the two callers because this
-	// is the one place that already has a row, its tokens and the columns they
-	// were filed under together. Checking in both callers would be two copies of
-	// the invariant the whole guard exists for.
+	// The column check is here, the one place holding a row, its tokens and their
+	// columns together.
 	if guard != nil {
 		if err := guard.checkRow(r, rule, p, row, toks, cols); err != nil {
 			return nil, err
@@ -923,10 +782,8 @@ func (r *Resolver) parseRow(rule *Rule, p *Part, row Row, rowIndex int, toks []t
 	for k, tk := range toks {
 		c := cols[k]
 		col := p.Columns[c]
-		// The quantity picks the grammar BEFORE skip is consulted, for the
-		// same reason amounts parse before skip: a skipped cell is still a
-		// cell. A recognized non-amount cell is READ — the row stays whole and
-		// checkGap stands — and never becomes a Value, so it cannot publish.
+		// The quantity picks the grammar before skip is consulted. A recognized
+		// non-amount cell is read, keeping the row whole, and never becomes a Value.
 		if q := row.EffectiveQuantity(col); q != QuantityAmount {
 			if err := recognize(q, tk.text); err != nil {
 				return nil, &resolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
@@ -941,9 +798,8 @@ func (r *Resolver) parseRow(rule *Rule, p *Part, row Row, rowIndex int, toks []t
 				Field: fmt.Sprintf("row %q column %d", row.PrintedLabel(), c+1),
 				Msg:   err.Error(), Err: err}
 		}
-		// A skipped row or column still consumes its position — that is the
-		// point of skip — and is returned here as a cell; Values keeps it out
-		// of the part's values, so it yields no fact.
+		// A skipped row or column still consumes its position and is returned as a
+		// cell; Values keeps it out of the part's values.
 		out = append(out, Value{Cents: cents, Row: row, Column: col,
 			RowIndex: rowIndex, ColumnIndex: c, Page: p.Page,
 			Offset: tk.off, Token: tk.text})
@@ -951,9 +807,8 @@ func (r *Resolver) parseRow(rule *Rule, p *Part, row Row, rowIndex int, toks []t
 	return out, nil
 }
 
-// recognize dispatches a non-amount cell to its grammar. This switch is the
-// one seam between the closed vocabulary and internal/quantity; a Quantity
-// with no arm here is a harness error, not a claim about the document.
+// recognize dispatches a non-amount cell to its grammar. A Quantity with no
+// arm here is a harness error.
 func recognize(q Quantity, tok string) error {
 	switch q {
 	case QuantityAmountPerUnit:
@@ -1038,40 +893,22 @@ func declaredOmissions(rule *Rule, p *Part) string {
 
 // StatedTotals reads the totals the document itself prints for a part.
 //
-// The anchor is the rule's total_row where the part carries labels, and the
-// part's stop_at where it does not — Budget Book p67's totals row is positional
-// like everything else on that page, and its "$" boundary is both the end of
-// the data block and the start of the totals.
-//
-// From the anchor, the totals are the first run of exactly one-per-column
-// consecutively parsable amounts *within the anchor's line*. Three details are
-// load-bearing. The run must be maximal, or a totals label containing a bare
-// number ("Total 2022 COP Construction Fund") would be read as a figure. It
-// must be exactly column-width rather than a prefix, so a line printing the
-// totals twice fails instead of guessing. And it must stop at the line end,
-// because the next line's figures are whitespace-separated from these and
-// would otherwise extend the run.
+// The anchor is the rule's total_row on a labelled part and its stop_at on a
+// label-less one (Budget Book p67's "$" both ends the block and starts the
+// totals). The totals are the first maximal run of exactly one amount per
+// column within the anchor's line: maximal, so "Total 2022 COP Construction
+// Fund" is not read as a figure; exact, so a line printing the totals twice
+// fails; and line-bounded, so the next line cannot extend the run.
 func (r *Resolver) StatedTotals(rule *Rule, p *Part) ([]amount.Cents, error) {
 	_, _, totals, err := r.statedTotalLine(rule, p)
 	return totals, err
 }
 
-// statedTotalLine resolves this part's stated-total line and reads it: the byte
-// range its figures occupy in the page text, and the figures themselves.
-//
-// ANCHORING IS NOT ENOUGH AND THAT IS THE WHOLE REASON THIS IS ONE FUNCTION.
-// totalAnchor returns a position; whether the line at that position PRINTS a
-// total is a separate question, and for a label-less part the anchor is the
-// block TERMINATOR rather than a totals row. Three committed parts anchor that
-// way and land on text that is not a total at all: spine-transfers-in on p67
-// lands on the fund-group header line, and spine-transfers-out and
-// spine-fund-balance both land on the running footer "BUDGET FY 2025-27 Page
-// 63". A caller that took the anchor as a stated total would be pointing at a
-// header and a page number.
-//
-// So the amountRun test below is what MAKES a line a stated total, and every
-// caller gets it. A caller that anchors without it reports those three lines as
-// stated totals.
+// statedTotalLine resolves this part's stated-total line and reads it: the
+// byte range its figures occupy, and the figures. The amountRun test is what
+// makes a line a stated total: spine-transfers-in on p67 anchors on a header
+// line, and spine-transfers-out and spine-fund-balance on the running footer
+// "BUDGET FY 2025-27 Page 63".
 func (r *Resolver) statedTotalLine(rule *Rule, p *Part) (lo, hi int, totals []amount.Cents, err error) {
 	blk, err := r.block(rule, p)
 	if err != nil {
@@ -1105,46 +942,20 @@ func (r *Resolver) statedTotalLine(rule *Rule, p *Part) (lo, hi int, totals []am
 }
 
 // TotalRowSpan is the byte range, within the part's page text, of the figures
-// the document prints on this part's stated-total line.
-//
-// It is [Resolver.StatedTotals] over the same [Resolver.statedTotalLine], asking
-// for the position rather than the figures, so the two agree on which line is a
-// stated total and on every error by construction rather than by inspection.
-//
-// WHY THE POSITION IS WORTH EXPORTING. It is the only thing that can answer "is
-// this fact republishing a total", and a caller outside this package cannot
-// recompute it: the anchor is narrowed by the block, and a page that prints the
-// same total_row string more than once gives a plain search the wrong
-// occurrence. See fisc-eaic for the hazard.
-//
-// THE SPAN IS [anchor, end of line), and the anchor is the byte just past the
-// LABEL rather than the first byte of the figures -- the run of spaces between
-// them is inside it. Fail-closed and free: a fact's offset points at its token,
-// so nothing can sit in the whitespace.
+// the document prints on this part's stated-total line: statedTotalLine
+// asking for the position, so it agrees with StatedTotals on every error. It
+// is what answers "is this fact republishing a total" (fisc-eaic). The span is
+// [anchor, end of line), the whitespace before the figures included.
 func (r *Resolver) TotalRowSpan(rule *Rule, p *Part) (lo, hi int, err error) {
 	lo, hi, _, err = r.statedTotalLine(rule, p)
 	return lo, hi, err
 }
 
 // RollupTotalSpan is the byte range, within the rollup's page text, of the
-// figures the document prints on the rollup's own total line.
-//
-// IT IS [Resolver.TotalRowSpan] ONE LEVEL UP, AND THE LEVEL MATTERS. A rollup is
-// a printed total covering several RULES -- pp.167-170's eleven
-// "<DEPARTMENT> TOTAL" rows over their divisions, and three more elsewhere in
-// the file -- so its figure is a total by exactly the argument a rule's
-// total_row is, and republishing one as a row doubles a department. Locating a
-// rule's totals and not a rollup's leaves that hole open for the widest totals
-// in the corpus.
-//
-// It returns ErrNoStatedTotals for a rollup that covers no rule, which is the
-// unassertable case: the document prints the total and nothing here can say
-// where, so there is no span to hand out.
-//
-// The width and units come from the FIRST covered rule's bearer part, which is
-// what CheckRollup reads them from; the column-consistency refusals CheckRollup
-// makes on the rest are its own and are not repeated here, because a caller
-// asking where a line is does not need the covered rules to agree with it.
+// figures on the rollup's own total line: TotalRowSpan one level up, since
+// republishing a rollup's figure as a row doubles a department. It returns
+// ErrNoStatedTotals for a rollup that covers no rule. Width and units come
+// from the first covered rule's bearer part, as CheckRollup reads them.
 func (r *Resolver) RollupTotalSpan(ro *Rollup) (lo, hi int, err error) {
 	rules, err := r.coveredRules(ro)
 	if err != nil {
@@ -1159,9 +970,8 @@ func (r *Resolver) RollupTotalSpan(ro *Rollup) (lo, hi int, err error) {
 	if err != nil {
 		return 0, 0, err
 	}
-	// rollupStatedTotals is what refuses an anchor that is missing, ambiguous,
-	// or followed by no run of amounts, so the span this returns is a line the
-	// document really totals on -- the property TotalRowSpan had to be taught.
+	// rollupStatedTotals refuses an anchor that is missing, ambiguous, or followed
+	// by no run of amounts.
 	_, at, err := r.rollupStatedTotals(ro, len(bearer.Columns), rules[0].Units)
 	if err != nil {
 		return 0, 0, err
@@ -1180,27 +990,13 @@ func (r *Resolver) RollupTotalSpan(ro *Rollup) (lo, hi int, err error) {
 
 // amountRun returns the first maximal run of exactly n parsable amounts in s.
 //
-// Where a maximal run is the wrong width but begins with a currency-marked
-// figure, its currency-marked prefix is considered too. These documents mark a
-// totals row with "$" and print the data rows bare, and extraction routinely
-// glues the two onto one line: Budget Book p67 runs the eight TOTAL
-// EXPENDITURES figures straight into the eight TRANSFER OUT figures, so the
-// maximal run there is sixteen and the totals are unreadable without the
-// distinction the page itself draws.
-//
-// The maximal run is computed and preferred first, so the prefix is only ever
-// consulted where a run is the wrong width. A page that marks only some of its
-// totals with "$" therefore still fails closed rather than yielding a short
-// run. The preference is per start position, not global: a line whose first
-// currency-marked run is n wide now answers ahead of a later bare run of n,
-// where before the bare one won. No line in the corpus does that, and reading
-// the marked run first is the better answer anyway — but it is a behaviour
-// change, not merely an addition.
-// A DETACHED mark is dropped before the run is sought, exactly as the labelled
-// read drops it: ACFR p167 prints its totals as "$ 47,139,536      $ 54,468,310"
-// per column, so without the drop every run is one amount wide and no width can
-// match. A mark with no figure after it fails the whole line, closed, through
-// dropCurrencyMarks' own refusal.
+// Where a maximal run is the wrong width but begins with a "$"-marked figure,
+// its marked prefix is considered too: Budget Book p67 runs the eight TOTAL
+// EXPENDITURES figures straight into the eight TRANSFER OUT figures. The
+// maximal run is preferred, so a page marking only some totals still fails
+// closed. A detached mark is dropped first (ACFR p167 prints
+// "$ 47,139,536      $ 54,468,310"); a mark with no figure after it fails the
+// line.
 func amountRun(s string, n int, u amount.Units) ([]amount.Cents, bool) {
 	toks, err := dropCurrencyMarks(tokens(s, 0))
 	if err != nil {
@@ -1240,43 +1036,24 @@ func amountRun(s string, n int, u amount.Units) ([]amount.Cents, bool) {
 
 // totalsResult is what checking one part's totals established.
 type totalsResult struct {
-	// Columns is how many non-skip columns were compared, which is the unit
-	// coverage is counted in. A skipped column produces no facts, so counting
-	// it would claim coverage the check did not earn.
+	// Columns is how many non-skip columns were compared.
 	Columns int
 
-	// Declared is how many of those columns tied only because the rule
-	// declared a discrepancy. It is reported separately so a part
-	// that ties on the document's own rounding cannot read as one that ties
-	// exactly -- the caller says so, rather than the number quietly counting
-	// as clean coverage.
+	// Declared is how many of those tied only because the rule declared a
+	// discrepancy, reported apart from exact ties.
 	Declared int
 
-	// Tolerated is how many columns tied only inside the tolerance the rule's
-	// printed_decimals derives from the page, and Slack is what
-	// each of those columns was actually out by, in the order they were
-	// compared.
-	//
-	// SAME REASON AS Declared, and the reason is the whole design: a column
-	// that ties within half a printed unit per row has NOT tied exactly, and a
-	// report that counted the two together would publish the corpus as tighter
-	// than it is. Every caller that adds Columns to a coverage figure must
-	// carry these two beside it.
+	// Tolerated is how many columns tied only inside the printed_decimals
+	// tolerance, and Slack what each was out by, in comparison order. A caller
+	// adding Columns to a coverage figure must carry these two beside it.
 	Tolerated int
 	Slack     []amount.Cents
 }
 
 // CheckTotals asserts that the figures a part yields sum, per column, to the
-// totals the document prints for it.
-//
-// This is the most valuable check available, because it is the document
-// checking our work rather than us checking our own. It returns
-// ErrNoStatedTotals where the document prints no total, which is not a pass:
-// callers are expected to report those parts as unchecked rather than silent.
-//
-// The figures checked are the memoized ones Values returned, not a second read
-// of the same part: a check that re-read the page would be corroborating a
-// different read from the one the caller published.
+// totals the document prints for it. It returns ErrNoStatedTotals where the
+// document prints none, which callers report as unchecked. It checks the
+// memoized read Values returned, not a second one.
 func (r *Resolver) CheckTotals(rule *Rule, p *Part) (*totalsResult, error) {
 	stated, err := r.StatedTotals(rule, p)
 	if err != nil {
@@ -1306,20 +1083,11 @@ func (r *Resolver) CheckTotals(rule *Rule, p *Part) (*totalsResult, error) {
 	return r.compareTotals(rule, p, p, stated, sums, terms)
 }
 
-// CheckSpanningTotals asserts that the figures EVERY part of a rule yields sum,
-// per column, to the one total the document prints for the block.
-//
-// This is CheckTotals for a block whose rows straddle a page break. Nine such
-// blocks sit in the two coverage lanes: the rows land in two parts and the
-// printed total in one, so a per-part check has nothing to compare the head
-// part against and would either fail to resolve or report the rule as
-// declaring no total at all. See Rule.TotalSpansParts for why both of those
-// exits are worse than they look.
-//
-// The parser has already established that the parts declare identical columns,
-// so summing across them is meaningful. What is established here, because it
-// needs the pages: that exactly one part prints the total row, and that a
-// declared discrepancy sits on that part rather than on one of the others.
+// CheckSpanningTotals asserts that the figures every part of a rule yields
+// sum, per column, to the one total the document prints for the block: see
+// Rule.TotalSpansParts. The parser established identical columns; this
+// establishes that exactly one part prints the total row and that any
+// declared discrepancy sits on that part.
 func (r *Resolver) CheckSpanningTotals(rule *Rule) (*totalsResult, error) {
 	bearer, err := r.TotalBearingPart(rule)
 	if err != nil {
@@ -1330,10 +1098,8 @@ func (r *Resolver) CheckSpanningTotals(rule *Rule) (*totalsResult, error) {
 		return nil, err
 	}
 
-	// A delta is a claim about the printed total, so it belongs on the part
-	// that prints it. The parser refused two parts declaring one; this refuses
-	// the one part declaring it in the wrong place, which the parser cannot
-	// see because it does not know which page prints the total.
+	// A delta belongs on the part that prints the total, which the parser cannot
+	// see.
 	for i := range rule.Parts {
 		p := &rule.Parts[i]
 		if len(p.StatedTotalDeltas) == 0 || p.Page == bearer.Page {
@@ -1375,18 +1141,9 @@ func (r *Resolver) CheckSpanningTotals(rule *Rule) (*totalsResult, error) {
 }
 
 // TotalBearingPart finds the one part of a spanning rule whose page prints the
-// total row.
-//
-// Exactly one, and the count is the point. Zero means the total row has moved
-// or was mistyped, which must fail rather than quietly leave the block
-// unchecked. Two means the anchor is ambiguous across the rule's pages, and
-// taking the first would pick whichever page happens to come first in the part
-// list -- a total checked against the wrong page's figures is the confident
-// wrong answer this project exists to refuse.
-//
-// It is exported because the answer is the only one there is: a check asking
-// which page of a spanning block prints the total it must guard has to get the
-// page the build compared against, or the two drift into different lines.
+// total row. Zero fails (moved or mistyped), and two fails (ambiguous across
+// pages). Exported so a check guarding that total uses the page the build
+// compared against.
 func (r *Resolver) TotalBearingPart(rule *Rule) (*Part, error) {
 	var found []*Part
 	for i := range rule.Parts {
@@ -1443,25 +1200,16 @@ type rollupResult struct {
 }
 
 // CheckRollup asserts that the totals the covered rules print sum, per column,
-// to the total the document prints over all of them.
-//
-// It sums STATED TOTALS rather than mapped rows; see Rollup for the
-// measurement that decides it. Each covered rule's own total has already been
-// tied to its rows by CheckTotals, so this is the second link of a chain
-// rather than a second opinion on the first.
+// to the total the document prints over all of them. It sums stated totals,
+// not rows; see Rollup.
 func (r *Resolver) CheckRollup(ro *Rollup) (*rollupResult, error) {
 	rules, err := r.coveredRules(ro)
 	if err != nil {
 		return nil, err
 	}
-	// A rollup covering nothing indexes rules[0] below and would panic there.
-	// Two things keep that unreachable today and NEITHER IS THIS FUNCTION'S:
-	// the parser refuses a rollup declaring neither covers nor unassertable,
-	// and pkg/cmd/build skips CheckRollup entirely for an unassertable one.
-	// CheckRollup is exported, so a second caller -- the verify-side structural
-	// sweep reading Subject.Resolvers is the obvious one -- reintroduces the
-	// panic by doing nothing wrong. Same class as the Parts[0] panic fisc-3bl
-	// already fixed here, one caller further away.
+	// The parser refuses a rollup covering nothing and pkg/cmd/build skips an
+	// unassertable one, but CheckRollup is exported, so it refuses here rather
+	// than panic on rules[0] (fisc-3bl's class).
 	if len(rules) == 0 {
 		return nil, hint.With(
 			&resolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
@@ -1470,34 +1218,12 @@ func (r *Resolver) CheckRollup(ro *Rollup) (*rollupResult, error) {
 				"declares unassertable with the reason it cannot be checked")
 	}
 
-	// The columns come from the part that PRINTS each rule's total, not from
-	// its first part. A rule may declare its columns per part, so a stated
-	// total read off part 2 is stated over part 2's columns; taking the width
-	// from Parts[0] and indexing with it read off the end of the sum. The
-	// parser's own guard compares Parts[0] for the same reason and cannot
-	// close this, because which part bears the total needs the pages.
-	//
-	// THE COMPARISON IS THE COLUMNS THEMSELVES AND NOT THEIR COUNT. An earlier
-	// version tested only len(stated) != len(sums), which let two rules whose
-	// bearer parts declare the same NUMBER of differently-labelled columns be
-	// summed against each other: rule A's FY2026 general added to rule B's
-	// FY2027 general, reported as a clean tie. The width test is what stops the
-	// sum reading off its own end; it is not what makes the sum MEAN anything.
-	//
-	// Element by element over the whole Column, so fund and skip are compared
-	// too. Fund matters as soon as a single-fund schedule is covered, and a
-	// bearer carrying skip on a DIFFERENT column silently changes which columns
-	// the tie loop below examines, because that loop reads Skip off the first
-	// bearer only.
-	//
-	// THE BASIS COMPARED IS THE EFFECTIVE ONE, not Column.Basis. That field is
-	// an OVERRIDE: fact.FromValues falls back to the rule's basis when it is
-	// empty, so two rules declaring `basis: adopted` and `basis: revised` with
-	// byte-identical column blocks produce facts on different bases while every
-	// Column compares equal. Summing an adopted total into a revised one is the
-	// same defect as summing FY2026 into FY2027, reached through the other
-	// declaration, and a comparison that missed it would close half a hole while
-	// claiming the whole one.
+	// The columns come from the part that prints each rule's total, since a rule
+	// may declare columns per part. They are compared element by element over the
+	// whole Column, not by count: two rules with the same number of differently
+	// labelled columns would otherwise sum FY2026 into FY2027 and tie. Fund and
+	// skip are compared too, and the basis compared is the effective one, since
+	// Column.Basis is an override (fact.FromValues falls back to the rule's).
 	var cols []Column
 	var sums []amount.Cents
 	var first *Rule
@@ -1520,11 +1246,8 @@ func (r *Resolver) CheckRollup(ro *Rollup) (*rollupResult, error) {
 				"a rollup adds these totals column by column, so every covered "+
 					"rule must state the same number of them")
 		}
-		// The width guard above has already refused a length mismatch, so
-		// `comparable` is true here on every reachable path. It is checked
-		// rather than discarded because the alternative is indexing two slices
-		// on the strength of a comment: the same one-caller-away reasoning that
-		// put a panic in this helper in the first place.
+		// The width guard has refused a length mismatch, so comparable is always
+		// true here; it is checked rather than trusted.
 		i, comparable := firstDifferingColumn(
 			effectiveColumns(first, bearers[0]), effectiveColumns(rule, bearer))
 		if !comparable {
@@ -1606,12 +1329,9 @@ func (r *Resolver) coveredRules(ro *Rollup) ([]*Rule, error) {
 	return out, nil
 }
 
-// ruleStatedTotals is the ONE total a covered rule prints.
-//
-// One, and the count is load-bearing. A rule printing a total on each of two
-// pages has two, and adding them would be a guess about which the rollup meant
-// -- so this refuses rather than choosing. A rule whose rows straddle a page
-// break says so with total_spans_parts and has one total again.
+// ruleStatedTotals is the one total a covered rule prints. A rule printing a
+// total on each of two pages is refused rather than summed;
+// total_spans_parts gives such a rule one total.
 func (r *Resolver) ruleStatedTotals(rule *Rule) ([]amount.Cents, *Part, error) {
 	if rule.TotalSpansParts {
 		bearer, err := r.TotalBearingPart(rule)
@@ -1642,12 +1362,8 @@ func (r *Resolver) ruleStatedTotals(rule *Rule) ([]amount.Cents, *Part, error) {
 }
 
 // rollupStatedTotals reads the figures the document prints on the rollup's own
-// line.
-//
-// The anchor must occur exactly once on the page. Unlike a rule's total_row,
-// which is searched only after that rule's block and so is already narrowed by
-// the block's own anchors, a rollup has no block to search after and would
-// otherwise take whichever occurrence came first.
+// line. The anchor must occur exactly once on the page, since a rollup has no
+// block to narrow the search.
 func (r *Resolver) rollupStatedTotals(ro *Rollup, n int, units amount.Units) ([]amount.Cents, int, error) {
 	text, err := r.page(ro.Page)
 	if err != nil {
@@ -1685,23 +1401,12 @@ func (r *Resolver) rollupStatedTotals(ro *Rollup, n int, units amount.Units) ([]
 }
 
 // rollupNamesItsOwnLine refuses a rollup anchored on a printed line that is
-// already one of its covered rules' totals.
-//
-// THIS IS THE INVARIANT THAT REPLACED "a rollup must cover two rules". That
-// count was a proxy, and a wrong one: six of pp.167-170's eleven
-// <DEPARTMENT> TOTAL rows sit over a single division and are a second printed
-// line, which the proxy refused. What it was protecting against is a rollup
-// that asserts a figure against itself -- always green, checking nothing -- and
-// that is a claim about the LINE.
-//
-// The parser refuses the string form (rollup.total_row equal to a covered
-// rule's) and cannot do more: which part bears a rule's total, and where on the
-// page it lands, needs the pages. So a rollup declaring `total_row: " Total"`
-// over one division whose own total_row is "Total" reaches here, resolves to
-// that division's own printed Total, and would tie by construction.
-//
-// A rule whose total is printed on another page cannot collide and is skipped
-// rather than resolved a second time.
+// already one of its covered rules' totals, which would tie by construction.
+// Six of pp.167-170's eleven <DEPARTMENT> TOTAL rows sit over a single
+// division, so the test is on the line, not a cover count. The parser refuses
+// the string form; `total_row: " Total"` over a division totalled "Total"
+// reaches here. A rule whose total is on another page cannot collide and is
+// skipped.
 func (r *Resolver) rollupNamesItsOwnLine(ro *Rollup, rules []*Rule, bearers []*Part, at int) error {
 	text, err := r.page(ro.Page)
 	if err != nil {
@@ -1755,12 +1460,8 @@ func AnchorOf(p *Part) string {
 }
 
 // totalAnchor returns the offset just past the anchor a part's stated totals
-// are read from, and the field name an error about it should carry.
-//
-// It is split out of [Resolver.StatedTotals] because CheckRollup needs the same
-// offset for a different question -- whether a rollup names the same printed
-// line as one of the totals it covers -- and two computations of "where does
-// this rule's printed total sit" would be two things to keep in step.
+// are read from, and the field name an error about it should carry. CheckRollup
+// shares it to ask whether a rollup names a covered rule's line.
 func (r *Resolver) totalAnchor(rule *Rule, p *Part, blk *block, text string) (int, string, error) {
 	if AnchorOf(p) == AnchorStopAt {
 		if p.StopAt == "" {
@@ -1775,12 +1476,9 @@ func (r *Resolver) totalAnchor(rule *Rule, p *Part, blk *block, text string) (in
 			Page: p.Page, Field: "total_row", Msg: "the rule declares none",
 			Err: ErrNoStatedTotals}
 	}
-	// A total printed ABOVE its rows is on the section anchor's own line, and
-	// Block already resolved that anchor: blk.Start is the byte just past the
-	// label, which is exactly the shape the below-case returns. There is no
-	// search to do and so no ErrNotFound to report -- the parser has already
-	// required section == total_row, and anchor() has already refused an
-	// ambiguous or missing one. See Rule.TotalRowAbove and fisc-h96o.
+	// A total printed above its rows is on the section anchor's line, already
+	// resolved by Block: blk.Start is just past the label. See Rule.TotalRowAbove
+	// and fisc-h96o.
 	if rule.TotalRowAbove {
 		return blk.Start, "total_row", nil
 	}
@@ -1820,15 +1518,8 @@ func lineAfter(text string, off int) string {
 // answer the same here name one printed line, whatever strings they are.
 func lineAt(text string, off int) int { return strings.Count(text[:off], "\n") }
 
-// abs is |c|.
-//
-// A tolerance is symmetric: a document that prints one unit LESS than its rows
-// add to is rounding just as one that prints one more is.
-//
-// IT CAN RETURN A NEGATIVE, and every caller must say what it does about that.
-// amount.Cents is an int64 and -math.MinInt64 is math.MinInt64, so the one input
-// this cannot answer for is the one input that would make a naive comparison
-// fail open. withinTolerance is the only caller and handles it.
+// abs is |c|. It returns a negative for math.MinInt64; withinTolerance, the
+// only caller, handles that.
 func abs(c amount.Cents) amount.Cents {
 	if c < 0 {
 		return -c
@@ -1837,31 +1528,15 @@ func abs(c amount.Cents) amount.Cents {
 }
 
 // withinTolerance reports whether a column's discrepancy is inside half a
-// printed unit per row summed.
-//
-// THE COMPARISON IS DOUBLED RATHER THAN THE BOUND HALVED so the arithmetic stays
-// in whole cents: an odd term count would otherwise round the tolerance, and
-// which way it rounded would be the difference between a page passing and not.
-//
-// THE OVERFLOW GUARDS ARE THE POINT OF THE FUNCTION and are why this is not an
-// inline expression any more. It was one, and it could wrap: amount.Parse admits
-// a millions token up to roughly 9.2e18 cents, and `abs(diff)*2` on a diff that
-// size is NEGATIVE, which compares <= any bound and ties. `diff` at exactly
-// math.MinInt64 gives abs() == math.MinInt64 and a doubled value of 0, which
-// also ties. Both are fail-OPEN in the one arm that decides whether a column may
-// miss the total the document prints for it -- in a package that bounds its
-// products explicitly everywhere else (see amount.Parse's own MaxInt64 checks).
-//
-// Every guard below refuses rather than accepts, because a discrepancy too large
-// to compare against a bound built from a printed unit is, self-evidently, not
-// within it.
+// printed unit per row summed. The comparison is doubled rather than the bound
+// halved, to stay in whole cents. The overflow guards are the point: a millions
+// token admits up to ~9.2e18 cents, and abs(diff)*2 on such a diff, or on
+// math.MinInt64, wraps to a value that ties. Every guard refuses.
 func withinTolerance(diff, unit amount.Cents, terms int) bool {
 	if unit <= 0 || terms <= 0 {
 		return false
 	}
-	// The bound itself. unit is a power of ten no larger than 10^8 cents and
-	// terms is a row count, so this cannot realistically wrap -- but "cannot
-	// realistically" is what the guard above this one was relying on.
+	// The bound itself, guarded the same way.
 	if amount.Cents(terms) > math.MaxInt64/unit {
 		return false
 	}
@@ -1873,34 +1548,17 @@ func withinTolerance(diff, unit amount.Cents, terms int) bool {
 }
 
 // decimalsWitness checks a printed_decimals declaration against the tokens the
-// rule actually read.
-//
-// THE DECLARATION IS A CLAIM ABOUT THE PAGE, so the page is what settles it,
-// and it is settled in BOTH directions for different reasons. A token printing
-// MORE decimals than declared is refused because it would mean the tolerance
-// was computed from too coarse a unit and is therefore too wide -- the unsafe
-// direction. A declaration NO token justifies is refused because it has gone
-// stale, the same standard wrapped_labels and stated_total_deltas are held to.
-//
-// A dash is skipped rather than counted as zero decimals. These documents spell
-// a zero cell "-", which says nothing about how finely the page prints; counting
-// it would let one dash in a column of hundredths claim the page prints whole
-// units, and that reading gives a hundredfold wider tolerance.
-//
-// THE PRINTED TOTAL'S OWN TOKENS ARE DELIBERATELY NOT WITNESSED. StatedTotals
-// and amountRun hand back []amount.Cents and carry no token, so including them
-// would change four signatures for a coarser total that could only WIDEN the
-// bound. Leaving it out fails closed, which is the direction to be wrong in.
+// rule read, in both directions: a token printing more decimals than declared
+// is refused (the tolerance would be too wide), and a declaration no token
+// justifies is refused as stale. A dash is not counted as zero decimals. The
+// printed total's own tokens are not witnessed, which can only fail closed.
 type decimalsWitness struct {
 	exact bool
 }
 
-// observe records what one value's token says about the page's precision.
-//
-// IT DOES NOT TEST v.Column.Skip. Values drops a skipped row or column, so no
-// Value reaching here carries one and such a test could not fire. Where
-// skipped columns are excluded from the witness is Values, and Cells, which
-// keeps them, must not feed it.
+// observe records what one value's token says about the page's precision. It
+// does not test v.Column.Skip: Values has already dropped skipped cells, and
+// Cells, which keeps them, must not feed it.
 func (w *decimalsWitness) observe(rule *Rule, v Value) error {
 	if rule.PrintedDecimals == nil {
 		return nil
@@ -1924,11 +1582,8 @@ func (w *decimalsWitness) settle(rule *Rule) error {
 	if rule.PrintedDecimals == nil || w.exact {
 		return nil
 	}
-	// "SUMMED INTO A COMPARED COLUMN", not "reads". Values drops a skipped
-	// row or column, so the witness never sees those
-	// tokens -- and a rule whose compared column prints integers while its
-	// SKIPPED column prints "16.00" would otherwise be told, falsely, that no
-	// token it reads prints two decimals.
+	// "Summed into a compared column", not "reads": the witness never sees
+	// skipped tokens.
 	return fmt.Errorf("declares %d printed decimal place(s), but no token summed into a "+
 		"compared column prints that many", *rule.PrintedDecimals)
 }
@@ -1944,22 +1599,15 @@ func (r *Resolver) decimalsError(rule *Rule, p *Part, err error) error {
 
 // compareTotals is the arithmetic both totals checks share: per column, the
 // mapped sum against the stated total, with any declared discrepancy applied.
-//
-// cols is the part whose column list is being compared and dec the part whose
-// stated_total_deltas apply. They are the same part for a per-part check and
-// may differ for a spanning one, where the columns are every part's (identical
-// by the parser's guard) and the declaration belongs to whichever part prints
-// the total. Passing them separately is what stops a spanning rule silently
-// reading a delta off the wrong page.
+// cols is the part whose columns are compared and dec the part whose
+// stated_total_deltas apply; they differ for a spanning rule, whose delta
+// belongs to the part printing the total.
 func (r *Resolver) compareTotals(rule *Rule, cols, dec *Part, stated, sums []amount.Cents,
 	terms []int) (*totalsResult, error) {
 	p := cols
 
-	// The tolerance, derived from the page rather than chosen. Zero unless the
-	// rule declares printed_decimals, which is every rule in the corpus but
-	// one. The parser has already bounded the count by the units' own
-	// precision, so DigitCents cannot fail here; refusing rather than assuming
-	// keeps a future caller from getting a silent zero unit.
+	// The tolerance, zero unless the rule declares printed_decimals. The parser
+	// bounds the count, but a DigitCents error is still refused.
 	var unit amount.Cents
 	if rule.PrintedDecimals != nil {
 		u, ok := amount.DigitCents(rule.Units, *rule.PrintedDecimals)
@@ -1972,9 +1620,7 @@ func (r *Resolver) compareTotals(rule *Rule, cols, dec *Part, stated, sums []amo
 		unit = u
 	}
 
-	// Declared discrepancies, by 1-based column. The parser has already
-	// refused a duplicate, an out-of-range column, a skipped column, a zero
-	// delta and a missing note, so nothing here needs to re-check any of that.
+	// Declared discrepancies, by 1-based column, already validated by the parser.
 	declared := make(map[int]amount.Cents, len(dec.StatedTotalDeltas))
 	for _, d := range dec.StatedTotalDeltas {
 		declared[d.Column] = d.Cents
@@ -1997,9 +1643,7 @@ func (r *Resolver) compareTotals(rule *Rule, cols, dec *Part, stated, sums []amo
 		if diff == want {
 			continue
 		}
-		// It is tried only on an UNDECLARED column. A declared delta names an
-		// exact figure and must still match exactly, or the two mechanisms
-		// would compose into a declaration with slack around it.
+		// Tried only on an undeclared column, so a delta never gains slack.
 		if !isDeclared && withinTolerance(diff, unit, terms[c]) {
 			res.Tolerated++
 			res.Slack = append(res.Slack, diff)
@@ -2010,9 +1654,7 @@ func (r *Resolver) compareTotals(rule *Rule, cols, dec *Part, stated, sums []amo
 			bad = append(bad, fmt.Sprintf("column %d (%s): mapped %s, document states %s, off by %s",
 				c+1, totalsColumn(col), sums[c], stated[c], diff))
 		case diff == 0:
-			// The declaration has outlived the discrepancy. Failing is the
-			// point: a stale claim about the city's arithmetic that nothing
-			// ever retracts is exactly what a tolerance would have hidden.
+			// The declaration has outlived the discrepancy, so it fails as stale.
 			bad = append(bad, fmt.Sprintf("column %d (%s): declares a delta of %s but now ties exactly; remove the declaration",
 				c+1, totalsColumn(col), want))
 		default:
@@ -2020,12 +1662,7 @@ func (r *Resolver) compareTotals(rule *Rule, cols, dec *Part, stated, sums []amo
 				c+1, totalsColumn(col), sums[c], stated[c], want, diff))
 		}
 	}
-	// A declaration that has stopped doing anything is the one shape a
-	// declaration in this repository must not have, and this is the exact
-	// mirror of the stale-delta arm above: there, a delta the document no
-	// longer needs; here, a tolerance no column needed. Both fail rather than
-	// pass quietly, because a tolerance nobody notices is how a global epsilon
-	// arrives one rule at a time.
+	// A tolerance no column needed fails, mirroring the stale-delta arm.
 	if len(bad) == 0 && rule.PrintedDecimals != nil && res.Tolerated == 0 {
 		return nil, hint.With(&resolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
 			Field: "printed_decimals",
@@ -2053,10 +1690,8 @@ type token struct {
 }
 
 // tokens splits s on whitespace, recording each token's offset relative to
-// base. Splitting on whitespace rather than scanning for a number pattern is
-// deliberate: a parenthesised negative, a bled currency symbol and a dash-zero
-// are all single tokens, and a pattern scan would silently pick the digits out
-// of a token it did not understand.
+// base. A pattern scan would silently pick digits out of a token it did not
+// understand.
 func tokens(s string, base int) []token {
 	var out []token
 	i := 0
@@ -2092,25 +1727,11 @@ const currencyHint = "a '$' printed as its own token belongs to the figure after
 	"reading past the end of the row"
 
 // dropCurrencyMarks removes tokens that are a currency mark and nothing else,
-// so a row printed as "$ 1,234  $ 5,678" reads as two figures rather than four
-// tokens the amount grammar cannot parse. 236 of the corpus's 786 pages print
-// the dollar sign detached from its figure. A positional read drops them too:
-// Budget Book p81 and pp.225-235 print a "$" before each figure of a block's
-// first row and of its totals.
-//
-// It DROPS the mark rather than joining it to the figure, and that is the whole
-// design. A joined token would be a string this project synthesized: Value
-// carries the token text and its offset straight through to the published fact,
-// and fisc verify's fact-offset-points-at-token asserts
-// text[Offset:Offset+len(Token)] == Token against the page. The page bytes at a
-// detached mark are "$      1,2", so a synthesized "$1,234" would fail that
-// check on every row it touched. The figure's own token is already exactly what
-// the document printed and already points at itself.
-//
-// A mark with no figure after it is an error, not a silent drop. That is the
-// case where the read has run off the end of the row, which is the failure the
-// column guard exists to catch and must not be laundered into a shorter token
-// list.
+// so "$ 1,234  $ 5,678" reads as two figures. 236 of the corpus's 786 pages
+// print the dollar sign detached. It drops the mark rather than joining it,
+// because fact-offset-points-at-token requires the token to be the page's
+// bytes at its offset. A mark with no figure after it is an error: the read
+// has run off the end of the row.
 func dropCurrencyMarks(toks []token) ([]token, error) {
 	if !slices.ContainsFunc(toks, func(t token) bool { return isCurrencyMark(t.text) }) {
 		return toks, nil
@@ -2129,23 +1750,13 @@ func dropCurrencyMarks(toks []token) ([]token, error) {
 }
 
 // isCurrencyMark reports whether a token is a currency symbol carrying no
-// digits. The set is closed on purpose: amount.Parse rejects a bare "$" and
-// must keep doing so, so this is the one place that knows the mark can stand
-// alone, and it recognises only the mark itself rather than any token the
-// amount grammar happens to reject.
+// digits. amount.Parse rejects a bare "$" and must keep doing so.
 func isCurrencyMark(s string) bool { return s == "$" }
 
-// firstDifferingColumn is the index where two column runs disagree, or -1, and
-// a second value saying whether the two were comparable at all.
-//
-// It reports the INDEX rather than a bool so the error can name the column that
-// differs. Comparing whole Column values is deliberate: every field of it
-// changes what a figure in that position MEANS, so there is no subset worth
-// exempting.
-//
-// RUNS OF DIFFERENT LENGTHS ARE NOT COMPARABLE, and say so in the second
-// return rather than in a sentinel index: min(len) would have the caller index
-// past the shorter run, and -1 would report a prefix as agreement.
+// firstDifferingColumn is the index where two column runs disagree, or -1,
+// and whether they were comparable at all: runs of different lengths are not.
+// Whole Column values are compared, since every field changes what a figure
+// means.
 func firstDifferingColumn(a, b []Column) (idx int, comparable bool) {
 	if len(a) != len(b) {
 		return 0, false
@@ -2158,13 +1769,8 @@ func firstDifferingColumn(a, b []Column) (idx int, comparable bool) {
 	return -1, true
 }
 
-// effectiveColumns is a rule's bearer-part columns with the basis each figure
-// is actually published on filled in, and the kind on a column that carries
-// the category.
-//
-// Column.Basis and Column.Kind are overrides and usually empty; the ones in
-// force are the rule's. Comparing the declarations rather than the effective values is what
-// let two rules on different bases read as the same columns.
+// effectiveColumns is a rule's bearer-part columns with the basis in force
+// filled in, and the kind on a column that carries the category.
 func effectiveColumns(rule *Rule, p *Part) []Column {
 	out := make([]Column, len(p.Columns))
 	for i, c := range p.Columns {
@@ -2177,18 +1783,9 @@ func effectiveColumns(rule *Rule, p *Part) []Column {
 	return out
 }
 
-// columnIdentity renders a column as the thing it IDENTIFIES, which is not what
-// describeColumn renders.
-//
-// The two answer different questions and neither generalises. describeColumn
-// answers "which column is this token in", a positional question where basis and
-// fund are noise and a skipped column has no identity worth printing. This
-// answers "are these two the same column", where every field is discriminating
-// -- including Skip, since a skipped column and a read one in the same position
-// are precisely not the same column.
-//
-// Fund and basis appear only when set, because a schedule with neither would
-// otherwise report "fund 0" on every column and bury the fields that do differ.
+// columnIdentity renders a column as what it identifies, for "are these the
+// same column": every field discriminates, Skip included. describeColumn is
+// the positional rendering. Fund and basis appear only when set.
 func columnIdentity(c Column) string {
 	out := fmt.Sprintf("%s FY%d", c.FundGroup, c.FiscalYear)
 	if c.Basis != "" {
@@ -2213,8 +1810,7 @@ func columnIdentity(c Column) string {
 }
 
 // totalsColumn names a column in a totals message: its fund group and year,
-// as it always has, and for a column whose years are on its rows its fund and
-// category instead of a "FY0" naming no year.
+// or for a column whose years are on its rows, its fund and category.
 func totalsColumn(c Column) string {
 	if c.FiscalYear != 0 {
 		return strings.TrimSpace(fmt.Sprintf("%s FY%d", c.FundGroup, c.FiscalYear))

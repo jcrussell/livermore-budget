@@ -1,15 +1,7 @@
 // Package mapping models the curated rules that say which rows of which
-// extracted pages become which facts.
-//
-// This is the judgment layer. Extraction is mechanical and reproducible;
-// deciding that a row labelled "Charges for Services" in the Enterprise column
-// of page 66 is FY2026 adopted revenue for the enterprise fund group is a
-// human call. Keeping it in reviewable YAML — rather than in Go, or inferred
-// by heuristics — is what makes the mapping auditable.
-//
-// The schema is shaped by what the source documents actually do, which is
-// stranger than a table model suggests. See docs/m0-spike.md; the awkward
-// parts of this schema exist because of the awkward parts of the PDFs.
+// extracted pages become which facts: the human judgment layer, kept in
+// reviewable YAML. See docs/m0-spike.md for the document quirks the schema
+// answers.
 package mapping
 
 import (
@@ -25,23 +17,13 @@ import (
 )
 
 // SchemaVersion is the rule-file version this package understands, declared in
-// every file and refused if it differs. It is a compatibility marker between
-// the rule files and the reader, not a feature flag: a rule file is only
-// meaningful against the resolver that knows how to read its fields, so when
-// the meaning of an existing field changes — a renamed key, a new default, an
-// anchor that resolves differently — this bumps and the old files are edited
-// rather than silently reinterpreted.
-//
-// Adding a field does not require a bump while nothing is published, because
-// there is no older binary anywhere to hand a newer file to. The refusal that
-// does the day-to-day work is KnownFields(true) in the parser, which makes a
-// misspelled key fatal; this constant only guards a change of meaning.
+// every file and refused if it differs. It bumps when an existing field changes
+// meaning; a misspelled key is refused by KnownFields(true) in the parser.
 const SchemaVersion = 1
 
-// Quantity is the grammar a cell must satisfy, and it is not Kind: a Kind
-// classifies a published fact in the flow model, a Quantity says what a CELL
-// is before any fact exists. Every quantity but the amount default is read so
-// the row stays whole, and publishes nothing.
+// Quantity is the grammar a cell must satisfy. It is not Kind: a Kind
+// classifies a published fact, a Quantity says what a cell is. Every quantity
+// but the amount default is read so the row stays whole, and publishes nothing.
 type Quantity string
 
 // The quantities a cell can be. QuantityAmount is the default and the only
@@ -53,9 +35,7 @@ const (
 	QuantityNumber        Quantity = "number"
 )
 
-// quantities is the closed set, in the order the constants declare it — the
-// same one-list discipline as vocab.Kinds, so a fifth value cannot be added to
-// one spelling and missed by the other.
+// quantities is the closed set, in declaration order.
 var quantities = []Quantity{
 	QuantityAmount,
 	QuantityAmountPerUnit,
@@ -65,9 +45,8 @@ var quantities = []Quantity{
 
 func (q Quantity) valid() bool { return slices.Contains(quantities, q) }
 
-// quantityList spells the declarable values for an error message. It excludes
-// QuantityAmount, which the parser refuses to see written: an undeclared cell
-// already parses amounts.
+// quantityList spells the declarable values for an error message, less
+// QuantityAmount, which the parser refuses to see written.
 func quantityList() string {
 	s := make([]string, 0, len(quantities)-1)
 	for _, q := range quantities {
@@ -85,19 +64,11 @@ type File struct {
 	DocID         string `yaml:"doc_id"`
 	Rules         []Rule `yaml:"rules"`
 
-	// Rollups are printed totals that cover several RULES.
-	//
-	// TotalRow is a field on Rule, so a total the document prints over more
-	// than one rule has no rule to be the total_row OF and cannot be asserted
-	// at all. Twelve such totals sit on the pages the coverage lanes map: the
-	// eleven <DEPARTMENT> TOTAL rows and General Fund Total Expenses on
-	// pp.167-170, Total General Fund on p130, and Total Sources on p140. The
-	// rules beneath them are one per fund block or one per division because
-	// row identity forces that, not by preference.
-	//
-	// It matters rather than being a counting nit: the department-level total
-	// is the ONLY printed figure that catches a division filed under the wrong
-	// department, since every category sum is unchanged by the move.
+	// Rollups are printed totals that cover several rules, which no single
+	// rule's total_row can assert: the eleven <DEPARTMENT> TOTAL rows and General
+	// Fund Total Expenses on pp.167-170, Total General Fund on p130, and Total
+	// Sources on p140. A department total is the only printed figure that catches
+	// a division filed under the wrong department.
 	Rollups []Rollup `yaml:"rollups"`
 
 	// Path is the file this was read from, for error messages. Not serialized.
@@ -106,39 +77,19 @@ type File struct {
 
 // Rollup is one printed total that covers several rules.
 //
-// IT SUMS THE COVERED RULES' STATED TOTALS, NOT THEIR ROWS, and that is the
-// design decision rather than an implementation detail. Measured on Budget
-// Book p168: ADMINISTRATIVE SERVICES TOTAL is $6,311,564, its three printed
-// division Totals sum to exactly that, and the six OBJECT rows beneath them
-// sum to $6,311,563 -- Finance's own $1 of rounding is absorbed by its printed
-// division Total and reappears one level up. General Fund Total Expenses on
-// p170 happens to tie against the object rows too, but only because that
-// page's four declared deltas net to zero.
-//
-// So a rollup summing leaves would tie or fail depending on whether the
-// document's roundings happened to cancel, and the author's only escape would
-// be a delta declaration at the rollup level absorbing a structural artefact
-// -- which is the fabricated-declaration hazard Rule.TotalSpansParts exists to
-// close, reintroduced one level up.
-//
-// Summing stated totals instead makes a two-level chain: CheckTotals ties each
-// rule's rows to its own printed subtotal, and the rollup ties those subtotals
-// to the printed rollup. Each level is the document checking us, and neither
-// level absorbs the other's residue. It is also why a covered rule MUST carry
-// a printed total of its own -- there would otherwise be nothing to sum.
+// It sums the covered rules' STATED totals, not their rows. On Budget Book
+// p168 ADMINISTRATIVE SERVICES TOTAL is $6,311,564, its three division Totals
+// sum to exactly that, and the object rows beneath sum to $6,311,563. Summing
+// leaves would tie or fail on whether the city's roundings cancelled. So each
+// covered rule must print a total of its own.
 type Rollup struct {
 	// ID names this rollup for the build report and for error messages.
 	ID string `yaml:"id"`
 
-	// Page is the page printing the total, and TotalRow the text anchoring it.
-	// The anchor must occur exactly once on the page: a rollup checked against
-	// whichever occurrence came first would be the confident wrong answer this
-	// project exists to refuse.
-	//
-	// Watch p0167.txt:61-62, which prints a department total as
-	// "INNOVATION & ECONOMIC DEVELOPEMENT  $2,639,232 ..." on one line with
-	// the city's own typo and a bare "TOTAL" wrapping onto the next. The
-	// anchor is the department name, and the figures are on its line.
+	// Page is the page printing the total, and TotalRow the text anchoring it,
+	// which must occur exactly once on the page. p0167.txt:61-62 prints the
+	// department name (with the city's typo, DEVELOPEMENT) and its figures on one
+	// line and a bare "TOTAL" on the next; the anchor is the name.
 	Page     int    `yaml:"page"`
 	TotalRow string `yaml:"total_row"`
 
@@ -146,43 +97,19 @@ type Rollup struct {
 	// total of its own.
 	Covers []string `yaml:"covers"`
 
-	// Unassertable declares that the document prints this rollup and that no
-	// rule structure here can assert it, with the reason. An entry carries
-	// EITHER covers OR this, never both and never neither.
-	//
-	// It exists because silence is the one unacceptable answer. p140's
-	// "Total Sources" exceeds the pages it closes by ~$57M, differently per
-	// column, so it cannot be asserted by this or any other
-	// mechanism here -- and mapping those ten pages while declining to mention
-	// that the page's own closing total does not reconcile would be publishing
-	// the gap as though it were not there. reasonNoTotalRow cannot say this:
-	// it means "the rule declares none", which is a different claim.
+	// Unassertable declares that the document prints this rollup and nothing here
+	// can assert it, with the reason. An entry carries exactly one of covers and
+	// this. p140's "Total Sources" exceeds the pages it closes by ~$57M, differently
+	// per column. reasonNoTotalRow means "the rule declares none", a different
+	// claim.
 	Unassertable string `yaml:"unassertable"`
 
-	// Kinds names the kinds the covered rules span, and is declared ONLY where
-	// they span more than one.
-	//
-	// WHAT IT CANNOT DO, said first because the name invites the opposite
-	// reading: it cannot catch a wrong kind. It is required to equal the set the
-	// covered rules already carry, so it can only ever restate them. What it
-	// buys is that a mixed-kind rollup becomes a sentence someone wrote down —
-	// the difference between a statement and an accident.
-	//
-	// WHY MIXED IS NOT SIMPLY REFUSED. p140 prints "Total Sources", which is
-	// literally revenue plus transfers in — a real printed line over two kinds,
-	// declared Unassertable today for an unrelated reason. Refusing
-	// mixed kinds outright would choose a rule the corpus has not asked for, and
-	// would have to be unpicked the first time such a total became assertable.
-	// Scope is the opposite case and IS refused: see validateRollups.
-	//
-	// It compares Rule.Kind and not the effective kinds of rows. A rule's kind
-	// is the schedule's own claim about what it maps; a Row.Kind override is
-	// about one printed line, and the eleven mixed fund blocks on pp.131-140
-	// carry a Transfers In row inside a revenue rule without making that rule a
-	// transfer schedule. No rollup covers such a rule today, so this is a
-	// statement of intent rather than a measurement of the corpus.
-	//
-	// Like Rule.TotalRowKinds, nothing in mappings/ declares it yet.
+	// Kinds names the kinds the covered rules span, declared only where they span
+	// more than one. It must equal the set the covered rules carry, so it cannot
+	// catch a wrong kind; it makes a mixed-kind rollup a written statement. Mixed
+	// kinds are not refused (p140's "Total Sources" is revenue plus transfers in);
+	// mixed scope is, in validateRollups. It compares Rule.Kind, not a Row.Kind
+	// override.
 	Kinds []vocab.Kind `yaml:"kinds"`
 
 	// Note records why this rollup looks the way it does.
@@ -195,11 +122,9 @@ type Rule struct {
 	Kind  vocab.Kind  `yaml:"kind"`
 	Basis vocab.Basis `yaml:"basis"`
 	Scope string      `yaml:"scope"`
-	// Grain names the lattice level this rule's figures are totals at: which
-	// of fund_group, fund, department and category the table has an axis for.
-	// Required on a rule that publishes a fact and refused on one that
-	// publishes none, since nothing could check it. The parser checks presence
-	// only; internal/structure checks the name against the facts.
+	// Grain names the lattice level this rule's figures are totals at. Required
+	// on a rule that publishes a fact and refused on one that publishes none. The
+	// parser checks presence only; internal/structure checks the name.
 	Grain string       `yaml:"grain"`
 	Units amount.Units `yaml:"units"`
 
@@ -210,190 +135,75 @@ type Rule struct {
 	// carries them, each with the classification it maps to.
 	Rows []Row `yaml:"rows"`
 
-	// TotalRow is the label of the row the document itself prints as the
-	// total. When set, verify asserts the mapped rows sum to it — the single
-	// most valuable check available, because it is the document checking our
-	// work rather than us checking our own.
+	// TotalRow is the label of the row the document prints as the total. When
+	// set, verify asserts the mapped rows sum to it.
 	TotalRow string `yaml:"total_row"`
 
-	// TotalRowAbove says the document prints the total_row ABOVE its own rows
-	// rather than below them, and that the total_row label is therefore also
-	// the part's section anchor.
-	//
-	// READ THIS AS "the stated totals are on the section anchor's own line".
-	// Under this flag total_row does NO independent resolution: totalAnchor
-	// returns the block's start, which Block already derived from the section
-	// anchor, so total_row's usual "does not occur after the block" path is
-	// unreachable for such a rule. The field is still required, and still
-	// refused as a row label, because it is what names the printed line for a
-	// reader of the rule and what a failure message reports against. A reader
-	// who takes it for a SECOND, independent anchor has it wrong.
-	//
-	// It exists for ACFR p41, which prints "General Government:  18.45" and
-	// then the five divisions summing to 18.44 beneath it. Every schedule
-	// mapped before it printed its total below its rows, so nothing needed
-	// otherwise, and two separate guards stood in the way: totalAnchor
-	// searched only text after the block, and checkGap's leading arm refuses
-	// any digit before the first row. Both are opened by this flag and by
-	// nothing else -- see fisc-h96o.
-	//
-	// The section-anchor requirement is what keeps it from being a loosening.
-	// Without it the flag would mean "look somewhere above", which no guard
-	// could bound; with it the total is exactly one line, at a position the
-	// resolver already had to find, and checkGap's refusal still stands over
-	// every line after that one.
+	// TotalRowAbove says the document prints the total_row above its rows, and
+	// that the total_row label is therefore also the part's section anchor: the
+	// stated totals are on the section anchor's own line. total_row does no
+	// independent resolution under it (totalAnchor returns the block's start); it
+	// names the printed line for a reader and a failure message. It exists for
+	// ACFR p41, "General Government:  18.45" over five divisions summing to 18.44,
+	// and it alone opens totalAnchor's search above the block and checkGap's
+	// leading arm (fisc-h96o). checkGap still refuses every line after the anchor.
 	TotalRowAbove bool `yaml:"total_row_above"`
 
-	// TotalRowTail is the rest of the total's label where the page wraps it
-	// onto the next line, verbatim: p0175 prints "Total County Meas BB-" with
-	// the figures and "Bike/Pedestrian" alone beneath. total_row still anchors
-	// the figures; totalAnchor refuses the rule unless the next line is this
-	// text and nothing else, so the tail is read off the page rather than
-	// asserted about it. See WrappedTotalLabel.
+	// TotalRowTail is the rest of the total's label where the page wraps it,
+	// verbatim: p0175 prints "Total County Meas BB-" with the figures and
+	// "Bike/Pedestrian" alone beneath. totalAnchor refuses the rule unless the next
+	// line is this text and nothing else. See WrappedTotalLabel.
 	TotalRowTail string `yaml:"total_row_tail"`
 
-	// PrintedDecimals is how many decimal places this rule's page PRINTS its
-	// figures to, and declaring it is what gives CheckTotals a tolerance
-	// derived from the document instead of from an author's judgement.
-	//
-	// THE UNIT IS THE LEAST SIGNIFICANT PRINTED DIGIT, NOT THE CAPTION'S WORD.
-	// ACFR p41 is captioned "(in Millions)" and prints two decimals, so its
-	// unit is $10,000; reading the caption instead would hand a five-term sum
-	// $2,500,000 of slack rather than $25,000. A column then ties when
+	// PrintedDecimals is how many decimal places this rule's page prints its
+	// figures to, giving CheckTotals a tolerance derived from the document. The
+	// unit is the least significant printed digit, not the caption's word: ACFR
+	// p41 is "(in Millions)" with two decimals, so its unit is $10,000. A column
+	// ties when
 	//
 	//	2*|stated - mapped| <= DigitCents(units, printed_decimals) * n_terms
 	//
-	// -- half a unit per row summed, which is the most a correctly-read set of
-	// rounded figures can be out by. The printed TOTAL's own half unit is
-	// deliberately NOT added: leaving it out makes the bound tighter than the
-	// worst case, which fails closed, and a page that misses by (n+1)/2 units
-	// should be read again rather than have the bound widened to fit it.
+	// The printed total's own half unit is not added, which fails closed. A
+	// pointer, because absent (no tolerance, every Budget Book rule) and zero
+	// (whole millions) are different claims.
 	//
-	// IT IS A POINTER SO THAT ABSENT AND ZERO ARE DIFFERENT CLAIMS. Absent
-	// means no tolerance at all, which is what all 123 Budget Book rules want
-	// and what this project's arithmetic has always assumed. Zero is a real
-	// declaration -- a page printing whole millions, whose unit is $1,000,000 --
-	// and an int would have silently read it as "no tolerance".
-	//
-	// FOUR THINGS KEEP IT FROM BECOMING A GLOBAL EPSILON, which is the thing
-	// StatedTotalDeltas' doc comment below is right to refuse:
-	//
-	//   - It is refused on units: dollars. A dollar-precision branch would have
-	//     zero consumers in this corpus, and the discrepancies it would appear
-	//     to cover are not rounding: p127's Total Property Taxes is $1 over 13
-	//     rows and pp.168-170 carry six more, all of which are the city's own
-	//     arithmetic and belong in stated_total_deltas by decision.
-	//   - It is refused on a rule that also declares a stated_total_delta. The
-	//     two mechanisms are disjoint by construction rather than by prose:
-	//     one names an exact figure and the other bounds an unnamed one, and a
-	//     rule reaching for both is asking for a declaration it can hide inside.
-	//   - It must describe the page. Every token that is SUMMED INTO A COMPARED
-	//     COLUMN is checked against it, and a declaration no such token
-	//     justifies is refused. Not every token the rule reads: a skipped row or
-	//     column never reaches the witness (Values drops it), and a row the
-	//     total_row does not cover is filtered out of the sum by totalCovers.
-	//     Both are outside the comparison the tolerance applies to, so
-	//     witnessing them could only let a declaration pass on precision the
-	//     compared figures do not have.
-	//   - It must be NEEDED. A rule whose columns all tie exactly is refused,
-	//     the same way a stated_total_delta that now ties exactly is refused --
-	//     because a declaration that has stopped doing anything is the one shape
-	//     a declaration in this repository must not have.
-	//
-	// fisc-1wr.2 is the tier this implements.
+	// It is not a global epsilon: it is refused on units: dollars, refused beside
+	// a stated_total_delta, refused unless some token summed into a compared column
+	// prints that precision, and refused when every column ties exactly.
+	// fisc-1wr.2.
 	PrintedDecimals *int `yaml:"printed_decimals"`
 
-	// TotalSpansParts says the printed total_row covers the rows of EVERY
-	// part, not just the rows of the part that prints it.
-	//
-	// Nine blocks in the two coverage lanes straddle a page break, so their
-	// rows land in two parts while their printed total lands in one. Without
-	// this, neither exit works: keeping total_row makes the head part fail to
-	// find it (ErrNotFound, a hard build failure), and dropping it reports
-	// both parts as "the rule declares no total_row", which is a claim about
-	// the RULE standing in for a claim about the DOCUMENT — precisely the
-	// misreport pkg/cmd/build.reasonNoTotalRow's own comment guards against.
-	//
-	// The hazard this closes is the third exit, which is worse than either:
-	// with both of the others shut, the cheapest thing left for a rule author
-	// is a stated_total_deltas entry sized to the head page's sum — a
-	// FABRICATED claim about the city's rounding absorbing a structural gap.
-	// fisc-2sd catches a declaration that has gone STALE; nothing catches one
-	// that was fiction from the start.
-	//
-	// It is refused unless every part declares an IDENTICAL column list, which
-	// is what keeps it off the p66-67 spine: those parts partition COLUMNS
-	// (p66 is four wide, p67 eight) rather than ROWS, so summing across them
-	// would produce a number that means nothing. A flag whose misuse is caught
-	// by the parser is a different thing from one that relies on the author.
+	// TotalSpansParts says the printed total_row covers the rows of every part,
+	// not just the part that prints it, for a block straddling a page break.
+	// Without it the only way to tie such a block is a stated_total_deltas entry
+	// sized to the head page's sum, a fabricated claim no staleness check catches.
+	// It is refused unless every part declares an identical column list, which
+	// keeps it off the p66-67 spine, whose parts partition columns rather than
+	// rows.
 	TotalSpansParts bool `yaml:"total_spans_parts"`
 
 	// SubtotalChain names a run of rules whose rows are one printed table for
-	// the purpose of its subtotal rows (Row.Subtotal), read in file order. A
-	// fund block on Budget Book pp.224-235 can start on one page pair and
-	// print its total on the next, and each page pair is its own rule because
-	// its continuation page is read positionally against it. Absent, a rule
-	// with subtotal rows is a chain of its own.
+	// the purpose of Row.Subtotal, read in file order: a fund block on Budget Book
+	// pp.224-235 can print its total on the next page pair's rule. Absent, a rule
+	// is a chain of its own.
 	SubtotalChain string `yaml:"subtotal_chain"`
 
-	// TotalRowKinds names the kinds the printed total_row covers, where it
-	// covers only some of them. Absent, it covers every row the rule maps,
-	// which is the reading eleven-plus mixed fund blocks on Budget Book
-	// pp.131-140 need: their printed `Total <fund>` includes both the revenue
-	// rows and a Transfers In row.
-	//
-	// This is where a kind filter belongs, rather than in CheckTotals. A total
-	// row is the thing that knows which rows it covers, so saying which is a
-	// claim the rule author makes and review can check -- the same shape as
-	// Column.Basis overriding Rule.Basis on the column. Making CheckTotals
-	// globally kind-aware instead would break all eleven of those blocks,
-	// which is the opposite of what Row.Kind was promoted to enable.
-	//
-	// The p66-67 spine is the case that wants it: "TOTAL REVENUES:" covers
-	// only the revenue rows of a block it shares with transfers and fund
-	// balance. Declaring that is what would let those five rules become three
-	// (fisc-56f); nothing does so yet.
+	// TotalRowKinds names the kinds the printed total_row covers, where it covers
+	// only some. Absent, it covers every row, the reading the mixed fund blocks on
+	// Budget Book pp.131-140 need: their `Total <fund>` includes a Transfers In row.
+	// The filter lives on the total row, not in CheckTotals. The p66-67 spine's
+	// "TOTAL REVENUES:" wants it (fisc-56f).
 	TotalRowKinds []vocab.Kind `yaml:"total_row_kinds"`
 
 	// RowLabelsNameFunds declares that every row of this rule is labelled with
 	// the printed name of the fund it carries, so row-funds-match-their-anchors
-	// can read that name off the page and check the hand-typed number against
-	// it.
-	//
-	// IT IS OPT-IN FOR THE SAME REASON Part.ColumnHeaders IS: declaring it is a
-	// claim about a specific schedule that someone has looked at, rather than
-	// something a resolver infers.
-	//
-	// THE OBVIOUS ARGUMENT FOR OPT-IN IS FALSE, and the measurement is kept
-	// because it is the opposite of what that argument assumes. The argument runs
-	// that a corpus-wide arm "would go from 78 subjects to thousands of which
-	// only 78 were ever intended". Measured over the committed corpus: 429 rows
-	// declared, 400 active and non-skipped, and exactly 78 of those 400 resolve
-	// through registry.FundByLabel — the 78 this declaration covers. ZERO
-	// accidental hits, and "thousands" is not reachable from a corpus of 429 rows
-	// at all. p127's "Current Year - Secured", p167's object categories and the
-	// spine's "Wages & Benefits" all miss.
-	//
-	// SO THE ARGUMENT IS NOT ABOUT TODAY'S COUNT. It is that an inferred claim
-	// does not stay true: the next schedule mapped may print a row label that
-	// happens to be a fund name, and a resolver guessing would silently check it
-	// against a fund nobody declared, with no line in the rule file to review.
-	// A declaration is a statement whose author can be asked. That reasoning
-	// holds at 429 rows and at 4,290; the count never was the reason.
-	//
-	// WHY THE RULE AND NOT THE PART. Rule.Rows is one list shared by every part,
-	// and the check that reads this iterates Rule.ActiveRows unioned across
-	// parts precisely so a multi-part schedule's rows are visited once rather
-	// than once per part — so it holds a rule and no part at the point it needs
-	// this, and a per-part spelling would not be reachable there. (Not because
-	// of labels_from: no rule carrying this declares one. Budget Book pp.85-125
-	// straddles two parts, each row placed on its page by Row.Page.)
-	//
-	// A BARE FUND NAME NAMES A FUND AND NAMES NO DIRECTION, which is why this is
-	// a separate declaration from the "Transfer From X to Y" anchors p76 prints.
-	// Those carry a verb phrase, so the check reads which END of the movement
-	// each fund sits at; these carry none, so it can assert identity and must
-	// not assert direction.
+	// can check the hand-typed number against it. Opt-in, like
+	// Part.ColumnHeaders: an inferred claim would silently check the next
+	// schedule's row that happens to be a fund name. Measured over the committed
+	// corpus: of 400 active non-skipped rows, exactly the 78 declared resolve
+	// through registry.FundByLabel. It is on the rule because that check iterates
+	// Rule.ActiveRows unioned across parts. A bare fund name asserts identity and
+	// no direction, unlike p76's "Transfer From X to Y" anchors.
 	RowLabelsNameFunds bool `yaml:"row_labels_name_funds"`
 
 	// RowLabelsAreFundNumbers declares that every row's label is the printed
@@ -404,7 +214,7 @@ type Rule struct {
 	// so row-funds-match-their-anchors holds both ends, direction included.
 	RowLabelsAreFundNumbers bool `yaml:"row_labels_are_fund_numbers"`
 
-	// Note records why this rule looks the way it does, for the next reader.
+	// Note records why this rule looks the way it does.
 	Note string `yaml:"note"`
 }
 
@@ -417,320 +227,141 @@ type Part struct {
 	StopAt  string `yaml:"stop_at"`
 
 	// SectionOrdinal picks which occurrence of Section starts the block, 1
-	// based. Absent means the anchor must occur exactly once on the page.
-	//
-	// It is not an optional nicety. Budget Book p66 prints "REVENUES:" twice —
-	// once as the section header and once inside "TOTAL REVENUES:" — so a
-	// unique-match rule cannot resolve the citywide spine at all. Nor would
-	// "the line the anchor is on" settle it, and there is no such concept here
-	// in any case: an anchor is a plain substring search over the page text
-	// (see Resolver.anchor) and nothing in this package is line-aware. A rule
-	// that wants to assert its anchor ends a line says so by putting the "\n"
-	// in the anchor, which is how the p67 parts pin their column header.
-	// Declaring the ordinal states which occurrence the rule's author looked
-	// at, which is the same discipline OmittedCells uses.
+	// based. Absent means the anchor must occur exactly once on the page. Budget
+	// Book p66 prints "REVENUES:" twice, once inside "TOTAL REVENUES:". An anchor
+	// is a plain substring search (Resolver.anchor); a rule that needs it to end a
+	// line puts the "\n" in the anchor, as the p67 parts do.
 	SectionOrdinal int `yaml:"section_ordinal"`
 
 	// StopAtOrdinal picks which occurrence of StopAt, counted from the block's
-	// start, ends the block, 1 based. Absent keeps StopAt's first occurrence.
-	//
-	// It exists for a page with no text between its figures. Budget Book p81
-	// continues p80's debt-service rows with nothing but amounts, and its first
-	// row is "$"-prefixed exactly as its total is, so the "$" that p67's parts
-	// stop at is the wrong line on p81 and no other string marks the total.
-	// The ordinal is a count the author made of the page, and a wrong one
-	// moves the block's end onto a row line, where the value count or the
-	// stated total refuses it.
+	// start, ends the block, 1 based. Absent keeps the first. Budget Book p81 has
+	// only amounts and its first row is "$"-prefixed like its total. A wrong
+	// ordinal moves the end onto a row line, where the value count or the stated
+	// total refuses it.
 	StopAtOrdinal int `yaml:"stop_at_ordinal"`
 
 	// LabelsFrom names an earlier part's page when this part carries no row
-	// labels of its own. Budget Book p67 is exactly this: it continues p66's
-	// schedule for four more fund groups with nothing but numbers, so row
+	// labels of its own: Budget Book p67 continues p66 with numbers only, so row
 	// identity is positional against p66's order.
 	LabelsFrom int `yaml:"labels_from"`
 
-	// OmittedCells lists cells THE DOCUMENT leaves blank in rows it prints.
-	// Budget Book p207 prints five figures on each of County Measure D's,
-	// Wastewater's and Water's lines and nothing under Reserve
-	// Increase/(Use), where every other row prints a figure or a "-". A blank
-	// is absent, not zero, so the cell yields no Value and is reported as an
-	// Omission.
-	//
-	// It is about the DOCUMENT, never about our pipeline. A declaration that
-	// absorbed an extraction defect would launder a pipeline bug into a
-	// permanent published claim about the city's budget -- and RowLabel is
-	// part of the fact id, so the mislabelled facts would be citable. If cells
-	// go missing between the PDF and the artifact, fix extraction; do not
-	// declare them here.
-	//
-	// A row the page does not print at all is not a blank: it is printed by
-	// another page of the same table, and Row.Page says which.
-	//
-	// The row is read with its tokens filed left to right under the columns
-	// it does print, so this part must declare column_headers: the guard is
-	// what holds each token to the band of the column it is filed under, and
-	// what refuses a figure printed under a column declared blank.
+	// OmittedCells lists cells THE DOCUMENT leaves blank in rows it prints:
+	// Budget Book p207 prints nothing under Reserve Increase/(Use) on County
+	// Measure D's, Wastewater's and Water's lines. A blank is absent, not zero, so
+	// the cell yields no Value and is reported as an Omission. Never declare a cell
+	// extraction lost; fix extraction. A row the page does not print at all is
+	// placed by Row.Page instead. The part must declare column_headers, which hold
+	// each token to its column's band and refuse a figure under a declared blank.
 	OmittedCells []omittedCell `yaml:"omitted_cells"`
 
-	// blank is OmittedCells resolved, by resolveOmittedCells, to row identity
-	// and the index in Columns of the column each entry's header heads. It is
-	// the one place a header is resolved to a column for a blank; a reader
-	// takes a blank from here and matches no header itself. A part read
-	// before validation declares no blank, and the page's figure count
+	// blank is OmittedCells resolved by resolveOmittedCells to row identity and
+	// column index: the one place a header is resolved to a column for a blank.
+	// A part read before validation declares no blank, and the page's figure count
 	// refuses the row.
 	blank map[string]map[int]bool
 
 	// Columns describe the value columns, left to right.
 	Columns []Column `yaml:"columns"`
 
-	// ColumnHeaders names the header the document prints over each column,
-	// left to right, one entry per entry in Columns INCLUDING any marked
-	// skip: true. Declaring it opts this part into the column-position guard:
-	// the header line gives the page's column geometry, and every figure the
-	// part reads must fall in the band of the column the rule assigned it to.
+	// ColumnHeaders names the header the document prints over each column, left
+	// to right, one entry per entry in Columns including skipped ones. Declaring it
+	// opts this part into the column-position guard: every figure must fall in the
+	// band of its column. Absent, the part is read by text alone.
 	//
-	// Absent, the part is read by text alone. The key is per-part rather than
-	// per-rule because a page can print more than one schedule, and per-part
-	// rather than global because opting a part in is a claim about a specific
-	// page that someone has looked at.
-	//
-	// The list is a claim about column ORDER, not just about column count.
-	// Headers are matched left to right and each must occur AFTER the one
-	// before it, so a page that dropped a column fails to resolve rather than
-	// shifting every figure one place -- which is the failure this whole guard
-	// exists to prevent, and one no count can detect.
-	//
-	// Repeats are expected and are not an error, which is the opposite of the
-	// rule for Columns: Budget Book p66 prints "FY 2025-26" over the General
-	// Fund and again over Enterprise Funds, so the header alone does not
-	// identify a column and was never meant to. Columns are identified by
-	// (fund_group, fiscal_year); these strings only say where on the page each
-	// one is.
-	//
-	// An entry that parses as an amount is refused. A header that is a figure
-	// would match a DATA row, and a grid built from a data row files that row's
-	// own values perfectly and everything else by luck. A schedule whose
-	// headers are bare years therefore has to name more of the header --
-	// "FY 2026" rather than "2026". ("2024-25" is fine; it is not an amount.)
-	//
-	// AN ENTRY MAY BE null, AND ONLY FOR THE LAST COLUMN WHEN IT IS SKIPPED.
-	// See ColumnHeader.
+	// Headers are matched left to right, each after the one before, so a page that
+	// dropped a column fails rather than shifting every figure one place. Repeats
+	// are allowed (p66 prints "FY 2025-26" twice). An entry that parses as an
+	// amount is refused, since it would match a data row: write "FY 2026", not
+	// "2026". An entry may be null only for a skipped last column; see
+	// columnHeader.
 	ColumnHeaders columnHeaders `yaml:"column_headers"`
 
 	// Grid names a header list, for a page printing two schedules under
-	// different headers: Budget Book p80 prints the debt service budget under
-	// Principal, Interest and Total and, below it, the requirements under two
-	// fund types' Principal and Interest. Only checkColumnGrids reads it:
-	// parts naming one grid of one page declare one header list, two grids of
-	// a page may not declare the same list, and a part naming a grid must
-	// declare its headers. The columns are placed by ColumnHeaders, not by
-	// this name.
+	// different headers (Budget Book p80). Only checkColumnGrids reads it: parts
+	// naming one grid of a page declare one header list, two grids may not declare
+	// the same list, and a part naming a grid must declare its headers.
 	Grid string `yaml:"grid"`
 
 	// WrappedLabels are the printed fragments this part's page wraps onto a
-	// line of their own, each written out verbatim.
-	//
-	// pdftotext -layout reproduces the printed page, and a long row label
-	// wraps. The tail lands BETWEEN one row's last figure and the next row's
-	// label, which is where checkGap refuses anything that is not whitespace:
+	// line of their own, each verbatim. The tail lands between one row's last
+	// figure and the next row's label, where checkGap refuses anything else:
 	//
 	//	Innovation & Economic Wages & Benefits   1,028,282  1,068,663 ...
 	//	Devel
 	//	                      Services & Supplies  1,610,950  2,592,436 ...
 	//
-	// skip: true cannot express it -- a skipped row still consumes one value
-	// per column and these fragments carry none.
-	//
-	// A DECLARATION RATHER THAN A RELAXATION, and that is the whole design.
-	// checkGap keeps refusing everything it refused before; the only text it
-	// now admits is a fragment an author wrote down after reading the page,
-	// matched in full rather than by pattern. Anything else between two rows
-	// is still an unmapped row, which is what the guard is for.
-	//
-	// It is declared on the PART rather than on a Row because a fragment is
-	// not reliably a row's own: Budget Book p167 wraps "INNOVATION & ECONOMIC
-	// DEVELOPEMENT TOTAL" onto a second line too, and under one-rule-per-
-	// division that TOTAL line belongs to no rule's row set.
-	//
-	// A gap may hold several fragments, one to a printed line, each declared
-	// on its own: p222 ends one row's description and begins the next row's
-	// between their figures. A line in the gap that is not declared refuses
-	// the whole gap.
-	//
-	// A declared fragment the page does not use is an error, for the same
-	// reason a stated_total_delta that now ties exactly is one: the
-	// declaration is a claim about the document, and a claim that has stopped
-	// being true must be removed rather than left to pass silently.
+	// skip: true cannot express it: a skipped row still consumes a value per
+	// column. A fragment is matched whole against one printed line, so this admits
+	// only what an author wrote down. It is on the part because a fragment may be
+	// no row's own (p167's wrapped department TOTAL). A gap may hold several, one
+	// per line; an undeclared line refuses the gap, and a declared fragment the
+	// page does not use is an error.
 	WrappedLabels []string `yaml:"wrapped_labels"`
 
 	// Headings are the section headings this part's page prints on a line of
-	// their own between rows, each written out verbatim. Budget Book p186
-	// prints "Special Revenue Funds" alone between "Total City Budget"'s
-	// figures and "Low Income Housing Fund", opening the detail that follows.
-	//
-	// A heading is not a wrapped label: it is no row's label broken onto a
-	// second line, and declaring it as one would be a false claim about the
-	// page. It is matched exactly as a wrapped label is, one printed line at a
-	// time, and a gap may mix both with unmapped_text figures so long as every
-	// line is declared -- p190 prints a footnote marker "1" alone on the line
-	// above its "Capital Improvement Program Funds" heading. A declared heading
-	// the part never uses is refused.
-	//
-	// A HEADING MAY EQUAL A ROW LABEL OF THE RULE, because p186's does:
-	// "Special Revenue Funds" is also the summary row higher up the same block.
-	// Refusing the collision would leave that page unmappable. It cannot
-	// swallow the row: a gap's lines are matched whole, so a line carrying the
-	// row's figures is never a heading.
+	// their own between rows, each verbatim: Budget Book p186's "Special Revenue
+	// Funds". Matched like a wrapped label, one line at a time; a gap may mix them
+	// with wrapped labels and unmapped_text (p190's footnote "1"). An unused
+	// heading is refused. A heading may equal a row label (p186's does); a line
+	// carrying figures is never a heading, so it cannot swallow the row.
 	Headings []string `yaml:"headings"`
 
 	// StatedTotalDeltas declares columns where the total the DOCUMENT prints
-	// is not the sum of the rows it totals, and by how much.
+	// is not the sum of its rows, and by how much. p127's thirteen property-tax
+	// rows give $58,179,467 against a printed $58,179,468, and ten more blocks are
+	// off by <= $5, all in the FY2023-24 Actual column: the city's rounding.
 	//
-	// "All column totals tie exactly" is a property of Budget Book pp.66-67
-	// and NOT of this corpus. A correct label-anchored read of p127's thirteen
-	// property-tax rows gives $58,179,467 against a printed $58,179,468, and
-	// ten more blocks are off by <= $5 -- pp.111, 128, 129, 131, 135, 168, 172,
-	// 173, 181, 183, every one of them in the FY2023-24 Actual column. That is
-	// rounding in the city's own arithmetic, not in ours.
-	//
-	// This is a DECLARATION, not a tolerance, and the difference is the whole
-	// point: an author writes down one column, one exact figure, and why.
-	// CheckTotals then accepts that figure and no other -- a column off by a
-	// different amount fails, and so does a column that now ties, because a
-	// declaration the document has stopped needing is a stale claim about the
-	// city's arithmetic and should surface rather than rot.
-	//
-	// THERE IS NO GLOBAL EPSILON. There is a per-rule tolerance,
-	// Rule.PrintedDecimals, which sizes itself from the page's own printed
-	// precision and the number of rows summed, and it is a different thing
-	// from a delta:
-	//
-	//   - A delta names the exact figure a document is out by. It fails when
-	//     the difference is anything else, including zero.
-	//   - A tolerance bounds an unnamed difference, is derived rather than
-	//     chosen, and is refused on dollar-precision tables -- which is every
-	//     rule the sentence above was written about. p127's $1 over 13 rows is
-	//     a delta and could never be a tolerance: ceil(13/2) is seven CENTS.
-	//
-	// A rule declaring both is refused, so no column is ever compared against
-	// a named figure with slack around it. Absent both, exact equality holds.
+	// A declaration, not a tolerance: CheckTotals accepts that exact figure and no
+	// other, and refuses one that now ties as stale. Rule.PrintedDecimals is the
+	// only tolerance, and a rule declaring both is refused. Absent both, exact
+	// equality holds.
 	StatedTotalDeltas []statedTotalDelta `yaml:"stated_total_deltas"`
 
 	// UnmappedText declares a FIGURE the page prints inside this block that
-	// belongs to no row, with the reason it is there.
+	// belongs to no row, with the reason. ACFR p41 prints a bare "0.0" between
+	// the Miscellaneous row's figures and Total Revenues, in no printed row.
 	//
-	// ACFR p41 is the case. Its revenue block prints a bare "0.0" on a line of
-	// its own between the Miscellaneous row's figures and the printed Total
-	// Revenues -- an artefact of the city's spreadsheet, in the FY2024 column,
-	// belonging to no printed label. Every other exit was closed: the trailing
-	// arm refuses it, stop_at cannot name it because the parser refuses an
-	// anchor amount.Parse accepts, and an eleventh skip: true row fails the
-	// value count because the block ends immediately after it.
-	//
-	// IT IS SPLIT FROM WrappedLabels RATHER THAN FOLDED INTO IT because the two
-	// assert different things about the document, and one of them would have
-	// been false. A wrapped label says the page broke a row's LABEL onto its
-	// own line. This says the page printed a FIGURE that is nobody's. Declaring
-	// the second as the first was mechanically accepted until the same change
-	// that added this field refused it -- measured, wrapped_labels: ["0.0"]
-	// published all ten of p41's revenue rows with nothing objecting. So the
-	// parser now requires a wrapped label NOT to parse as an amount and
-	// requires this to parse as one, and the two declarations cannot be
-	// substituted for each other in either direction.
-	//
-	// THAT SYMMETRY HAS A COST AND IT IS FILED, NOT HIDDEN. A page that wraps a
-	// row LABEL which happens to be a bare number -- a fund number, a year, a
-	// footnote index -- can now declare it as neither: wrapped_labels refuses it
-	// as an amount, and this would accept it under a claim that is false of a
-	// wrapped label. That is fisc-2jk's shape, reopened one case wide. No page
-	// in the corpus has it (all five committed wrapped_labels entries are
-	// words), and the parser cannot tell the two apart by looking, so it needs a
-	// decision rather than a patch: fisc-xmsk.
-	//
-	// THIS IS THE WEAKEST DECLARATION CLASS IN THIS REPOSITORY, and a reader
-	// should know it before reaching for it. A stated_total_delta is ratified
-	// by exact arithmetic -- get the figure wrong and the column fails. A
-	// wrapped label is bounded downstream, by the cursor advance and by the
-	// per-row value count. This one is bounded by nothing but its own staleness
-	// arm, and its first consumer has no arithmetic behind it at all: "0.0"
-	// parses as zero and sits in a skipped column, so removing it from the read
-	// changes no sum and CheckTotals could not redden on a wrong declaration
-	// here. What actually keeps it narrow is that the text must match a
-	// whole printed line of a gap and every row still has to be found by its own label. The Note is
-	// therefore load-bearing rather than decorative.
-	//
-	// fisc-hcus.
+	// The parser requires a wrapped label NOT to parse as an amount and this to
+	// parse as one, so neither declaration can stand in for the other. A wrapped
+	// label that is a bare number therefore has no declaration (fisc-2jk's shape;
+	// fisc-xmsk). This is the weakest declaration class here: "0.0" sits in a
+	// skipped column, so no sum witnesses it. It is bounded by its staleness arm,
+	// by matching a whole printed line, and by every row still being found by its
+	// label, so its Note is load-bearing. fisc-hcus.
 	UnmappedText []unmappedText `yaml:"unmapped_text"`
 }
 
 // unmappedText is one figure a page prints inside a block that belongs to no
 // row, and why.
 type unmappedText struct {
-	// Text is the figure exactly as the page prints it, matched against one
-	// trimmed printed line of the gap it sits in -- the same matching
-	// wrapped_labels and headings use, so the three behave alike where they
-	// behave at all.
+	// Text is the figure exactly as printed, matched against one trimmed printed
+	// line of the gap, as wrapped_labels and headings are.
 	Text string `yaml:"text"`
 
-	// Note is required and says why the page prints it. Without one this would
-	// be a silent skip wearing a declaration's clothes, which is the whole
-	// difference between this and deleting the offending line from the read.
-	//
-	// Same requirement, and the same reason, as StatedTotalDelta.Note.
+	// Note is required and says why the page prints it, as StatedTotalDelta.Note.
 	Note string `yaml:"note"`
 }
 
 // columnHeader is one entry in a part's ColumnHeaders: the header a page prints
-// over a column, or the explicit statement that it prints none.
+// over a column, or the statement that it prints none.
 //
-// THE null ENTRY EXISTS BECAUSE A PAGE CAN PRINT A COLUMN WITH NO HEADER OVER
-// IT, and the entry count is a check the guard cannot afford to give up.
-// Budget Book p76 prints four year headers and, right of them, a footnote
-// marker on every one of its 22 rows -- "(1)" through "(10)", which
-// amount.Parse reads as parenthesised NEGATIVES. The marker column has to be
-// declared, because labelledValues truncates a row to len(Columns) and at four
-// the read stops before the marker, leaving checkGap to refuse "(10)" as
-// unexplained text between rows. So the column is real and skipped, and there
-// is no header anywhere on the page to name it with.
-//
-// The alternatives were both worse. Dropping the one-entry-per-column rule
-// gives up exactly what the rule buys -- a short list builds a grid one band
-// too narrow and files every figure right of the gap one place left, silently,
-// with the value count still matching. Declaring the markers as
-// Part.WrappedLabels would satisfy the guard by saying something untrue about
-// the page: a footnote reference is not a wrapped fragment of the label above
-// it, and all ten distinct markers would have to be listed.
-//
-// null IS RESTRICTED TO THE LAST COLUMN, and the restriction is what makes the
-// weakened guard honest rather than merely convenient. A headerless column has
-// no band, so no placement claim can be made about its token at all; past the
-// last header there is simply nothing, whereas a headerless column BETWEEN two
-// headers sits in a gap whose bounds are known and which the grid would happily
-// have checked. Restricting it to the end means the guard never silently
-// declines a check it could have made.
-//
-// What still guards the unbanded token: it must be printed on the same line as
-// the row's other figures (columnGuard.checkRow), the row must yield exactly
-// len(Columns) tokens, and checkGap still refuses anything unexplained between
-// rows. What is given up is the band check on that one token, and only there.
+// Budget Book p76 prints footnote markers "(1)" through "(10)" right of its four
+// year headers, which amount.Parse reads as negatives; the column must be
+// declared and skipped, and has no header. null is restricted to the last
+// column, where there is no band to check; between two headers the grid could
+// have checked it. The unbanded token must still be on the row's line
+// (columnGuard.checkRow), the row must yield len(Columns) tokens, and checkGap
+// still refuses unexplained text.
 type columnHeader struct {
 	// Text is the header as the page prints it, empty when Unheaded.
 	Text string
-	// Unheaded says the page prints no header over this column. It is a
-	// separate field rather than an empty Text so that a YAML entry of "" --
-	// which is a typo, not a claim -- stays refused.
+	// Unheaded is separate from an empty Text so that a YAML "" stays refused.
 	Unheaded bool
 }
 
-// columnHeaders is a part's header list.
-//
-// It is a named slice with its own unmarshaler because yaml.v3 DROPS a null
-// element from a sequence rather than decoding it: the element unmarshaler is
-// never reached, and `["FY 2025-26", ~]` arrives as a one-entry list. Since the
-// entry count is the column-count check, a silently shortened list is the exact
-// failure this whole guard exists to prevent -- it would have been reported as
-// "has 1 entries but the part has 2 columns", blaming the author for the
-// decoder.
+// columnHeaders is a part's header list. It has its own unmarshaler because
+// yaml.v3 drops a null element from a sequence, which would silently shorten
+// the list the column count is checked against.
 type columnHeaders []columnHeader
 
 // UnmarshalYAML reads the sequence element by element, so a null keeps its
@@ -769,44 +400,30 @@ func (c columnHeader) String() string {
 // statedTotalDelta is one column's declared discrepancy between the document's
 // printed total and the rows beneath it.
 type statedTotalDelta struct {
-	// Column is 1 based, matching how CheckTotals numbers columns when it
-	// reports a mismatch, so a failure message can be turned into this
-	// declaration without translating an index.
+	// Column is 1 based, as CheckTotals numbers columns in a mismatch.
 	Column int `yaml:"column"`
 
-	// Cents is STATED MINUS MAPPED: how much the printed total exceeds the sum
-	// of the rows. p127's FY2023-24 column prints $1 more than its rows add to,
-	// so it declares 100. A document that printed LESS than its rows would
-	// declare a negative.
-	//
-	// In cents, always, like every other amount in this project -- the rule's
-	// `units` says how the page prints its figures, not how this is written.
+	// Cents is STATED MINUS MAPPED, always in cents whatever the rule's units:
+	// p127's FY2023-24 column prints $1 more than its rows, so it declares 100.
 	Cents amount.Cents `yaml:"delta_cents"`
 
-	// Note is required and says why. A bare number here would be a tolerance
-	// wearing a declaration's clothes; the reason someone looked at the page
-	// and concluded "the city rounded" is the thing worth keeping.
+	// Note is required and says why; a bare number would be a tolerance.
 	Note string `yaml:"note"`
 }
 
-// Column identifies one value column. Column identity is compound because a
-// single header string cannot express it: these schedules stack a fund-group
-// header row above a fiscal-year header row, so no one line of the page names
-// a column completely.
+// Column identifies one value column. Identity is compound because these
+// schedules stack a fund-group header above a fiscal-year header.
 type Column struct {
 	FundGroup  string `yaml:"fund_group"`
 	Fund       int    `yaml:"fund"`
 	FiscalYear int    `yaml:"fiscal_year"`
 
-	// Basis overrides the rule's basis for this column, which the four-column
-	// revenue schedules need: the same row carries FY23-24 actual, FY24-25
-	// revised, and two adopted years side by side.
+	// Basis overrides the rule's basis for this column: the four-column revenue
+	// schedules carry actual, revised and two adopted years side by side.
 	Basis vocab.Basis `yaml:"basis"`
 
 	// FiscalYearThrough is the last fiscal year of a figure printed over
-	// several, and zero for a figure of one. No column declares it: a row
-	// does (Row.FiscalYearThrough), and Row.EffectiveColumn carries it here,
-	// so a band reaches the fact with both of its ends.
+	// several. No column declares it; Row.EffectiveColumn carries a row's here.
 	FiscalYearThrough int `yaml:"-"`
 
 	// Skip marks a column that is present in the text but should not produce
@@ -814,35 +431,25 @@ type Column struct {
 	Skip bool `yaml:"skip"`
 
 	// Quantity declares that this column's cells are not amounts: they must
-	// satisfy the named grammar (internal/quantity), which keeps the row whole
-	// for checkGap, and they never publish. A non-amount column therefore
-	// needs no fiscal_year and no distinct identity — no fact ever carries it.
-	//
-	// skip cannot express this, and the ordering is why: parseRow parses a
-	// cell BEFORE it consults skip, deliberately, so a skipped "2.5%" still
-	// fails the amount grammar. This is the channel fisc-9tn4 settled on.
+	// satisfy the named grammar (internal/quantity) and never publish, so the
+	// column needs no fiscal_year. skip cannot express it: parseRow parses a cell
+	// before it consults skip, so a skipped "2.5%" still fails the amount grammar.
+	// fisc-9tn4.
 	Quantity Quantity `yaml:"quantity"`
 
 	// Category and Kind classify every figure in this column, for a page whose
-	// columns are its budget LINES and whose rows are its funds: Budget Book
-	// pp.186-209 print a fund per row and starting balance, Revenues, Transfers
-	// In, Expenses, Transfers Out and the rest across. Kind falls back to the
-	// rule's, as Row.Kind does. A rule carries its category on its rows or on
-	// its columns and never both; see Value.Category.
+	// columns are its budget lines and whose rows are its funds (Budget Book
+	// pp.186-209). Kind falls back to the rule's. A rule carries its category on
+	// its rows or its columns, never both; see Value.Category.
 	Category string     `yaml:"category"`
 	Kind     vocab.Kind `yaml:"kind"`
 }
 
 // Counterpart is the far end of a figure that moves money between two funds.
-//
-// Every field is the counterpart leg's own: the category it classifies as, the
-// kind it is, and the fund it belongs to. None of them is inherited from the
-// row, because a counterpart that defaulted to its row's classification would
-// be a second fact saying the same thing about the same fund, which is a
-// double-count wearing a different id.
-//
-// The row's sign IS inherited, having no field here: netted only where both
-// ends are transfers (validateNettedSign), and contra never (checkCounterpart).
+// Every field is the counterpart leg's own: one defaulted from the row would be
+// a double-count under a different id. The row's sign is inherited: netted only
+// where both ends are transfers (validateNettedSign), and contra never
+// (checkCounterpart).
 type Counterpart struct {
 	Category  string     `yaml:"category"`
 	Kind      vocab.Kind `yaml:"kind"`
@@ -851,9 +458,7 @@ type Counterpart struct {
 }
 
 // Column returns the column the counterpart leg's fact is filed under: the
-// printed column, with the fund dimension replaced by the counterpart's own.
-// The fiscal year and basis are the printed column's, because both legs are
-// the same figure in the same year on the same basis.
+// printed column with the counterpart's fund.
 func (c Counterpart) Column(printed Column) Column {
 	printed.FundGroup = c.FundGroup
 	printed.Fund = c.Fund
@@ -864,163 +469,85 @@ func (c Counterpart) Column(printed Column) Column {
 type Row struct {
 	Label string `yaml:"label"`
 
-	// LabelTail is a SECOND published anchor that identifies the row together
-	// with Label, for a page whose row identity is two printed fields with an
-	// arbitrary gap between them. Budget Book p76 prints
+	// LabelTail is a second published anchor identifying the row together with
+	// Label, for a page whose row identity is two printed fields with an arbitrary
+	// gap. Budget Book p76 prints
 	//
 	//	Transfer From Low Income Hsng          to General Fund   257,012 ...
-	//	Transfer From Home Grant               to General Fund     8,932 ...
 	//
-	// where neither field alone identifies the row: the source is not unique
-	// and the destination is not either. A single Label spanning both would
-	// have to spell out the run of spaces between them -- ten on one row,
-	// fifteen on the next -- which is the kerning of one release written into
-	// a rule file, and testdata/spine.yaml's doctrine forbids exactly that.
-	//
-	// The gap stays CHECKABLE rather than becoming a wildcard: the text
-	// between the two anchors must be whitespace and nothing else. That is
-	// what makes this a two-anchor match rather than a relaxation of the
-	// substring match -- a word appearing between the fields is still a row
-	// the rule has not accounted for.
-	//
-	// A tail of several words names several fields: each matches with any run
-	// of spaces or tabs before the next, and never across a line break. p222
-	// prints "601   600       Airport", so a label of "601" takes the tail
-	// "600 Airport" without spelling the kerning.
+	// where neither field alone is unique. The gap must be whitespace and nothing
+	// else, never across a line break, so a rule never spells the page's kerning.
+	// A tail of several words names several fields: p222's "601   600       Airport"
+	// is label "601", tail "600 Airport".
 	LabelTail string `yaml:"label_tail"`
 
 	// Page is the one part that prints this row, for a table whose rows run
 	// across a page break: Budget Book p167 prints General Services' Wages &
-	// Benefits and p168 its Services & Supplies, Debt Services and Total.
-	// Zero means every part prints the row, which is the ordinary case and
-	// the only one for a rule with one part. The parser refuses a page that
-	// names no part of the rule.
-	//
-	// It is on the row and not a row range on the part because a part may
-	// print no row at all: Budget Book p130 prints Contributions Outsourced's
-	// one row on p129 and only its Total on p130.
-	//
-	// It is about the DOCUMENT, never about our pipeline. Placing a row on
-	// one page because extraction lost it from another launders a pipeline
-	// bug into a published claim about the city's budget; fix extraction.
+	// Benefits and p168 the rest. Zero means every part prints it. A part may
+	// print no row at all (p130 prints only a Total). Never place a row to cover
+	// for extraction; fix extraction.
 	Page int `yaml:"page"`
 
 	Category   string     `yaml:"category"`
 	Department string     `yaml:"department"`
 	Sign       vocab.Sign `yaml:"sign"`
 
-	// Fund and FundGroup override the column's fund dimension for this row,
-	// exactly as Kind overrides the rule's kind: the thing that knows says so.
-	//
-	// The fund is normally a property of the COLUMN, because a schedule's
-	// columns are its (fund, year) pairs and its rows are the categories.
-	// Budget Book p76 inverts that. Its columns are years and its five
-	// sections are the fund groups RECEIVING money, so a row's own end fits
-	// the column fine -- but the fund PAYING varies row by row inside a
-	// section. Measured: three of the five sections are mixed, Enterprise
-	// running general, enterprise x5. Without a per-row fund the
-	// only way to express that is one rule per contiguous run of same-group
-	// rows, which makes rule boundaries depend on the city's row ORDER, so
-	// inserting a row re-partitions the rules.
+	// Fund and FundGroup override the column's fund dimension for this row.
+	// Budget Book p76's columns are years and its sections the receiving groups,
+	// while the paying fund varies row by row (three of five sections are mixed);
+	// without this, rule boundaries would depend on the city's row order.
 	Fund      int    `yaml:"fund"`
 	FundGroup string `yaml:"fund_group"`
 
-	// FiscalYear is the year this row's figures are of, for a table whose
-	// rows are years: Budget Book p80 prints DEBT SERVICE REQUIREMENTS one
-	// row per year ending June 30, so the row "2026" is fiscal_year 2026, the
-	// same convention as the FY 2025-26 column elsewhere. A rule carries its
-	// year on its columns or on its publishing rows, never both, and the
+	// FiscalYear is the year this row's figures are of, for a table whose rows
+	// are years: Budget Book p80's row "2026" is fiscal_year 2026. A rule carries
+	// its year on its columns or on its publishing rows, never both, and the
 	// parser holds the year to the printed label.
 	FiscalYear int `yaml:"fiscal_year"`
 
-	// FiscalYearThrough is the last year of a row printing several years as
-	// one figure: p80's "2031-2035" is fiscal_year 2031 through 2035, one
-	// figure for five years. It is a band and not a year, and it publishes
-	// as fact.Fact.FiscalYearThrough so no reader can take it for FY2031.
+	// FiscalYearThrough is the last year of a row printing several years as one
+	// figure (p80's "2031-2035"), published as fact.Fact.FiscalYearThrough.
 	FiscalYearThrough int `yaml:"fiscal_year_through"`
 
 	// Counterpart is the other end of a figure that moves money between two
-	// funds, and it is what lets ONE printed figure be evidence for TWO facts.
-	//
-	// p76 prints "Transfer From Low Income Hsng  to General Fund  257,012".
-	// That single figure is 257,012 leaving fund 200 and 257,012 arriving at
-	// fund 100. fact.Fact carries one fund field, so one fact cannot hold the
-	// pair; two facts can, and they cite the SAME doc_id, page,
-	// offset and token, because one printed figure is the provenance for both
-	// directions of one movement. That is not duplicated evidence.
-	//
-	// The two ids differ without any change to fact.MakeID: the legs carry
-	// different categories, so their row_paths differ, and different funds, so
-	// their column_paths differ. Both differences carry the MEANING of the
-	// difference rather than being a discriminator added to avoid a clash.
-	//
-	// It also disposes of p76's three continuation rows -- "to Wastewater
-	// Replacement", "to 2022 COPS", "to Downtown LMD", whose "Transfer From"
-	// carries over from the row above. A rule DECLARES the payer here rather
-	// than a reader inferring it from a neighbouring line.
+	// funds, so one printed figure is evidence for two facts. p76's "Transfer From
+	// Low Income Hsng  to General Fund  257,012" leaves fund 200 and arrives at
+	// fund 100; both facts cite the same doc_id, page, offset and token. Their ids
+	// differ through category and fund, not a discriminator. It also lets a rule
+	// declare the payer on p76's "to ..." continuation rows rather than infer it.
 	Counterpart *Counterpart `yaml:"counterpart"`
 
-	// Kind overrides the rule's kind for this row, exactly as Column.Basis
-	// overrides Rule.Basis: the thing that knows says so.
-	//
-	// Eleven or more fund blocks on Budget Book pp.131-140 print revenue rows
-	// AND a Transfers In row inside ONE printed `Total <fund>` -- Stormwater,
-	// Wastewater, Water and the rest. Kind is per RULE, so without this those
-	// printed totals cannot be used as total_row AT ALL: not "are verbose to
-	// express", cannot be expressed. The document would stop checking our work
-	// on eleven of its own totals, which is the most valuable check this
-	// project has.
-	//
-	// It does NOT make CheckTotals kind-aware, and that is deliberate. Those
-	// eleven totals cover BOTH kinds, so kind-BLINDNESS is exactly what they
-	// need; a check that summed only the rule's own kind would make p131's
-	// Stormwater block stop tying to `Total Stormwater`, whose FY2025-26
-	// column is 1,169,000 of charges plus 3,247,000 of Transfers In and is
-	// unreachable without the transfer row. (fisc-uli's note names Airport for
-	// this; Airport prints no Transfers In at all, and the 3,247,000 is
-	// Stormwater's.) Where a printed total covers only SOME of the
-	// kinds beneath it, the rule says so on the total_row declaration -- see
-	// TotalRowKinds -- because the total row is the thing that knows which
-	// rows it covers.
+	// Kind overrides the rule's kind for this row. Eleven or more fund blocks on
+	// Budget Book pp.131-140 print revenue rows and a Transfers In row inside one
+	// `Total <fund>` (p131's Stormwater FY2025-26 is 1,169,000 of charges plus
+	// 3,247,000 of Transfers In), so CheckTotals stays kind-blind; a total covering
+	// only some kinds says so in TotalRowKinds.
 	Kind vocab.Kind `yaml:"kind"`
 
-	// Skip marks a row that occupies a position but produces no facts, such
-	// as a subtotal that would double-count.
+	// Skip marks a row that occupies a position but produces no facts.
 	Skip bool `yaml:"skip"`
 
-	// Subtotal declares a skipped row to be a subtotal the page prints, and
-	// its level. CheckSubtotals holds each of its figures to the sum of the
-	// rows above it that are not subtotals, since the last subtotal of the
-	// same or a higher level, under the same column header -- so a level-2
-	// fund total over level-1 subgroup subtotals sums the subgroups' rows,
-	// and a level-1 total after it starts afresh. Every column is compared,
-	// skipped ones included: a figure the rule does not publish is still one
-	// the page printed and the subtotal adds.
-	//
-	// It exists for the subtotals a label-less continuation page prints
-	// between its blocks, where no rule boundary can fall: Budget Book p225
-	// continues p224's projects with nothing but figures. A printed total
-	// that ends a block is still the rule's total_row.
+	// Subtotal declares a skipped row to be a subtotal the page prints, and its
+	// level. CheckSubtotals holds each figure to the sum of the non-subtotal rows
+	// above it since the last subtotal of the same or higher level, under the same
+	// column header, skipped columns included. It is for subtotals a label-less
+	// continuation page prints between blocks (Budget Book p225); a total ending a
+	// block is still the rule's total_row.
 	Subtotal int `yaml:"subtotal"`
 
 	// SubtotalDeltas declares where a subtotal row prints a figure its rows do
-	// not sum to, and by how much: Rule's stated_total_deltas, for a subtotal.
-	// Budget Book p235's grand TOTAL prints FY2025-26 a dollar under its 219
-	// rows. A declared column that ties exactly is refused as stale.
+	// not sum to, and by how much: Budget Book p235's grand TOTAL prints FY2025-26
+	// a dollar under its 219 rows. A declared column that ties is refused.
 	SubtotalDeltas []SubtotalDelta `yaml:"subtotal_deltas"`
 
-	// Quantity overrides every column's quantity for this row — the whole-row
-	// arm of fisc-9tn4's decision. In the section's dominant orientation the
-	// non-amount is a ROW spanning every year column (p169, p179, p189, p192),
-	// which no column declaration can express. A non-amount row is read and
-	// publishes nothing, so it needs no category.
+	// Quantity overrides every column's quantity for this row (fisc-9tn4): the
+	// non-amount is usually a row spanning every year column (p169, p179, p189,
+	// p192). A non-amount row publishes nothing, so needs no category.
 	Quantity Quantity `yaml:"quantity"`
 }
 
 // Identity is the row's identity within its rule: both anchors when it has
-// two, the label alone when it has one. Uniqueness is enforced on this rather
-// than on Label, because two rows may legitimately share a source fund and
-// differ only in their destination.
+// two. Uniqueness is enforced on this, not on Label.
 func (r Row) Identity() string {
 	if r.LabelTail == "" {
 		return r.Label
@@ -1037,12 +564,10 @@ func (r *Rule) WrappedTotalLabel() string {
 	return JoinWrapped(r.TotalRow, r.TotalRowTail)
 }
 
-// JoinWrapped is a label the page breaks across two lines, rejoined, its
-// tail's words single-spaced: the page's layout spacing is not part of a name.
-// A label broken at a hyphen joins without a space, as p0175's "County Meas
-// BB-" + "Bike/Pedestrian" does; a spaced separator dash ("Asset Seizure -")
-// is a word of its own and keeps the space. A wrong join names no fund, which
-// the heading check reports.
+// JoinWrapped is a label the page breaks across two lines, rejoined with its
+// tail's words single-spaced. A label broken at a hyphen joins without a space
+// ("County Meas BB-" + "Bike/Pedestrian"); a spaced dash ("Asset Seizure -")
+// keeps it.
 func JoinWrapped(head, tail string) string {
 	tail = strings.Join(strings.Fields(tail), " ")
 	if strings.HasSuffix(head, "-") && !strings.HasSuffix(head, " -") {
@@ -1052,8 +577,7 @@ func JoinWrapped(head, tail string) string {
 }
 
 // totalCovers says whether a row of this kind is one the printed total_row
-// covers. With no TotalRowKinds declared every row is, which is the kind-blind
-// reading the mixed fund blocks on Budget Book pp.131-140 depend on.
+// covers; every row is when no TotalRowKinds is declared.
 func (r *Rule) totalCovers(k vocab.Kind) bool {
 	if len(r.TotalRowKinds) == 0 {
 		return true
@@ -1090,24 +614,17 @@ func (r *Rule) categoryOnColumns() bool {
 }
 
 // cellPublishes is THE predicate for whether row's cell in this part's j'th
-// column becomes a fact: the part prints the row (Row.OnPart) and the cell
-// (it is not in omitted_cells), and Row.Publishes holds for the column.
-// Every decision about the facts a row publishes reads it and nothing
-// re-filters after it: kindsOf, and through it a sign, a counterpart, a
-// grain and RowPublishes; checkCounterpart's collision loop; and
-// Resolver.Values. Three decisions deliberately read something else. A row's
-// category requirement reads cellAddressed, since a declared blank is an
-// address too. validateOmittedCells counts the columns a row PRINTS, since a
-// blank is a claim about the page. And a column's class (validateColumnClass)
-// is about the column alone.
+// column becomes a fact, and nothing re-filters after it. Three decisions read
+// something else: a row's category requirement reads cellAddressed (a declared
+// blank is an address too), validateOmittedCells counts the columns a row
+// prints, and validateColumnClass is about the column alone.
 func (p *Part) cellPublishes(j int, row Row) bool {
 	return p.cellAddressed(j, row) && !p.blank[row.Identity()][j]
 }
 
-// cellAddressed is cellPublishes before omitted_cells: the cell is a fact's
-// address, printed or declared blank. A declared blank still needs the row's
-// category, since internal/check reads it as the fact the cell would have
-// been.
+// cellAddressed is cellPublishes before omitted_cells. A declared blank still
+// needs the row's category, since internal/check reads it as the fact the cell
+// would have been.
 func (p *Part) cellAddressed(j int, row Row) bool {
 	return row.OnPart(p) && row.Publishes(p.Columns[j])
 }
@@ -1155,8 +672,7 @@ func (c Column) EffectiveKind(rule *Rule) vocab.Kind {
 }
 
 // EffectiveBasis is the basis this column's facts are published on: its own
-// where it declares one -- a four-column schedule carries actual, revised and
-// two adopted years side by side -- the rule's otherwise.
+// where it declares one, the rule's otherwise.
 func (c Column) EffectiveBasis(rule *Rule) vocab.Basis {
 	if c.Basis != "" {
 		return c.Basis
@@ -1187,20 +703,13 @@ func (r Row) Publishes(c Column) bool {
 }
 
 // OnPart says whether p prints this row: every part does unless the row
-// names its page. Every placement decision calls it; validateRule alone reads
-// Row.Page directly, to hold it to one part.
+// names its page. validateRule alone reads Row.Page directly.
 func (r Row) OnPart(p *Part) bool {
 	return r.Page == 0 || r.Page == p.Page
 }
 
 // EffectiveColumn is the column a row's own fact is filed under: the printed
-// column, with the row's fund and fiscal-year overrides applied where it
-// declares them.
-//
-// The override is per FIELD and not all-or-nothing. A schedule may pin the
-// group on the column and vary only the fund number per row, or the reverse,
-// and a row that declares neither is the ordinary case that every schedule
-// but p76 is.
+// column with the row's fund and fiscal-year overrides applied, per field.
 func (r Row) EffectiveColumn(printed Column) Column {
 	if r.FundGroup != "" {
 		printed.FundGroup = r.FundGroup
@@ -1236,10 +745,8 @@ func YearLabel(year, through int) string {
 }
 
 // PrintedLabel is what the document printed for this row, as the fact's
-// row_label. Both anchors are published text, so a two-anchor row publishes
-// the pair -- joined by a single space, because the run the page prints
-// between them is typesetting rather than content, and the whole point of
-// LabelTail is that a rule may not assert it.
+// row_label: a two-anchor row's anchors joined by one space, since the page's
+// run of spaces is typesetting.
 func (r Row) PrintedLabel() string {
 	if r.LabelTail == "" {
 		return r.Label
@@ -1247,33 +754,25 @@ func (r Row) PrintedLabel() string {
 	return r.Label + " " + r.LabelTail
 }
 
-// omittedCell names one blank cell: a row, by the anchors the row itself is
-// written with, and the column_headers entry printed over the cell.
+// omittedCell names one blank cell: a row, by its label and label_tail, and
+// the column_headers entry printed over the cell.
 //
 //	omitted_cells:
 //	  - {label: "County Measure D", column: "Increase/(Use)", note: "..."}
 //
-// A bare label names a row identified by one anchor; with label_tail it names
-// a row identified by two (see Row.LabelTail). The pair is not optional sugar:
-// row identity within a rule is Row.Identity(), which joins the two anchors on
-// a \x1f no author would type, and spelling the pair as one string would mean
-// asserting the run of spaces the page prints between the fields -- the one
-// thing Row.LabelTail exists in order not to do. A typo'd key is refused by
-// the decoder's KnownFields, which this type keeps by having no unmarshaler.
+// It has no unmarshaler so KnownFields still refuses a typo'd key.
 type omittedCell struct {
 	Label     string `yaml:"label"`
 	LabelTail string `yaml:"label_tail"`
 	Column    string `yaml:"column"`
 	// ColumnOrdinal says which column headed Column is meant, 1 based, where
-	// the part prints that header over several: p80 prints "Principal" and
-	// "Interest" over each of its two fund types. It is refused on a header
-	// printed once, where it could only restate the header.
+	// the part prints that header over several (p80). Refused on a header printed
+	// once.
 	ColumnOrdinal int    `yaml:"column_ordinal"`
 	Note          string `yaml:"note"`
 }
 
-// row is the Row this entry names, so identity and printed form are computed
-// by Row's own methods and cannot drift from them.
+// row is the Row this entry names, so identity uses Row's own methods.
 func (o omittedCell) row() Row { return Row{Label: o.Label, LabelTail: o.LabelTail} }
 
 // describe is how the entry reads in a message.
@@ -1285,9 +784,8 @@ func (o omittedCell) describe() string {
 }
 
 // columnHeaded is the index in Columns of the one column header heads. A
-// header no column prints is refused, and so is one printed over two
-// columns: Budget Book p67 prints "FY 2025-26" over four of its columns, and
-// a declaration naming that header cannot say which cell it means.
+// header no column prints is refused, and so is one printed over two (Budget
+// Book p67's "FY 2025-26").
 func (p *Part) columnHeaded(header string) (int, error) {
 	return p.columnHeadedAt(header, 0)
 }
@@ -1350,26 +848,16 @@ func (r *Rule) labelledPart(p *Part) *Part {
 }
 
 // ActiveRows returns the rule's rows this part prints, by Row.OnPart, in
-// order: the sequence a positional read of the part lines up against, and
-// the rows a labelled read matches in turn.
-//
-// The result is always a fresh slice. Returning r.Rows directly when every
-// row is on the part would alias the rule, so a caller that wrote through the
-// result would mutate the rule on some pages and not on others — a difference
-// that only shows up on some pages.
+// order. The result is always a fresh slice, so a caller cannot write through
+// it into the rule.
 func (r *Rule) ActiveRows(p *Part) []Row {
 	rows, _ := r.activeRows(p)
 	return rows
 }
 
-// activeRows is ActiveRows paired with each row's index in r.Rows, which is
-// what a Value and an Omission carry as RowIndex. It is the one filter on
-// Row.OnPart, so the count expectedValues takes through ActiveRows and the
-// walk a read takes through the indexes cannot diverge.
-//
-// It walks r.Rows by position rather than pairing ActiveRows back by
-// identity: two skipped rows may share an identity on different pages, and
-// pairing would give one the other's index.
+// activeRows is ActiveRows paired with each row's index in r.Rows, the one
+// filter on Row.OnPart. It walks by position because two skipped rows may share
+// an identity on different pages.
 func (r *Rule) activeRows(p *Part) ([]Row, []int) {
 	rows := make([]Row, 0, len(r.Rows))
 	idx := make([]int, 0, len(r.Rows))
@@ -1383,8 +871,7 @@ func (r *Rule) activeRows(p *Part) ([]Row, []int) {
 }
 
 // expectedValues is how many numbers a positional read of this part must find:
-// one per active row per column it prints. A mismatch means the page's shape
-// has changed and the rule can no longer be trusted.
+// one per active row per column it prints.
 func (r *Rule) expectedValues(p *Part) int {
 	n := 0
 	for _, row := range r.ActiveRows(p) {
@@ -1394,9 +881,8 @@ func (r *Rule) expectedValues(p *Part) int {
 }
 
 // SubtotalDeltaAt is the delta this row declares for the column a part
-// prints at index ci, matched by the header the page prints over it, through
-// the part's one header-to-column resolution. A delta naming a header this
-// part does not print belongs to another part of the rule.
+// prints at index ci, matched through columnHeaded. A delta naming a header
+// this part does not print belongs to another part.
 func (r Row) SubtotalDeltaAt(p *Part, ci int) (amount.Cents, bool) {
 	for _, d := range r.SubtotalDeltas {
 		if c, err := p.columnHeaded(d.Column); err == nil && c == ci {

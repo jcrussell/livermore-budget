@@ -11,9 +11,8 @@ import (
 )
 
 // validateRule refuses a rule that is malformed on its own, without the pages,
-// and returns the first refusal it meets: which one a rule carrying several
-// defects reports depends on the order of the calls below, and the tests pin
-// those messages.
+// and returns the first refusal it meets; the call order decides which, and
+// the tests pin those messages.
 func validateRule(r *Rule, errf errFunc) error {
 	if err := validateRuleShape(r, errf); err != nil {
 		return err
@@ -116,21 +115,12 @@ func validateColumnClasses(r *Rule, byColumn bool, errf errFunc) error {
 }
 
 // rowNames is what validateRows learns of a rule's rows and validateParts
-// reads back when it holds an omitted_cells entry to naming one of them.
-//
-// index is keyed on Identity(), which is what a row IS within its rule;
-// tailed collects the two-anchor rows by their first anchor alone, so a
-// declaration that names only that anchor can be told "which one?" rather
-// than "no such row". printed guards the other end: row_label is what a
-// fact publishes and what its id is hashed from (see fact.MakeID), so two
-// rows may share neither an identity nor a printed form.
-//
-// Except two SKIPPED rows: neither publishes, so no fact id is hashed from
-// either, and rows are matched in the order the rule lists them, so each
-// reads its own line. Budget Book p230 prints fund 611's projects twice,
-// once under its federal grant and once under its state grant, on lines
-// identical but for the figures. An omitted_cells entry naming such a row
-// could not say which one, so validatePartOmittedCells refuses it.
+// reads back for omitted_cells. index is keyed on Identity(); tailed collects
+// two-anchor rows by their first anchor, so a declaration naming only that can
+// be told "which one?"; printed holds row_label, which a fact id is hashed
+// from, so two rows may share neither identity nor printed form. Two skipped
+// rows may (Budget Book p230 prints fund 611's projects twice), and an
+// omitted_cells entry naming such a row is refused.
 type rowNames struct {
 	index    map[string]bool
 	tailed   map[string][]string
@@ -139,9 +129,8 @@ type rowNames struct {
 	repeated map[string]bool
 }
 
-// add refuses a row whose identity an earlier row already has, unless both
-// are skipped, and a row that prints as an earlier row does; it then records
-// the row.
+// add refuses a row whose identity or printed form an earlier row already
+// has, unless both are skipped, then records it.
 func (n *rowNames) add(r *Rule, row Row, errf errFunc) error {
 	switch {
 	case n.index[row.Identity()] && row.Skip && n.skipped[row.Identity()]:
@@ -170,9 +159,8 @@ func (n *rowNames) add(r *Rule, row Row, errf errFunc) error {
 	return nil
 }
 
-// validateRows refuses each row, in the order the rule lists them, for its
-// anchors, its identity and its declarations, and returns what it learned of
-// the rows' names for validateParts.
+// validateRows refuses each row, in rule order, for its anchors, identity and
+// declarations, and returns rowNames for validateParts.
 func validateRows(r *Rule, byColumn bool, errf errFunc) (*rowNames, error) {
 	names := &rowNames{
 		index:    map[string]bool{},
@@ -181,11 +169,8 @@ func validateRows(r *Rule, byColumn bool, errf errFunc) (*rowNames, error) {
 		skipped:  map[string]bool{},
 		repeated: map[string]bool{},
 	}
-	// A row's page must name exactly one part. Naming none would place the
-	// row nowhere, so every part would read the page without it and nothing
-	// would hold the count against the row; naming two would place it on both
-	// and on neither. Counted here so the refusal is the row's, before
-	// validateParts refuses the repeated page as its own defect.
+	// A row's page must name exactly one part: none places it nowhere, two on
+	// both. Counted here so the refusal is the row's.
 	partsOnPage := map[int]int{}
 	for i := range r.Parts {
 		partsOnPage[r.Parts[i].Page]++
@@ -250,9 +235,7 @@ func validateRowAnchors(r *Rule, i int, row Row, partsOnPage map[int]int, errf e
 		}
 	}
 	if row.LabelTail != "" {
-		// Blank first: a whitespace-only tail IS blank, and reporting it
-		// as stray whitespace would send the author looking for a
-		// character to trim rather than for the anchor they meant to name.
+		// Blank first, so a whitespace-only tail is not reported as stray whitespace.
 		if strings.TrimSpace(row.LabelTail) == "" {
 			return errf(r.ID, "rows", "row %q: label_tail is blank", row.Label)
 		}
@@ -285,9 +268,8 @@ func validateRowQuantity(r *Rule, row Row, errf errFunc) error {
 }
 
 // validateUnpublishedRowDeclares is the one refusal for a sign or a
-// counterpart on a row that publishes no cell, held to kindsOf: the kinds of
-// the cells cellPublishes admits. It runs above checkCounterpart, because a
-// counterpart's own defects are moot on a row that should not carry one.
+// counterpart on a row that publishes no cell, held to kindsOf. It runs above
+// checkCounterpart.
 func validateUnpublishedRowDeclares(r *Rule, row Row, publishes []vocab.Kind, errf errFunc) error {
 	if len(publishes) != 0 {
 		return nil
@@ -311,29 +293,10 @@ func validateUnpublishedRowDeclares(r *Rule, row Row, publishes []vocab.Kind, er
 }
 
 // validateNettedSign refuses sign netted on a row either end of which is not
-// a transfer.
-//
-// SignNetted says a row is printed against its KIND's direction, so it
-// is meaningless on a kind that has no direction, and
-// fact-transfer-orientation-is-declared only witnesses transfers. Left
-// unvalidated, `sign: netted` on a revenue row publishes facts nothing
-// checks. Refused here rather than widened there: the check is right to
-// be narrow, because a negative revenue or fund balance is a magnitude
-// and not an orientation.
-//
-// BOTH ENDS, because fact.FromValues builds the counterpart leg from a
-// COPY of this row -- it overrides Category and Kind and inherits
-// everything else, Sign included. Inheriting it is right when both ends
-// are transfers: one printed figure, one orientation, and a negative
-// transfer_in is against its direction exactly as the transfer_out is.
-// It is wrong the moment the far end is not a transfer, which is how a
-// netted revenue fact reached the store past the near-row check alone.
-//
-// IT SITS BELOW BOTH KIND VALIDATORS -- row.Kind's above and
-// checkCounterpart's, which refuses a counterpart kind that is not one of
-// the five. Above either, {sign: netted, kind: income} is reported as a sign
-// on kind "income" and a mistyped counterpart kind as `sign netted on kind
-// "incom"` -- both naming the wrong field to whoever has to fix the YAML.
+// a transfer. fact-transfer-orientation-is-declared witnesses only transfers,
+// and a negative revenue is a magnitude, not an orientation. Both ends,
+// because fact.FromValues copies the row's Sign onto the counterpart leg. It
+// runs below both kind validators, so a mistyped kind is reported as the kind.
 func validateNettedSign(r *Rule, row Row, publishes []vocab.Kind, errf errFunc) error {
 	if row.Sign != vocab.SignNetted {
 		return nil
@@ -356,15 +319,8 @@ func validateNettedSign(r *Rule, row Row, publishes []vocab.Kind, errf errFunc) 
 }
 
 // validateTotalRowNotARow refuses a total_row that is also one of the rule's
-// rows, by its label or its printed form.
-//
-// The guard is against the row's LABEL, and deliberately not against
-// rowNames.index: a two-anchor row's identity carries a \x1f, so a total_row --
-// which is a plain string the author types and the resolver finds in the
-// page text -- can never equal one, and testing the index silently
-// disabled this check for every row carrying a label_tail. The
-// printed form is tested too, because that is the other spelling an author
-// might reach for.
+// rows, by its label or its printed form. It tests Label, not rowNames.index,
+// whose two-anchor identities carry a \x1f no total_row can equal.
 func validateTotalRowNotARow(r *Rule, errf errFunc) error {
 	if r.TotalRow == "" {
 		return nil
@@ -421,37 +377,13 @@ func validateParts(r *Rule, names *rowNames, errf errFunc) error {
 // both, and an unmapped_text that is on a labels_from part, blank, untrimmed,
 // without a note, not a figure, or listed twice.
 func validatePartGaps(r *Rule, p *Part, errf errFunc) error {
-	// A wrapped label is matched against the FULLY TRIMMED text of a gap,
-	// so a declaration carrying its own whitespace could never match and
-	// would fail later as a stale declaration rather than here as the typo
-	// it is. Blank and duplicate entries are refused for the same reason.
-	//
-	// A LABELS_FROM PART CANNOT WRAP A LABEL, because it carries none.
-	// Row identity there is positional: the part routes to positionalValues,
-	// which never reads this field and never staleness-checks it, so a
-	// declaration was ACCEPTED AND INERT -- the one shape a declaration in
-	// this repository must not have. Every other one fails when it stops
-	// being true: a stated_total_delta that now ties exactly, a placed
-	// row's count that no longer matches, a wrapped label the page stopped
-	// wrapping. Measured on the production mapping: adding a
-	// fragment that appears nowhere on p67 built cleanly with byte-identical
-	// facts.
-	//
-	// Refusing is right rather than honouring it. A wrapped label is a
-	// property of the part that CARRIES the label, and this part has
-	// delegated that to another page -- which is where the declaration
-	// belongs.
-	//
-	// A WRAPPED LABEL IS A LABEL, and the amount refusal is what holds it
-	// to that: without it, wrapped_labels: ["0.0"] on ACFR p41's revenue
-	// block parses, resolves all ten rows and ties to the printed total
-	// exactly, publishing the page's orphan figure under a declaration that
-	// the page wrapped a label onto its own line, which it did not.
-	// unmapped_text is that figure's honest home, and is worth
-	// nothing while the dishonest one still works.
-	//
-	// Every entry the committed rules declare is refused by amount.Parse,
-	// which loading them re-measures, so this costs them nothing.
+	// A wrapped label is matched against the fully trimmed gap, so an entry
+	// carrying whitespace, blank or repeated is refused here as the typo it is. A
+	// labels_from part reads no gaps (positionalValues), so a declaration there
+	// would be accepted and inert; it belongs on the part carrying the labels. A
+	// wrapped label must not parse as an amount: wrapped_labels: ["0.0"] on ACFR
+	// p41 would otherwise tie while claiming a wrapped label; that figure belongs
+	// in unmapped_text.
 	if err := validateGapLines(r, p, "wrapped_labels", p.WrappedLabels, errf,
 		"a wrapped label is a claim about the page that PRINTS the "+
 			"label; declare it on that part, where it is checked",
@@ -460,9 +392,7 @@ func validatePartGaps(r *Rule, p *Part, errf errFunc) error {
 			"is declared with unmapped_text, which says so"); err != nil {
 		return err
 	}
-	// headings shares every arm above, for the same reasons: it is matched
-	// the same way, read by the same gap test and staleness-checked the
-	// same way.
+	// headings shares every arm above.
 	if err := validateGapLines(r, p, "headings", p.Headings, errf,
 		"a heading is a claim about the page that prints it between "+
 			"labelled rows; a label-less part reads no gaps",
@@ -480,12 +410,8 @@ func validatePartGaps(r *Rule, p *Part, errf errFunc) error {
 					"a wrapped label, not both", h)
 		}
 	}
-	// unmapped_text is the mirror of the block above, and every arm is the
-	// mirror of one of its arms: same trimmed matching, same blank and
-	// duplicate refusals, same labels_from refusal for the same reason
-	// (fisc-ekj -- a positional part reads no gaps, so the declaration
-	// would be accepted and inert). The one INVERTED arm is amount.Parse:
-	// a wrapped label must not be a figure and this must be one.
+	// unmapped_text mirrors the arms above (fisc-ekj for labels_from), with
+	// amount.Parse inverted: this must be a figure.
 	if p.LabelsFrom != 0 && len(p.UnmappedText) > 0 {
 		return hint.With(
 			errf(r.ID, fmt.Sprintf("parts[page %d].unmapped_text", p.Page),
@@ -529,15 +455,9 @@ func validatePartGaps(r *Rule, p *Part, errf errFunc) error {
 
 // validatePartColumns refuses a part with no columns, and a column with an
 // unknown basis, a bad quantity by validateColumnQuantity, no fiscal_year, or
-// the identity of an earlier column of the part.
-//
-// Columns are positional identities exactly as rows are, so duplicates
-// must be rejected for the same reason. A repeated column is easy to
-// write (four columns where only the fiscal year differs, and one
-// does not get bumped) and impossible to detect downstream: the column
-// COUNT still matches the page, so the value-count assertion passes
-// and the second year's figures are emitted as conflicting facts for
-// the first.
+// the identity of an earlier column of the part. A repeated column keeps the
+// value count matching and emits the second year's figures as conflicting
+// facts for the first.
 func validatePartColumns(r *Rule, p *Part, errf errFunc) error {
 	if len(p.Columns) == 0 {
 		return errf(r.ID, fmt.Sprintf("parts[page %d].columns", p.Page), "is empty")
@@ -603,10 +523,8 @@ func validateColumnQuantity(r *Rule, p *Part, j int, c Column, errf errFunc) err
 		return errf(r.ID, fmt.Sprintf("parts[page %d].columns[%d]", p.Page, j),
 			"quantity %q, want one of %s", c.Quantity, quantityList())
 	}
-	// A rule's total_row is read as one run of amounts, one per
-	// column (see amountRun), and a table whose columns are not
-	// all amounts prints no such line. Refused here so the
-	// mismatch cannot surface later as a missing-anchor error.
+	// A total_row is read as one run of amounts, one per column (amountRun), so
+	// a table with non-amount columns prints no such line.
 	if r.TotalRow != "" {
 		return hint.With(
 			errf(r.ID, fmt.Sprintf("parts[page %d].columns[%d]", p.Page, j),
@@ -618,12 +536,8 @@ func validateColumnQuantity(r *Rule, p *Part, j int, c Column, errf errFunc) err
 	return nil
 }
 
-// validateBlockBounds refuses a section or stop_at that is a currency amount.
-//
-// A block boundary must not be a figure the totals check is meant to
-// verify: anchoring the block on the number proves nothing, and the
-// anchor vanishes the moment the city republishes with a revised
-// total. Anchor on a label instead.
+// validateBlockBounds refuses a section or stop_at that is a currency amount:
+// an anchor on a figure the totals check verifies proves nothing.
 func validateBlockBounds(r *Rule, p *Part, errf errFunc) error {
 	for _, field := range []struct{ name, val string }{
 		{"section", p.Section}, {"stop_at", p.StopAt},
@@ -643,14 +557,9 @@ func validateBlockBounds(r *Rule, p *Part, errf errFunc) error {
 	return nil
 }
 
-// validatePartOmittedCells runs validateOmittedCells over p, holding each
-// entry to naming one of the rows names records, and refuses an entry with no
-// label, an untrimmed label_tail, or a name that matches no row or several.
-//
-// An omitted_cells entry must name EXACTLY ONE row. Naming none is a
-// stale declaration; naming more than one would blank a cell of every
-// row sharing a label, which is the silent mismapping the declaration
-// exists to prevent, one row over.
+// validatePartOmittedCells runs validateOmittedCells over p, and refuses an
+// entry with no label, an untrimmed label_tail, or a name matching no row
+// (stale) or several (blanking every row sharing a label).
 func validatePartOmittedCells(r *Rule, p *Part, names *rowNames, errf errFunc) error {
 	namesOneRow := func(field string, j int, o Row, notARow string) error {
 		switch {
@@ -686,10 +595,6 @@ func validatePartOmittedCells(r *Rule, p *Part, names *rowNames, errf errFunc) e
 // validateStatedTotalDeltas refuses a stated_total_deltas entry whose column
 // is out of range, skipped, non-amount or already given a delta, whose
 // delta_cents is zero, or that carries no note.
-//
-// A declared discrepancy is a claim about one column of one page, so
-// every way of writing one that does not say that is refused here
-// rather than reaching CheckTotals.
 func validateStatedTotalDeltas(r *Rule, p *Part, errf errFunc) error {
 	deltas := map[int]bool{}
 	for j, d := range p.StatedTotalDeltas {
@@ -732,11 +637,8 @@ func validateStatedTotalDeltas(r *Rule, p *Part, errf errFunc) error {
 }
 
 // validateLabelsFrom refuses a labels_from that points at its own part, at a
-// page that is not a part of the rule, or at a part that is itself a
-// continuation.
-//
-// LabelsFrom must point at another part of the same rule, and that part
-// must itself carry labels — a chain of continuations has no anchor.
+// page that is not a part of the rule, or at a continuation: a chain of
+// continuations has no anchor.
 func validateLabelsFrom(r *Rule, errf errFunc) error {
 	for i := range r.Parts {
 		p := &r.Parts[i]
@@ -774,11 +676,10 @@ func validateFundLabelling(r *Rule, errf errFunc) error {
 	return nil
 }
 
-// validateRowYears holds a row's fiscal years to the label the page prints
-// for it, so a year typed wrong is refused rather than published: "2026" is
-// fiscal_year 2026 and nothing else, and "2031-2035" is 2031 through 2035.
-// On a rule whose rows carry its years every publishing row declares one, and
-// a skipped row declares none, since nothing would read it.
+// validateRowYears holds a row's fiscal years to the label the page prints:
+// "2026" is fiscal_year 2026, "2031-2035" is 2031 through 2035. On a rule whose
+// rows carry its years every publishing row declares one, and a skipped row
+// none.
 func validateRowYears(r *Rule, row Row, publishes bool, errf errFunc) error {
 	switch {
 	case row.FiscalYear == 0 && row.FiscalYearThrough != 0:

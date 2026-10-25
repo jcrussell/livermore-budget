@@ -19,8 +19,7 @@ import (
 )
 
 // parseError reports a problem in a rule file, located precisely enough to fix
-// without hunting. Rule files are hand-written, so the error message is the
-// primary interface for most of the people who will ever see this package.
+// without hunting.
 type parseError struct {
 	Path   string
 	RuleID string
@@ -43,9 +42,7 @@ func (e *parseError) Error() string {
 
 // Load reads and validates one rule file.
 func Load(p string) (*File, error) {
-	// #nosec G304 -- p is a mapping file path chosen by the operator running
-	// fisc, not attacker-controlled input; refusing variable paths here would
-	// mean hard-coding the mapping directory.
+	// #nosec G304 -- p is a mapping file path chosen by the operator.
 	f, err := os.Open(p)
 	if err != nil {
 		return nil, fmt.Errorf("open rule file: %w", err)
@@ -54,17 +51,15 @@ func Load(p string) (*File, error) {
 	return parse(f, p)
 }
 
-// LoadDir reads every *.yaml under dir, in sorted order so results are
-// deterministic. It uses fs.FS so tests can supply an in-memory tree
+// LoadDir reads every *.yaml under dir, in sorted order, from an fs.FS
 // (byob-interfaces.3).
 func LoadDir(fsys fs.FS, dir string) ([]*File, error) {
 	entries, err := fs.ReadDir(fsys, dir)
 	if err != nil {
 		return nil, fmt.Errorf("read mapping dir: %w", err)
 	}
-	// A mapping file that is not read produces no facts and says nothing about
-	// why, so an unexpected file is an error rather than a skip. Accept both
-	// YAML spellings; refuse anything else.
+	// An unexpected file is an error rather than a skip, since an unread mapping
+	// file produces no facts and says nothing.
 	names := make([]string, 0, len(entries))
 	for _, e := range entries {
 		if e.IsDir() {
@@ -123,9 +118,7 @@ func LoadDir(fsys fs.FS, dir string) ([]*File, error) {
 func parse(r io.Reader, p string) (*File, error) {
 	var f File
 	dec := yaml.NewDecoder(r)
-	// Unknown fields are errors: a typo'd key would otherwise be silently
-	// ignored, and a row that quietly lost its `page` is exactly the silent
-	// mismapping this schema exists to prevent.
+	// Unknown fields are errors, so a row that lost its `page` to a typo fails.
 	dec.KnownFields(true)
 	if err := dec.Decode(&f); err != nil {
 		if errors.Is(err, io.EOF) {
@@ -134,9 +127,7 @@ func parse(r io.Reader, p string) (*File, error) {
 		return nil, &parseError{Path: p, Msg: err.Error()}
 	}
 
-	// The decoder is a stream. Decoding once and stopping would accept a file
-	// whose second `---` document is silently discarded — the same class of
-	// quiet loss that KnownFields exists to prevent, one level up.
+	// A second `---` document is refused rather than silently discarded.
 	var extra File
 	if err := dec.Decode(&extra); err == nil {
 		return nil, hint.With(
@@ -153,9 +144,8 @@ func parse(r io.Reader, p string) (*File, error) {
 	return &f, nil
 }
 
-// Validate checks a rule file's internal consistency. Parse calls it, so a
-// loaded file is already validated; it is exported for callers that build a
-// File in memory, which would otherwise skip every check the schema relies on.
+// Validate checks a rule file's internal consistency. Parse calls it; it is
+// exported for callers that build a File in memory.
 func (f *File) Validate() error { return f.validate() }
 
 func (f *File) validate() error {
@@ -201,12 +191,9 @@ func (f *File) validate() error {
 	return checkColumnGrids([]*File{f})
 }
 
-// validateRollups checks the declarations that a printed total covers several
-// rules, or that the document prints one this rule structure cannot assert.
-//
-// Everything checkable without the pages is checked here. That the anchor
-// occurs on the page, occurs once, and that the covered rules' totals actually
-// add up are claims about the document and are made when the rollup resolves.
+// validateRollups checks the rollup declarations that need no pages. That the
+// anchor occurs once and the covered totals add up is checked when the rollup
+// resolves.
 func validateRollups(f *File, errf errFunc) error {
 	byID := make(map[string]*Rule, len(f.Rules))
 	for i := range f.Rules {
@@ -232,25 +219,14 @@ func validateRollups(f *File, errf errFunc) error {
 					"not name both")
 		}
 
-		// Either it asserts or it says why it cannot. Neither would be the
-		// silence this whole field exists to refuse; both would be a claim
-		// that contradicts itself.
-		// The declaration is compared trimmed here and untrimmed by the build,
-		// so a whitespace-only reason would pass validation as "no reason" and
-		// then suppress the check as "a reason". Refusing it outright keeps
-		// one spelling of empty.
+		// Either it asserts or it says why it cannot, never both or neither. A
+		// whitespace-only reason is refused, since the build compares it untrimmed.
 		if ro.Unassertable != "" && strings.TrimSpace(ro.Unassertable) == "" {
 			return errf("", field("unassertable"), "is whitespace; omit it or give the reason")
 		}
 		asserts, declines := len(ro.Covers) > 0, ro.Unassertable != ""
-		// CHECKED BEFORE THE `declines` SHORT-CIRCUIT BELOW, which is the whole
-		// reason it is here and not in validateRollupKinds. That function runs
-		// after `if declines { continue }`, so an unassertable rollup never
-		// reached it and `kinds:` on one was accepted in silence -- and the
-		// corpus's only unassertable rollup is p140's "Total Sources", the
-		// mixed-kind line Rollup.Kinds' own doc comment is built around. The
-		// most likely place for the field to be typed is the one place nothing
-		// read it.
+		// Checked before the `declines` short-circuit, which validateRollupKinds runs
+		// after: an unassertable rollup (p140's) is the likeliest place for `kinds:`.
 		if len(ro.Kinds) > 0 && declines {
 			return hint.With(
 				errf("", field("kinds"), "is declared alongside unassertable"),
@@ -278,21 +254,11 @@ func validateRollups(f *File, errf errFunc) error {
 			continue
 		}
 
-		// A ROLLUP MAY COVER ONE RULE. A total covering a single rule is not
-		// that rule's total_row wearing a different name: on Budget Book
-		// pp.167-170 six of the eleven <DEPARTMENT> TOTAL rows sit over a
-		// department with exactly one division, and each is a SECOND PRINTED
-		// LINE with its own figures -- CITY COUNCIL TOTAL on p0167:15, three
-		// lines below City Council's own Total on :13. Refusing them would leave
-		// six printed totals asserted by nothing, which is the one answer
-		// fisc-3bl calls unacceptable.
-		//
-		// The guard below is what holds instead: a rollup may not name the
-		// same printed line as a covered rule's total. That is a
-		// claim about the LINE and not about the number of rules, and the
-		// string half of it is checked here. The page half -- same page, same
-		// line -- needs the pages and is checked in CheckRollup, for the reason
-		// the column guard below cannot be closed here either.
+		// A rollup may cover one rule: six of pp.167-170's eleven <DEPARTMENT> TOTAL
+		// rows sit over a single division and are a second printed line (CITY COUNCIL
+		// TOTAL on p0167:15, three lines below City Council's Total on :13). What
+		// holds instead is that a rollup may not name a covered rule's total line: the
+		// string half is checked here, the page half in CheckRollup.
 		covered := map[string]bool{}
 		var first *Rule
 		for _, id := range ro.Covers {
@@ -306,9 +272,8 @@ func validateRollups(f *File, errf errFunc) error {
 					"a rule counted twice inflates the sum by its own total")
 			}
 			covered[id] = true
-			// The chain's first link. Without a printed total of its own a
-			// covered rule contributes nothing to sum, and the rollup would
-			// silently be a check over fewer rules than it names.
+			// Without a printed total of its own a covered rule contributes nothing to
+			// sum.
 			if rule.TotalRow == "" {
 				return hint.With(
 					errf("", field("covers"), "rule %q declares no total_row", id),
@@ -330,19 +295,9 @@ func validateRollups(f *File, errf errFunc) error {
 					"rule %q states its figures in %s and rule %q in %s",
 					first.ID, first.Units, id, rule.Units)
 			}
-			// SCOPE IS REFUSED WHERE KIND IS DECLARED, and the asymmetry is the
-			// point rather than an oversight.
-			//
-			// A scope is a claim about WHICH MONEY a rule's facts are, and two
-			// scopes over one printed total is fisc-u2v's doubling mechanism
-			// raised to the rollup: pp.85-125 and pp.66-67 are the same
-			// expenditure counted two ways, so a rollup summing a detail-scope
-			// total into a spine-scope one produces a figure that adds up and
-			// means nothing. A tie there says the arithmetic worked, not that
-			// the claim is true, and no printed line in this corpus wants it.
-			//
-			// It needs no pages and no registry, so it is refused here rather
-			// than in CheckRollup.
+			// Scope is refused where kind is declared. Two scopes over one total is
+			// fisc-u2v's doubling raised to the rollup: pp.85-125 and pp.66-67 are the
+			// same expenditure counted two ways.
 			if first.Scope != rule.Scope {
 				return hint.With(
 					errf("", field("covers"),
@@ -368,17 +323,9 @@ func validateRollups(f *File, errf errFunc) error {
 }
 
 // validateRollupKinds checks the declaration that a printed total covers more
-// than one kind.
-//
-// It is the mirror of the scope refusal above and deliberately the opposite
-// answer. Two scopes over one total is always wrong; two KINDS is sometimes what
-// the page prints -- p140's "Total Sources" is revenue plus transfers in -- so
-// this requires the author to say so rather than refusing them the shape.
-//
-// Both refusals here are of a declaration that asserts nothing, which is
-// validateTotalRowKinds' discipline: a list that restates what the rules already
-// agree on records a belief, and one that is absent where they disagree lets a
-// mixed-kind rollup pass as an accident.
+// than one kind. Mixed kinds are what p140's "Total Sources" prints, so the
+// author must say so: a list restating the rules' agreed kind, or one absent
+// where they disagree, is refused.
 func validateRollupKinds(ro *Rollup, byID map[string]*Rule, field func(string) string,
 	errf errFunc) error {
 
@@ -442,10 +389,9 @@ func describeKinds(ks []vocab.Kind) string {
 
 type errFunc func(ruleID, field, format string, args ...any) error
 
-// validateClass checks one declaration of a category and a kind, wherever the
-// rule carries them: on a row, or on a column. A declaration that publishes
-// needs a category, which internal/check declines to require on purpose ("an
-// absent value is the mapping's business").
+// validateClass checks one declaration of a category and a kind, on a row or
+// a column. A declaration that publishes needs a category; internal/check
+// does not require one.
 func validateClass(r *Rule, field, owner, category string, kind vocab.Kind, publishes bool,
 	errf errFunc, remedy string) error {
 	if kind != "" && !kind.Valid() {
@@ -458,14 +404,10 @@ func validateClass(r *Rule, field, owner, category string, kind vocab.Kind, publ
 }
 
 // validateRowClass holds a row to the axis its rule carries the category on.
-//
-// On the row axis EVERY ROW CARRIES A CATEGORY, and a department is a SECOND
-// AXIS and not a substitute for one: pp.167-170 cross department against
-// object category, so a department row still says what KIND of spending the
-// figure is. A row rowAddressed finds no cell for is exempt: skipped,
-// non-amount, or under columns that all skip, it has no fact for a category
-// to classify. A row blank in every amount cell is NOT exempt: each blank is
-// read by internal/check as the fact the cell would have been.
+// On the row axis every row carries a category; a department is a second axis
+// (pp.167-170), not a substitute. A row rowAddressed finds no cell for is
+// exempt. A row blank in every amount cell is not: internal/check reads each
+// blank as the fact the cell would have been.
 func validateRowClass(r *Rule, row Row, byColumn bool, errf errFunc) error {
 	if !byColumn {
 		return validateClass(r, "rows", fmt.Sprintf("row %q", row.Label), row.Category,
@@ -491,8 +433,7 @@ func validateRowClass(r *Rule, row Row, byColumn bool, errf errFunc) error {
 }
 
 // validateColumnClass is validateRowClass for the part's j'th column. A column
-// that publishes nothing classifies nothing, so a category or kind on one is
-// a declaration no fact would ever read.
+// that publishes nothing may declare no category or kind.
 func validateColumnClass(r *Rule, p *Part, j int, byColumn bool, errf errFunc) error {
 	c := p.Columns[j]
 	field := fmt.Sprintf("parts[page %d]", p.Page)
@@ -587,12 +528,8 @@ func (r *Rule) publishes() bool {
 }
 
 // validatePrintedDecimals checks the preconditions of a document-derived
-// tolerance. What it cannot check is the claim itself -- whether the page really
-// prints two decimals is a question about the document, and the resolver
-// answers it against the tokens it read.
-//
-// See Rule.PrintedDecimals for why each of these is a refusal rather than a
-// convention, and fisc-1wr.2 for the tier.
+// tolerance; the resolver checks the claim against the tokens it read. See
+// Rule.PrintedDecimals and fisc-1wr.2.
 func validatePrintedDecimals(r *Rule, errf errFunc) error {
 	if r.PrintedDecimals == nil {
 		return nil
@@ -647,19 +584,9 @@ func validatePrintedDecimals(r *Rule, errf errFunc) error {
 					"document is out by, a tolerance bounds an unnamed one, and a rule "+
 					"holding both offers a place to hide the difference between them")
 		}
-		// SAME COMPOSITION, ONE DECLARATION FURTHER OUT.
-		// unmapped_text takes a printed figure OUT of the
-		// read on the author's word that it belongs to no row. If that word is
-		// wrong the row it belonged to is short, and a tolerance beside it is
-		// exactly what would absorb the shortfall -- the arithmetic that would
-		// otherwise catch the misdeclaration, gone.
-		//
-		// unmapped_text is already the weakest declaration class here (see
-		// Part.UnmappedText); pairing it with the only mechanism that softens
-		// the check standing over it is the one combination to refuse outright.
-		// It costs the corpus nothing: p41's revenue rule declares the orphan
-		// and ties EXACTLY, and its General Government rule declares the
-		// tolerance and has no orphan.
+		// unmapped_text takes a figure out of the read on the author's word; a
+		// tolerance beside it would absorb the shortfall if that word is wrong, so the
+		// pair is refused. p41's revenue rule declares the orphan and ties exactly.
 		if len(p.UnmappedText) > 0 {
 			return hint.With(
 				errf(r.ID, fmt.Sprintf("parts[page %d].unmapped_text", p.Page),
@@ -699,18 +626,9 @@ func validateTotalRowTail(r *Rule, errf errFunc) error {
 }
 
 // validateTotalRowAbove checks the preconditions of a total the document prints
-// above its own rows.
-//
-// THE SECTION-ANCHOR REQUIREMENT IS THE WHOLE MECHANISM, not a convenience. A
-// flag meaning only "the total is somewhere above" would be unbounded: no guard
-// in this package could say how far above, and checkGap's leading arm -- the one
-// thing standing between a block that starts too early and header figures read
-// as data -- would have to be retired to admit it. Requiring section ==
-// total_row pins the total to exactly one line, at a position Block already had
-// to resolve through anchor(), which refuses an ambiguous or missing one. The
-// resolver then skips that single line and refuses every digit after it.
-//
-// See Rule.TotalRowAbove and fisc-h96o.
+// above its own rows. Requiring section == total_row pins the total to the one
+// line anchor() already resolved, so checkGap's leading arm need skip only
+// that line. See Rule.TotalRowAbove and fisc-h96o.
 func validateTotalRowAbove(r *Rule, errf errFunc) error {
 	if !r.TotalRowAbove {
 		return nil
@@ -751,37 +669,16 @@ func validateTotalRowAbove(r *Rule, errf errFunc) error {
 }
 
 // validateRowLabelFunds checks the preconditions of the claim that this rule's
-// row labels are printed fund names.
-//
-// It cannot check the claim itself: whether "Water" is fund 640 is a question
-// about data/funds.yaml, and whether the page prints that label on that line is
-// a question about the document. Both belong to
-// row-funds-match-their-anchors, which has the registry and the pages. What is
-// checkable without either is that the declaration asserts something, and that
-// is the same discipline validateTotalRowKinds applies: a declaration that
-// cannot fail records an author's belief rather than a property of the page.
-//
-// So the one refusal is a row the declaration would say nothing about. A rule
-// whose rows carry no fund declares nothing by declaring this, and a single
-// such row is enough — the check reads every row of the rule, so one row
-// without a fund is one row the claim silently does not cover.
+// row labels are printed fund names; row-funds-match-their-anchors checks the
+// claim against the registry and the pages. A row the declaration would say
+// nothing about, one with no fund, is refused.
 func validateRowLabelFunds(r *Rule, errf errFunc) error {
 	if !r.RowLabelsNameFunds {
 		return nil
 	}
-	// THE ALL-SKIPPED CASE IS THE STRONGER VERSION OF THE ROW GUARD BELOW, and
-	// it was missing while that one was present -- refusing a declaration that
-	// says nothing about ONE row while accepting one that says nothing about
-	// any. Measured when found: a rule whose rows are all skip: true parsed
-	// clean, and row-funds-match-their-anchors drops skipped rows from every
-	// arm, so the declaration stood over zero checked rows and the rule was
-	// named nowhere in the summary.
-	// A ROW IS COVERED ONLY IF SOME PART READS IT. A row's page names a part
-	// of the rule, so every row is read by some part and skip: true is the one
-	// way not to be; the count still goes through ActiveRows, the same
-	// function row-funds-match-their-anchors reaches through
-	// activeInAnyPart, so it counts what the check will actually read rather
-	// than a second opinion about it.
+	// A rule whose every row is skipped is refused too, since the check drops
+	// skipped rows. The count goes through ActiveRows, as the check's
+	// activeInAnyPart does.
 	covered := 0
 	seen := map[string]bool{}
 	for i := range r.Parts {
@@ -816,18 +713,8 @@ func validateRowLabelFunds(r *Rule, errf errFunc) error {
 					"a fund off the printed label and check the number typed "+
 					"beside it; a row with no number to check needs no label read")
 		}
-		// A COUNTERPART IS AT THE FAR END AND NO BARE LABEL NAMES IT. The
-		// declaration says the row's label is the printed name of the fund the
-		// row carries -- its OWN fund. A counterpart's fund sits at the other
-		// end of the movement, and a bare fund name carries no direction to
-		// reach it, which is the whole difference between this and p76's
-		// "Transfer From X to Y" anchors.
-		//
-		// REFUSED RATHER THAN LEFT UNCHECKED, because leaving it made
-		// row-funds-match-their-anchors print a false sentence: the counterpart
-		// fell into the unphrased counter, whose clause named the rule as one
-		// that does not declare row_labels_name_funds while it did. Latent --
-		// no rule declares both today.
+		// A counterpart is refused: its fund is at the far end of the movement, and a
+		// bare fund name carries no direction to reach it.
 		if row.Counterpart != nil {
 			return hint.With(
 				errf(r.ID, "row_labels_name_funds",
@@ -842,12 +729,8 @@ func validateRowLabelFunds(r *Rule, errf errFunc) error {
 }
 
 // validateTotalRowKinds checks the claim that the printed total covers only
-// some of the kinds beneath it.
-//
-// Every refusal here is of a declaration that asserts nothing, which is the
-// same discipline a stale wrapped_label and a delta that now ties exactly get:
-// a claim that cannot fail is one that records an author's belief rather than a
-// property of the document.
+// some of the kinds beneath it. Every refusal is of a declaration that asserts
+// nothing.
 func validateTotalRowKinds(r *Rule, errf errFunc) error {
 	if len(r.TotalRowKinds) == 0 {
 		return nil
@@ -868,9 +751,7 @@ func validateTotalRowKinds(r *Rule, errf errFunc) error {
 		}
 		seen[k] = true
 	}
-	// The kinds the rule's rows actually carry. A declaration naming a kind no
-	// row has would silently narrow the check to fewer rows than the author
-	// believed -- or, if it named ALL of them, to none.
+	// A declared kind no row carries would silently narrow the check.
 	have := map[vocab.Kind]bool{}
 	for _, row := range r.Rows {
 		if row.Skip {
@@ -899,13 +780,8 @@ func validateTotalRowKinds(r *Rule, errf errFunc) error {
 }
 
 // validateTotalSpansParts checks the declaration that a printed total covers
-// every part's rows rather than one part's.
-//
-// Only what is knowable without the pages is checked here. That a part's page
-// actually PRINTS the total row, and that the part carrying a declared delta
-// is the one printing it, are claims about the document and are checked when
-// the rule resolves -- the parser has no page text and guessing would be the
-// fail-open this flag exists to close.
+// every part's rows. Which page prints the total, and that a declared delta is
+// on it, are checked when the rule resolves.
 func validateTotalSpansParts(r *Rule, errf errFunc) error {
 	if !r.TotalSpansParts {
 		return nil
@@ -916,19 +792,15 @@ func validateTotalSpansParts(r *Rule, errf errFunc) error {
 			"the flag says WHICH rows the printed total covers; with no total "+
 				"row declared there is nothing for it to say that about")
 	}
-	// One part cannot straddle a page break, so the flag would assert nothing
-	// -- and a declaration that cannot fail is the shape this repo refuses
-	// everywhere else (a stale wrapped_label, a delta that now ties).
+	// On one part the flag would assert nothing.
 	if len(r.Parts) < 2 {
 		return hint.With(
 			errf(r.ID, "total_spans_parts", "is set on a rule with %d part", len(r.Parts)),
 			"the flag exists for a block whose rows straddle a page break; on "+
 				"a single part it is the per-part check already, so remove it")
 	}
-	// Identical columns, field by field. This is the guard that keeps the flag
-	// off the p66-67 spine, whose parts partition COLUMNS rather than ROWS:
-	// p66 carries four and p67 eight, so a sum across them would be adding
-	// General Fund to Capital Funds and reporting the result as a total.
+	// Identical columns, field by field: this keeps the flag off the p66-67
+	// spine, whose parts partition columns (four and eight) rather than rows.
 	first := r.Parts[0]
 	for i := 1; i < len(r.Parts); i++ {
 		p := r.Parts[i]
@@ -943,9 +815,7 @@ func validateTotalSpansParts(r *Rule, errf errFunc) error {
 				"split the same table by ROW; parts that split it by COLUMN "+
 				"are not what this flag describes")
 	}
-	// One printed total means one place to declare a discrepancy against it.
-	// Which part that is needs the page, so it is checked at resolve time;
-	// what is checkable here is that the rule does not name two.
+	// One printed total, so at most one part may declare a delta against it.
 	declaring := make([]int, 0, len(r.Parts))
 	for _, p := range r.Parts {
 		if len(p.StatedTotalDeltas) > 0 {
@@ -991,10 +861,8 @@ func validatePartAnchors(r *Rule, p *Part, errf errFunc) error {
 	if len(p.ColumnHeaders) == 0 {
 		return nil
 	}
-	// One entry per column, including skipped ones. A short list would build a
-	// grid one band narrower than the page and file every figure right of the
-	// missing column one place left -- silently, with the value count still
-	// matching.
+	// One entry per column, including skipped ones; a short list would shift
+	// every figure right of the gap one place left with the count still matching.
 	if len(p.ColumnHeaders) != len(p.Columns) {
 		return hint.With(
 			errf(r.ID, field("column_headers"), "has %d entries but the part has %d columns",
@@ -1003,12 +871,7 @@ func validatePartAnchors(r *Rule, p *Part, errf errFunc) error {
 				"any marked skip: true; the list is what says where each column "+
 				"sits on the page")
 	}
-	// At least one column must be headed. A list that is null all the way
-	// through names no header to find the page's grid with, and the grid is
-	// what the guard IS -- geom.NewGrid would be handed an empty span list and
-	// describeUnmatched an empty header list. Refusing it here says the real
-	// thing: a part whose every column is headerless has not opted into the
-	// guard, it has asked for one that cannot exist.
+	// At least one column must be headed, or there is no grid to build.
 	if !slices.ContainsFunc(p.ColumnHeaders, func(h columnHeader) bool { return !h.Unheaded }) {
 		return hint.With(
 			errf(r.ID, field("column_headers"), "every entry is null"),
@@ -1018,10 +881,7 @@ func validatePartAnchors(r *Rule, p *Part, errf errFunc) error {
 	}
 	for i, h := range p.ColumnHeaders {
 		if h.Unheaded {
-			// A null says the page prints no header over this column, so the
-			// column must be one the rule reads nothing from -- otherwise the
-			// declaration is asking for a figure to be filed under a band that
-			// does not exist.
+			// A null column must be skipped: it has no band to file a figure under.
 			if !p.Columns[i].Skip {
 				return hint.With(
 					errf(r.ID, field("column_headers"), "entry %d is null but column %d "+
@@ -1030,10 +890,7 @@ func validatePartAnchors(r *Rule, p *Part, errf errFunc) error {
 						"leaves it no band; a column the rule actually reads must "+
 						"name its printed header so its figures can be placed")
 			}
-			// AND ONLY AT THE END. Past the last header there is nothing to
-			// check a token against; between two headers there is a gap with
-			// known bounds, which the grid would have checked. Allowing a null
-			// there would silently decline a check that was available.
+			// Only at the end: between two headers the grid could check the token.
 			if i != len(p.ColumnHeaders)-1 {
 				return hint.With(
 					errf(r.ID, field("column_headers"), "entry %d is null but is not "+
@@ -1052,10 +909,7 @@ func validatePartAnchors(r *Rule, p *Part, errf errFunc) error {
 					"line, so no page can produce an empty one; write null, not "+
 					"\"\", for a column the page heads with nothing")
 		}
-		// Deliberately NOT the circularity argument the section/stop_at refusal
-		// makes: a header is not a total. A header that is a figure would match
-		// a DATA row, and a grid built from a data row files that row perfectly
-		// and every other row by luck.
+		// A header that is a figure would match a data row.
 		if _, err := amount.Parse(h.Text, r.Units); err == nil {
 			return hint.With(
 				errf(r.ID, field("column_headers"), "entry %d is a currency amount: %q",
@@ -1068,31 +922,13 @@ func validatePartAnchors(r *Rule, p *Part, errf errFunc) error {
 	return nil
 }
 
-// checkColumnGrids checks the two things no per-part rule can see: that every
-// part reading a page agrees about that page's column grid, and that they all
-// opt into it or none do.
-//
-// The published spine has five rules, each with a part on p66 and a part on p67,
-// so one page's header list is written out five times. A copy that drifted would
-// build a DIFFERENT grid for the same page in one rule than in another, and both
-// reads would go on tying against their own printed totals -- confident wrong
-// figures carrying working-looking provenance, which is the class this guard
-// exists to prevent.
-//
-// The all-or-none half closes the same hole one level up. A page where four
-// parts declare a grid and the fifth does not would otherwise validate, leaving
-// that part silently unguarded with nothing saying so -- which is exactly why
-// the resolver's doc interface requires its geometry method rather than
-// discovering it by type assertion.
-//
-// Grouping is by (doc_id, page) and not by file, because a document may be
-// mapped by more than one file and nothing else compares them: LoadDir dedupes
-// rule ids and never looks at doc_id.
-//
-// A page printing two schedules under different headers names them apart with
-// Part.Grid, and the comparison is per grid: Budget Book pp.80-81 print the
-// debt service budget and, below it, the requirements. Two grids of one page
-// declaring one list are refused, since a name is not a second grid.
+// checkColumnGrids checks what no per-part rule can see: every part reading a
+// page agrees about that page's column grid, and they all opt into it or none
+// do. The spine writes p66's and p67's header lists out five times; a drifted
+// copy would build a different grid while still tying to its own totals.
+// Grouping is by (doc_id, page), not by file. A page printing two schedules
+// names them apart with Part.Grid (Budget Book pp.80-81); two grids of one
+// page declaring one list are refused.
 func checkColumnGrids(files []*File) error {
 	type declaration struct {
 		path    string
@@ -1150,9 +986,7 @@ func checkColumnGrids(files []*File) error {
 		}
 	}
 
-	// Any grid of a page, for the all-or-none half: a headerless part naming
-	// a grid nobody declares, or naming none on a page whose grids are all
-	// named, must not escape it by missing the (doc, page, grid) key.
+	// Any grid of a page, for the all-or-none half.
 	type pageKey struct {
 		docID string
 		page  int
@@ -1217,13 +1051,8 @@ func unitsValid(u amount.Units) bool {
 }
 
 // checkCounterpart refuses a far leg that could not be told apart from its own
-// near leg, or that would be filed nowhere.
-//
-// The stakes are higher here than for an ordinary row, because a counterpart is
-// invisible to every check the DOCUMENT provides. CheckTotals sums resolved
-// values and the fan-out happens after them (fact.FromValues), so a counterpart
-// declared wrongly still ties to the page's own printed total. The arms here
-// are the parse-time half of what replaces that.
+// near leg, or that would be filed nowhere. A counterpart is invisible to
+// CheckTotals (fact.FromValues fans out after it), so these arms stand in.
 func checkCounterpart(r *Rule, row Row, errf errFunc) error {
 	cp := row.Counterpart
 	if cp == nil {
@@ -1255,19 +1084,10 @@ func checkCounterpart(r *Rule, row Row, errf errFunc) error {
 			"without one the leg's column_path falls back to the rule's scope, "+
 				"where it is indistinguishable from any other scope-filed fact")
 	}
-	// AND A GROUP IS NOT ENOUGH. A counterpart exists to name the fund at the
-	// far end of a movement; with a group alone it names only which sixth of
-	// the city, which is what the near leg's own column already says. Nothing
-	// downstream catches it: fact.FromValues' guard fires only when BOTH the
-	// group and the fund are absent, and row-funds-match-their-anchors has no
-	// number to compare its printed anchor against, so the leg publishes
-	// fund 0 and every check stays green.
-	//
-	// The near leg is deliberately different -- Budget Book p76's LAVWMA row
-	// receives into a joint powers authority that is no City fund at all, and a
-	// group-only column path is the honest reading of it. If a PAYER ever turns
-	// out to be similarly unnameable, that needs a decision rather than this
-	// arm being relaxed: the far leg's whole purpose is the payer.
+	// The far leg needs a fund, not only a group: nothing downstream catches a
+	// fund-0 leg (fact.FromValues fires only when both are absent). The near leg
+	// may be group-only: p76's LAVWMA row receives into a joint powers authority
+	// that is no City fund.
 	if cp.Fund == 0 {
 		return hint.With(
 			errf(r.ID, "rows", "row %q: counterpart declares fund_group %q and no fund",
@@ -1276,12 +1096,8 @@ func checkCounterpart(r *Rule, row Row, errf errFunc) error {
 				"on its own names no payer, and no check downstream can tell it "+
 				"from one that was never declared")
 	}
-	// A department is an axis Counterpart has no field for, so the far leg
-	// would silently take the near leg's -- publishing, say, Police's transfer
-	// OUT of the fund that paid Police. Refused rather than dropped: dropping
-	// it would make the far leg's row_path quietly narrower than the near
-	// leg's, and a schedule crossing departments with transfers needs a
-	// decision, not a default.
+	// Counterpart has no department, so the far leg would silently take the near
+	// leg's; refused rather than dropped.
 	if row.Department != "" {
 		return hint.With(
 			errf(r.ID, "rows", "row %q carries department %q and declares a counterpart",
@@ -1290,10 +1106,8 @@ func checkCounterpart(r *Rule, row Row, errf errFunc) error {
 				"this one would attribute the paying fund's outflow to the "+
 				"receiving department")
 	}
-	// A contra sign says the row reduces ITS category, and fact.FromValues
-	// stamps the row's sign onto the far leg too, which would mark the paying
-	// fund's outflow as reducing a category nobody said it reduces. Netted is
-	// inherited on purpose and validateNettedSign holds both of its ends.
+	// A contra sign would mark the paying fund's outflow as reducing a category;
+	// netted is inherited, and validateNettedSign holds both its ends.
 	if row.Sign == vocab.SignContra {
 		return hint.With(
 			errf(r.ID, "rows", "row %q carries sign %q and declares a counterpart",
@@ -1301,20 +1115,10 @@ func checkCounterpart(r *Rule, row Row, errf errFunc) error {
 			"the far leg would inherit the contra sign, and a reduction of the "+
 				"receiving row's category says nothing about the paying fund's")
 	}
-	// The two legs must differ where a fact's identity is built from: its
-	// category (the row path) and its fund (the column path). Equal on both,
-	// the ids collide.
-	//
-	// IT COMPARES AGAINST EVERY PUBLISHING CELL OF THE ROW. A row applies to
-	// every column of every part, so "the row's effective fund group" is not
-	// one value: a collision on ANY cell cellPublishes admits is a collision,
-	// because that cell's figure publishes both legs, and a cell it refuses
-	// -- on another page, blank, skipped or non-amount -- publishes neither leg, so a
-	// counterpart naming its fund is no collision. The row's own fund and
-	// group with no printed column behind them are compared nowhere: no
-	// published rule declares a group on the row, so that comparison can
-	// never hold. fact.CheckUniqueIDs stays the backstop for whatever a
-	// parse-time check cannot see.
+	// The two legs must differ in category (row path) or fund (column path), or
+	// the ids collide. The fund is compared against every cell cellPublishes
+	// admits, since each such cell publishes both legs. fact.CheckUniqueIDs is the
+	// backstop.
 	if cp.Category != row.Category {
 		return nil
 	}
@@ -1339,10 +1143,8 @@ func checkCounterpart(r *Rule, row Row, errf errFunc) error {
 }
 
 // resolveOmittedCells is the one place an omitted_cells entry's header is
-// resolved to a column, by Part.columnHeaded, and Part.blank is what it
-// stores. The part must declare column_headers, because the guard is what
-// checks a row's figures sit under the columns they are filed under once one
-// of them is blank.
+// resolved to a column, by Part.columnHeaded, stored in Part.blank. The part
+// must declare column_headers.
 func resolveOmittedCells(r *Rule, p *Part, errf errFunc) error {
 	if len(p.OmittedCells) == 0 {
 		return nil
@@ -1413,13 +1215,10 @@ func validateOmittedCells(r *Rule, p *Part,
 		if p.blank[id] == nil {
 			continue
 		}
-		// Counted over the columns the row still PRINTS, skipped ones
-		// included: a blank is a claim about the page, and a row printing no
-		// figure leaves the read nothing to end on. Budget Book p81 prints its
-		// 2046-2050 and 2051-2055 lines with a figure under Grand Total alone,
-		// which the rule skips. A skipped column may be declared blank: ACFR
-		// p121 prints its fund balances with nothing under the Variance column
-		// the rule skips.
+		// Counted over the columns the row still prints, skipped ones included: a row
+		// printing no figure leaves the read nothing to end on. Budget Book p81's
+		// 2046-2050 line prints only a skipped Grand Total; ACFR p121 leaves its
+		// skipped Variance column blank.
 		printed := 0
 		for c := range p.Columns {
 			if !p.blank[id][c] {
@@ -1437,9 +1236,8 @@ func validateOmittedCells(r *Rule, p *Part,
 	return nil
 }
 
-// describeHeaders renders a header list for an error message. Written out
-// rather than left to %q because a ColumnHeader is a struct, and a null entry
-// has to read as the claim it is rather than as an empty string.
+// describeHeaders renders a header list for an error message, a null entry as
+// the claim it is.
 func describeHeaders(hs columnHeaders) string {
 	parts := make([]string, len(hs))
 	for i, h := range hs {
@@ -1448,12 +1246,9 @@ func describeHeaders(hs columnHeaders) string {
 	return "[" + strings.Join(parts, " ") + "]"
 }
 
-// validateSubtotals checks the rows a rule declares as printed subtotals.
-//
-// A subtotal publishes nothing, so it is a skipped row: spelling both keeps
-// every reader of Row.Skip right without teaching each one about subtotals.
-// Its figures are compared by column header, so every part of a rule with a
-// subtotal row, or in a chain, names each of its columns.
+// validateSubtotals checks the rows a rule declares as printed subtotals. A
+// subtotal must also be skip: true, and every part of a rule with a subtotal
+// row, or in a chain, names each of its columns.
 func validateSubtotals(r *Rule, errf errFunc) error {
 	has := r.SubtotalChain != ""
 	for _, row := range r.Rows {

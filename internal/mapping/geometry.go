@@ -10,14 +10,10 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/hint"
 )
 
-// This file is the column-position guard: the second witness that says a figure
-// really is printed in the column the rule filed it under.
-//
-// It never SELECTS which tokens a row consumes. The -layout read is unchanged
-// and remains the only source of a value, its offset and its token, because
-// those three are published provenance and `fisc verify` re-derives them against
-// the page text. Geometry supplies a column index and nothing else, so turning
-// the guard on cannot move a byte of facts.jsonl -- it can only refuse.
+// This file is the column-position guard: the second witness that a figure is
+// printed in the column the rule filed it under. It never selects which tokens
+// a row consumes; the -layout read stays the only source of a value, offset and
+// token. Geometry supplies a column index, so the guard can only refuse.
 
 // placed is one -layout token's geometry: the word it pairs with, and which
 // printed line the two of them sit on.
@@ -26,19 +22,14 @@ type placed struct {
 	// line indexes the page's non-blank lines, which is what makes "these two
 	// tokens are on the same line" a comparison.
 	line int
-	// num is that line's number in the page text, which is what a person needs
-	// in a message. The two differ by every blank line above: p67 has 15 blank
+	// num is that line's number in the page text, for messages; p67 has 15 blank
 	// lines among its 48, so its tenth non-blank line is line 23.
 	num int
 }
 
-// pairing is one page's two substrates reconciled against each other.
-//
-// The line index is carried per token and not derived from the word's y0,
-// because words on one printed line do NOT share a y0 -- the worst spread
-// measured on the mapped pages is 0.96pt, which is the entire reason the line
-// grouping has a tolerance. Comparing coordinates here would reject legitimate
-// rows.
+// pairing is one page's two substrates reconciled against each other. The
+// line index is carried per token, not derived from y0: words on one printed
+// line spread up to 0.96pt on the mapped pages.
 type pairing struct {
 	// words is keyed by absolute byte offset into the page text, which is the
 	// offset tokens() already records and Value already publishes.
@@ -52,21 +43,12 @@ type pairing struct {
 	raised map[int]bool
 }
 
-// buildPairing reconciles the page text with the word geometry, token by token.
-//
-// Both substrates describe the same printed page, so they must agree about it.
-// Where they do, each -layout token has exactly one geometry word and the pairing
-// is an offset lookup; where they do not, this fails and the page cannot carry
-// the guard at all. That is a real limit rather than a theoretical one: measured
-// at b47f332, on 99 of the corpus's 786 pages the two disagree about how many
-// lines the page has, and on 108 more they disagree about the tokens on a line.
-//
-// ONE OF THEM IS MAPPED: ACFR p41, which has 52 non-blank text lines against 51
-// geometry lines. It declares no column_headers, so this never runs for it. The
-// claim worth checking is therefore not that every mapped page pairs -- one does
-// not -- but that every part ASKING for the guard can have it: fisc build
-// refuses a part that declares column_headers on a page that cannot pair.
-// Every page that fails refuses here rather than being read approximately.
+// buildPairing reconciles the page text with the word geometry, token by
+// token, or fails, and the page cannot carry the guard. Measured at b47f332, on
+// 99 of the corpus's 786 pages the two disagree about the line count and on 108
+// more about a line's tokens. ACFR p41 (52 text lines, 51 geometry lines) is
+// mapped and declares no column_headers; fisc build refuses a part declaring
+// column_headers on a page that cannot pair.
 func buildPairing(text string, g *geom.Page) (*pairing, error) {
 	var printed []textLine
 	base := 0
@@ -118,16 +100,11 @@ type textLine struct {
 }
 
 // splitSuperscripts gives back to its own line every footnote superscript the
-// geometry clustered into the printed line below it.
-//
-// -layout prints a superscript on a line of its own while its y0 sits within
-// Page.Lines' tolerance of the line under it. The committed pages that pair
-// only because of this are pinned by TestFootnoteSuperscriptsTheCorpusReconciles.
-//
-// It walks the two substrates in step and SPLITS rather than compares: the
-// lines it returns go through buildPairing's token-by-token comparison like
-// any other, which is what refuses a page that disagreed somewhere else. The
-// set it returns indexes the superscripts it split out.
+// geometry clustered into the printed line below it. The pages that pair only
+// because of this are pinned by TestFootnoteSuperscriptsTheCorpusReconciles.
+// It splits rather than compares, so buildPairing's comparison still refuses a
+// page that disagrees elsewhere. The set it returns indexes the split
+// superscripts.
 func splitSuperscripts(printed []textLine, lines []geom.Line) ([]geom.Line, map[int]bool) {
 	out := make([]geom.Line, 0, len(lines))
 	raised := map[int]bool{}
@@ -150,15 +127,9 @@ func splitSuperscripts(printed []textLine, lines []geom.Line) ([]geom.Line, map[
 
 // absorbedSuperscript reports whether geometry line l is the text line next
 // plus the lone footnote marker the text line marker prints above it, and if
-// so returns the two lines apart.
-//
-// All of it must hold, and nothing else is reconciled: marker's only token is
-// a footnote marker; l is exactly next's tokens plus one word with that text;
-// and that word is a superscript, shorter than every other word on l and
-// raised above all of them. A full-height or unraised word is a figure the
-// substrates disagree about, and stays refused. ACFR p41's "0.0" fails every
-// arm: it is no marker, it is full height, it sits below its line's top, and
-// the line that absorbed it is the one above it.
+// so returns the two lines apart. The word must be a footnote marker, shorter
+// than every other word on l and raised above all of them; anything else stays
+// refused. ACFR p41's "0.0" fails every arm.
 func absorbedSuperscript(marker, next string, l geom.Line) (geom.Line, geom.Line, bool) {
 	toks := tokens(marker, 0)
 	if len(toks) != 1 || !isFootnoteMarker(toks[0].text) {
@@ -207,12 +178,9 @@ func isFootnoteMarker(s string) bool {
 }
 
 // raisedMarker reports whether the token at page offset off is a footnote
-// marker the page prints as a superscript over the line below it, which is
-// exactly the marker absorbedSuperscript split out of the line the geometry
-// clustered it into. A marker on a geometry line of its own is refused even
-// when shorter than that line: nothing ties it to the line below, so a
-// body-size "12" above a heading set larger would pass. A part with no guard
-// has no geometry to say so, and prints no marker.
+// marker absorbedSuperscript split out of the line below it. A marker on a
+// geometry line of its own is refused: nothing ties it to the line below. A
+// part with no guard prints no marker.
 func (g *columnGuard) raisedMarker(off int) bool {
 	if g == nil {
 		return false
@@ -257,14 +225,9 @@ func disagreement(toks []token, words []geom.Word) string {
 		strings.Join(geo, " "))
 }
 
-// pairing returns the reconciled substrates for page n, doing the work at most
-// once.
-//
-// A failure is NOT cached, which follows page rather than resolvedPart: this
-// reads two artifacts off a filesystem, so it is I/O-shaped, and the asymmetry
-// between the two existing memos is drawn on exactly that line. The lock is not
-// held across the work, because building it calls page, which takes the same
-// non-reentrant mutex.
+// pairing returns the reconciled substrates for page n, at most once. A
+// failure is not cached, since this is I/O, as page. The lock is not held
+// across the work, which calls page.
 func (r *Resolver) pairing(n int) (*pairing, error) {
 	r.mu.Lock()
 	pr, ok := r.pairings[n]
@@ -296,17 +259,13 @@ func (r *Resolver) pairing(n int) (*pairing, error) {
 }
 
 // columnGuard is the geometry cross-check for one part. It is nil for a part
-// that declares no column_headers, which reads exactly as it did before geometry
-// existed.
+// that declares no column_headers.
 type columnGuard struct {
 	grid *geom.Grid
 	pair *pairing
-	// band maps a column's index to its index in grid, and -1 for a column the
-	// page prints no header over -- which therefore has no band and can carry
-	// no placement claim. Only the last column may be unbanded (see
-	// ColumnHeader), so this is in practice the identity with at most a
-	// trailing -1; it is a map rather than a count so that a mistake in the
-	// parse rule cannot silently shift every band by one.
+	// band maps a column's index to its index in grid, and -1 for a headerless
+	// column, which has no band. Only the last column may be unbanded; a map
+	// rather than a count so a parse mistake cannot shift every band.
 	band []int
 }
 
@@ -330,14 +289,9 @@ func (r *Resolver) guard(rule *Rule, p *Part) (*columnGuard, error) {
 				"substrates disagree cannot carry the column guard")
 	}
 
-	// The header line is searched over the WHOLE page, not within the block.
-	// Three of the spine's p66 parts anchor after "EXPENDITURES:", which is
-	// below the header line, and p67's own section anchor is the end of that
-	// line. The grid is a property of the page; the rule only says which page
-	// and which columns.
-	// A headerless column is matched against nothing, because the page prints
-	// nothing to match. The band map below is what keeps the remaining headers
-	// aligned with the columns they belong to.
+	// The header line is searched over the whole page, not the block: three of
+	// the spine's p66 parts anchor below it. A headerless column is matched
+	// against nothing; the band map keeps the rest aligned.
 	headed := make([]string, 0, len(p.ColumnHeaders))
 	band := make([]int, len(p.ColumnHeaders))
 	for i, h := range p.ColumnHeaders {
@@ -376,11 +330,9 @@ func (r *Resolver) guard(rule *Rule, p *Part) (*columnGuard, error) {
 	}
 
 	m := matched[0]
-	// Anything printed on the header line right of the first column header and
-	// not part of a declared header is a column the rule does not know about.
-	// In-order matching catches a page that DROPPED a column -- an entry simply
-	// stops matching -- but not one that gained a column, where every entry
-	// still matches and the new column's figures join the last band.
+	// A word on the header line right of the first header and in no declared
+	// header is a column the rule does not know about. In-order matching catches
+	// a dropped column, not a gained one.
 	if stray, ok := m.strayRightOfFirst(pr.lines[m.line]); ok {
 		return fail(ErrNotFound,
 			fmt.Sprintf("%q is printed on the header line at x %.2f-%.2f but is "+
@@ -389,9 +341,8 @@ func (r *Resolver) guard(rule *Rule, p *Part) (*columnGuard, error) {
 				"columns with skip: true, or name it in column_headers")
 	}
 
-	// The gutter is the first column header's left edge. Column 0 has no
-	// natural left bound and these pages print no header over the row labels,
-	// so without one every label would file into the first column.
+	// The gutter is the first column header's left edge; without it every row
+	// label would file into the first column.
 	grid, err := geom.NewGrid(m.spans, m.spans[0].Lo)
 	if err != nil {
 		return fail(ErrNotFound, err.Error(),
@@ -416,11 +367,8 @@ type headerMatch struct {
 }
 
 // matchHeaders walks a line left to right looking for each header in turn,
-// joining consecutive words with one space.
-//
-// Each header must occur AFTER the one before it, because the list is a claim
-// about column ORDER: a page that dropped a column has to fail rather than
-// shift every figure one place, and no count can detect that.
+// joining consecutive words with one space. Each header must occur after the
+// one before it, so a dropped column fails.
 func matchHeaders(line geom.Line, headers []string) headerMatch {
 	m := headerMatch{consumed: map[int]bool{}, first: -1}
 	at := 0
@@ -464,11 +412,9 @@ func findHeader(words []geom.Word, from int, want string) (start, end int, ok bo
 	return 0, 0, false
 }
 
-// strayRightOfFirst returns a word on the header line that sits right of the
-// first matched header and belongs to no header.
-//
-// Words LEFT of the first header are the row-label area's own heading -- CIP p40
-// prints "PROJECT NUMBER PROJECT NAME" there -- and are expected.
+// strayRightOfFirst returns a word on the header line right of the first
+// matched header that belongs to no header. Words left of it are the label
+// area's heading (CIP p40's "PROJECT NUMBER PROJECT NAME").
 func (m headerMatch) strayRightOfFirst(line geom.Line) (geom.Word, bool) {
 	for i := m.first + 1; i < len(line.Words); i++ {
 		if !m.consumed[i] {
@@ -508,22 +454,11 @@ func describeLines(pr *pairing, matched []headerMatch) string {
 	return b.String()
 }
 
-// checkRow is the payoff: every figure this row yields must be printed in the
-// band of the column the rule filed it under, and all of them must come off one
-// printed line.
-//
-// The placement check subsumes two others worth naming, so that nobody adds them
-// back. A token whose right edge lands left of the gutter is in the row-label
-// area, and Index reports -1, which is not any column. Two tokens landing in one
-// band fails too, because the second one is not in the band its own column
-// claims -- which is what catches a printed figure that extraction split in
-// half.
-//
-// toks[k] is filed under column cols[k]. A column missing from cols is one the
-// rule declares blank on this row, and a word printed in its band refuses the
-// row: that is the check that a declared blank is blank, and it runs before
-// placement so a figure under it is named as such rather than as a figure
-// filed one column over.
+// checkRow holds every figure this row yields to the band of the column the
+// rule filed it under, all off one printed line. A token left of the gutter
+// (Index -1) or two tokens in one band (a figure extraction split) fail
+// placement too. toks[k] is filed under cols[k]; a word in the band of a
+// column declared blank refuses the row, checked before placement.
 func (g *columnGuard) checkRow(r *Resolver, rule *Rule, p *Part, row Row, toks []token,
 	cols []int) error {
 	fail := func(field, msg, remedy string) error {
@@ -557,10 +492,8 @@ func (g *columnGuard) checkRow(r *Resolver, rule *Rule, p *Part, row Row, toks [
 		where := fmt.Sprintf("row %q column %d", row.PrintedLabel(), c+1)
 		pl, ok := g.pair.words[tk.off]
 		if !ok {
-			// The substrates were already proved to agree token for token, so
-			// the only way to hold an offset no word starts at is to have begun
-			// reading inside a printed word -- which means a row label matched
-			// part of one.
+			// The substrates agree token for token, so an offset no word starts at means
+			// a row label matched part of a printed word.
 			return fail(where, fmt.Sprintf(
 				"token %q starts inside a printed word rather than at one", tk.text),
 				"a row label matched part of a longer word on the page; give "+
@@ -575,12 +508,8 @@ func (g *columnGuard) checkRow(r *Resolver, rule *Rule, p *Part, row Row, toks [
 				"the row prints fewer figures than the rule declares columns, so "+
 					"the read has run on to the next printed line")
 		}
-		// A column the page prints no header over has no band, so there is no
-		// placement claim to make about its token -- only the same-line check
-		// above, the row's token count, and checkGap's refusal of anything
-		// unexplained between rows. What is given up is bounded by
-		// ColumnHeader's rule that only the LAST column may be unbanded: past
-		// the last header there is nothing to check against anyway.
+		// A headerless column has no band and no placement claim; only the last
+		// column may be one.
 		want := g.band[c]
 		if want < 0 {
 			continue
@@ -595,10 +524,8 @@ func (g *columnGuard) checkRow(r *Resolver, rule *Rule, p *Part, row Row, toks [
 	return nil
 }
 
-// column is the reverse of band: which COLUMN a grid band belongs to, so a
-// misplacement is reported against the column an author declared rather than
-// against a band index they never wrote. -1 for the row-label area, which
-// grid.Index also reports as -1 and which belongs to no column.
+// column is the reverse of band, so a misplacement names the declared column;
+// -1 for the row-label area.
 func (g *columnGuard) column(bandIdx int) int {
 	if bandIdx < 0 {
 		return -1
@@ -611,9 +538,7 @@ func (g *columnGuard) column(bandIdx int) int {
 	return -1
 }
 
-// placementMessage describes a misplacement as a sentence about the DOCUMENT,
-// because that is what a reader has to act on: the city moved a column, or the
-// rule names them in the wrong order.
+// placementMessage describes a misplacement as a sentence about the document.
 func placementMessage(p *Part, want, got int, text string, w geom.Word) string {
 	where := "the row-label area, left of the first column"
 	if got >= 0 {
@@ -639,34 +564,15 @@ func describeColumn(c Column) string {
 	return fmt.Sprintf("%s FY%d", c.FundGroup, c.FiscalYear)
 }
 
-// checkLineAccounting is the structural half of the guard, and it is what a
-// label-less part has instead of row labels. It reads no geometry itself -- the
-// per-row line identity checkRow established is what makes counting printed
-// lines meaningful -- so it hangs off the resolver rather than off the guard,
-// and runs only for a part that asked to be guarded.
-//
-// Every row consumes exactly one printed line and every printed line inside the
-// block is consumed by exactly one row. checkRow gives each row a single line;
-// this adds that there are exactly as many lines as rows, and together with the
-// value count that is the bijection.
-//
-// It catches what the value count cannot. A part whose columns cannot tell two
-// figures apart -- a single-column part is the clearest case, since its one band
-// claims everything right of the gutter -- has nothing to say when two printed
-// rows are fused onto one line, which is a corruption the previous extractor
-// produced routinely. The count of lines does.
-//
-// There is deliberately no separate check that no two rows read the SAME line.
-// While positionalValues requires the value count to match exactly, a line that
-// no row consumed would take its tokens with it and fail that count first, so
-// such a check could not fire. It becomes reachable only when the exact count is
-// relaxed for sparse pages, and belongs in that change rather than sitting here
-// unexercised.
+// checkLineAccounting is the structural half of the guard, what a label-less
+// part has instead of row labels: every row consumes exactly one printed line
+// and every printed line in the block is consumed by exactly one row. It
+// catches two rows fused onto one line, which a single-column part's value
+// count cannot. No check that two rows read the same line: under
+// positionalValues' exact count it could not fire.
 func (r *Resolver) checkLineAccounting(rule *Rule, p *Part, blk *block, rows []Row) error {
-	// A block may begin or end mid-line, which is normal -- p67's section anchor
-	// is the end of the header line, and its stop_at is the "$" of the totals
-	// row. A partial line still counts if it carries anything printed, because
-	// what is being counted is the printed lines the block covers.
+	// A block may begin or end mid-line (p67); a partial line counts if it
+	// carries anything printed.
 	fail := func(msg, remedy string) error {
 		return hint.With(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
 			Page: p.Page, Field: "parts", Msg: msg, Err: ErrNotFound}, remedy)

@@ -53,19 +53,12 @@ func Chains(f *File) [][]*Rule {
 }
 
 // CheckSubtotals walks a chain's rows in order and holds every subtotal row's
-// figures to the rows above it, column by column (see Row.Subtotal).
-//
-// A row's figures are gathered from every part that prints it, so a labelled
-// page and its label-less continuation are one row. A column is a part's
-// position and that column's place in it, which is why every rule in a chain
-// must lay its parts and headers out alike: Budget Book p81 prints Principal,
-// Interest and Total twice, once a year, so a header alone names no column. A
-// row that is not a subtotal adds to every level's running sum; a subtotal of
-// level L compares every column either it or the rows above it print against
-// level L's sum, and then clears every level up to L. A subtotal over no row
-// is refused, and so is a row after the chain's last subtotal: a printed
-// table's rows are all inside some total, and one that is not has been read
-// from the wrong place.
+// figures to the rows above it, column by column (see Row.Subtotal). A row's
+// figures are gathered from every part that prints it. A column is a part's
+// position and its place in it, so every rule in a chain lays out its parts
+// and headers alike (Budget Book p81 prints Principal, Interest and Total
+// twice). A subtotal over no row is refused, and so is a row after the chain's
+// last subtotal.
 func (r *Resolver) CheckSubtotals(chain []*Rule) (*SubtotalsResult, error) {
 	type column struct{ part, col int }
 	byPosition := func(a, b column) int {
@@ -128,9 +121,7 @@ func (r *Resolver) CheckSubtotals(chain []*Rule) (*SubtotalsResult, error) {
 						sums[l][k] += c.Cents
 					}
 				}
-				// A row with no amount cell -- a non-amount quantity row --
-				// adds nothing, and counting it would let a subtotal over it
-				// pass with nothing summed.
+				// A non-amount row adds nothing and does not count as summed.
 				if len(figures[i]) > 0 {
 					for l := 1; l <= levels; l++ {
 						rows[l]++
