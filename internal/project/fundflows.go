@@ -185,37 +185,17 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*Document, error) {
 		f.addFundFlowNode(nodes, src)
 		f.addFundFlowNode(nodes, dst)
 		kind := revenueLinkKind(k)
-		links = append(links, Link{
-			Source: src.id, Target: dst.id, ValueCents: c.cents,
-			Kind: kind, FactIDs: c.factIDs,
-			Locators: c.locs.sources(),
-		})
+		links = append(links, c.link(src.id, dst.id, kind))
 		// The (2,3) rollup includes transfers: a fund group's printed inflow on
 		// p0067 counts them.
-		fk := fundRollupKey{fund: k.fund, kind: kind}
-		fr := perFund[fk]
-		if fr == nil {
-			fr = &cellSum{}
-			perFund[fk] = fr
-		}
-		fr.cents += c.cents
-		fr.factIDs = append(fr.factIDs, c.factIDs...)
-		fr.locs.merge(&c.locs)
+		rollUp(perFund, fundRollupKey{fund: k.fund, kind: kind}, cellSum{}).merge(c)
 		// A transfer is not a line, so it has no (1,0) rollup.
 		if src.tier() != tierRevenueLine {
 			continue
 		}
 		// Unlike the tier-3-to-4 division total, this rollup skips zero cells,
 		// so a printed dash stays uncited.
-		rk := rollupKey{line: k.line, kind: kind}
-		r := perLine[rk]
-		if r == nil {
-			r = &lineRollup{src: src}
-			perLine[rk] = r
-		}
-		r.cents += c.cents
-		r.factIDs = append(r.factIDs, c.factIDs...)
-		r.locs.merge(&c.locs)
+		rollUp(perLine, rollupKey{line: k.line, kind: kind}, lineRollup{src: src}).merge(c)
 	}
 
 	// Tier 1 -> 0: the printed rows added back up into the category they are
@@ -228,11 +208,7 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*Document, error) {
 		}
 		sort.Strings(r.factIDs)
 		f.addFundFlowNode(nodes, r.src)
-		links = append(links, Link{
-			Source: r.src.id, Target: r.src.parent, ValueCents: r.cents,
-			Kind: k.kind, FactIDs: r.factIDs,
-			Locators: r.locs.sources(),
-		})
+		links = append(links, r.link(r.src.id, r.src.parent, k.kind))
 	}
 
 	// Tier 2 -> 3: each fund's own inflow, under the group data/funds.yaml puts
@@ -258,11 +234,7 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*Document, error) {
 				"the tier-2 link that lets a group be drawn between the categories and "+
 					"its funds runs from that group, so a fund with none has no source end")
 		}
-		links = append(links, Link{
-			Source: group, Target: dst.id, ValueCents: r.cents,
-			Kind: k.kind, FactIDs: r.factIDs,
-			Locators: r.locs.sources(),
-		})
+		links = append(links, r.link(group, dst.id, k.kind))
 	}
 
 	// Tier 4 -> 5, one link per expenditure cell, and tier 3 -> 4, one link per
@@ -270,16 +242,9 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*Document, error) {
 	perDivision := map[string]*cellSum{}
 	for _, k := range sortedExpKeys(exp) {
 		c := exp[k]
-		d := perDivision[k.division]
-		if d == nil {
-			d = &cellSum{}
-			perDivision[k.division] = d
-		}
 		// The division's total and citation include the zero cells, so both
 		// sides of link-values-tie-to-facts are of one set.
-		d.cents += c.cents
-		d.factIDs = append(d.factIDs, c.factIDs...)
-		d.locs.merge(&c.locs)
+		rollUp(perDivision, k.division, cellSum{}).merge(c)
 
 		if c.cents == 0 {
 			continue
@@ -291,11 +256,7 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*Document, error) {
 		dst := f.objectEndpoint(k.division, k.category)
 		f.addFundFlowNode(nodes, src)
 		f.addFundFlowNode(nodes, dst)
-		links = append(links, Link{
-			Source: src.id, Target: dst.id, ValueCents: c.cents,
-			Kind: KindExternal, FactIDs: c.factIDs,
-			Locators: c.locs.sources(),
-		})
+		links = append(links, c.link(src.id, dst.id, KindExternal))
 	}
 
 	fundNode, err := f.fundEndpoint(generalFund)
@@ -314,11 +275,7 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*Document, error) {
 		}
 		f.addFundFlowNode(nodes, fundNode)
 		f.addFundFlowNode(nodes, dst)
-		links = append(links, Link{
-			Source: fundNode.id, Target: dst.id, ValueCents: d.cents,
-			Kind: KindExternal, FactIDs: d.factIDs,
-			Locators: d.locs.sources(),
-		})
+		links = append(links, d.link(fundNode.id, dst.id, KindExternal))
 	}
 
 	// Tier 3 -> 5, one link per pp.173-183 cell, from the fund itself.
@@ -336,11 +293,7 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*Document, error) {
 		dst := fundObjectEndpoint(k.fund, k.category)
 		f.addFundFlowNode(nodes, src)
 		f.addFundFlowNode(nodes, dst)
-		links = append(links, Link{
-			Source: src.id, Target: dst.id, ValueCents: c.cents,
-			Kind: boundaryKind(k.fundGroup), FactIDs: c.factIDs,
-			Locators: c.locs.sources(),
-		})
+		links = append(links, c.link(src.id, dst.id, boundaryKind(k.fundGroup)))
 	}
 
 	// Every parent must resolve to a node in this document, even one no link
@@ -476,6 +429,30 @@ type cellSum struct {
 	cents   int64
 	factIDs []string
 	locs    locatorSet
+}
+
+// link is the link from src to dst carrying this sum and its citation.
+func (c *cellSum) link(src, dst string, kind LinkKind) Link {
+	return Link{Source: src, Target: dst, ValueCents: c.cents, Kind: kind,
+		FactIDs: c.factIDs, Locators: c.locs.sources()}
+}
+
+// merge adds o's figure and citation into this sum, appending o's ids
+// unsorted; a caller publishing them sorts them first.
+func (c *cellSum) merge(o *cellSum) {
+	c.cents += o.cents
+	c.factIDs = append(c.factIDs, o.factIDs...)
+	c.locs.merge(&o.locs)
+}
+
+// rollUp is m's entry for k, stored as a copy of fresh when there is none.
+func rollUp[K comparable, V any](m map[K]*V, k K, fresh V) *V {
+	v := m[k]
+	if v == nil {
+		v = &fresh
+		m[k] = v
+	}
+	return v
 }
 
 // revKey addresses a revenue cell: the money a fund takes in, by printed row.

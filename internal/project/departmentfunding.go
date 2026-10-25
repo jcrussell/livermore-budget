@@ -112,13 +112,9 @@ func (d *departmentFunding) Document(facts []fact.Fact, o Options) (*Document, e
 		}
 		d.addNode(nodes, src)
 		d.addNode(nodes, dst)
-		links = append(links, Link{
-			Source: src.id, Target: dst.id, ValueCents: c.cents,
-			// These rows print the fund, so the paying fund group can answer
-			// the boundary question the upper block cannot.
-			Kind: boundaryKind(k.fundGroup), FactIDs: c.factIDs,
-			Locators: c.locs.sources(),
-		})
+		// These rows print the fund, so the paying fund group can answer the
+		// boundary question the upper block cannot.
+		links = append(links, c.link(src.id, dst.id, boundaryKind(k.fundGroup)))
 	}
 
 	if err = d.addFundGroups(nodes); err != nil {

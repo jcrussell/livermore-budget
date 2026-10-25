@@ -110,13 +110,10 @@ func (d *departmentSpending) Document(facts []fact.Fact, o Options) (*Document, 
 		}
 		d.addNode(nodes, src)
 		d.addNode(nodes, dst)
-		links = append(links, Link{
-			Source: src.id, Target: dst.id, ValueCents: c.cents,
-			Kind: spendingLinkKind(k.kind), FactIDs: c.factIDs,
-			Locators: c.locs.sources(),
-			// Every link here is a cell of one matrix read along its second axis.
-			Partition: true,
-		})
+		l := c.link(src.id, dst.id, spendingLinkKind(k.kind))
+		// Every link here is a cell of one matrix read along its second axis.
+		l.Partition = true
+		links = append(links, l)
 	}
 
 	out, err := drawGraph(nodes, links)
