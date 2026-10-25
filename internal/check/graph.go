@@ -573,8 +573,7 @@ func (*headlineTiesToFacts) Run(_ context.Context, s *Subject) (Result, error) {
 //
 // The residual is not zero and the caveats say why: p76's own grand total is
 // the transfers-in side to the cent, so mapping it pairs every leg the city
-// itemises and leaves the residual exactly where it is (fisc-5gk.3, proved in
-// internal/mapping/transfers_p76_test.go).
+// itemises and leaves the residual exactly where it is (fisc-5gk.3).
 type headlineTransferResidual struct{}
 
 func (*headlineTransferResidual) meta() meta {

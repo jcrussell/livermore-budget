@@ -22,14 +22,6 @@ also returns ten hits that encode a different and largely true proposition — h
 many groups the spine prints, not how many stop at their funds. The same numeral
 standing for two claims is why this cannot be a check. `fisc-xbd4`.
 
-## The tests already refuse intrinsic counts and the prose never got the memo
-
-`TestTheCommittedCorpusVacuitySplit` says *"It asserts the words and not the
-subject counts. The counts move with every page that gets mapped, and pinning
-them here would make this a test of the mapping's size."* It refuses a count
-that comment phrases and printed strings elsewhere in the same packages go on
-to state anyway. `fisc-pm8f`.
-
 ## The gate line's own count is the trap
 
 Three consecutive review passes corrected it and each correction was wrong in a

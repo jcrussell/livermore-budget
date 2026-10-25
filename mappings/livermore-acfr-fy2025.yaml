@@ -439,11 +439,10 @@ rules:
         # requires and what bounds it: the stated totals are read off this
         # line and the rows begin on the next.
         section: "General Government:"
-        # "Fire" is the next top-level function the page prints. It occurs
-        # exactly once after the anchor -- asserted by
-        # TestACFRp0041GeneralGovernmentStopsAtFire, because Block resolves
-        # stop_at with a plain first-match search and no uniqueness guard of
-        # its own (fisc-km5n).
+        # "Fire" is the next top-level function the page prints, once after
+        # the anchor. Block resolves stop_at with a plain first-match search
+        # and no uniqueness guard of its own (fisc-km5n), so a re-extraction
+        # that moved it would show in the facts rebuild's cmp.
         stop_at: "Fire"
         columns:
           - {fund_group: general, fiscal_year: 2025}

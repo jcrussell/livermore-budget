@@ -64,10 +64,9 @@ type pairing struct {
 // ONE OF THEM IS MAPPED: ACFR p41, which has 52 non-blank text lines against 51
 // geometry lines. It declares no column_headers, so this never runs for it. The
 // claim worth checking is therefore not that every mapped page pairs -- one does
-// not -- but that every part ASKING for the guard can have it, which
-// TestEveryMappedPartWithHeadersCanCarryTheColumnGuard pins over the committed
-// corpus. Every page that fails refuses here rather than being read
-// approximately.
+// not -- but that every part ASKING for the guard can have it: fisc build
+// refuses a part that declares column_headers on a page that cannot pair.
+// Every page that fails refuses here rather than being read approximately.
 func buildPairing(text string, g *geom.Page) (*pairing, error) {
 	var printed []textLine
 	base := 0

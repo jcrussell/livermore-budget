@@ -509,10 +509,8 @@ contributes zero. Capital pays $211,150 of its $28,584,740: Traffic Impact Fee
 (510), County Measure D (550) and State − Gas Tax (560) are `type: capital` in
 `data/funds.yaml`, and p76 lists all three as payers.
 
-`TestP76SourcesDecomposeTheResidualByFundType` resolves every payer through
-`registry.FundByLabel` and asserts `spine_TRANSFER_OUT == p76_paid + to_CIP` for
-all six groups in both budget years; `cuts-tie-along-the-lattice` makes the
-same claim over the published facts through the split
+`cuts-tie-along-the-lattice` holds `spine_TRANSFER_OUT == p76_paid + to_CIP`
+for all six groups in both budget years, over the published facts, through the split
 `a-transfer-out-is-p76-or-to-the-cip`, which sums p76's transfers out and
 p222's transfers to the CIP by fund group and holds them to the spine. p222
 names each transferring fund, so the sum splits Capital from Special Revenue

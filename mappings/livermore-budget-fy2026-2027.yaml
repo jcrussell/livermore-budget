@@ -3138,8 +3138,7 @@ rules:
   # exactly 5,000,000 -- millions, nothing like the <=$5 rounding class that
   # stated_total_deltas is for -- and pp.66-67 print no actual or revised
   # column, so nothing on the spine could reconcile them either. They are read
-  # and skipped. internal/mapping/transfers_p76_test.go pins both deltas, so a
-  # change in them is still caught.
+  # and skipped, and publish nothing.
   #
   # NO total_row. p76 prints ONE grand total for the whole schedule, beneath its
   # last section, with no printed label to anchor on (p0076.txt:64 is a bare
@@ -3147,8 +3146,9 @@ rules:
   # twice over -- a covered rule must print its own total, and covered rules
   # must declare the same columns, which these do not because each names its own
   # fund_group -- and an `unassertable` rollup still requires a total_row it
-  # would have to invent. So the cross-rule sum stays in Go, where
-  # transfers_p76_test.go reads it off THESE rules (fisc-9m7). Consequence,
+  # would have to invent. So the cross-rule sum is held by
+  # cuts-tie-along-the-lattice's a-transfer-out-is-p76-or-to-the-cip split,
+  # against the spine (fisc-9m7). Consequence,
   # stated so it is not discovered afterwards: fisc build's parts_unchecked
   # goes 6 -> 11.
   # ==========================================================================
