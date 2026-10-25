@@ -379,17 +379,7 @@ func TestTheScopeIsWhatStopsTheDoubling(t *testing.T) {
 	}
 
 	res := runCheck(t, &cutsTieAlongTheLattice{}, &s)
-	if res.Status != StatusFail {
-		t.Fatalf("with pp.85-125's lower block re-scoped to the spine the cut check reported "+
-			"%s, not fail: %s", res.Status, res.Summary)
-	}
-	details := said(res)
-	for _, want := range []string{`cut "spine"`, "no single level"} {
-		if !strings.Contains(details, want) {
-			t.Errorf("no finding says %s; the refusal should name the cut and its grain:\n%s",
-				want, details)
-		}
-	}
+	wantFail(t, res, `cut "spine"`, "no single level")
 	// And the doubling it would otherwise publish, measured on the same facts:
 	// the spine's General Fund FY2026 expenditure is exactly twice p66's.
 	var general amount.Cents

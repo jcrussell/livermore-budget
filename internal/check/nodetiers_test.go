@@ -130,12 +130,7 @@ func TestNodeTiersAreDeclaredIsFailable(t *testing.T) {
 			s := tieredSubject(t)
 			c.damage(t, spineGraph(t, s))
 			res := runCheck(t, &nodeTiersAreDeclared{}, s)
-			if res.Status != StatusFail {
-				t.Fatalf("status = %s, want FAIL", res.Status)
-			}
-			if !hasFinding(res, c.want) {
-				t.Errorf("no finding mentions %q; got %v", c.want, res.Findings)
-			}
+			wantFail(t, res, c.want)
 		})
 	}
 }
@@ -168,14 +163,7 @@ func TestARollupIsTheOnlyDescendingLinkAllowed(t *testing.T) {
 
 	// A mis-pointed rollup: transfers/in is tier 0 and nobody's parent.
 	res := runCheck(t, &nodeTiersAreDeclared{}, rolled(t, "transfers/in"))
-	if res.Status != StatusFail {
-		t.Fatalf("a line pointing at a tier-0 node that is not its parent is %s, want FAIL",
-			res.Status)
-	}
-	if !hasFinding(res, "is not a revenue line rolled up into its own category") {
-		t.Errorf("no finding says the target is not the source's own parent; got %v",
-			res.Findings)
-	}
+	wantFail(t, res, "is not a revenue line rolled up into its own category")
 
 	// A reversed parent -> child link is child -> own parent too; only a
 	// revenue line may roll up.

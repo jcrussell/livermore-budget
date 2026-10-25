@@ -62,16 +62,7 @@ func TestARepublishedTotalIsCaught(t *testing.T) {
 	})
 
 	res := runCheck(t, &factOffsetIsNotAStatedTotal{}, s)
-	if res.Status != StatusFail {
-		t.Fatalf("a fact citing rule %q's stated total reported %s: %s",
-			ruleID, res.Status, res.Summary)
-	}
-	got := said(res)
-	for _, want := range []string{ruleID, "some-other-rule", "stated-total line"} {
-		if !strings.Contains(got, want) {
-			t.Errorf("the finding does not name %q: %s", want, got)
-		}
-	}
+	wantFail(t, res, ruleID, "some-other-rule", "stated-total line")
 }
 
 // pageOf is the extracted text of one page, for tests that need to look at the
@@ -121,19 +112,9 @@ func TestARepublishedRollupTotalIsCaught(t *testing.T) {
 	})
 
 	res := runCheck(t, &factOffsetIsNotAStatedTotal{}, s)
-	if res.Status != StatusFail {
-		t.Fatalf("a fact citing rollup %q's printed total reported %s: %s",
-			id, res.Status, res.Summary)
-	}
-	got := said(res)
-	if !strings.Contains(got, id) {
-		t.Errorf("the finding does not name the rollup %q: %s", id, got)
-	}
 	// It must say "rollup", not "rule": rollup ids are not rule ids, so
 	// `rule "dept-city-council"` names a rule mappings/ does not hold.
-	if !strings.Contains(got, `rollup "`+id+`"`) {
-		t.Errorf("the finding calls the rollup a rule: %s", got)
-	}
+	wantFail(t, res, id, `rollup "`+id+`"`)
 }
 
 // TestLosingASpanningRulesTotalIsCaught: losing a total_spans_parts rule's
@@ -228,16 +209,7 @@ func TestALabelLessPartThatLosesItsTotalLineIsCaught(t *testing.T) {
 
 	bentPart.StopAt, bentPart.StopAtOrdinal = footer, 0
 	res := runCheck(t, &factOffsetIsNotAStatedTotal{}, s)
-	if res.Status != StatusFail {
-		t.Fatalf("rule %q's p%d part stops at %q, a line printing no totals, and the check "+
-			"reported %s: %s", bentRule.ID, bentPart.Page, footer, res.Status, res.Summary)
-	}
-	got := said(res)
-	for _, want := range []string{bentRule.ID, fmt.Sprintf("p%d", bentPart.Page), "no run of"} {
-		if !strings.Contains(got, want) {
-			t.Errorf("the finding does not name %q: %s", want, got)
-		}
-	}
+	wantFail(t, res, bentRule.ID, fmt.Sprintf("p%d", bentPart.Page), "no run of")
 }
 
 // TestOneLostPartIsCaughtEvenWhenOthersResolve holds the arm to per-part, on a
@@ -249,7 +221,6 @@ func TestOneLostPartIsCaughtEvenWhenOthersResolve(t *testing.T) {
 	// A rule that keeps some span after its total_row is broken, found by
 	// simulation (spine-revenues: labelled p66, label-less p67).
 	var bent *mapping.Rule
-	var before, after int
 	count := func(r *mapping.Resolver, rule *mapping.Rule) int {
 		n := 0
 		for j := range rule.Parts {
@@ -272,7 +243,7 @@ func TestOneLostPartIsCaughtEvenWhenOthersResolve(t *testing.T) {
 			a := count(r, rule)
 			rule.TotalRow = was
 			if a > 0 && a < b {
-				bent, before, after = rule, b, a
+				bent = rule
 				break
 			}
 		}
@@ -292,16 +263,7 @@ func TestOneLostPartIsCaughtEvenWhenOthersResolve(t *testing.T) {
 
 	bent.TotalRow = "No Page Prints This Row"
 	res := runCheck(t, &factOffsetIsNotAStatedTotal{}, s)
-	if res.Status != StatusFail {
-		t.Fatalf("rule %q went from %d resolved spans to %d and the check reported %s: %s",
-			id, before, after, res.Status, res.Summary)
-	}
-	got := said(res)
-	for _, want := range []string{id, "fails to resolve it on"} {
-		if !strings.Contains(got, want) {
-			t.Errorf("the finding does not name %q: %s", want, got)
-		}
-	}
+	wantFail(t, res, id, "fails to resolve it on")
 }
 
 // TestNoTotalLurksAtAnUndeclaredLabelLessTerminator: the block terminators of
@@ -422,15 +384,7 @@ func TestARuleWhoseTotalResolvesNowhereIsCaught(t *testing.T) {
 	bent.TotalRow = "No Page Prints This Row"
 
 	res := runCheck(t, &factOffsetIsNotAStatedTotal{}, s)
-	if res.Status != StatusFail {
-		t.Fatalf("a rule whose total_row resolves nowhere reported %s: %s", res.Status, res.Summary)
-	}
-	got := said(res)
-	for _, want := range []string{id, "fails to resolve it on", "No Page Prints This Row"} {
-		if !strings.Contains(got, want) {
-			t.Errorf("the finding does not name %q: %s", want, got)
-		}
-	}
+	wantFail(t, res, id, "fails to resolve it on", "No Page Prints This Row")
 }
 
 // TestALineFoundByOrdinalIsNamedWithIt: p81's total is the 19th "$" after its
@@ -442,7 +396,7 @@ func TestARuleWhoseTotalResolvesNowhereIsCaught(t *testing.T) {
 func TestALineFoundByOrdinalIsNamedWithIt(t *testing.T) {
 	t.Parallel()
 	s := mutable(t)
-	doc, page, off, ruleID := aStatedTotalLine(t, s, func(_ *mapping.Rule, p *mapping.Part) bool {
+	doc, page, off, _ := aStatedTotalLine(t, s, func(_ *mapping.Rule, p *mapping.Part) bool {
 		return p.StopAtOrdinal > 0
 	})
 	s.Facts = append(s.Facts, fact.Fact{
@@ -450,12 +404,7 @@ func TestALineFoundByOrdinalIsNamedWithIt(t *testing.T) {
 		RuleID: "some-other-rule", RowLabel: "A Row That Is Really A Total",
 	})
 	res := runCheck(t, &factOffsetIsNotAStatedTotal{}, s)
-	if res.Status != StatusFail {
-		t.Fatalf("a fact on rule %q's ordinal-anchored total reported %s", ruleID, res.Status)
-	}
-	if got := said(res); !strings.Contains(got, "occurrence 19 after the block's start") {
-		t.Errorf("the finding does not name the line by its ordinal: %s", got)
-	}
+	wantFail(t, res, "occurrence 19 after the block's start")
 }
 
 // TestAnOrdinalWithNoSectionCountsFromThePage: with no section the block

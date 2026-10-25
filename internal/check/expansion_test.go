@@ -649,9 +649,7 @@ func TestRepeatsAndRestatesAreTheExpansionsAlone(t *testing.T) {
 			}
 			res := runCheck(t, &linkValuesTieToFacts{}, s)
 			want := "which only the expansion schedule's links carry"
-			if res.Status != StatusFail || !hasFinding(res, want) {
-				t.Errorf("link-values-tie-to-facts is %s with findings %v, want a failure naming %q", res.Status, res.Findings, want)
-			}
+			wantFail(t, res, want)
 		})
 	}
 }

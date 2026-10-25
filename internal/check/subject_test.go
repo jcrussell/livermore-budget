@@ -465,12 +465,7 @@ func TestACentsValueUnderADollarsUnitFails(t *testing.T) {
 	})
 
 	res := resultFor(t, loadAndRun(t, root), "fact-token-reparses")
-	if res.Status != StatusFail {
-		t.Errorf("fact-token-reparses = %s (%s), want fail", res.Status, res.Summary)
-	}
-	if !hasFinding(res, "off by $0.69") {
-		t.Errorf("findings %v do not state the 69-cent difference", res.Findings)
-	}
+	wantFail(t, res, "off by $0.69")
 }
 
 // TestACorruptedTokenFails is the same check from the other side: the amount is
@@ -485,12 +480,7 @@ func TestACorruptedTokenFails(t *testing.T) {
 
 	rep := loadAndRun(t, root)
 	res := resultFor(t, rep, "fact-token-reparses")
-	if res.Status != StatusFail {
-		t.Fatalf("fact-token-reparses = %s, want fail", res.Status)
-	}
-	if !hasFinding(res, `token "1,234"`) {
-		t.Errorf("findings %v do not name the token", res.Findings)
-	}
+	wantFail(t, res, `token "1,234"`)
 	// And the page no longer says what the fact says it says, which is a second,
 	// independent failure rather than the same one twice.
 	if got := resultFor(t, rep, "fact-offset-points-at-token").Status; got != StatusFail {
@@ -573,12 +563,7 @@ func TestAnOffsetPastTheEndOfThePageFails(t *testing.T) {
 			})
 
 			res := resultFor(t, loadAndRun(t, root), "fact-offset-points-at-token")
-			if res.Status != StatusFail {
-				t.Fatalf("fact-offset-points-at-token = %s, want fail", res.Status)
-			}
-			if !hasFinding(res, "runs past the end of") {
-				t.Errorf("findings %v do not report the offset as out of bounds", res.Findings)
-			}
+			wantFail(t, res, "runs past the end of")
 		})
 	}
 }
@@ -685,15 +670,7 @@ func TestTheYearTheSitePublishesMustBeBuilt(t *testing.T) {
 		t.Error("dropping the published fiscal year did not fail the run")
 	}
 	res := resultFor(t, rep, "published-projection-built")
-	if res.Status != StatusFail {
-		t.Fatalf("published-projection-built = %s (%s), want fail", res.Status, res.Summary)
-	}
-	detail := said(res)
-	for _, want := range []string{"unexamined", "FY2027"} {
-		if !strings.Contains(detail, want) {
-			t.Errorf("findings %v do not contain %q", res.Findings, want)
-		}
-	}
+	wantFail(t, res, "unexamined", "FY2027")
 	// The other year is still checked, which is what makes this a report about a
 	// missing slice rather than an empty one.
 	if got := resultFor(t, rep, "counts-reconcile").Status; got != StatusPass {

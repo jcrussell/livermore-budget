@@ -166,9 +166,7 @@ func TestLinkEndsMatchTheirFactsIsFailable(t *testing.T) {
 				t.Cleanup(func() { *at[i] = was })
 			}
 			res := runCheck(t, c, s)
-			if res.Status != StatusFail || !hasFinding(res, tc.want) {
-				t.Fatalf("status %s, findings %v; want a fail saying %q", res.Status, res.Findings, tc.want)
-			}
+			wantFail(t, res, tc.want)
 		})
 	}
 
@@ -204,9 +202,7 @@ func TestLinkEndsMatchTheirFactsIsFailable(t *testing.T) {
 				}
 			}
 			res := runCheck(t, c, s)
-			if res.Status != StatusFail || !hasFinding(res, "cites facts summing to 0 cents") {
-				t.Fatalf("status %s, findings %v; want a fail on the zero sum", res.Status, res.Findings)
-			}
+			wantFail(t, res, "cites facts summing to 0 cents")
 		})
 	}
 

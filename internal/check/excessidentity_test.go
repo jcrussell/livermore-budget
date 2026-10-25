@@ -174,12 +174,7 @@ func TestAnExcessLineAtAnUndeclaredScopeIsAFinding(t *testing.T) {
 func TestExcessIdentityHoldsOverTheBaseline(t *testing.T) {
 	t.Parallel()
 	res := runExcessIdentity(t, excessBaseline())
-	if res.Status != StatusPass {
-		t.Fatalf("status = %s (%s), want pass", res.Status, res.Summary)
-	}
-	if res.Subjects != 2 {
-		t.Errorf("subjects = %d, want 2 columns", res.Subjects)
-	}
+	wantPass(t, res, 2)
 }
 
 // TestExcessIdentityCatchesAWrongExcess is the mutation the check exists for,
@@ -242,12 +237,7 @@ func TestExcessIdentityCatchesADroppedSide(t *testing.T) {
 				}
 			}
 			res := runExcessIdentity(t, facts)
-			if res.Status != StatusFail {
-				t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
-			}
-			if !hasFinding(res, tc.want) {
-				t.Errorf("findings %v do not say %q", res.Findings, tc.want)
-			}
+			wantFail(t, res, tc.want)
 		})
 	}
 }
@@ -260,12 +250,7 @@ func TestExcessIdentityRefusesADuplicatedExcessLine(t *testing.T) {
 	facts := append(excessBaseline(),
 		excessFact("x-2016-dup", vocab.KindFundBalance, categoryExcessOfRevenues, 2016, 601))
 	res := runExcessIdentity(t, facts)
-	if res.Status != StatusFail {
-		t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
-	}
-	if !hasFinding(res, "twice") {
-		t.Errorf("findings %v do not name the duplicate", res.Findings)
-	}
+	wantFail(t, res, "twice")
 
 	// The column is excluded as the finding says: a wrong excess read first
 	// is not then held to the identity, which would be a second finding

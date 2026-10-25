@@ -635,9 +635,7 @@ func TestLinkFactIDsMustAscend(t *testing.T) {
 	}
 	slices.Reverse(link.FactIDs)
 	res := runCheck(t, &linkValuesTieToFacts{}, s)
-	if res.Status != StatusFail || !hasFinding(res, "not strictly ascending") {
-		t.Fatalf("status = %s, findings %v; want the reversed fact_ids refused", res.Status, res.Findings)
-	}
+	wantFail(t, res, "not strictly ascending")
 	if strictlyAscending([]string{"a", "a"}) {
 		t.Error("an id cited twice reads as ascending")
 	}
@@ -825,12 +823,7 @@ func TestCountsMustAccountForEveryFact(t *testing.T) {
 			tt.tamper(s.Projections[0].Graph)
 			res := resultFor(t, runChecks(t, s), "counts-reconcile")
 
-			if res.Status != StatusFail {
-				t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
-			}
-			if !hasFinding(res, tt.want) {
-				t.Errorf("findings %v do not report %q", res.Findings, tt.want)
-			}
+			wantFail(t, res, tt.want)
 		})
 	}
 }
@@ -850,19 +843,12 @@ func TestCountsReconcileNamesTheArithmetic(t *testing.T) {
 func TestTransferHeadlineIsTheLinks(t *testing.T) {
 	t.Parallel()
 	res := resultFor(t, runChecks(t, testSubject(t)), "headline-transfer-residual")
-	if res.Status != StatusPass || res.Subjects != 2 {
-		t.Fatalf("status = %s over %d, want pass over 2", res.Status, res.Subjects)
-	}
+	wantPass(t, res, 2)
 
 	s := testSubject(t)
 	s.Projections[0].Graph.Metadata.Headline.InternalTransferOutCents = 0
 	res = resultFor(t, runChecks(t, s), "headline-transfer-residual")
-	if res.Status != StatusFail {
-		t.Fatalf("status = %s, want fail for a transfer-out figure the links do not draw", res.Status)
-	}
-	if !hasFinding(res, "internal_transfer_out_cents is $0.00") {
-		t.Errorf("findings %v do not state the figure that was published", res.Findings)
-	}
+	wantFail(t, res, "internal_transfer_out_cents is $0.00")
 }
 
 // TestNaiveExpenditureMustStayWrong: the naive figure must differ from the
@@ -877,12 +863,7 @@ func TestNaiveExpenditureMustStayWrong(t *testing.T) {
 	h.ExternalExpenditureCents = h.NaiveExpenditureCents
 	res := resultFor(t, runChecks(t, s), "headline-naive-expenditure")
 
-	if res.Status != StatusFail {
-		t.Fatalf("status = %s, want fail", res.Status)
-	}
-	if !hasFinding(res, "no longer netting out the double count") {
-		t.Errorf("findings %v do not say what agreement would mean", res.Findings)
-	}
+	wantFail(t, res, "no longer netting out the double count")
 }
 
 // TestNaiveExpenditureIsVacuousWithoutADoubleCount: with no transfers out and
@@ -975,10 +956,7 @@ func TestTransferLegsPairWhenLegsExist(t *testing.T) {
 func TestTransferLegsPairSeesALegWithNoID(t *testing.T) {
 	t.Parallel()
 	res := runCheck(t, &transferLegsPair{}, scheduleSubject())
-	if res.Status != StatusFail || !hasFinding(res, "carries no transfer_id") {
-		t.Fatalf("status = %s (%s), findings %v; want a fail naming the leg with no transfer_id",
-			res.Status, res.Summary, res.Findings)
-	}
+	wantFail(t, res, "carries no transfer_id")
 	if n := len(res.Findings); n != 1 {
 		t.Errorf("%d findings, want the transfers document's one link; the other documents carry no legs", n)
 	}
@@ -1103,12 +1081,7 @@ func TestNodeHierarchyWellFormedIsFailable(t *testing.T) {
 			s := testSubject(t)
 			c.damage(t, s)
 			res := resultFor(t, runChecks(t, s), id)
-			if res.Status != StatusFail {
-				t.Fatalf("status = %s, want fail", res.Status)
-			}
-			if !hasFinding(res, c.want) {
-				t.Errorf("findings %v do not mention %q", res.Findings, c.want)
-			}
+			wantFail(t, res, c.want)
 		})
 	}
 }
@@ -1218,12 +1191,7 @@ func TestAConstraintTierWithoutItsDisclosureIsAFinding(t *testing.T) {
 			tierNodeWithDisclosure(t, s, "discretionary")
 			c.strip(t, s)
 			res := resultFor(t, runChecks(t, s), id)
-			if res.Status != StatusFail {
-				t.Fatalf("status = %s, want fail: %s", res.Status, res.Summary)
-			}
-			if !hasFinding(res, c.want) {
-				t.Errorf("findings %v do not mention %q", res.Findings, c.want)
-			}
+			wantFail(t, res, c.want)
 		})
 	}
 }
@@ -1315,9 +1283,7 @@ func TestHeadlineExternalFiguresExcludeInternalService(t *testing.T) {
 	}
 
 	res := resultFor(t, runChecks(t, s), "headline-ties-to-facts")
-	if res.Status != StatusPass || res.Subjects != 4 {
-		t.Fatalf("status = %s over %d (%s), want pass over 4", res.Status, res.Subjects, res.Summary)
-	}
+	wantPass(t, res, 4)
 }
 
 // TestEveryHeadlineFigureIsTiedToTheFacts: each headline figure is tied to the
@@ -1338,12 +1304,7 @@ func TestEveryHeadlineFigureIsTiedToTheFacts(t *testing.T) {
 			tt.shift(s.Projections[0].Graph.Metadata.Headline)
 			res := resultFor(t, runChecks(t, s), "headline-ties-to-facts")
 
-			if res.Status != StatusFail {
-				t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
-			}
-			if !hasFinding(res, tt.key) {
-				t.Errorf("findings %v do not name %s", res.Findings, tt.key)
-			}
+			wantFail(t, res, tt.key)
 			// The sign of the difference is in the message.
 			if !hasFinding(res, "999.00)") {
 				t.Errorf("findings %v do not state the difference", res.Findings)
@@ -1412,12 +1373,7 @@ func TestALinkCitingNothingInTheStoreIsADifferentProblem(t *testing.T) {
 	s.Projections[0].Graph.Links[0].FactIDs = []string{"fisc-f-doesnotexist"}
 	res := resultFor(t, runChecks(t, s), "link-values-tie-to-facts")
 
-	if res.Status != StatusFail {
-		t.Fatalf("status = %s, want fail", res.Status)
-	}
-	if !hasFinding(res, "not in facts/facts.jsonl") {
-		t.Errorf("findings %v do not say the fact is absent from the store", res.Findings)
-	}
+	wantFail(t, res, "not in facts/facts.jsonl")
 }
 
 // hasLinkKind reports whether any link is of kind k.
@@ -1439,12 +1395,7 @@ func TestARefusedProjectionIsReportedAndNotFatal(t *testing.T) {
 	rep := runChecks(t, testSubject(t, facts...))
 
 	res := resultFor(t, rep, "projections-build")
-	if res.Status != StatusFail {
-		t.Fatalf("projections-build = %s (%s), want fail", res.Status, res.Summary)
-	}
-	if !hasFinding(res, `carries department "patrol"`) {
-		t.Errorf("finding %v does not carry internal/project's own refusal", res.Findings)
-	}
+	wantFail(t, res, `carries department "patrol"`)
 	// The fact-store checks are unaffected.
 	for _, id := range []string{"facts-sorted", "fact-ids-unique", "fact-token-reparses"} {
 		if got := resultFor(t, rep, id).Status; got != StatusPass {
@@ -1642,9 +1593,7 @@ func TestRuleFundsMatchTheirHeadings(t *testing.T) {
 	})
 	t.Run("a rule whose columns declare two funds in the other order fails", func(t *testing.T) {
 		res := mixed("      Information Technology Fund     Water Utility Fund\n")
-		if res.Status != StatusFail || !hasFinding(res, "more than one fund") {
-			t.Errorf("status = %s, findings %v; want the mixed columns named", res.Status, res.Findings)
-		}
+		wantFail(t, res, "more than one fund")
 	})
 
 	// The spine names no fund, so the report is vacuous.

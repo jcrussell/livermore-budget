@@ -85,12 +85,7 @@ func TestContraLinksNameTheirScheduleIsFailable(t *testing.T) {
 			l.Contra = want
 			c.damage(l, want)
 			res := resultFor(t, runChecks(t, s), id)
-			if res.Status != StatusFail {
-				t.Fatalf("status = %s, want fail", res.Status)
-			}
-			if !hasFinding(res, c.want) {
-				t.Errorf("findings %v do not mention %q", res.Findings, c.want)
-			}
+			wantFail(t, res, c.want)
 		})
 	}
 }

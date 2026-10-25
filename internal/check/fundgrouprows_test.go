@@ -13,10 +13,7 @@ func TestFundGroupsAreTheirPrintedRowsCanFail(t *testing.T) {
 	t.Parallel()
 	s := committed(t)
 	res := runCheck(t, &fundGroupsAreTheirPrintedRows{}, s)
-	if res.Status != StatusPass || res.Subjects != 4*7*8 {
-		t.Fatalf("status %s over %d cells (%s), want a pass over 4 columns x 7 groups x 8 lines",
-			res.Status, res.Subjects, res.Summary)
-	}
+	wantPass(t, res, 4*7*8)
 
 	t.Run("selecting without the cuts", func(t *testing.T) {
 		s := mutable(t)
@@ -28,9 +25,7 @@ func TestFundGroupsAreTheirPrintedRowsCanFail(t *testing.T) {
 		res := runCheck(t, &fundGroupsAreTheirPrintedRows{}, s)
 		want := "FY2026 adopted enterprise revenues: the document's enterprise funds sum to $71,573,173.00 " +
 			"and pp.186-209 print $67,514,261.00"
-		if res.Status != StatusFail || !hasFinding(res, want) {
-			t.Errorf("status %s, findings %v; want a finding starting %q", res.Status, res.Findings, want)
-		}
+		wantFail(t, res, want)
 	})
 
 	t.Run("a declared rounding dollar dropped", func(t *testing.T) {
@@ -54,9 +49,7 @@ func TestFundGroupsAreTheirPrintedRowsCanFail(t *testing.T) {
 			t.Fatal("fund-balances-fy2026-p0200 declares no delta on Total Capital Funds; the mutation changes nothing")
 		}
 		res := runCheck(t, &fundGroupsAreTheirPrintedRows{}, s)
-		if res.Status != StatusFail || !hasFinding(res, "FY2026 adopted capital fund-balance/beginning") {
-			t.Errorf("status %s, findings %v; want FY2026 capital's beginning named", res.Status, res.Findings)
-		}
+		wantFail(t, res, "FY2026 adopted capital fund-balance/beginning")
 	})
 }
 
@@ -84,9 +77,7 @@ func TestAFundGroupFoldIsHeldToItsParentAndEveryLine(t *testing.T) {
 				}
 			}
 		})
-		if res.Status != StatusFail || !hasFinding(res, "fund/200 is parented to") {
-			t.Errorf("status %s, findings %v; want fund/200's parent refused", res.Status, res.Findings)
-		}
+		wantFail(t, res, "fund/200 is parented to")
 	})
 	t.Run("a fund line no group row prints", func(t *testing.T) {
 		res := run(t, func(s *Subject) {

@@ -50,12 +50,7 @@ func TestLinkKindsMatchTheirFactsIsFailable(t *testing.T) {
 			s := testSubject(t)
 			c.damage(t, s.Projections[0].Graph)
 			res := resultFor(t, runChecks(t, s), id)
-			if res.Status != StatusFail {
-				t.Fatalf("status = %s, want fail", res.Status)
-			}
-			if !hasFinding(res, c.want) {
-				t.Errorf("findings %v do not mention %q", res.Findings, c.want)
-			}
+			wantFail(t, res, c.want)
 		})
 	}
 }

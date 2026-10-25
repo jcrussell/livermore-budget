@@ -295,16 +295,8 @@ func TestAnArtifactForNoPageFails(t *testing.T) {
 		t.Errorf("artifacts-match-manifest = %s, want pass", got)
 	}
 	res := resultFor(t, rep, "extraction-emitted-every-page")
-	if res.Status != StatusFail {
-		t.Fatalf("extraction-emitted-every-page = %s (%s), want fail", res.Status, res.Summary)
-	}
-	if !strings.Contains(said(res),
-		fmt.Sprintf("1 artifact for no page of a %d-page document", pagesOfDocWithout(t))) {
-		t.Errorf("findings %v do not report the artifact as belonging to no page", res.Findings)
-	}
-	if !hasFinding(res, stray) {
-		t.Errorf("findings %v do not name the artifact", res.Findings)
-	}
+	wantFail(t, res,
+		fmt.Sprintf("1 artifact for no page of a %d-page document", pagesOfDocWithout(t)), stray)
 }
 
 // TestZeroingThePageCountIsCaughtByTheRegistry: zeroing page_count alongside an
@@ -329,13 +321,8 @@ func TestZeroingThePageCountIsCaughtByTheRegistry(t *testing.T) {
 	}
 	// The completeness check is satisfied, and the registry comparison fires.
 	res := resultFor(t, rep, "manifest-matches-source-registry")
-	if res.Status != StatusFail {
-		t.Fatalf("manifest-matches-source-registry = %s (%s), want fail", res.Status, res.Summary)
-	}
-	if !hasFinding(res, fmt.Sprintf(
-		"the extractor found 0 pages and the registry records %d", pagesOfDocWithout(t))) {
-		t.Errorf("findings %v do not report the page count disagreement", res.Findings)
-	}
+	wantFail(t, res, fmt.Sprintf(
+		"the extractor found 0 pages and the registry records %d", pagesOfDocWithout(t)))
 }
 
 // TestARecordedExtractionErrorFails: an error tools/extract.py records in the
@@ -530,15 +517,7 @@ func TestAnEditedManifestHashFails(t *testing.T) {
 	})
 
 	res := resultFor(t, loadAndRun(t, root), "artifacts-match-manifest")
-	if res.Status != StatusFail {
-		t.Fatalf("artifacts-match-manifest = %s (%s), want fail", res.Status, res.Summary)
-	}
-	detail := said(res)
-	for _, s := range []string{short(want.SHA256), short(wrong)} {
-		if !strings.Contains(detail, s) {
-			t.Errorf("findings %v do not name %s", res.Findings, s)
-		}
-	}
+	wantFail(t, res, short(want.SHA256), short(wrong))
 }
 
 // TestAnUnlistedArtifactFails: a file beside the manifest that it does not
@@ -950,13 +929,7 @@ func TestOnlyTheRecordsThatExistAreCounted(t *testing.T) {
 		t.Fatalf("remove the extraction of %s: %v", docWithout, err)
 	}
 	res := resultFor(t, loadAndRunFull(t, root), "source-pdfs-match-both-records")
-	if res.Status != StatusPass {
-		t.Fatalf("source-pdfs-match-both-records = %s (%s), want pass: every record that "+
-			"exists still matches", res.Status, res.Summary)
-	}
-	if res.Subjects != 5 {
-		t.Errorf("subjects = %d with one extraction removed, want 5 records", res.Subjects)
-	}
+	wantPass(t, res, 5)
 	if !strings.Contains(res.Summary, "3 data/sources.yaml entries and 2 extraction manifests") {
 		t.Errorf("summary %q claims a manifest comparison it did not make", res.Summary)
 	}

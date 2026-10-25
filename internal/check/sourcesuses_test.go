@@ -80,9 +80,7 @@ func TestFundGroupSourcesEqualUsesIsFailable(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			s.Facts = tc.facts()
 			res := runCheck(t, c, s)
-			if res.Status != StatusFail || !hasFinding(res, tc.want) {
-				t.Fatalf("status %s, findings %v; want a fail saying %q", res.Status, res.Findings, tc.want)
-			}
+			wantFail(t, res, tc.want)
 		})
 	}
 }

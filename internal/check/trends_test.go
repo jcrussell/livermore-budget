@@ -81,12 +81,7 @@ func trendsTestFacts(t *testing.T) []fact.Fact {
 func TestTrendPointsTieToFactsPasses(t *testing.T) {
 	t.Parallel()
 	res := runCheck(t, &trendPointsTieToFacts{}, trendsSubject(t, trendsTestFacts(t)))
-	if res.Status != StatusPass {
-		t.Fatalf("trend-points-tie-to-facts = %s: %s (%v)", res.Status, res.Summary, res.Findings)
-	}
-	if res.Subjects != 4 {
-		t.Errorf("examined %d points, want 4", res.Subjects)
-	}
+	wantPass(t, res, 4)
 }
 
 // TestAMutatedPointIsCaught is the check's whole reason for existing, and it is
@@ -115,12 +110,7 @@ func TestAMutatedPointIsCaught(t *testing.T) {
 			s := trendsSubject(t, trendsTestFacts(t))
 			c.bend(&s.Projections[0].Trends.Series[0].Points[0])
 			res := runCheck(t, &trendPointsTieToFacts{}, s)
-			if res.Status != StatusFail {
-				t.Fatalf("a mutated %s reported %s: %s", c.name, res.Status, res.Summary)
-			}
-			if !hasFinding(res, c.want) {
-				t.Errorf("findings do not name %q: %s", c.want, said(res))
-			}
+			wantFail(t, res, c.want)
 		})
 	}
 }
@@ -136,12 +126,7 @@ func TestAFactNoPointPublishesIsCaught(t *testing.T) {
 	// the store: exactly what a resolver that stopped emitting a row looks like.
 	s.Projections[0].Trends.Series = s.Projections[0].Trends.Series[:1]
 	res := runCheck(t, &trendPointsTieToFacts{}, s)
-	if res.Status != StatusFail {
-		t.Fatalf("a dropped series reported %s: %s", res.Status, res.Summary)
-	}
-	if !hasFinding(res, "no point publishes it") {
-		t.Errorf("findings do not name the unpublished facts: %s", said(res))
-	}
+	wantFail(t, res, "no point publishes it")
 }
 
 // TestAFactPublishedTwiceIsCaught: a duplicated point is counted twice by
@@ -152,12 +137,7 @@ func TestAFactPublishedTwiceIsCaught(t *testing.T) {
 	series := &s.Projections[0].Trends.Series[0]
 	series.Points = append(series.Points, series.Points[0])
 	res := runCheck(t, &trendPointsTieToFacts{}, s)
-	if res.Status != StatusFail {
-		t.Fatalf("a duplicated point reported %s: %s", res.Status, res.Summary)
-	}
-	if !hasFinding(res, "more than one point") {
-		t.Errorf("findings do not name the duplicate: %s", said(res))
-	}
+	wantFail(t, res, "more than one point")
 }
 
 // TestAPointFiledUnderTheWrongSeriesIsCaught is why the series id is recomputed
@@ -173,12 +153,7 @@ func TestAPointFiledUnderTheWrongSeriesIsCaught(t *testing.T) {
 	}
 	series[0].Points[0], series[1].Points[0] = series[1].Points[0], series[0].Points[0]
 	res := runCheck(t, &trendPointsTieToFacts{}, s)
-	if res.Status != StatusFail {
-		t.Fatalf("two points swapped between series reported %s: %s", res.Status, res.Summary)
-	}
-	if !hasFinding(res, "different printed row") {
-		t.Errorf("findings do not name the misfiling: %s", said(res))
-	}
+	wantFail(t, res, "different printed row")
 }
 
 // TestTrendChecksAreVacuousWithoutADocument: a corpus carrying no trends
@@ -204,29 +179,15 @@ func TestASeriesShortAColumnIsCaught(t *testing.T) {
 	t.Parallel()
 	s := trendsSubject(t, trendsTestFacts(t))
 	series := &s.Projections[0].Trends.Series[0]
-	dropped := series.Points[1]
 	series.Points = series.Points[:1]
 
 	// Dropping a point reddens both checks: trend-points-tie-to-facts through
 	// its reverse arm, trend-series-are-complete because the series is short.
 	points := runCheck(t, &trendPointsTieToFacts{}, s)
-	if points.Status != StatusFail {
-		t.Errorf("trend-points-tie-to-facts = %s on a dropped point, want fail: %s",
-			points.Status, points.Summary)
-	}
-	if !hasFinding(points, "no point publishes it") {
-		t.Errorf("trend-points-tie-to-facts did not report the unpublished fact: %s",
-			said(points))
-	}
+	wantFail(t, points, "no point publishes it")
 
 	res := runCheck(t, &trendSeriesAreComplete{}, s)
-	if res.Status != StatusFail {
-		t.Fatalf("a series missing FY%d reported %s: %s",
-			dropped.FiscalYear, res.Status, res.Summary)
-	}
-	if !hasFinding(res, "FY2027 adopted") {
-		t.Errorf("findings do not name the missing column: %s", said(res))
-	}
+	wantFail(t, res, "FY2027 adopted")
 }
 
 // TestAStaleIncompleteSeriesDeclarationIsCaught pins the expiry branch. A
@@ -324,14 +285,7 @@ func TestAPointInAnUndeclaredColumnIsCaught(t *testing.T) {
 	series.Points = append(series.Points, extra)
 
 	res := runCheck(t, &trendPointsTieToFacts{}, s)
-	if res.Status != StatusFail {
-		t.Fatalf("a point in an undeclared column reported %s: %s", res.Status, res.Summary)
-	}
-	for _, want := range []string{"FY2027 adopted", "not one of the 1 columns"} {
-		if !hasFinding(res, want) {
-			t.Errorf("findings do not name %q: %s", want, said(res))
-		}
-	}
+	wantFail(t, res, "FY2027 adopted", "not one of the 1 columns")
 
 	// AND THE OTHER TWO STAY GREEN: this corruption is caught HERE and by
 	// nothing else.

@@ -106,9 +106,7 @@ func TestDebtServiceTiesToFactsGoesRed(t *testing.T) {
 				t.Fatal("the committed corpus builds no debt-service document")
 			}
 			res := runCheck(t, &debtServiceTiesToFacts{}, s)
-			if res.Status != StatusFail || !hasFinding(res, tt.want) {
-				t.Errorf("status = %s, findings %v; want one containing %q", res.Status, res.Findings, tt.want)
-			}
+			wantFail(t, res, tt.want)
 		})
 	}
 }

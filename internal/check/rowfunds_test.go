@@ -58,16 +58,7 @@ func TestRowFundsCatchesTheTwinSwapNothingElseSees(t *testing.T) {
 			}
 
 			res := runCheck(t, &rowFundsMatchTheirAnchors{}, s)
-			if res.Status != StatusFail {
-				t.Fatalf("swapping fund %d for its twin %d reported %s: %s",
-					tt.from, tt.to, res.Status, res.Summary)
-			}
-			b := said(res)
-			for _, want := range []string{tt.anchor, "fund", "no other check sees it"} {
-				if !strings.Contains(b, want) {
-					t.Errorf("no finding mentions %q:\n%s", want, b)
-				}
-			}
+			wantFail(t, res, tt.anchor, "fund", "no other check sees it")
 		})
 	}
 }
@@ -303,15 +294,7 @@ func TestRowFundsCatchesABareLabelTwin(t *testing.T) {
 	}
 
 	res := runCheck(t, &rowFundsMatchTheirAnchors{}, s)
-	if res.Status != StatusFail {
-		t.Fatalf("Water 640 -> 641 reported %s: %s", res.Status, res.Summary)
-	}
-	b := said(res)
-	for _, want := range []string{`funding-public-works "Water"`, "fund 640", "fund 642"} {
-		if !strings.Contains(b, want) {
-			t.Errorf("no finding mentions %q:\n%s", want, b)
-		}
-	}
+	wantFail(t, res, `funding-public-works "Water"`, "fund 640", "fund 642")
 
 	// The other gates: fact-funds-resolve passes this same-type swap and
 	// cuts-tie-along-the-lattice reports it per fund against pp.186-209. Both
@@ -432,17 +415,8 @@ func TestABareLabelThatResolvesToNoFundIsAFinding(t *testing.T) {
 	}
 
 	res := runCheck(t, &rowFundsMatchTheirAnchors{}, s)
-	if res.Status != StatusFail {
-		t.Fatalf("a declared row label naming no fund reported %s: %s",
-			res.Status, res.Summary)
-	}
-	b := said(res)
 	// The finding is one line, so the assertion is the line.
-	for _, want := range []string{"No Such Fund", "checked against nothing"} {
-		if !strings.Contains(b, want) {
-			t.Errorf("the finding does not contain %q:\n%s", want, b)
-		}
-	}
+	wantFail(t, res, "No Such Fund", "checked against nothing")
 }
 
 // TestASkippedRowIsInvisibleToThisCheck: a skipped row is neither a subject
@@ -475,13 +449,7 @@ func TestASkippedRowIsInvisibleToThisCheck(t *testing.T) {
 	}
 
 	got := runCheck(t, &rowFundsMatchTheirAnchors{}, s)
-	if got.Status != StatusPass {
-		t.Fatalf("a skipped row made the check %s: %s", got.Status, got.Summary)
-	}
-	if got.Subjects != before.Subjects {
-		t.Errorf("a skipped row moved the subject count from %d to %d; it is not read "+
-			"from the page and cannot be an anchor", before.Subjects, got.Subjects)
-	}
+	wantPass(t, got, before.Subjects)
 	if got.Summary != before.Summary {
 		t.Errorf("a skipped row changed the summary:\nbefore: %s\nafter:  %s",
 			before.Summary, got.Summary)
@@ -560,17 +528,7 @@ func TestAVerbPhrasedLabelUnderTheDeclarationIsRefused(t *testing.T) {
 	}
 
 	got := runCheck(t, &rowFundsMatchTheirAnchors{}, s)
-	if got.Status != StatusFail {
-		t.Fatalf("declaring row_labels_name_funds over verb-phrased labels reported "+
-			"%s: %s", got.Status, got.Summary)
-	}
-	b := said(got)
-	for _, want := range []string{"opens with a verb phrase", "names a movement"} {
-		if !strings.Contains(b, want) {
-			t.Errorf("no finding says the label names a movement rather than a fund:\n%s",
-				b)
-		}
-	}
+	wantFail(t, got, "opens with a verb phrase", "names a movement")
 	// The subject count must not move: reading a row twice or not at all
 	// both change it.
 	if got.Subjects != before.Subjects {
@@ -619,15 +577,7 @@ func TestAVerbPhrasedAnchorThatResolvesToNoFundIsAFinding(t *testing.T) {
 	}
 
 	res := runCheck(t, &rowFundsMatchTheirAnchors{}, s)
-	if res.Status != StatusFail {
-		t.Fatalf("a verb-phrased anchor naming no fund reported %s: %s", res.Status, res.Summary)
-	}
-	b := said(res)
-	for _, want := range []string{"Transfer From No Such Fund", "the fund that pays", "fund 200", "checked against nothing"} {
-		if !strings.Contains(b, want) {
-			t.Errorf("the finding does not contain %q:\n%s", want, b)
-		}
-	}
+	wantFail(t, res, "Transfer From No Such Fund", "the fund that pays", "fund 200", "checked against nothing")
 	if strings.Contains(res.Summary, "Transfer From No Such Fund") {
 		t.Errorf("the row is also listed as having no printed anchor: %s", res.Summary)
 	}

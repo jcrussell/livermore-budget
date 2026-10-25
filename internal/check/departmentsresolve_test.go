@@ -60,12 +60,7 @@ func TestDepartmentsResolveArmsAreEachReachable(t *testing.T) {
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			res := runDepartments(t, departmentFact("f1", tc.department))
-			if res.Status != StatusFail {
-				t.Fatalf("Status = %s (%s), want fail", res.Status, res.Summary)
-			}
-			if !hasFinding(res, tc.want) {
-				t.Errorf("findings %s do not say %q", said(res), tc.want)
-			}
+			wantFail(t, res, tc.want)
 		})
 	}
 }

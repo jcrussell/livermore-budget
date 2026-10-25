@@ -85,14 +85,7 @@ func TestFundBalanceIdentityIgnoresReserveIncrease(t *testing.T) {
 	})
 
 	res := runCheck(t, &fundBalanceIdentity{}, cellsSubject(t, cells))
-	if res.Status != StatusPass {
-		t.Fatalf("status = %s (%s), want pass: a reserve increase is not a term of "+
-			"beginning + change == ending", res.Status, res.Summary)
-	}
-	if res.Subjects != 2 {
-		t.Errorf("subjects = %d, want 2: the extra category must not invent a balance",
-			res.Subjects)
-	}
+	wantPass(t, res, 2)
 }
 
 // TestFundBalanceIdentityReportsADuplicateWithoutAbandoningTheRest: two facts
