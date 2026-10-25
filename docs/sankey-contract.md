@@ -1,419 +1,222 @@
 # The sankey.json contract
 
-Frozen before implementation so `internal/project` (the producer),
-`internal/export` (the packager) and `site/app.js` (the consumer) could be
-written at the same time by people who could not see each other's code.
+`internal/project` produces it, `internal/export` packages it and `site/app.js`
+consumes it. `schema/projection.schema.json` holds its shape and every document
+is validated against it before its bytes are returned; this page holds what the
+schema cannot say.
 
 `testdata/sankey.golden.json` is the worked example: real FY2026 figures read
-out of the committed pp.66-67 artifacts, with real fact ids. Read it alongside
-this document — where the two disagree, the golden file is a bug.
+out of the committed pp.66-67 artifacts, with real fact ids. Where the two
+disagree, the golden file is a bug.
 
 ## Where it goes
 
-`<output>/fy<year>-<basis>.json`, one document per published column, so
-`fisc export -o dist` writes `dist/fy2026-adopted.json` and
-`fisc export -o /srv/www/budget` writes `/srv/www/budget/fy2026-adopted.json`.
-One code path, one layout. The output directory must be missing, empty, or
-carry the manifest an earlier export left in `.fisc-export`; any other is
-refused before anything is written.
+`<output>/fy<year>-<basis>.json`, one document per published column. A
+projection stating a fiscal year and a basis is **a schedule inside its
+column**, keyed by its stem with the year suffix stripped. One that states
+neither — `revenue-trends` and the two balance documents carry a series and no
+column — ships at `<output>/data/<stem>.json` as itself. The output directory
+must be missing, empty, or carry the manifest an earlier export left in
+`.fisc-export`.
 
-A projection stating a fiscal year and a basis is **a schedule inside its
-column**, keyed by the stem with its year suffix stripped, and is not published
-under a name of its own. One that states neither — `revenue-trends` and the two
-balance documents carry a series and no column — ships at
-`<output>/data/<stem>.json` as itself.
-
-**The stem is a function of the whole column list**, and `project.Stem` is the
-only place that rule is spelled — `fisc export` writes the files, `fisc verify`
-says one was not built, and `project.PublishedDocuments` declares them, so a
-second spelling is a chance for the site to serve a document under a name
-nothing else expects. A projection publishing one document takes its name
-verbatim; among several, the opening published slice keeps the bare name and the
-rest are suffixed by every column they carry, with the basis spelled out
-whenever it is not the published one: `sankey` and `sankey-2027` for the spine's
-two published years, `fund-flows-2024-actual` for a detail schedule's actual
-column. Every published stem is pinned as a literal string by
-`TestTheCommittedStemsAreUnchanged`, because these are the paths this document
-promises and the names the page's config gives its years. The browser `fetch`es it; it is never inlined into
-the page, because a provenance file you cannot curl on its own is not much of
-an audit trail.
+`project.Stem` is the one spelling of a stem. A projection publishing one
+document takes its name verbatim; among several, the opening published slice
+keeps the bare name and the rest are suffixed by every column they carry, with
+the basis spelled out whenever it is not the published one: `sankey` and
+`sankey-2027`, `fund-flows-2024-actual`. `TestTheCommittedStemsAreUnchanged`
+pins every published stem. The browser `fetch`es the document; it is never
+inlined.
 
 Beside it, `<output>/extracted/<doc-id>/pages/pNNNN.txt` carries the committed
-extraction of every page the site cites, copied out of `data/extracted/`. That
-is what a citation on the page points at, so both classes — the city's PDF at
-`#page=N` and the extracted text — resolve with no third party involved;
-`fisc export --source-browse-url` cites a browsable copy of the repository
-instead.
-
-**Cited means cited by the site, not by a chart.** The pages
-`facts/index.json` publishes are the cited set, so the extraction covers every
-locator the site can resolve, including a page no chart draws. A set defined by
-the charts instead would leave a provenance link resolving to a record file
-beside a 404, and would change as views were added. It is still not the whole
-corpus.
-
-And `<output>/facts/` carries the record store itself — the shards, the CSV and
-the index. It has a contract of its own:
-[`fact-store-contract.md`](fact-store-contract.md). Anything else the site has
-to ship travels the same channel (`export.Options.Files`).
+extraction of every page the site cites — the pages `facts/index.json`
+publishes, including pages no chart draws — so a citation resolves with no third
+party; `fisc export --source-browse-url` cites a browsable copy of the
+repository instead. `<output>/facts/` carries the record store:
+[`fact-store-contract.md`](fact-store-contract.md).
 
 ## Shape
 
-`schema/projection.schema.json` holds it, and `internal/project`'s encoder
-validates every document against it before returning the bytes. What follows is
-what the schema cannot say.
+Every key is present on every object, in declaration order: no `omitempty`, no
+`null`, absent strings `""`. The keys a document may omit are `headline`, which
+the spine alone carries, and a node's `balances`, which fund-sources-uses and
+the expansion's fund nodes carry, holding only the balances its page prints and,
+where both are printed, their derived `change`.
 
-Every key is present on every object, in declaration order. **No `omitempty`,
-no `null`** — the same discipline as `fact.Fact`, and for the same reason: a
-key that vanishes when it is empty makes a diff between two releases read as a
-structural change. Absent strings are `""`; the client writes `node.parent || null`
-if it wants nullish semantics. The keys a document may omit are `headline`,
-which the spine alone carries: eight zeros in its place on a document with no
-total to name would be absent-is-not-zero at document level; and a node's
-`balances`, which fund-sources-uses and the expansion's fund nodes carry,
-holding only the balances its page prints and, where both are printed, their
-`change`, which is derived and says so.
+Money is an integer `value_cents`. The largest figure is 2.99e10 cents, exact in
+float64.
 
-Money is always an integer `value_cents`. Never a float, never a string. The
-largest figure here is 2.99e10 cents, exact in float64 and safe in JS.
+**Zero-valued links are omitted.** Most of the revenue grid is zero — a category
+only the General Fund collects is a dash in the other five columns. The *facts*
+still exist; only the link is dropped.
 
-**Zero-valued links are omitted.** Most of the revenue grid is zero — a
-category that only the General Fund collects is a dash in the other five
-columns — and d3-sankey draws zero-height paths that churn node order. The
-*facts* still exist; a zero the city printed is a fact. Only the link is
-dropped.
+**A pair may carry one ribbon per kind**: a revenue row reaching the Internal
+Service Funds takes its money as an internal service charge and the rest of the
+city's as external revenue. Two links of the same kind on one pair are refused.
 
-### A caveat is an object, not a string
+Nodes sort by `(tier, id)`, links by `(source, target, kind)`, `fact_ids`
+ascending, `locators` by `doc_id` with `pages` ascending. Two builds of the same
+facts are byte-identical.
 
-It carries an **`id`**, a one-line **`summary`**, the **`text`** of the caveat
-itself, a **`theme`** naming which of `project.CaveatThemes` it is, and
-**`applies_to`**: the node ids the caveat is about.
+### Caveats
 
-The id goes into **published URL fragments**, so they survive an edit to any
-sentence: `caveats.html#caveat-<id>` on the first copy of the caveat the page
-writes, and `caveats.html#caveats-on-<view>--caveat-<id>` on each later one, in
-the section of a view stating it. A page links the copy in its own section. A document
-repeating an id is refused at build time by `project.ValidateCaveats`.
+A caveat carries an `id`, a one-line `summary`, its `text`, a `theme` from
+`project.CaveatThemes`, and `applies_to`: the node ids it is about, empty for a
+caveat about the schedule rather than a mark. Every id in `applies_to` names a
+node this document carries (`project.ValidateCaveats`).
 
-**caveats.html states each id in full in every section that lists it**,
-folded under its summary. A caveat no section lists is stated once, in the
-data files' list or in the list no page states. One id carries one
-`summary` and one `theme` in every document, and `buildCaveatIndex` refuses one
-that does not, so a figure that varies by year or schedule belongs in the text.
-Where documents carry one id with different texts, each text is listed under the
-one heading, headed by the years carrying it; two texts sharing a year are
-refused. The index also refuses two ids under one summary, a data-files or
-checked caveat naming a node, and two fragments the page would emit alike. An
-anchor collision fails silently — the page renders, the anchor resolves, and
-the reader is shown a sentence about something else — which is why it is
-refused rather than left to a reader to notice. Views stating the same caveats
-share one section, and each page's line links each of its themes' lists there,
-`caveats.html#caveats-on-<view>--<theme>`; a checked or data-files caveat is on
-no page's line.
+The id is in published URL fragments: `caveats.html#caveat-<id>` on the first
+copy, `caveats.html#caveats-on-<view>--caveat-<id>` on each later one, and
+`caveats.html#caveats-on-<view>--<theme>` for a theme's list. One id carries one
+summary and one theme in every document (`buildCaveatIndex`); a figure that
+varies by year or schedule belongs in the text. One id may carry several texts:
+`transfer-legs-unpaired` has four, picked by the document's own arithmetic.
 
-`applies_to` is **empty for a caveat about the schedule rather than about a
-mark**, and empty means document-wide rather than not-yet-filled-in. Where it is
-non-empty, every id must name a node **this** document carries — `ValidateCaveats`
-is given the drawn node set and refuses otherwise, because a caveat pointing at a
-node that is not there marks nothing, and marking nothing is indistinguishable
-from having nothing to mark.
+### A link cites its facts twice
 
-**One id may carry more than one text.** `transfer-legs-unpaired` has four,
-picked by whether the legs balance and whether the residual meets the printed
-to-CIP column; which sentence a document gets is a fact about that document's
-own arithmetic, not four different caveats, and all four share its summary.
+`fact_ids` names *which* facts a link summed; `locators` names the
+`(doc_id, page)` pairs they were printed on, the shape of `metadata.sources`.
+`fact.MakeID` hashes `rule_id`, so a rule edit that alters no figure moves every
+id on its pages; `(doc_id, page)` cannot move, and the fact store's shard path is
+computed from it, so a mark resolves to its records in one fetch. A locator stops
+at the page because a link is an aggregate. Every link resolves to 1 or 2 pairs.
 
-Determinism: nodes sorted by `(tier, id)`, links by `(source, target, kind)`,
-`fact_ids` ascending, `locators` by `doc_id` with `pages` ascending inside each
-and every page once. Two builds of the same facts are byte-identical.
-
-**A pair may carry one ribbon per kind**: a revenue row reaching the five
-Internal Service Funds takes its money as an internal service charge and the rest
-of the city's as external revenue, and one ribbon for both would publish the
-first as money crossing the city's boundary. Two links of the SAME kind on one
-pair is a cell key that lost an axis and is refused.
-
-### A link cites its facts twice, and the two citations are not redundant
-
-`fact_ids` names *which* facts a link summed. `locators` says *where they were
-printed* — the `(doc_id, page)` pairs, in the same shape as `metadata.sources`,
-so a client resolves both with one function.
-
-Only one of them survives a rule change. `fact.MakeID` hashes `rule_id`, so
-splitting or revising a rule moves every id on the pages it covers; a citation
-by id would 404 after an edit that altered no figure. `(doc_id, page)` cannot
-move, and the fact store's shard path is *computed* from it — see
-[`fact-store-contract.md`](fact-store-contract.md) — so a mark on the chart
-resolves to the records behind it in one fetch with no index. That is what
-`locators` is for and it is the only thing it is for.
-
-Neither replaces the other. A page holds facts from several rules, so a locator
-cannot say which facts a link summed, which is what `link-values-tie-to-facts`,
-`counts-reconcile` and `counts.facts_cited` all need. Both are published on
-every link.
-
-It is a **page** locator. `fact-store-contract.md` writes a locator as
-`(doc_id, page, offset)`; `offset` addresses one printed figure and a link is
-an aggregate, so it stops at the page. Measured over the six published
-documents: every link resolves to 1 or 2 pairs.
-
-`locators` was added without bumping `schema_version`. The project is
-pre-release, so the number is not yet a promise to any reader outside this
-tree, and the three constants that must agree — `project.SchemaVersion`,
-`export.SchemaVersion` and `site/core.js`'s `PROJECTION_VERSION` — stay at 1
-together. The page's `window.FISC_CONFIG` carries its own version,
-`export.PageConfigVersion`, which `site/core.js`'s `SCHEMA_VERSION` equals and
-`site/app.js` refuses a page on; it moves with the page, not the projection.
-Recorded as a decision on fisc-5hxr rather than assumed, because
-[`revenue-trends-contract.md`](revenue-trends-contract.md) says a bump is a
-decision and not a number someone increments. The next additive key is
-re-decided, not waved through on this precedent.
+`project.SchemaVersion`, `export.SchemaVersion` and `site/core.js`'s
+`PROJECTION_VERSION` agree, at 1. The page's `window.FISC_CONFIG` carries
+`export.PageConfigVersion`, which `site/core.js`'s `SCHEMA_VERSION` equals.
 
 ### `partition`
 
 **`partition: true` means the ribbon divides one printed table along a second
-axis rather than following money the schedule prints as moving that way.** The
-departmentwide cross-tab is the only document that sets it: Budget Book
-pp.85-125 print one matrix, divisions down and object categories across, and a
-chart can read it either way round without either reading being money moving.
-
-It is **the projection's flag and not the client's**: nothing in a graph
-distinguishes a cross-tab from a chain by looking. `site/app.js` carries the
-words in one constant, `PARTITION_NOTE`.
-
-`node-tiers-are-declared` reads it as the **second** exception to "a link runs
-from a coarser tier to a finer one", beside a revenue line rolled up into its own
-category. A partition link may descend — the cross-tab's run `expenditure/<object>`
-(tier 5) into `dept/<division>` (tier 4) — and a descending link that is neither
-a rollup nor a declared partition is still refused by name.
-
-`schema_version` stays at 1, the project being pre-release, and the key is
-present and `false` on every link of every document.
+axis rather than following money.** Only the departmentwide cross-tab sets it:
+Budget Book pp.85-125 print one matrix, divisions down and object categories
+across. `node-tiers-are-declared` admits a partition link that descends — the
+cross-tab's `expenditure/<object>` (tier 5) into `dept/<division>` (tier 4) —
+beside a revenue line rolled up into its category; any other descending link is
+refused. The key is present and `false` on every other link.
 
 ## Tiers and node ids
 
-A node's id form fixes its tier. `project.TierOf` is the table — the id
-prefixes by tier, and the flow endpoints (`transfers/in`, `transfers/out`,
-`fund-balance/draw`, `fund-balance/contribution`,
-`fund-balance/reserve-increase`) by name — and every builder takes a node's
-tier from it; `node-tiers-are-declared` holds each published node to it.
+A node's id form fixes its tier: `project.TierOf` is the table, and
+`node-tiers-are-declared` holds each published node to it.
 
-**`department/` and `dept/` are two id forms at ONE tier, and they have to be.**
-`data/departments.yaml` keeps two namespaces because the pages do: pp.167-170
-print the General Fund by DIVISION and pp.85-125's funding schedule prints one
-block per DEPARTMENT. Five slugs are in both populations — `city-council`,
-`city-manager`, `city-attorney`, `general-services`, `administrative-services` —
-each naming a department and the sole division beneath it, and the city prints
-no other name for either. An id form is read by cutting at the FIRST slash, so
-one prefix over both would make `dept/city-council` mean the department in one
-document and the division in another.
+**`department/` and `dept/` are two id forms at one tier.** pp.167-170 print the
+General Fund by DIVISION and pp.85-125 print one block per DEPARTMENT. Five slugs
+are in both populations — `city-council`, `city-manager`, `city-attorney`,
+`general-services`, `administrative-services` — each a department and its sole
+division, and the city prints no other name for either. An id form is read by
+cutting at the first slash, so one prefix would make `dept/city-council` mean
+different things in different documents.
 
-**`transfer-from/` and `transfer-to/` are ENDS of a movement and not the funds
-themselves**, which is why they are id forms rather than a second use of
-`fund/<number>`. Budget Book p76 prints money moving between the city's own
-funds, so the natural link is `fund/<a>` to `fund/<b>` — tier 3 to tier 3, which
-the ordering rule refuses and which `d3-sankey` cannot lay out, both ends taking
-the same column index. A rollup would claim the payer folds into the receiver,
-and `partition: true` would claim p76 is one table read along a second axis when
-it is money moving.
+**`transfer-from/` and `transfer-to/` are ends of a movement, not the funds.**
+p76 prints money moving between the city's own funds; `fund/<a>` to `fund/<b>`
+is tier 3 to tier 3, which d3-sankey cannot lay out. A payer's end sits at tier 2
+with the fund groups and a receiver's at 5 with the object categories. Only
+`transfers-by-fund` and `transfers-out` publish them; in those two networks
+`transfers/in` and `transfers/out` are containers holding the ends, and
+`node-hierarchy-well-formed` allows that only where the endpoint draws no flow
+of its own.
 
-They take the spine's own tiers for the same end of the chart — a payer's end at
-2 with the fund groups, a receiver's at 5 with the object categories — so a link
-runs tier 2 to tier 3, coarse to fine, and needs no exception anywhere. Only
-`transfers-by-fund` and `transfers-out` publish them.
+**The expansion schedule adds four forms.** `dept/<division>/<object>` is one
+division's spending on one object category across every fund, pp.85-125's cell.
+`expenditure/fund-group/<type>/<object>` is an object category's money a fund
+group's column of pp.66-67 prints and its funds' rows do not; it is derived.
+`fund-group-only/<type>` (tier 3) is money pp.66-67 print in a group's column and
+no fund's own page carries, and `no-division/<object>` (tier 4) an object
+category's money no division on pp.85-125 prints. A remainder's link cites the
+printed cell and the members it is the difference of; `project.LinkCents` reads
+it as the first less the second.
 
-**A flow endpoint is a container in the two transfer networks.** `transfers/in`
-carries no link in `transfers-by-fund` and every `transfer-from/` node is
-parented to it, so there it is a fold root rather than an end; `transfers/out`
-is the same in `transfers-out`, holding every `transfer-to/` node at its own
-tier 5. `node-hierarchy-well-formed` allows that exactly where the endpoint draws
-no flow of its own, and a container alone may hold a node at its own tier: on
-the spine the same ids are the ends of the city's transfers, and a node parented
-to one there is still refused.
+**Tier 1 is a printed row, not a constraint layer.** The fund groups do not
+partition along constraint tier: `data/funds.yaml` puts both committed and
+restricted-by-law funds under `capital` and `special-revenue`, so
+`fund-group/<type>.parent = constraint/<tier>` has no single answer. The tier
+rides as the `constraint_tier` field on a tier-3 node instead.
 
-**The expansion schedule adds four forms, each naming what its facts carry.**
-`expansion` stitches the spine's cells out of the schedules that decompose
-them (`project.expansion`'s doc comment is its shape). Two of the forms extend
-a declared prefix with a longer tail. `dept/<division>/<object>` is one
-division's spending on one object category across every fund, pp.85-125's
-cell, a member of that category's alternative split; it cannot be
-`dept/<division>`, which on the same chart is the General Fund's division
-beneath `fund/100`. `expenditure/fund-group/<type>/<object>` is an object
-category's money a fund group's column of pp.66-67 prints and its funds' rows
-do not, beside `expenditure/fund/<n>/<object>`; it is derived. The other two
-are new prefixes for derived remainders: `fund-group-only/<type>` at tier 3, money
-pp.66-67 print in a group's column and no fund's own page carries, and
-`no-division/<object>` at tier 4, an object category's money no division on
-pp.85-125 prints. A remainder's link cites the printed cell and the members
-it is the difference of, and `project.LinkCents` reads it as the first less
-the second.
+**`revenue-line/` is its own prefix.** A category slug may carry a slash —
+`revenue/taxes/property` is tier 0 — so a line nested under `revenue/` would be
+indistinguishable from its parent's form. Its parent is the category the row is
+printed under.
 
-**Tier 1 is a printed row, not a constraint layer.** A constraint tier is a
-property of a **fund**, and the fund groups do not partition along it. Counting `data/funds.yaml` by `type` x `constraint_tier`, `capital`
-holds 3 committed funds and 43 restricted-by-law; `special-revenue` holds 37
-restricted-by-law, 2 unknown and 1 committed. So `fund-group/<type>.parent =
-constraint/<tier>` has no single answer, and a layer whose parent edge is
-undefined is not a layer. The constraint tier rides as the `constraint_tier`
-**field** on a tier-3 node instead — see below.
+**A tier's node count belongs to the document.** The spine (pp.66-67) prints six
+fund groups; revenue-by-fund (pp.131-140) prints seven, carrying Permanent Funds
+that pp.66-67 give no column (`fisc-u8o`). On the spine, tier 0 holds 12 nodes
+(10 `revenue/` plus `transfers/in` and `fund-balance/draw`), tier 2 holds 6, and
+tier 5 holds 7 (4 `expenditure/` plus `transfers/out`,
+`fund-balance/reserve-increase` and `fund-balance/contribution`). Tiers 1, 3 and
+4 are empty: pp.66-67 print each revenue category as one row and no fund or
+department axis. The drill-down's tiers are in
+[`general-fund-drilldown-contract.md`](general-fund-drilldown-contract.md).
 
-A `revenue-line/` node's parent edge **is** defined: the category the row is
-printed under, one string, on every line.
+The slug in every id is a `data/taxonomy.yaml` slug. Do not coin new ones:
+`ADDITION TO RESERVES` is
+`fund-balance/reserve-increase`, whose `document_term` is that printed string.
 
-**`revenue-line/` is a prefix of its own and not a deeper `revenue/` id.** An id
-form is read by cutting at the **first** slash, and a category slug may itself
-carry one: `revenue/taxes/property` is a tier-0 category. A line nested under
-`revenue/` would be indistinguishable from its own parent's form.
+### The expansion
 
-**The documents that use the other tiers are elsewhere.** The drill-down
-(`docs/general-fund-drilldown-contract.md`) publishes tiers 0, 1, 2, 3, 4 and 5
-over Budget Book pp.127-140 and pp.167-170, and states its own counts there.
+The page's chart is the expansion schedule (`project.expansion`'s doc comment is
+its shape). At its root frontier it draws the spine's three columns; `splits`
+says how each node opens: a revenue category into its lines, Transfers In into
+the funds that pay it, a fund group into its funds, the General Fund into its
+divisions, an object category into its object rows or, as the alternative, the
+divisions that spend it, and Transfers Out into the funds it pays. The
+fund-balance ends declare no split. Every split is EXTEND: the node stays drawn
+as a hub and its members stand in a column beside it. The General Fund's link to
+each division, and an object category's to each division of the alternative,
+cites that member's own total; every other split's links are legs carrying
+`repeats`, each repeating one leaf's cents and facts. Go publishes no sum for a
+hub ribbon; the client's fold adds the legs it draws.
 
-**How many nodes a tier holds is a property of the DOCUMENT, not of the
-hierarchy.** A second document at another scope draws a different set: the
-citywide spine (pp.66-67) prints six fund groups, while revenue-by-fund
-(pp.131-140) prints seven, carrying Permanent Funds that pp.66-67 give no column
-at all (fisc-u8o). There is no tier count that holds across all documents, so
-each states its own below rather than inheriting the spine's.
+Every node the expansion draws carries `slot`, its column's order key: a root at
+its tier's place in the overview's `tiers`, a member in the slot after its
+parent's, or before it where the split declares `side` `before`. The hints
+`sankey.grow` (`node_px`, `floor`, `ceiling`) and `sankey.split_caps` (`cap`,
+`tail` per split key) fit it to a screen; `validateGrowth` and
+`validateSplitCaps` refuse at the write what the client could not honour.
 
-**On the spine** (`sankey.json`): tier 0 = 12 nodes, tier 2 = 6, tier 5 = 7,
-which is the whole of its 25. Tiers 3 and 4 are empty, because pp.66-67 publish
-neither a fund nor a department axis.
+### Counts
 
-Those counts are per TIER and include the flow endpoints, which is why they are
-larger than the id-form counts a reader might tally from the table above: tier 0
-is 10 `revenue/` nodes plus `transfers/in` and `fund-balance/draw`, and tier 5 is
-4 `expenditure/` nodes plus `transfers/out`, `fund-balance/reserve-increase` and
-`fund-balance/contribution`.
+`counts.facts` is every fact matching the fiscal year, basis and scope;
+`counts.facts_cited` how many a link carries; `counts.facts_uncited` the rest,
+which on the spine is exactly the zero-valued cells plus the stock rows. For
+FY2026: 120 = 58 cited + 62 uncited, the 62 being 50 zero cells and 12 stock
+rows. `facts_cited_twice` is 0.
 
-**The page's chart is the expansion schedule, and a node splits where it
-stands.** At its root frontier the expansion draws the spine's three columns;
-`splits` says how each node opens: a revenue category into its lines,
-Transfers In into the funds that pay it, a fund group into its funds, the
-General Fund into its divisions, an object category into its object rows or,
-as the alternative a reader chooses instead, the divisions that spend it, and
-Transfers Out into the funds it pays. The fund-balance ends declare no split.
-Every split is EXTEND, the one form `split_form` admits, so a schedule
-declaring any other is refused at the write: the node stays drawn as a hub
-and its members stand in a column of their own beside it -- before it where
-its legs run from the members to it, after it otherwise. The General Fund's link
-to each division, and an object category's to each division of the
-alternative, cites that member's own total. Every other split's links to its
-members are legs carrying `repeats`: each repeats one leaf's cents and facts.
-Where the node takes money in, the leaf arrives at the member and is
-re-pointed to end at the node, naming its own ends in `repeats`, and the leg
-runs from the node to the member; for a revenue category and Transfers In,
-which take nothing in, the leaf leaves the member and is re-pointed to start
-at the node, and the leg runs from the member to the node, so opening one
-puts its members to its left and moves nothing to its right. A fund group's
-legs therefore carry each fund's inflow, and a fund that only spends is
-reached by none. Go publishes
-no sum for a hub ribbon; the client's fold adds the legs it draws. Every
-node not split stays where it is, so expanding node by node reaches the
-finest grain the stitch carries without leaving the chart.
+### Labels
 
-**Every node the expansion draws carries `slot`**, the order key of the column
-it stands in: a root at its tier's place in the overview's `tiers`, an extend
-member in the slot after its parent's, or before it where the split declares
-`side` `before` (`expansionSlots` in `site/sankey.js` reads the declared side
-and no link; `fisc verify` holds every leg to run that way). A split's tail sits in its members'
-slot (`schema/mark.schema.json`). The slots present are ranked into columns,
-and the client refuses, with a banner and the chart unchanged, a layout in
-which d3-sankey would draw a node in any column but its slot's.
-
-**Two hints fit it to a screen.** `sankey.grow` sizes the canvas: `node_px`
-for each node of the busiest column drawn, never shorter than `floor` or
-than the window's room for the chart, which only the client measures, and
-never taller than `ceiling`. `sankey.split_caps` is per split key: how many members a split
-draws (`cap`) before the rest fold into one tail inside the node they split,
-and the word the tail counts them in (`tail`). Which members fold is the
-client's; a reader draws a tail out at full length, and the hash carries that
-as one more entry. `validateGrowth` and `validateSplitCaps` refuse at the
-write a canvas or a cap the client could not honour.
-
-`counts.facts` is the filtered input count — every fact matching the fiscal
-year, basis and scope. `counts.facts_cited` is how many of those a link
-actually carries, and `counts.facts_uncited` the rest: on this document exactly
-the zero-valued cells (a dash is a printed fact but earns no link) plus the two
-stock rows, so it is a quantity the build refuses to let hold anything else, rather
-than a discrepancy a reader has to explain away. For FY2026: 120 = 58 cited +
-62 uncited, the 62 being 50 zero cells and 12 stock rows. `facts_cited_twice`
-is 0: no fact here is behind two links.
-
-**Node labels: a built-in wins over the registry.** That inverts what you would
-expect from a curated data file, and it is deliberate. A taxonomy `label` names
-a *category*, which may span several schedules; the words on a node have to be
-the words on the page this projection read.
-`fund-balance/reserve-increase` is the case — the taxonomy calls it
-"Reserve Increase / (Use)", after the p75 column header the category was merged
-with, while p66 prints ADDITION TO RESERVES over the figures actually read here.
-The six fund-group labels are built-in for a different reason: `funds.yaml`
-binds a fund to a type and records no words for the type itself, so the labels
-come from the pp.66-67 column headers. Letting the registry win would also mean
-the rendered site and `testdata/sankey.golden.json` disagreed on any node listed
-in both, quietly retiring the golden as a contract test.
-
-**On the spine, tier 1 is empty**, and that is the schedule rather than an
-omission: pp.66-67 print each revenue category as one row and no detail beneath
-it. The rows are printed on pp.127-140, which is a different schedule and a
-different document.
-
-The slug in every id is a `data/taxonomy.yaml` slug. Do not coin new ones — in
-particular `ADDITION TO RESERVES` is `fund-balance/reserve-increase`, whose
-`document_term` is that exact printed string.
+**A built-in label wins over the registry.** A taxonomy `label` names a
+category that may span schedules; a node's words must be the page's. The
+taxonomy calls `fund-balance/reserve-increase` "Reserve Increase / (Use)", after
+p75's column header, while p66 prints ADDITION TO RESERVES. `funds.yaml` records
+no words for a fund type, so the six fund-group labels come from the pp.66-67
+column headers.
 
 ## constraint_tier
 
-`constraint_tier` is `""` on every **spine** node, and that is correct rather
-than lazy: `funds.yaml` records a constraint tier per **fund**, and pp.66-67
-publish only fund **groups**, whose columns contain funds of several tiers.
-Inventing one there would be an editorial classification presented as published
-data.
+`constraint_tier` is `""` on every spine node: pp.66-67 publish fund groups,
+whose columns hold funds of several tiers.
 
-**Where a node does carry one, the value is ours and the node must say so.**
-`data/funds.yaml`'s own header is explicit: `constraint_tier` and
-`restriction_note` are *"DERIVED — our reading of the 'Description of Funds'
-narrative (pp. 258-261) — and must not be presented as something the city
-printed."* A tier-3 fund node is in the opposite position from the two
-fund-balance nodes: the **node** is published (the city prints the fund and its
-revenue) while the **attribute** is inferred. So `node.derived` stays `false` —
-setting it would claim the city did not print the fund, which is the opposite
-error — and the disclosure travels on the two fields beside it instead:
+**Where a node carries one, the value is ours.** `data/funds.yaml`'s header:
+`constraint_tier` and `restriction_note` are *"DERIVED — our reading of the
+'Description of Funds' narrative (pp. 258-261) — and must not be presented as
+something the city printed."* The fund node itself is printed, so
+`node.derived` stays `false`; the disclosure travels on `source_note` (citing
+`data/funds.yaml` and pp.258-261) and `rationale` (the fund's
+`restriction_note`), and as a caveat in `metadata.caveats`.
+`constraint-tier-vocabulary` fails a tier without both.
 
-- `source_note` cites `data/funds.yaml` and pp.258-261;
-- `rationale` carries that fund's `restriction_note`, which is the reading itself.
+Every document that draws a fund node publishes its tier, through one
+constructor: fund-flows, department-funding and the two transfer networks.
 
-**Every document that draws a fund node publishes its constraint tier**, through
-one constructor in `internal/project`: fund-flows, department-funding and the
-two transfer networks, in every column each publishes. The tier is a property
-of the fund and not of the schedule, so a column's node table states it once;
-measured at 1529ae5 on the `fy2026-adopted.json` that `fisc export` writes, 86
-of its 430 nodes carry one (71 `restricted-by-law`, 12 `committed`, 2 `unknown`,
-1 `discretionary`), and 83 of 422 on FY2027's. `sankey` and `sankey-2027`
-publish none: the spine classifies no node, which is `""`'s meaning below. Read
-*non-empty* rather than *present*: there is no `omitempty` here, so every node
-in every document carries the key.
-
-What those documents owed, and carry: `source_note` and `rationale` on every
-tier-bearing node; the disclosure sentence in `metadata.caveats`, held as a
-constant in `internal/project` so the caveat and the check cannot drift apart;
-and `constraint-tier-vocabulary`, which fails a node carrying a tier without the
-source note and the restriction note it was read from.
-`derived-nodes-justified` does not cover it — that check inspects only
-`derived: true` nodes, and these are deliberately not among them.
-
-**`""` and `unknown` are different claims and must not be read as one.** `""`
-means *this document does not classify this node* — the spine's answer, and the
-answer for every node that is not a fund. `unknown` means *we read pp.258-261 and
-could not tell*; `data/funds.yaml` uses it for exactly two funds. Collapsing them
-would be the absent-is-not-zero mistake in a new field.
+**`""` and `unknown` are different claims.** `""` means this document does not
+classify the node. `unknown` means we read pp.258-261 and could not tell;
+`data/funds.yaml` uses it for two funds.
 
 ## link.kind
 
-`kind` is one of `schema/enums.schema.json`'s `link_kind`, the set
-`project.LinkKinds` declares; the page's words for each are
-`project.LinkKindLabel`'s. Only `external` is in the headline: an Internal
-Service Fund charge is billed by one city department to another, so counting
-it as revenue *and* as the paying department's expenditure counts it twice.
+`kind` is one of `schema/enums.schema.json`'s `link_kind`; the page's words for
+each are `project.LinkKindLabel`'s. Only `external` is in the headline: an
+Internal Service Fund charge is billed by one city department to another, so
+counting it as revenue and as the payer's expenditure counts it twice.
 
 ## headline
 
@@ -428,64 +231,55 @@ naive_expenditure_cents            313,708,146   the WRONG number, published on 
 transfer_residual_cents             38,086,737   out minus in; see caveats
 ```
 
-Two rules here are worth more than the numbers.
+$299,969,007 includes internal service charges — the scope is
+`all-funds-gross` — so it is not `external_revenue_cents`.
 
-**Never name a key for a concept the code does not compute.** An earlier draft
-called $299,969,007 `external_revenue_cents`. It is not external — the scope is
-literally `all-funds-**gross**` and that figure includes internal service
-charges. Both are published, under names that say which is which.
-
-**`naive_expenditure_cents` is deliberately the wrong answer.** Summing the
-expenditure column gives $313,708,146 where the city spends $254,095,412, a 23%
-inflation from counting transfers twice. It ships so the page can show the
-error it is avoiding, and so a check can assert the headline is not equal to it.
+**`naive_expenditure_cents` is deliberately wrong.** Summing the expenditure
+column gives $313,708,146 where the city spends $254,095,412, a 23% inflation
+from counting transfers twice. It ships so the page can show the error it avoids
+and a check can assert the headline is not equal to it.
 
 ## derived
 
-`derived: true` means *we* inferred it; `false` means the city printed it. The
-distinction is the site's whole premise, so it is stated on every node and link
-rather than left to be inferred from a missing key.
+`derived: true` means we inferred it; `false` means the city printed it.
 
-On the spine, exactly two things are derived, and both come from one row.
-`CHANGE IN WORKING CAPITAL` is printed once per column with a sign
-(`(1,034,154)` for the General Fund). A Sankey cannot draw a negative link, so a
-negative change becomes a `fund-balance/draw` → fund-group link and a positive
-change a fund-group → `fund-balance/contribution` link. That decomposition is
-ours. Both nodes carry a `rationale` and a `source_note`, and `fisc verify`
-fails on any `derived: true` node that does not.
+On the spine exactly two things are derived, both from one row. `CHANGE IN
+WORKING CAPITAL` is printed once per column with a sign (`(1,034,154)` for the
+General Fund). A Sankey cannot draw a negative link, so a negative change becomes
+a `fund-balance/draw` → fund-group link and a positive one a fund-group →
+`fund-balance/contribution` link. Both nodes carry a `rationale` and a
+`source_note`.
 
-`BEGINNING` and `ENDING WORKING CAPITAL` are recorded as facts — they are cells
-the city printed — but they are **stocks, not flows**, and get no link. A reader
-reconciling the chart against p66 will find three rows unaccounted for, so
-`metadata.caveats` says so explicitly.
+`BEGINNING` and `ENDING WORKING CAPITAL` are facts but **stocks, not flows**, and
+get no link; `metadata.caveats` says so, since a reader reconciling against p66
+finds three rows unaccounted for.
 
 ## The transfer residual
 
 Transfers out ($59,612,734) exceed transfers in ($21,525,997) by $38,086,737.
 
 `transfer_id` is `""` on every spine link. Only `transfers-by-fund` and
-`transfers-out` draw each end of a movement as its own link, and there the two
-legs share a `transfer_id` derived from their shared `(doc_id, page, offset)`.
-`transfers-out` is p76's legs and p222's transfers to the CIP, the spine's
-TRANSFER OUT by fund group, and the spine's Transfers Out opens into it.
+`transfers-out` draw each end of a movement, and there the two legs share a
+`transfer_id` derived from their shared `(doc_id, page, offset)`.
+`transfers-out` is p76's legs and p222's transfers to the CIP, and the spine's
+Transfers Out opens into it.
 
-p76's own grand total *is* the transfers-in side, to the cent: each of its
-destination sections equals the matching `TRANSFER IN:` cell on pp.66-67, and
-the General Fund's out-flows equal `TRANSFER OUT:`.
+p76's grand total *is* the transfers-in side, to the cent: each destination
+section equals the matching `TRANSFER IN:` cell on pp.66-67, and the General
+Fund's out-flows equal `TRANSFER OUT:`.
 
 **The difference is a column the city prints.** pp.72-75 are the same
 sources-and-uses schedule carrying a `Transfers Out to CIP` heading, which
-pp.66-67 fold into `TRANSFER OUT:` and omit from `TRANSFER IN:` entirely:
+pp.66-67 fold into `TRANSFER OUT:` and omit from `TRANSFER IN:`:
 
 ```
 p0073.txt:58   Transfers Out $21,525,997   Transfers Out to CIP $38,086,737
 p0075.txt:58   Transfers Out $21,624,633   Transfers Out to CIP $50,762,251
 ```
 
-$21,525,997 is p76's grand total to the cent, and $38,086,737 is
-`headline.transfer_residual_cents` to the cent. The residual is therefore not a
-discrepancy at all — it is transfers to capital projects, printed under their
-own heading.
+$21,525,997 is p76's grand total and $38,086,737 is
+`headline.transfer_residual_cents`, both to the cent: the residual is transfers to
+capital projects, printed under their own heading.
 
 | transfers out to CIP, FY2026 | | source |
 |---|---|---|
@@ -495,105 +289,72 @@ own heading.
 | Internal Service Funds | 40,000 | `p0073.txt:53`, `p0199.txt:17` |
 | **total** | **38,086,737** | `p0073.txt:58`, `p0199.txt:21` |
 
-**pp.72-75 print to-CIP per major fund and one aggregate line for all non-major
-funds** — $28,693,590 in FY2026 (`p0073.txt:56`) — so they cannot split Capital
-from Special Revenue. pp.198-209 print the column per fund and per fund type:
-FY2026's summary is p199 above, FY2027's is p205 (Capital 35,830,251,
-`p0205.txt:13`; Special Revenue 100,000, `p0205.txt:10`; together p75's
-non-major 35,930,251, `p0075.txt:56`).
+pp.72-75 print to-CIP per major fund and one line for all non-major funds —
+$28,693,590 in FY2026 (`p0073.txt:56`) — so they cannot split Capital from
+Special Revenue. pp.198-209 print it per fund and per fund type: FY2026's summary
+is p199 above; FY2027's is p205 (Capital 35,830,251, `p0205.txt:13`; Special
+Revenue 100,000, `p0205.txt:10`; together p75's non-major 35,930,251,
+`p0075.txt:56`).
 
-Each row also equals the group's `TRANSFER OUT:` less the transfers p76 shows
-that group **paying** — attributed by the payer named in each row label, not by
-`out − in` per group. The General Fund's $10,037,797 is itemised in full and
-contributes zero. Capital pays $211,150 of its $28,584,740: Traffic Impact Fee
-(510), County Measure D (550) and State − Gas Tax (560) are `type: capital` in
-`data/funds.yaml`, and p76 lists all three as payers.
+Each row equals the group's `TRANSFER OUT:` less the transfers p76 shows that
+group **paying**, attributed by the payer in each row label. The General Fund's
+$10,037,797 is itemised in full and contributes zero. Capital pays $211,150 of
+its $28,584,740: Traffic Impact Fee (510), County Measure D (550) and State − Gas
+Tax (560) are `type: capital` in `data/funds.yaml`, and p76 lists all three as
+payers.
 
-`cuts-tie-along-the-lattice` holds `spine_TRANSFER_OUT == p76_paid + to_CIP`
-for all six groups in both budget years, over the published facts, through the split
-`a-transfer-out-is-p76-or-to-the-cip`, which sums p76's transfers out and
-p222's transfers to the CIP by fund group and holds them to the spine. p222
-names each transferring fund, so the sum splits Capital from Special Revenue
-exactly as p199 and p205 do.
+`cuts-tie-along-the-lattice` holds `spine_TRANSFER_OUT == p76_paid + to_CIP` for
+all six groups in both budget years through the split
+`a-transfer-out-is-p76-or-to-the-cip`; p222 names each transferring fund, so the
+sum splits Capital from Special Revenue as p199 and p205 do.
 
-`fisc-1wr.4` asks for a residual node. This contract states the residual as
-`headline.transfer_residual_cents` instead: out minus in, derived in one line
-by `internal/project` and pinned there by its own test, while `verify` holds
-each of in and out to the links it heads. A synthetic link into `transfers/in` or out of `transfers/out`
-would unbalance that node, and splitting the $59.6M into matched and unmatched
-portions would publish a division the city never printed.
+The residual is `headline.transfer_residual_cents`, not a node: a synthetic link
+into `transfers/in` or out of `transfers/out` would unbalance that node, and
+splitting the $59.6M into matched and unmatched portions would publish a division
+the city never printed.
 
 ## The contested total
 
-The spine publishes one figure the same book contradicts four pages over, and it
-keeps publishing it deliberately. Budget Book p67's Internal Service Funds column
-prints Services & Supplies `16,796,010` for FY2026-27, giving TOTAL EXPENDITURES
-`26,544,515`. Four other pages print `26,294,515` -- `p0183:64`, `p0075:53`,
-`p0205:17` and `p0209:20`, the last of which corroborates twice because its five
-per-fund figures also sum to it -- and `p0061:39` implies it, printing
-`26,906,515`, which is that figure plus the `612,000` to-CIP transfer. Of the 48
-`(fund group x object category x budget year)` cells between pp.172-183 and
-pp.66-67, **47 agree to the dollar** and this is the 48th -- with the same
-qualifier the `p0067-internal-service-is-250000-high-by-fund-group` exception
-attaches to that figure wherever it prints it, and which matters more here than anywhere because this section is the
-published-is-not-derived argument: **that 48-cell grid is our arithmetic and not
-the city's.** No page prints a group-by-object subtotal. What pp.172-183 print
-are the per-fund object rows and one Total per fund group; the 48 cells are our
-sums of those rows, and only the Totals are printed figures.
+Budget Book p67's Internal Service Funds column prints Services & Supplies
+`16,796,010` for FY2026-27, giving TOTAL EXPENDITURES `26,544,515`. Four other
+pages print `26,294,515` — `p0183:64`, `p0075:53`, `p0205:17` and `p0209:20`,
+whose five per-fund figures also sum to it — and `p0061:39` prints `26,906,515`,
+that figure plus the `612,000` to-CIP transfer. Of the 48 `(fund group x object
+category x budget year)` cells between pp.172-183 and pp.66-67, **47 agree to the
+dollar** and this is the 48th. That grid is our arithmetic: pp.172-183 print
+per-fund object rows and one Total per fund group, and no page prints a
+group-by-object subtotal.
 
-**We keep p67's figure, and the reason is not deference to the spine.** The
-figure that would replace the Services & Supplies row, `16,546,010`, is printed
-on **no page of the corpus** -- grep all 786 extracted pages and it does not
-occur. It is the sum of five per-fund cells on p0183. Publishing it would put a
-value we computed into `facts/facts.jsonl`, which is the one thing the fact store
-is defined not to hold: a fact is one figure the city printed, at the page and
-offset cited.
-
-The store enforces that rather than trusting it, and the two routes fail on two
-different checks. Measured by mutating the fact and running `fisc verify`:
+**We keep p67's figure.** The replacement Services & Supplies figure,
+`16,546,010`, is printed on no page of the corpus — it is the sum of five
+per-fund cells on p0183 — and a fact is one figure the city printed. Measured by
+mutating the fact and running `fisc verify`:
 
 | mutation | the fact check that goes red |
 |---|---|
 | `amount_cents` corrected, token left as p67 prints it | `fact-token-reparses` -- token `"16,796,010"` is $16,796,010.00 but the fact carries $16,546,010.00 |
 | `amount_cents` and token both corrected | `fact-offset-points-at-token` -- p67 at offset 2548 is `"16,796,010"`, but the fact cites `"16,546,010"` |
 
-Each route yields five findings, not one: the fact check above,
+Each route yields five findings: the fact check above,
 `fund-group-sources-equal-uses` on the internal service column, and
-`cuts-tie-along-the-lattice` three times, whose
-`p0067-internal-service-is-250000-high-by-fund-group`, `-by-fund` and
-`-by-object` exceptions pin the spine's present figure and go red the moment it
-moves. The table names only the fact check because that is the arm a synthetic
-figure cannot get past -- the lattice arms would fall silent again if the
-exceptions were re-pointed, and the fact checks would not.
+`cuts-tie-along-the-lattice` three times, through the exceptions below.
 
-So there is no edit to this fact that keeps its p67 citation, and re-citing it to
-p0183 would make the spine no longer a read of pp.66-67.
+`project.ContestedTotals()` declares the column, the spine's figure, what the
+rest of the book makes it, and the bead; `sankey-2027.json` carries it as a
+caveat and `sankey.json` does not, FY2026 tying everywhere. The declaration is
+conditional on the graph drawing `26,544,515`, so correcting the fact retires it.
 
-**What the reader gets instead is disclosure.** `project.ContestedTotals()` declares
-the column, the spine's figure, what the rest of the book makes it, and the bead;
-`sankey-2027.json` carries it as a caveat and `sankey.json` does not, FY2026
-tying everywhere. The declaration is *conditional on the graph actually drawing
-`26,544,515`*, so correcting the fact retires the sentence with nobody having to
-remember it.
-
-Three exceptions carry this $250,000, and **not for the same cell** -- they
-reach it on different axes, which is what makes them independent witnesses rather
-than copies of one claim. `p0067-internal-service-is-250000-high-by-fund-group`
-holds out `(FY2027, adopted, internal-service)`, a FUND GROUP, against two
-figures both of which pages print. `p0067-internal-service-is-250000-high-by-object`
-holds out `(FY2027, adopted, services-and-supplies)`, an OBJECT CATEGORY, where
-its own `Printed` is careful to say neither figure is printed anywhere and all
-three are arithmetic; `SameResidualAs` is what grounds the second in the first. pp.85-125 decompose the money by department, division and object with
-no fund dimension at all, and still put the difference in this category and this
-year and in none of the other seven cells.
-`p0067-internal-service-is-250000-high-by-fund` holds out the 48th cell itself,
-`(FY2027, adopted, internal-service, services-and-supplies)`, where the
-`fund-expenditures` cut sums pp.172-183's per-fund rows to the spine's grain; it
-too is arithmetic on one side and grounded in the fund-group entry.
-
-The failure message `internal/structure`'s exception machinery prints already
-says what to do if the city reissues the page: *delete the exception rather than
-re-pointing it: the cell then ties on its own*. `fisc-av0w`.
+Three exceptions carry this $250,000 on different axes, so they are independent
+witnesses. `p0067-internal-service-is-250000-high-by-fund-group` holds out
+`(FY2027, adopted, internal-service)` against two figures pages print.
+`-by-object` holds out `(FY2027, adopted, services-and-supplies)`, where every
+figure is arithmetic and `SameResidualAs` grounds it in the first: pp.85-125
+decompose the money by department, division and object with no fund dimension
+and still put the difference in this category and year and none of the other
+seven cells. `-by-fund` holds out the 48th cell itself, `(FY2027, adopted,
+internal-service, services-and-supplies)`, where the `fund-expenditures` cut sums
+pp.172-183's per-fund rows to the spine's grain. If the city reissues the page,
+delete the exceptions; the cell then ties on its own (`fisc-av0w`).
 
 ## What the fund groups must satisfy
 
@@ -615,18 +376,12 @@ FY2026, all six exact:
 | special-revenue | 29,279,560 | 29,279,560 |
 | internal-service | 25,117,367 | 25,117,367 |
 
-These are the city's own `TOTAL SOURCES` and `TOTAL USES` rows, which is what
-makes the identity a cross-check rather than a restatement of itself.
+These are the city's own `TOTAL SOURCES` and `TOTAL USES` rows, so the identity
+is a cross-check rather than a restatement.
 
 ## Row-to-slug map
 
-Which printed row of pp.66-67 is which `category` and `kind` is the rule
-file's, `mappings/livermore-budget-fy2026-2027.yaml`, over the slugs
-`data/taxonomy.yaml` declares; how each becomes a node and a link is
-`internal/project`'s. Beginning and ending working capital are stocks and draw
-no link; the change in working capital is split by sign into
-`fund-balance/draw` and `fund-balance/contribution`.
-
-`sign: contra` rows net into their parent category before links are built.
-pp.66-67 print none — the contra rows are on p127 (ERAF, RPTTF) — so that path
-ships untested unless the projection's own tests synthesize one.
+Which printed row of pp.66-67 is which `category` and `kind` is
+`mappings/livermore-budget-fy2026-2027.yaml`'s, over `data/taxonomy.yaml`'s
+slugs. `sign: contra` rows net into their parent category before links are
+built; pp.66-67 print none — the contra rows are on p127 (ERAF, RPTTF).
