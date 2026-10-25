@@ -360,11 +360,9 @@ func TestLoadRealRegistries(t *testing.T) {
 	}
 
 	cats := r.Categories()
-	// Plus one line entry per distinct revenue row pp.127-140 print: 101,
-	// measured off facts/facts.jsonl on 2026-09-12. Plus pp.80-81's principal
-	// and interest columns under debt-services, and pp.224-235's
-	// capital-projects. Plus pp.186-209's two placeholders, revenues and
-	// expenses.
+	// Plus 101 revenue line entries (pp.127-140, measured off
+	// facts/facts.jsonl on 2026-09-12), pp.80-81's principal and interest,
+	// pp.224-235's capital-projects, and pp.186-209's two placeholders.
 	if got, want := len(cats), 41+101+2+1+2; got != want {
 		t.Errorf("len(Categories()) = %d, want %d", got, want)
 	}
@@ -405,13 +403,8 @@ func TestLoadRealRegistries(t *testing.T) {
 		t.Errorf("derived categories = %d %v, want %d", got, derived, want)
 	}
 
-	// THE NEW VALIDATORS MUST BE EXERCISED BY THE REAL FILE, not only by
-	// fixtures. Load already refuses a bad kind, a mis-shaped `pages`, a
-	// mis-shaped alias and a contra row off its category's pages -- so
-	// re-asserting those here over a registry that LOADED would be a
-	// tautology. What is not a tautology is that the committed taxonomy
-	// actually carries entries of each kind: an arm no real entry reaches is
-	// dead code that happens to have a test.
+	// The committed taxonomy must carry entries reaching each validator arm;
+	// an arm no real entry reaches is dead code with a test.
 	var withAliases, withContra, kindMembers int
 	var pageless []string
 	for _, c := range cats {
@@ -425,15 +418,8 @@ func TestLoadRealRegistries(t *testing.T) {
 	if kindMembers == 0 {
 		t.Error("no category declares any kinds; the membership arm is unexercised")
 	}
-	// Three categories carry no pages, and they are exactly the three
-	// rollups above -- which is why the shape arm is applied and the presence
-	// arm is not. If that stops being true, "required when assignable" becomes
-	// landable and should be taken.
-	//
-	// COMPARE THE SLUGS, NOT THE COUNT. A count-only assertion stays green if
-	// a rollup gains pages while an assignable category loses them -- and that
-	// swap would also silently take a real category out of reach of the
-	// contra-row arm, which is checked against `pages`.
+	// Exactly the three rollups carry no pages. Compare slugs, not a count,
+	// which a rollup gaining pages while a real category loses them would pass.
 	if diff := cmp.Diff(wantUnassignable, pageless); diff != "" {
 		t.Errorf("categories carrying no pages mismatch (-want +got):\n%s", diff)
 	}
@@ -483,13 +469,9 @@ func TestLoadRealRegistries(t *testing.T) {
 	}
 }
 
-// The committed department registry, checked against what the budget book
-// prints. The counts are the assertion that an edit which still parses has not
-// quietly changed the axis: a dropped division is invisible to every
-// object-category sum, because its money simply moves to no other row.
-//
-// The division counts come from pp.85-125, which print the axis whole.
-// TestEveryDivisionIsPrintedOnItsPages is what ties each entry to a page.
+// TestDepartmentsRegistryMatchesThePages holds the department registry to the
+// counts pp.85-125 print; a dropped division is invisible to every
+// object-category sum.
 func TestDepartmentsRegistryMatchesThePages(t *testing.T) {
 	r, err := Load(os.DirFS(realData))
 	if err != nil {
@@ -503,11 +485,9 @@ func TestDepartmentsRegistryMatchesThePages(t *testing.T) {
 		t.Errorf("len(Divisions()) = %d, want %d", got, want)
 	}
 
-	// Divisions per department, counted off the printed `Division Total` rows
-	// on pp.85-125, which print the whole axis: p85 1, p89 2, p93 2, p97 5,
-	// p101 5, p105 1, p108 1, p111 2, p115 1, p119 5, p124 4. pp.167-170 print
-	// 23 of these 29 — the General Fund slice — so a count taken there is
-	// smaller by the six the registry header names.
+	// Divisions per department, from the `Division Total` rows on pp.85-125:
+	// p85 1, p89 2, p93 2, p97 5, p101 5, p105 1, p108 1, p111 2, p115 1,
+	// p119 5, p124 4. pp.167-170 print 23 of these 29.
 	want := map[string]int{
 		"administrative-services":             5,
 		"city-attorney":                       2,
@@ -529,11 +509,8 @@ func TestDepartmentsRegistryMatchesThePages(t *testing.T) {
 		t.Errorf("divisions per department mismatch (-want +got):\n%s", diff)
 	}
 
-	// THE TWO-NAMESPACE DECISION, pinned against the real file. These five
-	// strings name a department AND a division, three of them exactly as
-	// printed. A single namespace would need five invented names, so if this
-	// ever passes with a shared namespace it is because someone renamed the
-	// city's words.
+	// Two namespaces: these five strings name a department and a division,
+	// three of them exactly as printed.
 	for _, slug := range []string{
 		"city-council", "city-manager", "city-attorney",
 		"general-services", "administrative-services",
@@ -606,49 +583,14 @@ func TestPublicWorksHeadingIsNotItsTotalRow(t *testing.T) {
 	}
 }
 
-// A division's `pages` asserts that the city prints its label on those pages.
-// This checks that against the extracted text, so a page number typed from
-// memory fails rather than sitting in the registry looking authoritative. It is
-// TestFundAliasesArePrintedOnTheirPages applied to the other axis, and it is
-// what makes the six pp.85-125-only entries a claim rather than an assertion.
+// TestEveryDivisionIsPrintedOnItsPages: a division's `pages` must print its
+// label, read in the label column (each line cut at the first object-category
+// name, remainders joined, since wrapped labels continue below an object row)
+// and above "Department Funding Sources", where four labels name a fund
+// instead. It asserts presence, not position.
 //
-// THE LABELS WRAP, THE TWO SCHEDULES WRAP THEM AT DIFFERENT POINTS, AND THE
-// CONTINUATION IS NOT ADJACENT TO WHAT IT CONTINUES. Four divisions print
-// across two lines wherever they appear — "Community Development Admin",
-// "Housing & Human Services", "Innovation & Economic Devel" and "Public Works
-// Administration". Collapsing the whole page finds none of them, because the
-// second half sits BELOW the first object row rather than beside the first
-// half, with that row's four figures in between:
-//
-//	p0101:11  Community Development Wages & Benefits   $803,509  ...
-//	p0101:12  Admin
-//	p0169:15  Community             Wages & Benefits    803,509  ...
-//	p0169:16  Development Admin
-//
-// Note the two schedules break the same label in different places. So the
-// search reads the LABEL COLUMN: each line is cut at the first object-category
-// name, which is the closed vocabulary that delimits that column on both
-// schedules, and the remainders are joined in order.
-//
-// AND THE SEARCH STOPS AT "Department Funding Sources", which is the arm that
-// makes this substantiate anything. pp.85-125 print a division block ABOVE a
-// funding-source block, and four of the labels name a division in one and a FUND
-// in the other -- Information Technology, Airport, Library and Horizons, the
-// same four whose rules need a section_ordinal for the same reason. Searching
-// the whole page, three of the six divisions this test was written to
-// substantiate passed on a fund row rather than on a division row, and a
-// fabricated `general-liability` division on p93 would have passed too. Cutting
-// the page at that heading is what tells the two blocks apart.
-//
-// This asserts presence and not position — the same claim
-// TestFundAliasesArePrintedOnTheirPages makes, "this is printed there, go and
-// look". Joining the column can in principle spell a label across two unrelated
-// divisions; what it cannot do is find one on a page that has no row for it,
-// which is the error being guarded against.
-//
-// Mutation: change any division's pages to a page that does not print it — 167
-// for water-resources, say, whose whole point is that pp.167-170 have no row
-// for it — and this fails naming the division and the page.
+// Mutation: change any division's pages to one that does not print it (167 for
+// water-resources) and this fails naming the division and the page.
 func TestEveryDivisionIsPrintedOnItsPages(t *testing.T) {
 	r := realRegistry(t)
 
@@ -681,25 +623,9 @@ func TestEveryDivisionIsPrintedOnItsPages(t *testing.T) {
 		}
 	}
 
-	// THE FLOOR IS A COUNT AGAINST THE DOCUMENTS, and it has to be, because the
-	// two obvious alternatives are both defective and both were tried.
-	//
-	// A floor of 29 -- one claim per division -- lets 26 of the 55 vanish with
-	// the guard green, which is most of the second schedule.
-	//
-	// Recomputing the expected total from r.Divisions() is WORSE: `claims` is
-	// accumulated by a loop over r.Divisions() and the total would be summed
-	// from the same call in the same run, so the two move together and the
-	// comparison can never fire. Measured -- with Divisions() truncated to 3 of
-	// 29 that version still reported ok, where even the too-low floor failed.
-	// It is check.go's own doctrine, that two functions over identical input
-	// inside one process cannot witness a wrong amount, in the package next
-	// door.
-	//
-	// So the number is extrinsic: pp.85-125 print all 29 divisions and
-	// pp.167-170 print 23 of them, which is 52 page claims the CITY's pages
-	// require before any entry cites a third page. It goes stale loudly when a
-	// division is added, which is the intended cost.
+	// The floor is a count against the documents: pp.85-125 print all 29
+	// divisions and pp.167-170 print 23, so 52 page claims. A total recomputed
+	// from r.Divisions() moves with `claims` and could never fire.
 	if got := len(r.Divisions()); got != 29 {
 		t.Errorf("the registry holds %d divisions, want 29; the floor below is a count "+
 			"against the pages and means nothing if the axis changed", got)
@@ -711,15 +637,11 @@ func TestEveryDivisionIsPrintedOnItsPages(t *testing.T) {
 	}
 }
 
-// TestEveryRevenueLineIsPrintedOnItsPages ties each revenue line entry in
-// data/taxonomy.yaml (a child of an assignable category) to the Budget Book
-// pages it cites. The match is a row match: the term begins a line and ends at
-// a space or the line's end, so "Franchise Tax- Gas" is not satisfied by
-// "Franchise Tax- Garbage".
-//
-// Mutation: change any line's pages to a page that does not print it -- 127 for
-// miscellaneous-revenue/cardroom-revenue, which p130 prints -- and this fails
-// naming the line and the page.
+// TestEveryRevenueLineIsPrintedOnItsPages: each revenue line entry in
+// data/taxonomy.yaml begins a line on a page it cites, ending at a space or the
+// line's end ("Franchise Tax- Gas" is not "Franchise Tax- Garbage").
+// Mutation: cite 127 for miscellaneous-revenue/cardroom-revenue (printed on
+// p130) and this fails naming the line and the page.
 func TestEveryRevenueLineIsPrintedOnItsPages(t *testing.T) {
 	r := realRegistry(t)
 
@@ -787,14 +709,9 @@ func TestEveryRevenueLineIsPrintedOnItsPages(t *testing.T) {
 	}
 }
 
-// labelColumn is the left-hand column of a departmentwide or major-category
-// schedule: every line cut at the EARLIEST object-category name on it, joined in
-// order. objectColumn is the closed vocabulary the budget book prints in the
-// column to its right.
-//
-// The cut is the minimum index over the whole vocabulary, so the slice's order
-// is inert -- "Total" matching inside "Division Total" cannot win, because
-// "Division Total" starts nine characters earlier on the same line.
+// labelColumn is a schedule's left-hand column: every line cut at the earliest
+// object-category name on it, joined in order. objectColumn is that closed
+// vocabulary; the cut takes the minimum index, so its order is inert.
 func labelColumn(page string) string {
 	objectColumn := []string{
 		"Wages & Benefits", "Services & Supplies", "Capital Outlay",

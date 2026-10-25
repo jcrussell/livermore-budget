@@ -9,32 +9,10 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-// TestEveryFileUnderDataIsValidatedBySomething is the meta-property no other
-// test has, and it is one level up from the ones that do.
-//
-// Each committed file under data/ is strictly validated by a loader:
-// funds/taxonomy/departments.yaml by Load (and read off disk by
-// TestLoadRealRegistries), sources.yaml by LoadSources (and by
-// TestLoadSourcesReadsTheCommittedRegistry), views.yaml by the export
-// command's loadViews, and each extracted manifest by five structural checks
-// that fisc verify --strict runs over the real tree.
-// What NOTHING catches is a file appearing that no loader knows about.
-//
-// MEASURED: dropping in a data/reconciliations.yaml plus a malformed
-// data/junk.yaml leaves
-// fisc verify fully green, and go test ./... green too. Committed data that nothing
-// reads and nothing validates is the same failure this package exists to refuse,
-// one level up: an unvalidated thing agreeing with nothing at all, reported as a
-// pass.
-//
-// IT WALKS TWO LEVELS, NOT ONE, because the boundary is not where it looks.
-// artifacts-match-manifest hashes every file its manifest lists and reports every
-// file it does not, so a stray under data/extracted/<doc>/ IS caught. A stray at
-// data/extracted/ itself, or at data/pdf/, is NOT -- measured, both leave fisc
-// verify fully green. So the two known directories get their own arm.
-//
-// This is a hand-maintained list that fails closed: adding data is meant to be
-// a decision, and a decision leaves a diff here.
+// TestEveryFileUnderDataIsValidatedBySomething: every file under data/ is on a
+// hand-maintained list of what validates it, so a file no loader reads fails
+// here. It walks data/extracted/ and data/pdf/ too, since
+// artifacts-match-manifest catches strays only inside a document's directory.
 func TestEveryFileUnderDataIsValidatedBySomething(t *testing.T) {
 	const hint = "add a loader for it and add it here, or it is committed data " +
 		"nothing validates"
@@ -65,12 +43,8 @@ func TestEveryFileUnderDataIsValidatedBySomething(t *testing.T) {
 	}
 	var wantPDFs, wantDirs []string
 	for _, s := range srcs {
-		// THE WHOLE PATH IS CHECKED, not just the basename. LoadSources only
-		// requires fs.ValidPath, so `file: data/pdfs/x.pdf` loads clean; a
-		// basename comparison would then pass the very test that exists to tie
-		// data/pdf to the registry, and the only reader of the full path is a
-		// --full check that CI runs monthly. This is the claim the directory
-		// layout actually rests on.
+		// The whole path is checked, not the basename: LoadSources accepts
+		// any fs.ValidPath, so `file: data/pdfs/x.pdf` loads clean.
 		if want := "data/pdf/" + filepath.Base(s.File); s.File != want {
 			t.Errorf("sources.yaml %s has file %q, want %q; every PDF lives in data/pdf",
 				s.ID, s.File, want)

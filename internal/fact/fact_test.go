@@ -229,14 +229,8 @@ func propertyTaxRule(t *testing.T) (*mapping.File, *mapping.Rule) {
 			Rows:     rows,
 			Parts: []mapping.Part{{
 				Page: 127,
-				// The trailing newline is load-bearing. "Property Taxes" is
-				// also the tail of "Total Property Taxes", which p127 prints
-				// below this block; the city prints the section heading alone
-				// on its line and the total with its four figures beside it, so
-				// requiring the line break is what makes this anchor unique and
-				// lets it resolve with no ordinal at all. There are no emphasis
-				// markers to anchor on: `pdftotext -layout` reproduces the
-				// printed page.
+				// The trailing newline keeps this anchor off p127's
+				// "Total Property Taxes", so it resolves with no ordinal.
 				Section: "Property Taxes\n",
 				StopAt:  "Total Property Taxes",
 				// This schedule prints four years on three bases side by side.
@@ -255,12 +249,9 @@ func propertyTaxRule(t *testing.T) (*mapping.File, *mapping.Rule) {
 	return f, &f.Rules[0]
 }
 
-// TestContraRowsAndSharedCategories is the case the spine cannot exercise.
-//
-// Thirteen rows here all classify as taxes/property, so an id built from the
-// classification alone would give all thirteen the same identity. Two of them
-// are printed in parentheses, so they must arrive already negative — the
-// arithmetic only closes with the sign kept.
+// TestContraRowsAndSharedCategories: thirteen rows share taxes/property, so
+// the id cannot be the classification alone, and the two parenthesized rows
+// arrive negative.
 func TestContraRowsAndSharedCategories(t *testing.T) {
 	d := budgetDoc(t, 127)
 	f, rule := propertyTaxRule(t)
@@ -406,18 +397,9 @@ func TestIDIsIdentityNotContent(t *testing.T) {
 	})
 }
 
-// TestTwoAnchorRowsGetDistinctIDs is fisc-28h, against the page it was found
-// on. Budget Book p76 prints two rows that share a source fund and differ only
-// in their destination, both in rule p76-transfers-in-enterprise-a:
-//
-//	Transfer From Wastewater   to Stormwater          ...
-//	Transfer From Wastewater   to LAVWMA / Wastewater ...
-//
-// Hashing the bare Row.Label gave both of them one id, so the id was keyed on
-// a string that is not the row_label the fact publishes. The id is built from
-// PrintedLabel() for exactly this reason: it is what the record says, and a
-// content address a reader cannot recompute from the record is not an
-// address.
+// TestTwoAnchorRowsGetDistinctIDs: Budget Book p76 prints two Wastewater
+// transfers that differ only in destination, so the id hashes PrintedLabel(),
+// the row_label the record publishes, not the bare Row.Label.
 func TestTwoAnchorRowsGetDistinctIDs(t *testing.T) {
 	facts := factsFrom(t, "../mapping/testdata/transfers-p76.yaml", 76)
 	if len(facts) == 0 {
@@ -695,14 +677,9 @@ func contains(s []string, want string) bool {
 	return false
 }
 
-// TestARowKindOverridesTheRulesKind pins mapping.Row.Kind reaching the
-// published record, which is the only place the override is observable.
-//
-// It lives here rather than in internal/mapping because that package cannot
-// import this one, and a fact is what the override is FOR: eleven-plus mixed
-// fund blocks on Budget Book pp.131-140 print revenue rows and a Transfers In
-// row inside one printed total, and the transfer's facts must say transfer_in
-// while the rule says revenue.
+// TestARowKindOverridesTheRulesKind: mapping.Row.Kind reaches the published
+// record, as for the Transfers In rows inside revenue blocks on Budget Book
+// pp.131-140.
 func TestARowKindOverridesTheRulesKind(t *testing.T) {
 	f := &mapping.File{DocID: "doc"}
 	rule := &mapping.Rule{ID: "stormwater", Kind: vocab.KindRevenue,
@@ -732,15 +709,9 @@ func TestARowKindOverridesTheRulesKind(t *testing.T) {
 	}
 }
 
-// TestACounterpartPublishesTheFarLegFromTheSameFigure is the fan-out: one
-// printed figure becoming the two facts a transfer needs.
-//
-// Budget Book p76 prints "Transfer From Low Income Hsng  to General Fund
-// 257,012". That number is 257,012 leaving fund 200 and 257,012 arriving at
-// fund 100, and fact.Fact carries one fund field, so one fact cannot hold the
-// pair. What this pins is that the pair is expressible AND that the
-// two legs are told apart on the components that carry the meaning of the
-// difference, rather than on a discriminator added to avoid a hash clash.
+// TestACounterpartPublishesTheFarLegFromTheSameFigure: one printed figure
+// (p76, Low Income Hsng to General Fund 257,012) becomes the two facts a
+// transfer needs, told apart on fund and kind rather than a discriminator.
 func TestACounterpartPublishesTheFarLegFromTheSameFigure(t *testing.T) {
 	f := &mapping.File{DocID: "doc"}
 	rule := &mapping.Rule{ID: "p76-transfers-in-general", Kind: vocab.KindTransferIn,
@@ -766,9 +737,7 @@ func TestACounterpartPublishesTheFarLegFromTheSameFigure(t *testing.T) {
 	}
 	near, far := got[0], got[1]
 
-	// ONE FIGURE IS THE PROVENANCE FOR BOTH DIRECTIONS. This is not duplicated
-	// evidence: fact-offset-points-at-token has to hold for each leg, and both
-	// legs point at the token the city actually printed.
+	// Both legs cite the one token the city printed.
 	if near.Page != far.Page || near.Offset != far.Offset || near.Token != far.Token {
 		t.Errorf("the legs cite different provenance: p%d@%d %q vs p%d@%d %q; one "+
 			"printed figure is the evidence for both",
@@ -781,9 +750,7 @@ func TestACounterpartPublishesTheFarLegFromTheSameFigure(t *testing.T) {
 		t.Errorf("far leg row_label = %q, want the same printed line %q", far.RowLabel, near.RowLabel)
 	}
 
-	// AND THEY DIFFER TWICE OVER, without any change to MakeID. kind is not in
-	// the id tuple, so kind alone could not have separated them; row_path and
-	// column_path both do, and each says WHY the legs are different.
+	// kind is not in the id tuple; row_path and column_path separate the legs.
 	if near.RowPath != "transfers/in" || far.RowPath != "transfers/out" {
 		t.Errorf("row paths = %q / %q, want transfers/in and transfers/out",
 			near.RowPath, far.RowPath)
@@ -812,11 +779,9 @@ func TestACounterpartPublishesTheFarLegFromTheSameFigure(t *testing.T) {
 	}
 }
 
-// TestACounterpartWithNoFundIsRefusedRatherThanFiledUnderTheScope guards the
-// one way the far leg can go missing quietly. ColumnPath falls back to the
-// rule's scope for a column with no fund dimension, so a counterpart declaring
-// neither would publish under "transfers-by-fund" -- a real-looking fact, in a
-// place no fund-group check would ever compare it against the spine.
+// TestACounterpartWithNoFundIsRefusedRatherThanFiledUnderTheScope: a far leg
+// with no fund would otherwise publish under the rule's scope, where no
+// fund-group check compares it.
 func TestACounterpartWithNoFundIsRefusedRatherThanFiledUnderTheScope(t *testing.T) {
 	f := &mapping.File{DocID: "doc"}
 	rule := &mapping.Rule{ID: "r", Kind: vocab.KindTransferIn,
@@ -836,28 +801,9 @@ func TestACounterpartWithNoFundIsRefusedRatherThanFiledUnderTheScope(t *testing.
 	}
 }
 
-// TestACounterpartWithNoRowPathIsRefused is the far leg's other half, and it is
-// the one that was missing.
-//
-// The near leg is guarded on BOTH paths twenty lines above the fan-out; the far
-// leg was guarded only on its column. cpRow takes its category from the
-// counterpart and its department from the row it fans out of, so both can be
-// empty at once -- and the far leg then publishes row_path "" AND AN ID HASHED
-// OVER IT, an unaddressable fact rather than an error.
-//
-// LATENT, NOT LIVE, which is why this test has to build the value by hand:
-// mapping's checkCounterpart refuses an empty counterpart category, so nothing
-// reachable through the parser can produce one. The hole is open to any direct
-// TestARowWithADepartmentAndNoCategoryIsRefused is the near-leg equivalent, and
-// it exists because RowPath does not witness the thing that matters.
-//
-// RowPath returns the bare department when Category is empty, so a Value with
-// `department:` and no category produced a NON-empty row path, passed the
-// guard, and published a fact carrying Category: "" -- which factVocabulary
-// and factKindMatchesCategory both skip, and which in a scope no projection
-// selects is named by nothing at all. mapping.Parse closed that on 2026-08-29;
-// this is the same rule at the other constructor, because the parser is not
-// the only FromValues caller and the guard beside it already says so.
+// TestARowWithADepartmentAndNoCategoryIsRefused: RowPath returns the bare
+// department when Category is empty, so the guard must test the category, or
+// a fact publishes Category "" that every vocabulary check skips.
 func TestARowWithADepartmentAndNoCategoryIsRefused(t *testing.T) {
 	f := &mapping.File{DocID: "doc"}
 	rule := &mapping.Rule{ID: "r", Kind: vocab.KindExpenditure,
@@ -880,7 +826,9 @@ func TestARowWithADepartmentAndNoCategoryIsRefused(t *testing.T) {
 	}
 }
 
-// FromValues caller, and the parser is not the only thing that will ever be one.
+// TestACounterpartWithNoRowPathIsRefused: a far leg with an empty category and
+// department would publish row_path "" and an id hashed over it. Unreachable
+// through mapping.Parse, so the value is built by hand.
 func TestACounterpartWithNoRowPathIsRefused(t *testing.T) {
 	f := &mapping.File{DocID: "doc"}
 	rule := &mapping.Rule{ID: "r", Kind: vocab.KindTransferIn,
@@ -909,13 +857,9 @@ func TestACounterpartWithNoRowPathIsRefused(t *testing.T) {
 	}
 }
 
-// TestMakeSeriesIDIsTheFactIDWithoutRuleOrColumn is the relationship the
-// revenue trends contract publishes, checked rather than asserted in prose: a
-// series id is MakeID's tuple minus the rule id, the fiscal year and the basis.
-//
-// The consequence a reader depends on is the second half: two facts of the SAME
-// printed row in different columns share a series id, and two facts of different
-// rows never do.
+// TestMakeSeriesIDIsTheFactIDWithoutRuleOrColumn: a series id is MakeID's
+// tuple minus rule id, fiscal year and basis, so one printed row's columns
+// share it and different rows never do.
 func TestMakeSeriesIDIsTheFactIDWithoutRuleOrColumn(t *testing.T) {
 	const (
 		doc  = "livermore-budget-fy2026-2027"

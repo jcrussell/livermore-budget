@@ -10,21 +10,13 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-// TestEveryPrintedDivisionIsFiledUnderItsDepartment holds the registry's
-// divisions to the division blocks pp.85-125 PRINT, counted off the page text
-// rather than off the registry: each department's pages, the ones its
-// divisions cite in that range, print exactly as many `Division Total` rows
-// above `Department Funding Sources` as the registry files divisions under it,
-// and the range prints no such row on a page no division cites.
+// TestEveryPrintedDivisionIsFiledUnderItsDepartment: each department's pages in
+// pp.85-125 print as many `Division Total` rows above `Department Funding
+// Sources` as the registry files divisions under it, counted off the page text,
+// and no uncited page in the range prints one.
 //
-// The department page sums a department's spending over the divisions the
-// registry files under it, so a division printed and not filed would leave a
-// department's sum short with every figure on it cited. The count is the
-// page's, so it moves when the page does and not when the registry does.
-//
-// Mutation: delete `cybersecurity` from data/departments.yaml -- a division
-// p97 prints and the registry would no longer file -- and
-// administrative-services counts 5 printed against 4 filed. Moving `horizons`
+// Mutation: delete `cybersecurity` from data/departments.yaml and
+// administrative-services counts 5 printed against 4 filed; moving `horizons`
 // under public-works fails both departments.
 func TestEveryPrintedDivisionIsFiledUnderItsDepartment(t *testing.T) {
 	r := realRegistry(t)

@@ -465,11 +465,9 @@ func TestTheComparisonGoesRed(t *testing.T) {
 	})
 }
 
-// TestTheSpineBalancesAtThePrintedControlTotals holds pp.66-67's identity to
-// the control totals the city prints for it: per fund group and adopted year,
-// the facts' sources and uses are equal, and each is the page's printed TOTAL
-// SOURCES or TOTAL USES, rows no rule maps. It covers the p67 expenditure
-// columns a rule's own stated total cannot.
+// TestTheSpineBalancesAtThePrintedControlTotals: per fund group and adopted
+// year, the facts' sources equal uses and each equals pp.66-67's printed TOTAL
+// SOURCES or TOTAL USES, rows no rule maps.
 func TestTheSpineBalancesAtThePrintedControlTotals(t *testing.T) {
 	facts := committedFacts(t)
 	for _, tt := range []struct {

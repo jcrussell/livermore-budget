@@ -31,10 +31,9 @@ func realRegistry(t *testing.T) *Registry {
 	return r
 }
 
-// p76 prints each transfer as "Transfer From <source>  to <destination>",
-// with the source omitted on a continuation row that shares the row above.
-// Both patterns stop at the two-space gap that ends a column, and the
-// destination is anchored to the start of a row so that the footnote
+// p76 prints each transfer as "Transfer From <source>  to <destination>", the
+// source omitted on a continuation row. Both patterns stop at the two-space
+// column gap; the destination is anchored to the row start so the footnote
 // "4. Advance to cover fund balance deficit" is not read as a fund.
 var (
 	p76Source      = regexp.MustCompile(`Transfer From (\S.*?)\s\s+`)
@@ -62,14 +61,10 @@ func transferLabels(t *testing.T) (sources, destinations []string) {
 	return sources, destinations
 }
 
-// The acceptance for fisc-8dz: every fund p76 names in prose resolves to one
-// fund number, or fails naming itself. Nothing here is a near match.
-//
-// The five ambiguous pairs are the point. "Low Income Hsng", "Traffic Imp
-// Fee", "Host Comm Impact", "Measure D" and "State Gas Tax" each head an
-// operating fund AND its CIP twin, so the expected numbers below (200 not
-// 812, 510 not 823, 282 not 820, 550 not 828, 560 not 834) are the assertion:
-// change any alias in funds.yaml to its twin and this test says so.
+// TestP76LabelsResolveOrFailByName: every fund p76 names resolves to one fund
+// number or fails naming itself. Five labels head an operating fund and its
+// CIP twin, so the expected numbers (200 not 812, 510 not 823, 282 not 820,
+// 550 not 828, 560 not 834) catch an alias moved to its twin.
 func TestP76LabelsResolveOrFailByName(t *testing.T) {
 	r := realRegistry(t)
 

@@ -418,11 +418,9 @@ func TestTheAntichainIsOverMoneyBothCutsPrintAndNotOverLevelsAlone(t *testing.T)
 	}
 }
 
-// TestTwoLevelsNeitherRefiningTheOtherAreNotSummable reads the cuts whose
-// levels share no refinement edge and whose kinds and footprints meet: a fund's
-// total revenue beside the spine's revenue by fund group and category, and
-// expenditure by department beside the spine. Each pair carries the General
-// Fund's money twice, so a total over it is refused.
+// TestTwoLevelsNeitherRefiningTheOtherAreNotSummable: cuts sharing no
+// refinement edge whose kinds and footprints meet carry the General Fund twice,
+// so a total over them is refused.
 func TestTwoLevelsNeitherRefiningTheOtherAreNotSummable(t *testing.T) {
 	identities := structure.BudgetBookIdentities()
 	spine := allCutNamed(t, structure.CutSpine)

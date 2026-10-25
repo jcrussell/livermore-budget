@@ -459,9 +459,8 @@ divisions:
 `,
 			want: `departments.yaml: department "debt-services": slug: is also a taxonomy.yaml category slug`,
 		}, {
-			// THE ONE COLLISION THAT MATTERS. A department and a division may
-			// share a name -- the city prints five such pairs -- but a division
-			// and a category may not, because row_path joins exactly those two.
+			// A department and a division may share a name; a division and a
+			// category may not, because row_path joins exactly those two.
 			name: "division slug that is also a category",
 			departments: `
 schema_version: 1
@@ -686,16 +685,10 @@ categories:
 	}
 }
 
-// TestOneAliasTermMaySpanTwoCategories pins the LIMIT of the uniqueness rule
-// TestLoadRejects covers, and it is not a hypothetical.
-//
-// A fund alias is unique file-wide (claimLabel), because a label two funds
-// answer to is a label no schedule can be mapped by. A category alias is not,
-// and must not be: data/taxonomy.yaml has fund-balance/beginning and
-// fund-balance/ending BOTH publishing "Fund Balance / Working Capital",
-// because pp.66-67 print those same words on two rows and the surrounding
-// structure says which is which. Tightening the rule to the file would reject
-// the committed taxonomy.
+// TestOneAliasTermMaySpanTwoCategories pins the limit of TestLoadRejects'
+// uniqueness rule: fund aliases are unique file-wide, category aliases are not,
+// since fund-balance/beginning and /ending both publish "Fund Balance / Working
+// Capital" (pp.66-67 print it on two rows).
 func TestOneAliasTermMaySpanTwoCategories(t *testing.T) {
 	r := load(t, "", `
 schema_version: 1

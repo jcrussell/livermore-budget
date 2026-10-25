@@ -9,12 +9,10 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
-// TestARowsYearsAreTheFactsAndABandIsHashed: a row carrying its years files
-// its figure under them, a band publishes its last year beside its first, and
-// the band end is in the id while a one-year figure's id is MakeID's.
-//
-// Mutation: drop the through arm of MakeIDThrough and the band's id equals
-// its one-year twin's.
+// TestARowsYearsAreTheFactsAndABandIsHashed: a row's years file its figure, a
+// band publishes its last year beside its first, and the band end is hashed.
+// Mutation: drop MakeIDThrough's through arm and the band's id equals its
+// one-year twin's.
 func TestARowsYearsAreTheFactsAndABandIsHashed(t *testing.T) {
 	f := &mapping.File{DocID: "doc"}
 	rule := &mapping.Rule{ID: "rule", Basis: vocab.BasisProjected, Scope: "s"}
