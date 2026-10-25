@@ -178,6 +178,15 @@ describe("one activation", () => {
     assert.deepEqual({ echoed, later }, { echoed: { split: OPENS, pinned: OPENS }, later: { split: "", pinned: OPENS } });
   });
 
+  // Mutation: drop the Enter arm's e.repeat return in sankey.js's node
+  // keydown and the held key splits the node.
+  test("a held Enter does nothing", async () => {
+    const { app, document } = await bootedApp();
+    fire(markOf(app, document, OPENS), "keydown", { key: "Enter", timeStamp: 1000, repeat: true });
+    await settle();
+    assert.deepEqual({ split: app.expansions.join(","), isolated: app.filter.isolated }, { split: "", isolated: "" });
+  });
+
   // Mutation: drop clickNode's and glyphNode's doubled guard and this goes
   // red, the second click of a double click folding the hub the first opened.
   test("a double click on a node or its glyph is one activation, and a click beyond the window folds", async (t) => {

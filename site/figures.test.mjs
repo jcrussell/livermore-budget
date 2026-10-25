@@ -9,7 +9,7 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { share } from "./format.js";
 import {
-  bootedApp, split, settle, clickYear, columnFixture, pageFixture, dollars, shortDollars, everySplit, revealed,
+  bootedApp, split, settle, clickYear, columnFixture, pageFixture, dollars, shortDollars,
 } from "./testlib.mjs";
 
 const PAGE = pageFixture();

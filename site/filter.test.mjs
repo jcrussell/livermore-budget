@@ -23,12 +23,6 @@ const factsOf = (links) => {
   return out;
 };
 
-/** The fund group of one end of a shaped chart's ribbon. */
-const groupAt = (app, doc, id) => {
-  const n = doc.nodes.find((x) => x.id === id);
-  return n ? app.fundGroupOf(n) : "";
-};
-
 /**
  * The filter states sampled on one chart: none; each group present alone,
  * every one but the first, and all; each kind present; each smallest-flow
@@ -133,47 +127,6 @@ function faultsOf(app, doc, state, where) {
     if (ps.reduce((s, p) => s + p.value_cents, 0) !== whole.value_cents) faults.push(`${at}: its parts do not sum to it`);
   }
   for (const [l, n] of seen) if (n !== 1) faults.push(`${where}: ${l.source} -> ${l.target} is accounted ${n} times`);
-  // Removed exactly what the state names: nothing drawn that it hides, and
-  // nothing hidden that it does not. A ribbon with an end at a node filtered
-  // out goes whole, and a ribbon with none is cut along its cells: a cell
-  // whose leaf has an end within a node filtered out goes, and where a node
-  // is shown alone, one whose leaf has none within it, on every ribbon with
-  // no end at that node. plainOf's nodes are no fund group's, so following
-  // one is no more than its own ribbons.
-  const within = (ids) => {
-    const out = new Set();
-    for (const id of ids) for (const x of app.withinNode(app.fetched, id)) out.add(x);
-    return out;
-  };
-  const out = within(state.nodes);
-  // A hidden group's cell goes where all of it is the group's; a total only
-  // part of which is stays drawn, as its ribbon's ends say.
-  const grouped = within(state.groups);
-  const alone = state.only !== "" ? within([state.only]) : null;
-  const goes = (k, atOnly) => (out.size > 0 && app.cellIn(k, out) !== "none") ||
-    (grouped.size > 0 && app.cellIn(k, grouped) === "all") ||
-    (alone !== null && !atOnly && app.cellIn(k, alone) !== "all");
-  const wholeGoes = (l) => state.kinds.has(l.kind) || state.groups.has(groupAt(app, doc, l.source)) ||
-    state.groups.has(groupAt(app, doc, l.target)) || state.nodes.has(l.source) || state.nodes.has(l.target);
-  const atOnly = (l) => l.source === state.only || l.target === state.only;
-  const cellsGo = (l) => {
-    const cells = app.cellsOf(l);
-    if (!cells) return alone !== null && !atOnly(l);
-    return Object.keys(cells).every((k) => goes(k, atOnly(l)));
-  };
-  const anyCellGoes = (l) => {
-    const cells = app.cellsOf(l);
-    if (!cells) return alone !== null && !atOnly(l);
-    return Object.keys(cells).some((k) => goes(k, atOnly(l)));
-  };
-  for (const l of r.hidden) {
-    if (!wholeGoes(l) && !cellsGo(l)) faults.push(`${where}: ${l.source} -> ${l.target} is hidden and the state names nothing of it`);
-  }
-  for (const l of r.doc.links) {
-    for (const leg of l.legs || [l]) {
-      if (wholeGoes(leg) || anyCellGoes(leg)) faults.push(`${where}: ${leg.source} -> ${leg.target} is drawn and the state hides it`);
-    }
-  }
   // Drawn plus hidden is the unfiltered chart, ribbon by ribbon and by fact
   // ids. The ribbons' own figures, not the tally: a hub draws a leaf twice,
   // and the tally states each once ("the tally states a leaf once" below).

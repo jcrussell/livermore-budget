@@ -393,47 +393,10 @@ export function expandAll(app) {
 }
 
 /**
- * Visits every chart the page draws one split at a time: each declared split
- * opened alone from the root (its ancestors split to reveal it), then every
- * node split by its first split (Expand all), then that with every tail drawn
- * out. Returns how many were visited and the first refusal's message, or "".
- */
-export async function everySplit(app, visit) {
-  let visited = 0;
-  try {
-    for (const sp of app.fetched.splits) {
-      app.collapseAll();
-      await settle();
-      await revealed(app, sp.node);
-      await split(app, app.entryOf(sp.node, sp.key));
-      visited++;
-      await visit(`${sp.node} by ${sp.key}`);
-    }
-    app.collapseAll();
-    await settle();
-    if (!app.expandAll()) throw new Error("Expand all split nothing");
-    await settle();
-    visited++;
-    await visit("everything by primary splits");
-    expandAll(app);
-    await settle();
-    visited++;
-    await visit("everything by primary splits, every tail drawn out");
-  } catch (e) {
-    app.collapseAll();
-    return { visited, refused: e && e.message ? e.message : String(e) };
-  }
-  app.collapseAll();
-  await settle();
-  return { visited, refused: "" };
-}
-
-/**
  * Every chart of the expansion the page offers, one split at a time from the
  * root and everything split by its first split, each capped as the page caps
  * it and drawn out whole: each a frontier and the splits drawn whole, which
- * the Sankey form's shape takes with no DOM. It reaches what everySplit
- * renders, and more: every split drawn out as well as Expand all.
+ * the Sankey form's shape takes with no DOM.
  */
 export function expansionStates(app, doc) {
   const root = app.rootFrontier(doc);
@@ -445,6 +408,18 @@ export function expansionStates(app, doc) {
   const every = new Set(doc.splits.map((sp) => sp.node + "\u001f" + sp.key));
   return out.flatMap((st) => [Object.assign({ whole: new Set() }, st),
     Object.assign({}, st, { where: st.where + ", drawn out", whole: every })]);
+}
+
+/**
+ * One state of expansionStates shaped, filtered and laid out as the booted
+ * page's redraw does, at the room the page was laid out at, with nothing
+ * rendered: the filters' chart of it laid out. layOut sets the page's
+ * laidNodes and groupIndex to the chart it lays.
+ * @param {any} app a booted app
+ * @param {{frontier: Set<string>, whole: Set<string>}} st
+ */
+export function layOutState(app, st) {
+  return app.layOut(app.filterFor(shapedAt(app, st.frontier, st.whole)).doc, undefined, app.laidRoom);
 }
 
 /** The refusal banners on the page's <main>. */

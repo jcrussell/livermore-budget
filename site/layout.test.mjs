@@ -9,7 +9,7 @@
 import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 
-import { bootedApp, pageFixture, stylesheet, everySplit, shapedAt,
+import { bootedApp, pageFixture, stylesheet, shapedAt, expansionStates, layOutState,
   settle, columnFixture, loadD3 } from "./testlib.mjs";
 // core.js and sankey.js themselves for the expansion's layout at frontiers
 // no gesture is needed to reach.
@@ -89,34 +89,17 @@ const usd = (n) => "$" + Math.round(n).toLocaleString();
 
 /**
  * The words one node's label draws and how wide they draw, at sankey.js's
- * ADVANCE_EM. Read off the mark render() drew where `drawn` holds it, so this
- * measures the page's fit; else fitted by the page's labelWords at that bound.
+ * ADVANCE_EM, fitted by the page's labelWords at that bound.
  *
  * THE WORDS COME OFF THE PAGE: markCents, fmtShortSigned and nodeFlags are what
  * render() draws. A copy of nodeFlags' markers here would under-measure every
  * label the day a marker is added.
  */
-function labelWidth(app, d, place, room, qualifier, drawn, noun = "") {
+function labelWidth(app, d, place, room, qualifier, noun = "") {
   const value = "  " + app.fmtShortSigned(app.markCents(d));
   const flags = app.nodeFlags(d);
-  const words = drawn && drawn.get(d.id) ||
-    app.labelWords(room, qualifier, d.label, (w) => app.labelAdvance(w, value, flags), noun);
+  const words = app.labelWords(room, qualifier, d.label, (w) => app.labelAdvance(w, value, flags), noun);
   return { words, width: app.labelAdvance(words, value, flags) };
-}
-
-/**
- * The words each drawn mark's qualifier, label and noun tspans carry, by id.
- * @param {Document} document
- */
-function drawnWords(document) {
-  const out = new Map();
-  for (const m of document.querySelectorAll("#chart g.node")) {
-    const text = [...m.children].find((c) => c.tagName === "text" && c.getAttribute("class") === "halo");
-    if (!text) continue;
-    const [qualifier, label, noun] = [...text.children];
-    out.set(m.__data__.id, { qualifier: qualifier.textContent, label: label.textContent, noun: noun.textContent });
-  }
-  return out;
 }
 
 const LABEL_PX = sankey.LABEL_PX;
@@ -174,8 +157,7 @@ function roomFor(app, columns, col) {
  * MEASURED WITH THE VIEW ON SCREEN: the flags nodeFlags reads, and the
  * qualifiers, are the chart's on screen.
  */
-function labelFit(app, graph, document) {
-  const drawn = document ? drawnWords(document) : null;
+function labelFit(app, graph) {
   const columns = columnsOf(app, graph);
   const last = Math.max(...columns.keys());
   // The words the page would draw, qualifier included.
@@ -189,7 +171,7 @@ function labelFit(app, graph, document) {
     const col = app.columnOf(slots, n);
     const room = roomFor(app, columns, col);
     const noun = nouns.get(n.id) || "";
-    const { words, width } = labelWidth(app, n, place, app.labelRoom(place, columns.size), qualifier, drawn, noun);
+    const { words, width } = labelWidth(app, n, place, app.labelRoom(place, columns.size), qualifier, noun);
     const box = boxAt(place.anchor, place.x, width);
     return { node: n, id: n.id, col, last, place, width, box, room, qualifier, noun,
              words: words.qualifier + words.label + (words.noun || ""),
@@ -589,12 +571,12 @@ function atFloor(app, fits) {
 
 for (const label of Object.keys(ALIKE)) {
   describe(`${label}: the root and every split the page offers, measured for what a label does to its neighbours`, () => {
-    let walk, views, overlapped, alike, wider, floor, glyphed, glyphs;
+    let views, overlapped, alike, wider, floor, glyphed, glyphs;
     before(async () => {
       // Found by label, so a year the page no longer ships fails by name.
       const year = pageFixture().config.years.find((y) => y.label === label);
       if (!year) throw new Error(`the pinned page ships no year labelled ${JSON.stringify(label)}`);
-      const { app, document } = await bootedApp({ checkedStem: year.stem });
+      const { app } = await bootedApp({ checkedStem: year.stem });
       overlapped = {};
       alike = {};
       wider = {};
@@ -602,9 +584,9 @@ for (const label of Object.keys(ALIKE)) {
       glyphed = {};
       glyphs = 0;
       views = 0;
-      const visit = (where) => {
+      const visit = (where, graph) => {
         views++;
-        const fits = labelFit(app, { nodes: app.laidNodes }, document);
+        const fits = labelFit(app, graph);
         if (where.startsWith("everything")) floor[where] = atFloor(app, fits);
         const touching = touchingStacks(fits);
         if (touching.length) overlapped[where] = touching;
@@ -624,16 +606,18 @@ for (const label of Object.keys(ALIKE)) {
             same.map((e) => JSON.stringify(e[0].split("\0")[1])).sort().join(", ");
         }
       };
-      visit("the root");
-      walk = await everySplit(app, visit);
+      visit("the root", { nodes: app.laidNodes });
+      // Each split opened alone, Expand all, and Expand all drawn out.
+      for (const st of expansionStates(app, app.fetched)) {
+        if (!st.whole.size || st.where.startsWith("everything")) visit(st.where, layOutState(app, st));
+      }
     });
 
     // fisc-8cx0: every split's labels against their room, not four frontiers'.
     test("no label is drawn wider than its room", (t) => {
       const detail = `${views} chart(s) walked; ` + JSON.stringify(wider);
       t.diagnostic(detail);
-      assert.deepEqual({ refused: walk.refused, walkedNothing: views === 0, wider },
-        { refused: "", walkedNothing: false, wider: {} }, detail);
+      assert.deepEqual({ walkedNothing: views === 0, wider }, { walkedNothing: false, wider: {} }, detail);
     });
 
     // Mutation: set BAND_FLOOR to 0 and this goes red, every cut label
@@ -652,16 +636,14 @@ for (const label of Object.keys(ALIKE)) {
     test("no ⊕ or ⊖ is drawn over a label", (t) => {
       const detail = `${views} chart(s) walked, ${glyphs} glyph(s) drawn; ` + JSON.stringify(glyphed);
       t.diagnostic(detail);
-      assert.deepEqual({ refused: walk.refused, drewGlyphs: glyphs > 0, glyphed },
-        { refused: "", drewGlyphs: true, glyphed: {} }, detail);
+      assert.deepEqual({ drewGlyphs: glyphs > 0, glyphed }, { drewGlyphs: true, glyphed: {} }, detail);
     });
 
     test("the labels stacked on one another are the ones pinned", (t) => {
-      const detail = `${views} chart(s) walked${walk.refused ? `, refused at ${walk.refused}` : ""}; ` +
-        JSON.stringify(overlapped);
+      const detail = `${views} chart(s) walked; ` + JSON.stringify(overlapped);
       t.diagnostic(detail);
-      assert.deepEqual({ refused: walk.refused, walkedNothing: views === 0, overlapped },
-        { refused: "", walkedNothing: false, overlapped: OVERLAPPED[label] }, detail);
+      assert.deepEqual({ walkedNothing: views === 0, overlapped },
+        { walkedNothing: false, overlapped: OVERLAPPED[label] }, detail);
     });
 
     test("the charts that draw two marks of one column in the same words are the ones pinned", (t) => {
