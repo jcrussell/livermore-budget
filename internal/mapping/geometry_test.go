@@ -152,11 +152,9 @@ func TestColumnGuardRejectsAGridThePageDoesNotPrint(t *testing.T) {
 	swapped[0], swapped[1] = swapped[1], swapped[0]
 
 	t.Run("a rule that forgot its first column", func(t *testing.T) {
-		// PLACEMENT. Naming only the last three of p66's four printed headers
-		// matches, in order, against a grid whose first band starts at x=374.04
-		// -- and "Property Taxes"'s first figure ends at x=363.60, in the area
-		// the grid calls row labels. Nothing about the token count says so:
-		// the row is followed by four figures and the rule wanted three.
+		// PLACEMENT. Naming only p66's last three headers starts the grid at
+		// x=374.04, and "Property Taxes"'s first figure ends at x=363.60, in
+		// the label area; the token count cannot see it.
 		res, rule, part := p66Rule(t, []string{"FY 2026-27", "FY 2025-26", "FY 2026-27"})
 		_, _, err := res.Values(rule, part)
 		if err == nil {
@@ -174,11 +172,8 @@ func TestColumnGuardRejectsAGridThePageDoesNotPrint(t *testing.T) {
 	})
 
 	t.Run("two headers in the wrong order", func(t *testing.T) {
-		// ORDER. column_headers is a claim about the order the page prints the
-		// columns in, and it is enforced by requiring each header to occur after
-		// the one before it. Swapping a pair makes the sequence unmatchable
-		// rather than matchable-and-shifted, which is the point: a page that
-		// dropped a column fails here instead of shifting every figure one place.
+		// ORDER. Each header must occur after the one before, so a swapped
+		// pair is unmatchable rather than matched and shifted.
 		res, rule, part := p67Rule(t, swapped)
 		_, _, err := res.Values(rule, part)
 		if err == nil {
@@ -254,14 +249,9 @@ func p67RuleWithColumns(t *testing.T, headers []string) (*Resolver, *Rule, *Part
 	return res, &f.Rules[0], &f.Rules[0].Parts[0]
 }
 
-// TestOverlapFilingLosesZeroDashes is the arithmetic behind the filing rule, over
-// a real page.
-//
-// Budget Book p167 right-aligns its figures to a grid offset right of the header
-// text, so a value's right edge identifies its column and a value's OVERLAP with
-// its header does not. Filing by overlap does not merely place fewer tokens: the
-// tokens it fails to place are zero dashes, which this corpus spells "-" and
-// must never lose.
+// TestOverlapFilingLosesZeroDashes holds right-edge filing over Budget Book
+// p167, whose figures sit right of their header text. Mutation: file by
+// overlap with the header and the tokens lost are the "-" zero dashes.
 func TestOverlapFilingLosesZeroDashes(t *testing.T) {
 	b, err := os.ReadFile("../../testdata/geometry/budget-p0167.json")
 	if err != nil {
@@ -381,14 +371,9 @@ rules:
       - {label: "Beta", category: c}
 `
 
-// TestASparseRowIsRefusedRatherThanMisfiled is the acceptance criterion itself.
-//
-// Without the guard, the labelled read takes the first three tokens after
-// "Alpha" and files 300 -- a figure the page prints in the THIRD column -- as
-// the value of the second, then carries on. That is a plausible wrong value with
-// working-looking provenance, which is the thing this project refuses. The
-// refusal has to name the column the page actually prints it in, or a reader
-// cannot tell a mis-declared rule from a moved column.
+// TestASparseRowIsRefusedRatherThanMisfiled holds that a row blank in its
+// second column is refused, naming the column the page prints 300 in.
+// Mutation: drop the guard and 300 is filed as the second column's value.
 func TestASparseRowIsRefusedRatherThanMisfiled(t *testing.T) {
 	d := inlineDocWithGeometry(t, "sparse-doc",
 		map[int]string{1: sparsePage},
@@ -420,14 +405,9 @@ func TestASparseRowIsRefusedRatherThanMisfiled(t *testing.T) {
 	}
 }
 
-// TestFusedRowsAreCaughtByLineAccounting is what the line count is for, and it
-// is a case no other guard can see.
-//
-// The part has ONE column, so its single band claims everything right of the
-// gutter and the placement check has nothing to say. The value count is right:
-// two rows, one column, two figures. What is wrong is that the page printed them
-// on one line rather than two, which is precisely the corruption the previous
-// extractor produced and which mismaps every row below it.
+// TestFusedRowsAreCaughtByLineAccounting holds a one-column part whose two
+// rows the page prints on one line: placement and value count both pass, and
+// only the line count refuses.
 func TestFusedRowsAreCaughtByLineAccounting(t *testing.T) {
 	labels := "LABELS:\nAlpha       1\nBeta        2\nEND\n"
 	fused := "          FY 2024\n       10       20\nEND\n"
@@ -563,14 +543,9 @@ func TestGuardRefusesWhatItCannotCheck(t *testing.T) {
 	})
 }
 
-// TestAWrappedFigureIsCaughtAndTheLineNumbersAreThePageS covers the case where a
-// row's last figure is printed on the next line rather than its own -- the band
-// is right, so placement has nothing to say, and the token count is right too.
-//
-// The fixture opens with blank lines on purpose. A message that numbered lines by
-// their position among the NON-BLANK ones would report 2 and 3 here instead of 5
-// and 6, sending a reader to the wrong rows of a page whose blank lines they
-// cannot see in the error.
+// TestAWrappedFigureIsCaughtAndTheLineNumbersAreThePageS holds a row's last
+// figure printed on the next line refused, and numbered 5 and 6 by page line;
+// the leading blank lines catch numbering among non-blank lines (2 and 3).
 func TestAWrappedFigureIsCaughtAndTheLineNumbersAreThePageS(t *testing.T) {
 	page := "\n\n\n          FY 2024   FY 2025   FY 2026\nAlpha       100       200\n" +
 		"                                300\nBeta        400       500       600\nTOTAL\n"
@@ -668,25 +643,10 @@ func cipRule(t *testing.T, page int, section, stopAt, label string) (*Resolver, 
 	return res, &f.Rules[0], &f.Rules[0].Parts[0]
 }
 
-// TestCIPp29SplitFigureFailsClosed is fisc-j5p, and it disproves that bead's own
-// hypothesis about how it would be caught.
-//
-// CIP p29 prints one figure of $21,130,083 as "$21130 083". The bead expected
-// geometry to hold ONE word there, so that a count cross-check between the
-// substrates would see one word against two tokens and refuse. It does not:
-// geometry holds two words, at x1 280.45 and 299.67, the substrates agree
-// token for token and line for line, and every count matches.
-//
-// What catches it is placement. Both right edges fall in the SAME band -- band 0
-// ends at 301.54 -- so the token the rule reads as its second column is printed
-// in its first, and the guard says so. Without that, amount.Parse("$21130")
-// succeeds and $21,130 is published as the value of a printed $21,130,083, with
-// the rest of the row shifted one place; splitDigits cannot see it because the
-// split falls across a token boundary.
-//
-// The part must be LABELLED. A label-less part would be refused by the value
-// count first -- 30 tokens where 8 were wanted -- and this test would be showing
-// something other than what it claims.
+// TestCIPp29SplitFigureFailsClosed is fisc-j5p: CIP p29 prints $21,130,083 as
+// "$21130 083", two words in both substrates, and placement catches it -- both
+// right edges fall in band 0. Mutation: drop the placement arm and $21,130 is
+// published. The part is labelled so the value count does not refuse first.
 func TestCIPp29SplitFigureFailsClosed(t *testing.T) {
 	res, rule, part := cipRule(t, 29, "TOTAL - DOWNTOWN", "CITY OF", "REVITILIZATION")
 
@@ -708,41 +668,12 @@ func TestCIPp29SplitFigureFailsClosed(t *testing.T) {
 	}
 }
 
-// TestCIPp40SparseRowFailsClosedButDoesNotRead is the acceptance criterion's CIP
-// half, and the name carries the half that is NOT satisfied.
-//
-// PB200654 prints two figures with six columns between them, and the page PRINTS
-// a "-" in each of those six. Those dashes are in no substrate at all -- not
-// -layout, not -raw, not the default mode, not -bbox -- because they are drawn
-// as non-text, while PB200429 on the same page does carry its dashes. So the row
-// cannot be read correctly by any amount of geometry, and this test does not
-// claim it can (fisc-8ln).
-//
-// What it claims is the half that matters here: the read fails, and it fails
-// NAMING THE ROW rather than filing the second 550,000 under a year the city
-// never put it in.
-//
-// IT REACHES THE ROW READ. An anchor on "PROJECT NAME", the column-header
-// line's own label, would start the block at the headers, and checkGap's
-// LEADING-GAP arm would refuse before any row was read with a message that
-// also quotes PB200654.
-//
-// The anchor starts the block past the header line -- on its trailing
-// "TOTAL", ordinal 1, since "TOTAL - PARKS & BEAUTIFICATION" below is the second
-// -- and the rule declares the two rows above PB200654 so their figures are
-// consumed rather than sitting in the leading gap. PB200654's wrapped label
-// needs a wrapped_labels entry, which is the third thing this page demands
-// before a read gets through at all.
-//
-// THE GUARD THAT FIRES IS THE VALUE COUNT, not the geometry column guard:
-// reverting the column guard changes nothing. The value count refuses first,
-// because the row yields 2 tokens against 8 columns, and geometry never gets a
-// chance to place them. Measured both ways --
-// with column_headers declared and without, the error is identical. So on THIS
-// row the value count is the whole defence, and it is load-bearing in a way
-// worth stating: neutering it does not produce a wrong read, it panics on the
-// `toks[:ncols]` two lines below ("slice bounds out of range [:8] with capacity
-// 2").
+// TestCIPp40SparseRowFailsClosedButDoesNotRead holds that PB200654, whose six
+// printed "-" are in no substrate (fisc-8ln), fails naming the row rather than
+// misfiling its second 550,000. The anchor is the header line's trailing
+// "TOTAL" so the leading-gap arm does not refuse first. The value count fires
+// (2 tokens for 8 columns), not the column guard. Mutation: neuter the value
+// count and `toks[:ncols]` panics.
 func TestCIPp40SparseRowFailsClosedButDoesNotRead(t *testing.T) {
 	src := `schema_version: 1
 doc_id: livermore-cip-fy2026-2030
@@ -802,11 +733,8 @@ rules:
 		t.Errorf("error = %s\nthe block still starts at the column headers, so the "+
 			"row read is not reached; this is fisc-i0d9 again", got)
 	}
-	// The figure is not filed anywhere either, but that is true BY CONSTRUCTION
-	// rather than by assertion: Values and readPart both return (nil, nil, err)
-	// on every error path, so `if len(values) != 0` here could not fail and
-	// would read as a guard. What the Fatalf above already establishes is the
-	// checkable half -- that the read did not succeed.
+	// That the figure is filed nowhere holds by construction: every error
+	// path returns (nil, nil, err).
 }
 
 // lineFiling is one printed line's figures as the grid files them: the band
@@ -889,13 +817,9 @@ func fundBalanceUses(date string) []string {
 		"Total Uses", date}
 }
 
-// TestP187IsPlacedByTheColumnGuard is the grid geom.NewGrid has to place.
-// Budget Book p187 right-aligns each figure past the right edge of the header
-// over it, and the gap between "Transfers Out" and "Transfers Out to CIP" is
-// narrower than that overhang, so a Transfers Out figure wider than a "-" ends
-// past the gap's midpoint. Every six-figure line files one figure per column,
-// and Community Benefit Fund's line, whose ending balance is blank, files its
-// five under the first five.
+// TestP187IsPlacedByTheColumnGuard holds Budget Book p187, whose overhang past
+// each header exceeds the gap before the next: every six-figure line files one
+// per column, and Community Benefit Fund's five file under the first five.
 func TestP187IsPlacedByTheColumnGuard(t *testing.T) {
 	full, other, _ := fileFigures(t, 187, fundBalanceUses("6/30/24"))
 	if full != 49 {

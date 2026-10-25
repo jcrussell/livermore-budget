@@ -65,11 +65,9 @@ func p186Marker(t *testing.T, text string, g *geom.Page) (int, int) {
 	return off, word
 }
 
-// TestAFootnoteSuperscriptPairs: Budget Book p186 and p190 print a footnote
-// "1" that -layout puts on a line of its own and the geometry clusters into
-// "Capital Improvement Program Funds" below it. Both pages pair, the marker
-// pairs with the superscript word on a line of its own, and the line that
-// absorbed it holds only the label line's own words.
+// TestAFootnoteSuperscriptPairs: p186 and p190 print a footnote "1" -layout
+// puts on its own line and the geometry clusters into the label below; both
+// pages pair.
 func TestAFootnoteSuperscriptPairs(t *testing.T) {
 	for _, page := range []int{186, 190} {
 		t.Run(fmt.Sprint(page), func(t *testing.T) {
@@ -105,10 +103,8 @@ func TestAFootnoteSuperscriptPairs(t *testing.T) {
 	}
 }
 
-// TestAStrayLineThatIsNotAMarkerStillBreaksPairing: the same page with the
-// absorbed word changed so it is no footnote marker. A three-digit figure is
-// not a marker, and a full-height "1" is not a superscript; both are a
-// disagreement the pairing cannot name, and it refuses.
+// TestAStrayLineThatIsNotAMarkerStillBreaksPairing: a three-digit figure or a
+// full-height "1" in the marker's place is refused.
 func TestAStrayLineThatIsNotAMarkerStillBreaksPairing(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
@@ -170,10 +166,8 @@ func TestP186ReadsGuarded(t *testing.T) {
 	}
 }
 
-// TestP186UndeclaredMarkerIsStillRefused: the pairing reconciling the marker
-// does not take it out of the text read. Inside a block it is still a line
-// between two rows that no row maps, and the read refuses it until the part
-// declares it.
+// TestP186UndeclaredMarkerIsStillRefused: pairing does not take the marker out
+// of the text read; the part must declare it.
 func TestP186UndeclaredMarkerIsStillRefused(t *testing.T) {
 	_, err := p186Guarded(t, false)
 	if err == nil {
@@ -184,10 +178,8 @@ func TestP186UndeclaredMarkerIsStillRefused(t *testing.T) {
 	}
 }
 
-// TestP186IsPlacedByTheColumnGuard measures p186's grid under the band rule:
-// every row's line files one figure per column in order, the one whose label
-// wraps onto "& Internal Service" among them. The superscript sits left of the
-// first header, in the row-label area, and files nowhere.
+// TestP186IsPlacedByTheColumnGuard: every row files one figure per column, the
+// wrapped label included; the superscript files nowhere.
 func TestP186IsPlacedByTheColumnGuard(t *testing.T) {
 	full, other, room := fileFigures(t, 186, []string{"7/1/23", "Revenues", "Transfers In", "Total Sources"})
 	t.Logf("p186: the closest figure ends %.2fpt short of the next column's header", room)

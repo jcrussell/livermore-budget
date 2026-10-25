@@ -7,17 +7,9 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/amount"
 )
 
-// ACFR p177, the ten-year schedule of outstanding debt by type — the page
-// fisc-9tn4 was settled on, and the first consumer of the quantity channel.
-//
-// Every test here reads the page THROUGH the published rule
-// (acfr-p0177-debt-by-type), so this file and the mapping cannot become two
-// drifting readings of one page: the arithmetic below is over the tokens the
-// rule's own anchors and grammars produced. The rule publishes nothing
-// (fisc-xmh2, fisc-7jtl carry the blockers), so its amount cells are reachable
-// only by lifting the skips in memory — which is also what makes these tests
-// the page's arithmetic guard until publication lands and the check moves to
-// internal/check.
+// ACFR p177, outstanding debt by type over ten years, read through the
+// published rule acfr-p0177-debt-by-type. The rule publishes nothing, so the
+// amount cells are reached by lifting its skips in memory.
 const publishedACFR = "../../mappings/livermore-acfr-fy2025.yaml"
 
 const acfrDebtRuleID = "acfr-p0177-debt-by-type"
@@ -64,11 +56,8 @@ func unskip(rule *Rule) {
 	}
 }
 
-// TestACFRDebtRulePublishesNothing pins the committed state: the rule reads
-// the whole page — a resolution error here would say it no longer does — and
-// yields not one Value. Every fact is blocked, and each blocker is a bead
-// (fisc-xmh2, fisc-7jtl); un-skipping anything without settling those would
-// publish debt under a false kind with a false year.
+// TestACFRDebtRulePublishesNothing: the rule reads the whole page and yields
+// no Value; its blockers are fisc-xmh2 and fisc-7jtl.
 func TestACFRDebtRulePublishesNothing(t *testing.T) {
 	r, rule := acfrDebtResolver(t, nil)
 	values, _, err := r.Values(rule, &rule.Parts[0])
@@ -113,15 +102,8 @@ func acfrDebtGrid(t *testing.T) map[int][]amount.Cents {
 	return grid
 }
 
-// TestACFRDebtScheduleTiesExceptOneRow is the schedule checking our reading of
-// it: nine of the ten rows tie to the city's own printed total EXACTLY, which
-// is what makes the tenth a fact about the document rather than a suspicion
-// about the parser.
-//
-// FY2024's printed total is short by 176,292 — exactly its own Financed
-// Purchases figure, the column the city started using that year. Naming the
-// column is the whole claim; a difference that merely happened to be 176,292
-// would prove nothing.
+// TestACFRDebtScheduleTiesExceptOneRow: nine rows tie EXACTLY; FY2024's total
+// is short by 176,292, exactly its own Financed Purchases figure.
 func TestACFRDebtScheduleTiesExceptOneRow(t *testing.T) {
 	const (
 		shortYear                         = 2024
@@ -156,11 +138,9 @@ func TestACFRDebtScheduleTiesExceptOneRow(t *testing.T) {
 	}
 }
 
-// TestACFRDebtRowIsNotCorruptedInTheCommittedCorpus is the flagship claim of
-// amount.TestLeadingMinusIsReallyPositive, proved off the page: under poppler
-// the FY2017 row's 512,946 stands alone, and the "-512,946" that test quotes
-// — an empty column's dash glued on by xberg — is not in the corpus. The
-// arithmetic proves the sign, and a leading minus is still refused.
+// TestACFRDebtRowIsNotCorruptedInTheCommittedCorpus: under poppler FY2017's
+// 512,946 stands alone (no "-512,946" as in xberg); the arithmetic proves the
+// sign, and a leading minus is still refused.
 func TestACFRDebtRowIsNotCorruptedInTheCommittedCorpus(t *testing.T) {
 	row, ok := acfrDebtGrid(t)[2017]
 	if !ok {
@@ -193,11 +173,8 @@ func TestACFRDebtRowIsNotCorruptedInTheCommittedCorpus(t *testing.T) {
 	}
 }
 
-// TestACFRDebtPercentageColumnNeedsItsQuantity is fisc-oakx.2's second proof,
-// kept as a regression: delete col 9's quantity and the read goes red on
-// amount.Parse rejecting "2.5%" — checked by MESSAGE, not exit code, because a
-// failure for any other reason (an anchor, a count) would be the
-// green-because-the-gate-fired shape in red clothing.
+// TestACFRDebtPercentageColumnNeedsItsQuantity. Mutation: delete col 9's
+// quantity and amount.Parse refuses "2.5%", checked by message.
 func TestACFRDebtPercentageColumnNeedsItsQuantity(t *testing.T) {
 	r, rule := acfrDebtResolver(t, func(rule *Rule) {
 		rule.Parts[0].Columns[8].Quantity = ""
@@ -213,12 +190,9 @@ func TestACFRDebtPercentageColumnNeedsItsQuantity(t *testing.T) {
 	}
 }
 
-// TestACFRDebtPerCapitaParsesCleanlyAsAmount is fisc-oakx.2's third proof, and
-// it proves an ABSENCE: delete col 10's quantity and nothing goes red, because
-// "$ 1,009" per capita is well-formed money. The YAML declaration is the only
-// gate, and the corroboration that could refuse a mis-declaration — the
-// cross-tie to p180's population — is fisc-54vn. If this test ever fails, a
-// guard has appeared; retire fisc-54vn against it.
+// TestACFRDebtPerCapitaParsesCleanlyAsAmount proves an absence: delete col
+// 10's quantity and nothing goes red, since "$ 1,009" is well-formed money.
+// If this test ever fails, a guard has appeared; retire fisc-54vn against it.
 func TestACFRDebtPerCapitaParsesCleanlyAsAmount(t *testing.T) {
 	r, rule := acfrDebtResolver(t, func(rule *Rule) {
 		rule.Parts[0].Columns[9].Quantity = ""
@@ -233,13 +207,9 @@ func TestACFRDebtPerCapitaParsesCleanlyAsAmount(t *testing.T) {
 	}
 }
 
-// TestACFRDebtPageCarriesTheColumnGuard: p177 prints two "(1)" superscripts.
-// The footnote's own is a line of its own in -layout and clusters into its
-// sentence's geometry line, which splitSuperscripts gives back, so the page
-// pairs. The header line's, after "Income", is on that line in both
-// substrates, so it is a header word like any other: a header list that
-// leaves it out is refused for a column it does not declare, and one naming
-// "Income (1)" reads the committed rule guarded.
+// TestACFRDebtPageCarriesTheColumnGuard: p177's footnote "(1)" pairs via
+// splitSuperscripts; the header's "Income (1)" is a header word, so a list
+// omitting it is refused and one naming it reads the rule guarded.
 func TestACFRDebtPageCarriesTheColumnGuard(t *testing.T) {
 	headers := func(income string) func(*Rule) {
 		return func(rule *Rule) {

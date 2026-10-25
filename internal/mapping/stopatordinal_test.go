@@ -5,17 +5,9 @@ import (
 	"testing"
 )
 
-// The shape these tests are about, as Budget Book pp.80-81 print it: a labelled
-// page, then a page continuing the same rows with nothing but figures, whose
-// first row is "$"-prefixed exactly as its total is.
-//
-//	p2  Principal Total
-//	    $   110
-//	         60
-//	    $   170
-//
-// "$" first occurs on the first ROW, so stop_at "$" alone ends the block before
-// any row; the total is the second "$". 110 + 60 = 170.
+// stopAtOrdinalRules is the pp.80-81 shape: a label-less continuation whose
+// first row is "$"-prefixed like its total, so the total is the second "$".
+// 110 + 60 = 170.
 const stopAtOrdinalRules = `schema_version: 1
 doc_id: ordinal-doc
 
@@ -73,16 +65,10 @@ func stopAtOrdinalResolver(t *testing.T, ordinal string) (*Resolver, *Rule, erro
 	return r, &f.Rules[0], nil
 }
 
-// TestStopAtOrdinalEndsTheBlockAtTheCountedOccurrence reads the label-less page
-// whole and ties it to the "$" total the ordinal names.
-//
-// It also holds the positional read to dropping detached currency marks: the
-// first row's "$" is inside the block, and counted as a value it makes three
-// tokens where two rows want two.
-//
-// Mutations: resolve stop_at by its first occurrence whatever the ordinal says,
-// and the block is empty, so the read fails; drop the dropCurrencyMarks call
-// from positionalValues, and it reads three values for two.
+// TestStopAtOrdinalEndsTheBlockAtTheCountedOccurrence ties the label-less page
+// to the "$" total the ordinal names. Mutations: resolve stop_at by its first
+// occurrence and the block is empty; drop dropCurrencyMarks from
+// positionalValues and it reads three values for two rows.
 func TestStopAtOrdinalEndsTheBlockAtTheCountedOccurrence(t *testing.T) {
 	r, rule, err := stopAtOrdinalResolver(t, "        stop_at_ordinal: 2")
 	if err != nil {

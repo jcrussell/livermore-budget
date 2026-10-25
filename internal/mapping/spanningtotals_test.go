@@ -7,19 +7,8 @@ import (
 	"testing"
 )
 
-// The shape these tests are about, as Budget Book pp.169-170 print it: one
-// division's rows split across a page break, with the printed Total on the
-// second page covering both.
-//
-//	p169  Environmental Services  Wages & Benefits      2,056
-//	p170  Environmental Services  Services & Supplies 132,186
-//	p170                          Total              $134,242
-//
-// The pages are written inline rather than copied from data/extracted because
-// the committed fixtures do not yet carry pp.169-170 -- adding them is the
-// coverage lane's own work, and it owes both substrates and a README entry per
-// testdata/README.md. What is asserted here is the CAPABILITY, at one column so
-// the arithmetic is checkable by eye: $2,056 + $132,186 = $134,242.
+// spanningPages is pp.169-170 at one column: Environmental Services' rows split
+// over the page break, $2,056 + $132,186 = $134,242 printed on p170.
 const spanningPages = `schema_version: 1
 doc_id: spanning-doc
 
@@ -77,13 +66,8 @@ func spanningResolver(t *testing.T, spans bool) (*Resolver, *Rule) {
 	return r, &f.Rules[0]
 }
 
-// TestAStraddlingBlockTiesOnlyWithTheFlag is the whole of fisc-w0o in one test:
-// the block cannot be checked part by part, and can be checked as a rule.
-//
-// The two halves matter equally. That the spanning check TIES proves the
-// capability; that the per-part check FAILS on both parts proves the capability
-// was needed, and that this flag is not quietly relaxing a check that already
-// worked.
+// TestAStraddlingBlockTiesOnlyWithTheFlag: the spanning check ties, and the
+// per-part check fails on both parts.
 func TestAStraddlingBlockTiesOnlyWithTheFlag(t *testing.T) {
 	r, rule := spanningResolver(t, true)
 	res, err := r.CheckSpanningTotals(rule)
@@ -114,13 +98,8 @@ func TestAStraddlingBlockTiesOnlyWithTheFlag(t *testing.T) {
 	}
 }
 
-// TestSpanningTotalsHonourTheDeclarationOnTheTotalsPage is the ADMINISTRATIVE
-// SERVICES shape from the plan's measurement, reduced to one column: a block
-// whose printed total exceeds its rows by $1 of the city's own rounding.
-//
-// It is here because a spanning rule has one printed total and several parts,
-// so "which part's stated_total_deltas apply" is a real question, and reading
-// it off the wrong page would be a silent wrong answer.
+// TestSpanningTotalsHonourTheDeclarationOnTheTotalsPage: a $1 rounding delta
+// applies from the part whose page prints the total.
 func TestSpanningTotalsHonourTheDeclarationOnTheTotalsPage(t *testing.T) {
 	src := strings.Replace(spanningPages, "    #SPANS", "    total_spans_parts: true", 1)
 	// The document now states one dollar more than the rows add to.
@@ -154,12 +133,8 @@ func TestSpanningTotalsHonourTheDeclarationOnTheTotalsPage(t *testing.T) {
 	}
 }
 
-// TestADeltaOnTheWrongPageIsRefused states where a declaration may live.
-//
-// The parser cannot catch this one: it does not know which page prints the
-// total, so it can only refuse TWO parts declaring a delta. This is the
-// resolve-time half, and without it a rule could declare the city's rounding
-// against a page that prints no total at all.
+// TestADeltaOnTheWrongPageIsRefused: the resolve-time half; the parser only
+// refuses two parts declaring a delta.
 func TestADeltaOnTheWrongPageIsRefused(t *testing.T) {
 	src := strings.Replace(spanningPages, "    #SPANS", "    total_spans_parts: true", 1)
 	src = strings.Replace(src,
@@ -186,14 +161,8 @@ func TestADeltaOnTheWrongPageIsRefused(t *testing.T) {
 	}
 }
 
-// TestTheTotalRowMustIdentifyOnePage covers both ways the anchor can fail to
-// name one page, because a spanning rule locates its total by searching every
-// part's page rather than the one it was handed.
-//
-// The absent case mutates the RULE's total_row rather than the PAGE, and the
-// distinction is worth keeping: p170's stop_at names the same string, so
-// editing the page makes the block boundary fail first and would prove nothing
-// about the total lookup.
+// TestTheTotalRowMustIdentifyOnePage: absent or on two pages. The absent case
+// mutates the rule's total_row, since p170's stop_at names the same string.
 func TestTheTotalRowMustIdentifyOnePage(t *testing.T) {
 	for _, tc := range []struct {
 		name, want string
@@ -240,19 +209,8 @@ func TestTheTotalRowMustIdentifyOnePage(t *testing.T) {
 	}
 }
 
-// TestTheSpineCannotDeclareItsTotalSpansItsParts is the guard that keeps
-// total_spans_parts off the one rule in the corpus it would silently corrupt.
-//
-// It reads the PUBLISHED rule file and adds the flag to spine-revenues, because
-// the claim worth pinning is about that rule and not about a shape invented
-// here. pp.66-67 partition the schedule by COLUMN -- p66 carries the General
-// Fund and Enterprise columns and p67 the other four fund groups -- so summing
-// a row's figures across both parts would add General Fund dollars to Capital
-// Funds dollars and compare the result against a total that covers neither.
-//
-// The failure would be silent, which is what makes a parser guard the right
-// place for it: the sum would be a number, and a wrong number tied against the
-// wrong total is this project's defining failure mode.
+// TestTheSpineCannotDeclareItsTotalSpansItsParts: pp.66-67 split the spine by
+// column, so total_spans_parts on spine-revenues would sum unrelated funds.
 func TestTheSpineCannotDeclareItsTotalSpansItsParts(t *testing.T) {
 	src, err := os.ReadFile(publishedSpine)
 	if err != nil {
@@ -294,10 +252,8 @@ func TestTotalSpansPartsRefusesWhatItCannotMean(t *testing.T) {
 		name: "on a rule with one part",
 		want: "is set on a rule with 1 part",
 		mutate: func(src string) string {
-			// Cut rather than Index: a missing anchor would make Index return
-			// -1 and the slice panic. Returning src unmutated instead leaves a
-			// file that parses, so the subtest fails on its own "accepted"
-			// assertion — a red test either way, and a legible one.
+			// Cut, not Index: a missing anchor leaves src unmutated and the
+			// subtest fails legibly instead of panicking.
 			head, _, _ := strings.Cut(src, "      - page: 170")
 			// The row p170 printed goes with it, or the placement is refused
 			// first for naming no part, and so does the one part's page on

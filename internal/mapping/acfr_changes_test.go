@@ -5,10 +5,7 @@ import (
 	"testing"
 )
 
-// ACFR pp.167-169, the first published batch of the Statistical Section.
-// Every test reads the pages THROUGH the published rules, the
-// same discipline as acfr_p177_test.go, so this file and the mapping cannot
-// become two readings of one page.
+// ACFR pp.167-169, the Statistical Section, read through the published rules.
 
 // acfrStatResolver loads the published ACFR mapping, finds ruleID, applies
 // mutate (the in-memory mutations the proofs below are built on), and resolves
@@ -38,13 +35,9 @@ func acfrStatResolver(t *testing.T, ruleID string, mutate func(*Rule)) (*Resolve
 	return r, rule
 }
 
-// TestACFRStatisticalRulesPublishAndTie pins the committed shape of the batch:
-// how many values each rule publishes, and that every rule with a printed
-// total ties to it EXACTLY in all ten columns — no declared delta, no
-// tolerance. The exact ties are also what pin amountRun's detached-mark
-// handling against a real page: p167 prints its totals as "$ 47,139,536" per
-// column, so reverting that drop reddens both p167 rules here with "no run of
-// 10 consecutive amounts follows the anchor".
+// TestACFRStatisticalRulesPublishAndTie pins each rule's value count and that
+// every printed total ties EXACTLY in all ten columns. Mutation: revert
+// amountRun's detached-mark drop and both p167 rules go red ("$ 47,139,536").
 func TestACFRStatisticalRulesPublishAndTie(t *testing.T) {
 	for _, tc := range []struct {
 		ruleID string
@@ -82,11 +75,9 @@ func TestACFRStatisticalRulesPublishAndTie(t *testing.T) {
 	}
 }
 
-// TestACFRChangesRowQuantityIsLoadBearing is the row-arm mutation proof
-// fisc-oakx.2 left owed on the real p169: remove the percentage row's quantity
-// and the read goes red on the row's own token, not on some downstream count.
-// Read by MESSAGE, deliberately — an error for any other reason would be a
-// gate firing elsewhere, which an exit code cannot distinguish.
+// TestACFRChangesRowQuantityIsLoadBearing: on p169, remove the percentage
+// row's quantity and the read goes red on that row's own token, checked by
+// message.
 func TestACFRChangesRowQuantityIsLoadBearing(t *testing.T) {
 	r, rule := acfrStatResolver(t, "acfr-p0169-other-financing", func(ru *Rule) {
 		for i := range ru.Rows {
@@ -104,10 +95,9 @@ func TestACFRChangesRowQuantityIsLoadBearing(t *testing.T) {
 	}
 }
 
-// TestACFRFundBalancesWrongBlockIsRefused is the wrong-fund proof: p167's two
-// blocks print IDENTICAL row labels except that All Other Governmental Funds
-// has no Assigned line, so a rule resolved against the wrong block would match
-// every label it lists. What refuses it is shape, in both directions.
+// TestACFRFundBalancesWrongBlockIsRefused: p167's two blocks print identical
+// labels except that All Other Governmental Funds has no Assigned line, so
+// only shape refuses the wrong block, in both directions.
 func TestACFRFundBalancesWrongBlockIsRefused(t *testing.T) {
 	t.Run("the aggregate rule over the General Fund block", func(t *testing.T) {
 		// The General Fund block prints an Assigned row this rule does not

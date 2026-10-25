@@ -58,12 +58,9 @@ func resolveTwoAnchor(t *testing.T, src string) ([]Value, error) {
 	return vals, err
 }
 
-// omissionRule lists THREE transfers out of one fund against the two-row page
-// above, so the middle one -- "to Wastewater" -- is a row the rule carries and
-// p76 does not print: wastewater is the fields after its category, and
-// "page: 77" places it on the rule's second part. All three share a Label,
-// which is the point: the row's identity is its two anchors. extra is lines
-// added to the p76 part, for the omitted_cells cases.
+// omissionRule lists three transfers out of one fund sharing a Label; the
+// middle one, "to Wastewater", is on p77 not p76. extra is lines added to the
+// p76 part.
 func omissionRule(wastewater, extra string) string {
 	return `schema_version: 1
 doc_id: livermore-budget-fy2026-2027
@@ -95,10 +92,8 @@ rules:
 
 const placeWastewater = `, page: 77`
 
-// TestATwoAnchorRowIsPlacedOnItsPage is fisc-gtv (1) and (2) under row
-// placement: a row's page sits on the row itself, so a two-anchor row is
-// placed without being named, and reading p76 yields the other two rows at
-// the rule's own indices and declares no blank.
+// TestATwoAnchorRowIsPlacedOnItsPage: a two-anchor row's page sits on the row,
+// so reading p76 yields the other two rows at the rule's indices, no blank.
 func TestATwoAnchorRowIsPlacedOnItsPage(t *testing.T) {
 	vals, omitted, err := readTwoAnchor(t, omissionRule(placeWastewater, ""))
 	if err != nil {
@@ -118,10 +113,8 @@ func TestATwoAnchorRowIsPlacedOnItsPage(t *testing.T) {
 		if got := v.Row.PrintedLabel(); got != want.label {
 			t.Errorf("value %d is row %q, want %q", want.at, got, want.label)
 		}
-		// RowIndex indexes the RULE's rows, so the surviving second row is 2
-		// and not 1. Pairing active rows to rule rows on the bare Label gives
-		// it the placed row's position, and a consumer laying two parts'
-		// values out together then puts two rows in one slot.
+		// RowIndex indexes the rule's rows, so the surviving second row is 2,
+		// not 1 as a pairing on the bare Label would give.
 		if v.RowIndex != want.rowIndex {
 			t.Errorf("value %d has RowIndex %d, want %d", want.at, v.RowIndex, want.rowIndex)
 		}
@@ -153,11 +146,8 @@ func TestActiveRowsDropOnlyTheRowPlaced(t *testing.T) {
 	}
 }
 
-// TestABlankCellMustNameExactlyOneRow is the fail-closed direction of naming
-// a two-anchor row. An omitted_cells entry that names no row is refused as
-// stale; one that names more than one has to be refused for the same reason,
-// since silently blanking a cell of the rows an author did not mean is the
-// mismapping the declaration exists to prevent.
+// TestABlankCellMustNameExactlyOneRow: an omitted_cells entry naming no row,
+// or more than one, is refused.
 func TestABlankCellMustNameExactlyOneRow(t *testing.T) {
 	const wastewater = `label: "Transfer From General Fund", label_tail: "to Wastewater", column: "A", note: n`
 	tests := []struct {
@@ -208,12 +198,8 @@ func TestABlankCellMustNameExactlyOneRow(t *testing.T) {
 	}
 }
 
-// TestTotalRowInRowsIsRefusedForATwoAnchorRow is fisc-gtv (3). The guard that
-// stops a printed total being mapped as a data row tested the row index, which
-// the label_tail work re-keyed on Identity() -- so the guard stopped firing for
-// exactly the rows whose Label the total_row could still collide with. total_row
-// is matched against the page text as a plain substring, so the Label is what
-// it collides with.
+// TestTotalRowInRowsIsRefusedForATwoAnchorRow: total_row matches page text as
+// a substring, so the guard keys on the Label, not on Identity().
 func TestTotalRowInRowsIsRefusedForATwoAnchorRow(t *testing.T) {
 	src := strings.Replace(omissionRule(placeWastewater, ""),
 		"    units: dollars\n",
@@ -241,11 +227,8 @@ func TestBlankLabelTailIsReportedAsBlank(t *testing.T) {
 	}
 }
 
-// TestTwoRowsCannotPrintTheSameLabel is what makes fisc-28h's choice safe. A
-// fact's id is hashed from the row_label it publishes, which is
-// Row.PrintedLabel(); two rows with distinct identities may still print the
-// same label, and those two facts would be indistinguishable to every reader
-// of facts.jsonl whatever their ids were.
+// TestTwoRowsCannotPrintTheSameLabel: a fact's id hashes Row.PrintedLabel(),
+// so two rows printing one label would publish indistinguishable facts.
 func TestTwoRowsCannotPrintTheSameLabel(t *testing.T) {
 	src := `schema_version: 1
 doc_id: d
@@ -269,9 +252,8 @@ rules:
 	}
 }
 
-// TestTwoAnchorsDoNotAssertTheGap is fisc-ffy's acceptance criterion. The two
-// rows are separated from their second field by ten spaces and fifteen; the
-// rule says neither number, and both resolve.
+// TestTwoAnchorsDoNotAssertTheGap: rows separated from their second field by
+// ten spaces and fifteen both resolve; the rule states neither.
 func TestTwoAnchorsDoNotAssertTheGap(t *testing.T) {
 	vals, err := resolveTwoAnchor(t,
 		twoAnchorRule("Transfer From General Fund", "to Stormwater", "to Airport"))
@@ -290,10 +272,8 @@ func TestTwoAnchorsDoNotAssertTheGap(t *testing.T) {
 	}
 }
 
-// TestTheGapBetweenAnchorsStaysCheckable is why this is a two-anchor match and
-// not a wildcard. Whitespace between the fields is typesetting; a WORD between
-// them means the two anchors matched different rows, and the read would file
-// one row's figures under another row's identity.
+// TestTheGapBetweenAnchorsStaysCheckable: whitespace between the anchors is
+// typesetting; a word between them means they matched different rows.
 func TestTheGapBetweenAnchorsStaysCheckable(t *testing.T) {
 	// "to Airport" occurs only on the second printed row, so pairing it with
 	// the first row's anchor spans a row boundary -- and the intervening text

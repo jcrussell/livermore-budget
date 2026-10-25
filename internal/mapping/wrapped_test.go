@@ -7,17 +7,9 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/amount"
 )
 
-// p167Innovation maps one division of Budget Book p167, chosen because it is
-// the smallest real block that cannot be read without a wrapped-label
-// declaration. The page prints:
-//
-//	Innovation & Economic Wages & Benefits   1,028,282  1,068,663 ...
-//	Devel
-//	                      Services & Supplies  1,610,950  2,592,436 ...
-//
-// "Devel" is the tail of the division's own name, wrapped onto a line of its
-// own, and it lands between the first row's last figure and the second row's
-// label -- where checkGap refuses anything that is not whitespace.
+// p167Innovation maps p167's Innovation & Economic Development division, whose
+// name wraps "Devel" onto its own line between two rows, where checkGap
+// refuses undeclared text.
 const p167Innovation = `schema_version: 1
 doc_id: livermore-budget-fy2026-2027
 
@@ -60,9 +52,8 @@ func innovationValues(t *testing.T, decl string) ([]Value, error) {
 	return vals, err
 }
 
-// TestWrappedLabelIsReadWhenDeclared is fisc-0cs's acceptance criterion on the
-// real page: the block resolves with the correct row count, and the figures are
-// the ones the city printed either side of the wrap.
+// TestWrappedLabelIsReadWhenDeclared: the block resolves with the right row
+// count and the figures printed either side of the wrap.
 func TestWrappedLabelIsReadWhenDeclared(t *testing.T) {
 	vals, err := innovationValues(t, wrappedDecl)
 	if err != nil {
@@ -82,10 +73,8 @@ func TestWrappedLabelIsReadWhenDeclared(t *testing.T) {
 	}
 }
 
-// TestUndeclaredWrappedLabelStillFailsClosed is the half that matters more.
-// The bead's acceptance criterion is explicit that there must be no relaxation
-// of the unmapped-row check for non-continuation text, so the same page with
-// no declaration must still refuse.
+// TestUndeclaredWrappedLabelStillFailsClosed: the same page with no
+// declaration refuses.
 func TestUndeclaredWrappedLabelStillFailsClosed(t *testing.T) {
 	_, err := innovationValues(t, "")
 	if err == nil {
@@ -112,10 +101,8 @@ func TestUnrelatedTextIsNotAdmittedByADeclaration(t *testing.T) {
 	}
 }
 
-// TestStaleWrappedLabelIsAnError keeps the declaration honest in the direction
-// nothing else would catch: if the page stops wrapping there, the claim has
-// become false and must be removed rather than pass silently. Same direction as
-// a stated_total_delta that now ties exactly.
+// TestStaleWrappedLabelIsAnError: a declaration the page does not bear out is
+// refused.
 func TestStaleWrappedLabelIsAnError(t *testing.T) {
 	_, err := innovationValues(t, `        wrapped_labels: ["Devel", "Administration"]`)
 	if err == nil {
@@ -129,15 +116,9 @@ func TestStaleWrappedLabelIsAnError(t *testing.T) {
 	}
 }
 
-// TestAWrappedLabelBeforeTheFirstRowIsDeclarable: a label wrapping before the
-// first mapped row is declared through WrappedLabels like any other, and an
-// undeclared one is refused, so checkGap's leading-gap branch states what the
-// page does in both directions.
-//
-// The page is the same real block as the tests above, anchored one word
-// earlier. pp.167-170 as mapped do not reach this: every wrapping division
-// label there puts its head in the section anchor and its tail between two
-// rows. Moving the anchor is all it takes.
+// TestAWrappedLabelBeforeTheFirstRowIsDeclarable: checkGap's leading gap takes
+// a WrappedLabels declaration and refuses an undeclared one; the same block,
+// anchored one word earlier.
 func TestAWrappedLabelBeforeTheFirstRowIsDeclarable(t *testing.T) {
 	early := strings.Replace(p167Innovation,
 		`section: "Innovation & Economic "`, `section: "Innovation & "`, 1)
@@ -186,14 +167,8 @@ func TestAWrappedLabelBeforeTheFirstRowIsDeclarable(t *testing.T) {
 	})
 }
 
-// TestWrappedLabelsOnALabelsFromPartAreRefused is fisc-ekj.
-//
-// A labels_from part takes its row identity positionally from another page, so
-// it routes to positionalValues -- which never reads WrappedLabels and never
-// staleness-checks it. The declaration was therefore ACCEPTED AND INERT, the
-// one shape a declaration in this repository must not have, and it was
-// reachable on the shipped rule file rather than only in principle: five
-// production parts take labels_from, p67 among them.
+// TestWrappedLabelsOnALabelsFromPartAreRefused: positionalValues never reads
+// WrappedLabels, so on a labels_from part the declaration would be inert.
 func TestWrappedLabelsOnALabelsFromPartAreRefused(t *testing.T) {
 	const src = `schema_version: 1
 doc_id: labelsfrom-doc

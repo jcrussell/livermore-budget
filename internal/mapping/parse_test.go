@@ -13,10 +13,8 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
-// TestLoadSpine parses the real citywide spine rule. If the schema cannot
-// express pp. 66-67 it cannot express anything in this corpus, since that
-// schedule is both the control total for everything else and the most awkward
-// shape in it.
+// TestLoadSpine parses the citywide spine rule over pp.66-67, the control
+// total and the most awkward shape in the corpus.
 func TestLoadSpine(t *testing.T) {
 	f, err := Load("testdata/spine.yaml")
 	if err != nil {
@@ -48,12 +46,8 @@ func TestLoadSpine(t *testing.T) {
 		t.Errorf("p66 expected values = %d, want %d", got, want)
 	}
 
-	// p67 borrows them and has eight columns, and every row is on both
-	// pages: p67 prints all ten rows. The spike measured 9*8=72 here and the
-	// rule declared "Licenses & Permits" absent from p67 to match, but the
-	// page was never short a row — our extractor was deleting one.
-	// 10*8=80 is both what a naive read expects and what the document
-	// actually prints.
+	// p67 borrows p66's labels, has eight columns and prints all ten rows:
+	// 10*8=80.
 	if got := rev.labelledPart(&p67); got == nil || got.Page != 66 {
 		t.Fatalf("p67 should borrow labels from p66")
 	}
@@ -183,21 +177,16 @@ func TestParseRejects(t *testing.T) {
 			want: "want one of adopted, revised, actual, audited, projected",
 		},
 		{
-			// SignNetted says a row is printed against its KIND's direction, so
-			// it means nothing on a kind that has no direction -- and
-			// fact-transfer-orientation-is-declared witnesses only transfers,
-			// so an unrefused one would publish facts nothing checks.
+			// SignNetted is relative to a kind's direction, and only transfers
+			// have one that a check witnesses.
 			name: "sign netted on a kind with no direction",
 			yaml: strings.Replace(base(""), `- {label: "A"`,
 				`- {label: "A", sign: netted`, 1),
 			want: "sign netted on kind",
 		},
 		{
-			// fact.FromValues builds the far leg from a COPY of the row and
-			// overrides only Category and Kind, so Sign is inherited. A netted
-			// row whose counterpart is not a transfer therefore publishes a
-			// netted revenue fact, which the orientation check filters out and
-			// nothing else reads.
+			// fact.FromValues inherits Sign on the far leg, so a non-transfer
+			// counterpart would publish a netted fact nothing checks.
 			name: "sign netted with a counterpart that is not a transfer",
 			yaml: strings.Replace(
 				strings.Replace(base(""), "kind: revenue", "kind: transfer_out", 1),
@@ -413,10 +402,8 @@ func TestParseRejects(t *testing.T) {
 	}
 }
 
-// TestSignNettedIsAcceptedOnATransferRow is the other half of the rejection
-// above. Without it the rule could be "netted is never accepted", which would
-// also pass TestParseRejects and would refuse the one row in the corpus that
-// needs it -- ACFR p41's Transfers (out).
+// TestSignNettedIsAcceptedOnATransferRow: the other half of the rejection
+// above, for ACFR p41's Transfers (out).
 func TestSignNettedIsAcceptedOnATransferRow(t *testing.T) {
 	y := strings.Replace(base(""), "kind: revenue", "kind: transfer_out", 1)
 	y = strings.Replace(y, `- {label: "A"`, `- {label: "A", sign: netted`, 1)
@@ -497,10 +484,7 @@ func TestParseRejectsSilentLosses(t *testing.T) {
 			want: "has no category",
 		},
 		{
-			// A row's page is the one part that prints it. Naming a page no
-			// part reads would place the row nowhere, so every part would read
-			// the page without it and no count would hold the row against
-			// the page.
+			// A row placed on a page no part reads is held against no page.
 			name: "a row placed on a page no part reads",
 			yaml: strings.Replace(base(""), `{label: "A", category: a}`,
 				`{label: "A", category: a, page: 9}`, 1),
@@ -527,10 +511,8 @@ func TestParseRejectsSilentLosses(t *testing.T) {
 			want: `row "A": page places nothing in a rule of one part`,
 		},
 		{
-			// A blank cell is an address: internal/check reads a declared
-			// blank as the fact the cell would have been, and that fact needs
-			// the row's category. So a row whose only amount cell is blank
-			// still needs one, though it publishes no fact.
+			// A declared blank is checked as the fact the cell would have been,
+			// which needs the row's category.
 			name: "row with no classification, its one amount cell blank",
 			yaml: strings.NewReplacer(
 				"parts: [{page: 1, columns: [{fiscal_year: 2026}]}]",
@@ -541,11 +523,8 @@ func TestParseRejectsSilentLosses(t *testing.T) {
 			want: `row "B" has no category`,
 		},
 		{
-			// A DEPARTMENT IS NOT A SUBSTITUTE FOR A CATEGORY, and until
-			// 2026-08-29 it was accepted as one. A fact with no category is in
-			// no graph unless its scope is projected, so in an unprojected
-			// scope it was named by nothing at all -- fisc verify stayed fully
-			// green with two such facts in the store.
+			// A department is not a substitute for a category: a fact with no
+			// category is in no graph in an unprojected scope.
 			name: "row that declares a department and no category",
 			yaml: strings.Replace(base(""), `{label: "A", category: a}`,
 				`{label: "A", department: city-manager}`, 1),
@@ -648,11 +627,8 @@ func TestParseAcceptsColumnHeaders(t *testing.T) {
 	}
 }
 
-// TestParseAcceptsRepeatedColumnHeaders is the opposite of the rule for columns,
-// and the comment matters more than the assertion. Budget Book p66 prints
-// "FY 2025-26" over the General Fund and again over Enterprise Funds; the header
-// says where a column sits on the page, not which column it is. A reviewer
-// reaching for the duplicate-column check would break the spine.
+// TestParseAcceptsRepeatedColumnHeaders: p66 prints "FY 2025-26" over two
+// column groups; a header says where a column sits, not which it is.
 func TestParseAcceptsRepeatedColumnHeaders(t *testing.T) {
 	if _, err := parse(strings.NewReader(
 		headerRule(`["FY 2025-26", "FY 2025-26"]`)), "headers.yaml"); err != nil {
@@ -660,15 +636,9 @@ func TestParseAcceptsRepeatedColumnHeaders(t *testing.T) {
 	}
 }
 
-// TestParseAcceptsANullOverASkippedLastColumn is the channel fisc-wfi opened,
-// and the assertion is that the entry COUNT survives it.
-//
-// Budget Book p76 prints four year headers and a footnote marker right of them
-// on every row. The marker column has to be declared -- labelledValues
-// truncates a row to len(Columns), so at four the read stops short and checkGap
-// refuses "(10)" as unexplained text between rows -- and the page prints no
-// header to name it with. Without this, the one-entry-per-column rule and the
-// no-empty-entry rule between them make the page unpublishable.
+// TestParseAcceptsANullOverASkippedLastColumn: p76 prints a footnote-marker
+// column with no header, which must still be declared, so the entry COUNT
+// survives a null entry.
 func TestParseAcceptsANullOverASkippedLastColumn(t *testing.T) {
 	f, err := parse(strings.NewReader(headerRuleCols(
 		"[{fiscal_year: 2026}, {fiscal_year: 2027}, {skip: true}]",
@@ -781,11 +751,8 @@ func TestParseRejectsBadColumnHeaders(t *testing.T) {
 	}
 }
 
-// TestParseRejectsDisagreeingColumnHeaders covers the defect no per-part check
-// can see. The published spine writes one page's header list out five times, once
-// per rule; a copy that drifted would build a different grid for the same page in
-// one rule than in another, and both reads would go on tying against their own
-// printed totals.
+// TestParseRejectsDisagreeingColumnHeaders: one page's header list copied into
+// several rules must agree, or one page gets two grids that each still tie.
 func TestParseRejectsDisagreeingColumnHeaders(t *testing.T) {
 	two := func(a, b string) string {
 		part := func(headers string) string {
@@ -816,10 +783,8 @@ func TestParseRejectsDisagreeingColumnHeaders(t *testing.T) {
 	}
 }
 
-// TestParseRejectsAPartLeftOutOfTheColumnGuard covers the hole a per-page
-// agreement check leaves open on its own: a page where four parts declare a grid
-// and the fifth does not validates fine, and that fifth part's figures are then
-// placed by position alone with nothing saying so.
+// TestParseRejectsAPartLeftOutOfTheColumnGuard: on a page where other parts
+// declare a grid, a part with none is refused.
 func TestParseRejectsAPartLeftOutOfTheColumnGuard(t *testing.T) {
 	part := func(headers string) string {
 		s := "    parts:\n      - page: 1\n" +
@@ -872,10 +837,8 @@ func TestLoadDirRejectsGridsDisagreeingAcrossFiles(t *testing.T) {
 	}
 }
 
-// TestCellPublishes is the predicate the decisions about the facts a row
-// does publish read, over each clause: a skipped row or column, a
-// non-amount row or column, a row another page prints, and a cell the part
-// declares blank.
+// TestCellPublishes covers each clause: skipped row or column, non-amount row
+// or column, a row another page prints, and a declared blank.
 func TestCellPublishes(t *testing.T) {
 	const src = `schema_version: 1
 doc_id: d

@@ -8,19 +8,10 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/hint"
 )
 
-// rollupSpanFile is two rules that agree on everything a rollup already
-// compares -- units, and Parts[0].Columns byte for byte -- so the only thing
-// left to disagree about is what this file tests.
-//
-// IT IS SYNTHETIC ON PURPOSE, and that is a finding rather than a convenience.
-// No mutation of mappings/livermore-budget-fy2026-2027.yaml can isolate either
-// guard, measured both ways: adding any rule to a covers: list breaks
-// CheckRollup's arithmetic ("the 11 covered rules state $142,177,200.00, the
-// document states $142,028,002.00"), and pointing a dept-* rollup at a funding-*
-// rule is refused by the existing column-equality guard, because div-* columns
-// carry {fund_group, fund} and funding-* columns carry none. Either way the
-// mutation goes red on a gate that is not the one under test -- green because
-// the gate fired, read from the other side.
+// rollupSpanFile is two rules agreeing on units and Parts[0].Columns, so only
+// the field under test can disagree. Synthetic: every mutation of the
+// published file goes red on CheckRollup's arithmetic or the column guard
+// first.
 const rollupSpanFile = `schema_version: 1
 doc_id: livermore-budget-fy2026-2027
 rules:
@@ -76,13 +67,8 @@ const (
 	sameScope = "expenditure-by-department"
 )
 
-// TestARollupMayNotCoverTwoScopes is the refusal, and it is refused rather than
-// declared because no printed line in this corpus wants the shape.
-//
-// A rollup summing a detail-scope total into a spine-scope one is fisc-u2v's
-// doubling raised to the rollup: pp.85-125 and pp.66-67 are the same expenditure
-// counted two ways, so the sum adds up and misstates the city. A tie there says
-// the arithmetic worked.
+// TestARollupMayNotCoverTwoScopes: pp.85-125 and pp.66-67 count one
+// expenditure two ways, so a rollup across scopes would tie and misstate.
 func TestARollupMayNotCoverTwoScopes(t *testing.T) {
 	t.Run("one scope", func(t *testing.T) {
 		if err := parseRollupSpan(t, sameKind, sameScope, ""); err != nil {
@@ -103,10 +89,7 @@ func TestARollupMayNotCoverTwoScopes(t *testing.T) {
 				t.Errorf("error = %v, want it to contain %q", err, want)
 			}
 		}
-		// THE HINT IS WHERE THE REASON LIVES, and it is asserted separately
-		// because ErrHint keeps it out of Error() -- a message that read
-		// "scope X and scope Y" with no reason attached would tell an author
-		// what the parser noticed and not why it is refused.
+		// The reason is in the hint, which ErrHint keeps out of Error().
 		var h *hint.ErrHint
 		if !errors.As(err, &h) {
 			t.Fatalf("got %T, want an *ErrHint saying why two scopes are refused", err)
@@ -117,16 +100,9 @@ func TestARollupMayNotCoverTwoScopes(t *testing.T) {
 	})
 }
 
-// TestARollupSpanningTwoKindsMustSaySo is the opposite answer to the scope
-// refusal above, and the asymmetry is the whole of fisc-qj4.
-//
-// p140 prints "Total Sources", which is literally revenue plus transfers in --
-// a real printed line over two kinds. Refusing mixed kinds outright would choose
-// a rule the corpus has not asked for. So the rule file must state it.
-//
-// THE DECLARATION CANNOT CATCH A WRONG KIND and this test does not pretend it
-// can: it is required to EQUAL what the covered rules carry, so it can only
-// restate them. What goes red without it is silence.
+// TestARollupSpanningTwoKindsMustSaySo: p140's "Total Sources" is revenue plus
+// transfers in, so mixed kinds are declared, not refused. The declaration must
+// equal the covered kinds, so it cannot catch a wrong kind, only silence.
 func TestARollupSpanningTwoKindsMustSaySo(t *testing.T) {
 	for _, tc := range []struct{ name, kind, kinds, want string }{
 		{
@@ -173,15 +149,9 @@ func TestARollupSpanningTwoKindsMustSaySo(t *testing.T) {
 	}
 }
 
-// TestKindsOnAnUnassertableRollupIsRefused closes the one place the field could
-// be typed and read by nothing.
-//
-// validateRollups short-circuits on `if declines { continue }` before reaching
-// validateRollupKinds, so `kinds:` beside `unassertable:` was accepted in
-// silence. That is not a hypothetical corner: the corpus's only unassertable
-// rollup is p140's "Total Sources", which is revenue plus transfers in -- the
-// mixed-kind line Rollup.Kinds' own doc comment is built around. The most
-// likely place for someone to type the field was the one place nothing read it.
+// TestKindsOnAnUnassertableRollupIsRefused: validateRollups skips unassertable
+// rollups before validateRollupKinds, so `kinds:` beside one would be read by
+// nothing.
 func TestKindsOnAnUnassertableRollupIsRefused(t *testing.T) {
 	const src = `schema_version: 1
 doc_id: livermore-budget-fy2026-2027

@@ -9,17 +9,10 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
-// A counterpart is the far end of a figure that moves money between two funds:
-// one printed number that is 257,012 leaving fund 200 AND 257,012 arriving at
-// fund 100. Before it, the engine could not express that at all -- the resolver
-// yields one Value per printed token and fact.FromValues built one Fact per
-// Value, an unbranched chain with no fan-out anywhere in it. fisc-4rh decided
-// the two-fact SHAPE and checked it against fact.MakeID; nothing checked
-// whether the engine could emit two facts, and it could not.
-//
-// The tests below are in two halves. The first is what the rule file refuses.
-// The second is the one that matters and is not obvious: THE DOCUMENT CANNOT
-// CHECK A COUNTERPART, so every guard on one has to be somewhere else.
+// A counterpart is the far end of a transfer: one printed figure that leaves
+// one fund and arrives at another, emitted as two facts. The first half below
+// is what the rule file refuses; the second is that the document cannot check
+// a counterpart, so every guard on one has to live elsewhere.
 
 // TestACounterpartIsRefusedWhenItCouldNotBeToldApart covers the four arms of
 // checkCounterpart, each of which is a way to declare a far leg that is not one.
@@ -43,12 +36,9 @@ func TestACounterpartIsRefusedWhenItCouldNotBeToldApart(t *testing.T) {
 		{"no kind", func(r *Row) { r.Counterpart.Kind = "" }, "counterpart kind"},
 		{"bad kind", func(r *Row) { r.Counterpart.Kind = "transfer" }, "counterpart kind"},
 		{"no fund group", func(r *Row) { r.Counterpart.FundGroup = "" }, "counterpart has no fund_group"},
-		// A GROUP ALONE IS NOT ENOUGH, and nothing downstream would say so:
-		// fact.FromValues' guard fires only when both are absent, and
-		// row-funds-match-their-anchors has no number to compare its printed
-		// anchor against, so the leg would publish fund 0 with every check
-		// green. The near leg is deliberately different -- p76's LAVWMA row
-		// receives into a joint powers authority that is no City fund.
+		// A group alone publishes fund 0 with every check green: the fan-out
+		// guard fires only when both are absent. The near leg may lack a fund
+		// (p76's LAVWMA row receives into a JPA).
 		{"a group but no fund", func(r *Row) { r.Counterpart.Fund = 0 },
 			"counterpart declares fund_group"},
 		{"row with a department", func(r *Row) { r.Department = "police" }, "carries department"},
@@ -62,13 +52,8 @@ func TestACounterpartIsRefusedWhenItCouldNotBeToldApart(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			row := base()
 			tt.mut(&row)
-			// THE RULE NEEDS A PART. checkCounterpart's collision arm walks the
-			// columns of every part, because a collision is per cell; a
-			// hand-built Rule{} with no parts has no cell for it to find.
-			// validateRule refuses a partless rule before it ever calls this,
-			// so a no-part fixture was testing a state the parser cannot
-			// produce -- and the row-only fallback that made it pass was itself
-			// a false refusal on rows another page prints and skipped columns.
+			// The collision arm walks each part's columns, and validateRule
+			// refuses a partless rule first, so the fixture needs a part.
 			rule := &Rule{ID: "r", Kind: vocab.KindTransferIn,
 				Parts: []Part{{Page: 76, Columns: []Column{{FiscalYear: 2026}}}}}
 			err := checkCounterpart(rule, row, errfLike)
@@ -90,23 +75,10 @@ func TestACounterpartIsRefusedWhenItCouldNotBeToldApart(t *testing.T) {
 	}
 }
 
-// TestTheIdenticalLegsArmFiresOnTheShapeEveryPublishedRuleUses is fisc-i38, and
-// the reason it needed its own test is that the case above passes for the wrong
-// reason.
-//
-// base() declares FundGroup ON THE ROW. No published rule does: on Budget Book
-// p76 a SECTION is the receiving fund group, so the group lives on the COLUMN
-// and the row declares only a fund. The arm compared the counterpart against
-// row.EffectiveColumn(Column{}) -- the row's own fund and group with no printed
-// column behind them -- and two guards above require cp.FundGroup != "", so the
-// group clause could only hold when the row also declared a group. On all 22 of
-// p76's rows it was false, and the arm was unreachable while its own comment
-// claimed it caught "the one an author writing a two-legged row actually makes".
-//
-// The fixture here is the p76 shape. Under the old comparison it parsed clean
-// and failed much later in `fisc build` as "id ... claimed twice: rule X ...
-// rule X", which does not read as "your counterpart duplicates its own near
-// leg".
+// TestTheIdenticalLegsArmFiresOnTheShapeEveryPublishedRuleUses holds the p76
+// shape: the group lives on the COLUMN and the row declares only a fund.
+// Mutation: compare against row.EffectiveColumn(Column{}) and the arm never
+// fires; the duplicate surfaces in `fisc build` as "id ... claimed twice".
 func TestTheIdenticalLegsArmFiresOnTheShapeEveryPublishedRuleUses(t *testing.T) {
 	// Group on the COLUMN, fund on the ROW -- p76 exactly.
 	rule := &Rule{
@@ -119,10 +91,8 @@ func TestTheIdenticalLegsArmFiresOnTheShapeEveryPublishedRuleUses(t *testing.T) 
 			},
 		}},
 	}
-	// The counterpart repeats the near leg on BOTH axes a fact's identity is
-	// built from: the category (its row path) and the fund (its column path).
-	// This is the mistake an author writing a two-legged row makes -- copying
-	// the row and changing only the kind, which is in neither path.
+	// The counterpart repeats the near leg on both identity axes, category and
+	// fund -- copying the row and changing only the kind.
 	row := Row{
 		Label: "Transfer From Low Income Hsng", LabelTail: "to General Fund",
 		Category: "transfers/in", Fund: 100,
@@ -151,12 +121,9 @@ func TestTheIdenticalLegsArmFiresOnTheShapeEveryPublishedRuleUses(t *testing.T) 
 		}
 	}
 
-	// THE ACCEPTED CASES CONSTRAIN ONE CLAUSE EACH, and they have to, because a
-	// counterpart differing on all three axes exits at the category
-	// short-circuit and never reaches the per-column loop at all. Measured: with
-	// only such a case here, dropping `cp.Fund == near.Fund` from the loop left
-	// the whole package green while the arm would have started refusing a
-	// legitimate same-group, different-fund counterpart.
+	// Each accepted case constrains one clause: a counterpart differing on all
+	// three axes exits at the category short-circuit. Mutation: drop
+	// `cp.Fund == near.Fund` and only the same-group, different-fund case fails.
 	for _, tt := range []struct {
 		name string
 		mut  func(*Counterpart)
@@ -184,10 +151,8 @@ func TestTheIdenticalLegsArmFiresOnTheShapeEveryPublishedRuleUses(t *testing.T) 
 		})
 	}
 
-	// AND THE COLLISION IS PER COLUMN, not per rule: a counterpart matching the
-	// group of only ONE of a rule's columns still collides on that column's
-	// figure, and a check that compared against the first column alone would
-	// miss it.
+	// The collision is per column: a counterpart matching only one column's
+	// group still collides on that column's figure.
 	twoGroups := &Rule{
 		ID: "r", Kind: vocab.KindTransferIn,
 		Parts: []Part{{Page: 76, Columns: []Column{
@@ -202,23 +167,11 @@ func TestTheIdenticalLegsArmFiresOnTheShapeEveryPublishedRuleUses(t *testing.T) 
 	}
 }
 
-// TestTheDocumentCannotCheckACounterpart is the failability proof, and it is
-// written the way this project's evidence has to be written: by running the
-// real page and showing WHAT STILL PASSES.
-//
-// The claim is about placement. The fan-out lives in fact.FromValues, which is
-// downstream of everything that compares our read against the city's own
-// arithmetic -- StatedTotals, CheckTotals, stated_total_deltas, rollups, the
-// gap and unmapped-rest guards. All of those consume []Value. So a counterpart
-// declared under the WRONG fund entirely leaves every one of them byte for byte
-// unchanged, and the page goes on tying to its own printed total.
-//
-// That cuts both ways and both halves are worth stating. It is why a
-// counterpart cannot BREAK a schedule's tie to its document, which is what
-// makes the seam safe. It is also why a schedule that uses one owes a
-// reconciliation against something OUTSIDE its own page -- for p76 that is
-// pp.66-67's TRANSFER OUT row, and without it the payer side would
-// be a hand-typed claim no arithmetic touches.
+// TestTheDocumentCannotCheckACounterpart runs the real page with a counterpart
+// under the wrong fund and shows every total and rollup guard unchanged: the
+// fan-out is downstream of everything that consumes []Value. So a schedule
+// using one owes a reconciliation outside its page (p76 against pp.66-67's
+// TRANSFER OUT row).
 func TestTheDocumentCannotCheckACounterpart(t *testing.T) {
 	read := func(t *testing.T, withCounterparts bool) ([]Value, amount.Cents) {
 		t.Helper()
@@ -296,27 +249,10 @@ func errfLike(ruleID, field, format string, args ...any) error {
 		Msg: fmt.Sprintf(format, args...)}
 }
 
-// TestTheIdenticalLegsArmIgnoresCellsThatPublishNothing is the second review
-// pass over the guards lane, and it guards against a FALSE REFUSAL the fix for
-// fisc-i38 introduced.
-//
-// That fix made the arm compare the counterpart against every column of every
-// part. "Every" was too many: a skip: true column consumes its position and
-// yields no fact, and a part other than the row's page prints no cell for it
-// at all. Neither can collide with anything, because neither publishes
-// anything -- so refusing on one is a refusal against a cell the document does
-// not have.
-//
-// THE ROW DECLARES NO FUND HERE, and it has to be that way for the case to
-// exist: Row.EffectiveColumn lets a row's own fund override the column's, so a
-// row declaring fund 100 can never collide with a column declaring 200 whatever
-// the counterpart says. The collision this arm is for needs the fund to come
-// from the COLUMN -- which is the shape of every schedule that maps one fund per
-// column, pp.127-140 among them.
-//
-// Latent on the committed corpus, since no skipped column there carries a fund.
-// Reproduced through Parse before being fixed, which is why this goes through
-// Parse rather than calling checkCounterpart with a hand-built Rule.
+// TestTheIdenticalLegsArmIgnoresCellsThatPublishNothing holds that a skip: true
+// column, or a part that does not print the row, cannot collide: neither
+// publishes a cell. The row declares no fund so the fund comes from the column,
+// as on pp.127-140. Goes through Parse, where the false refusal reproduced.
 func TestTheIdenticalLegsArmIgnoresCellsThatPublishNothing(t *testing.T) {
 	rule := func(secondColumn string) string {
 		return `schema_version: 1
@@ -368,11 +304,8 @@ rules:
 		t.Errorf("error %q does not name the colliding column", err)
 	}
 
-	// THE OTHER EXEMPTION: a part that does not print this row. Its columns are
-	// live, and the row has no cell under any of them, so a counterpart matching
-	// one of them collides with nothing. Written separately because the two arms
-	// are independent -- removing the placement arm left the whole package
-	// green until this case existed.
+	// The other exemption: a part that does not print this row. Mutation:
+	// remove the placement arm and only this case fails.
 	const placed = `schema_version: 1
 doc_id: livermore-budget-fy2026-2027
 rules:

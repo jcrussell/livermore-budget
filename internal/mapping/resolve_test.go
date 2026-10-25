@@ -18,11 +18,8 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/hint"
 )
 
-// fixtureDoc is one document's extraction directory together with the prefix
-// its fixtures are named with under testdata/, because the two differ:
-// data/extracted/livermore-budget-fy2026-2027/pages/p0066.txt is copied to
-// testdata/pages/budget-p0066.txt, where it has to share a directory with the
-// other documents' pages.
+// fixtureDoc is a document's extraction directory and its fixture prefix under
+// testdata/pages/ (p0066.txt is budget-p0066.txt).
 type fixtureDoc struct{ id, prefix string }
 
 var (
@@ -31,28 +28,22 @@ var (
 	acfrFixtures   = fixtureDoc{id: "livermore-acfr-fy2025", prefix: "acfr"}
 )
 
-// budgetDoc builds an extraction of the Budget Book containing only the pages
-// a test needs, from the committed fixtures. The fixtures are byte-identical
-// copies of data/extracted/, so a test that passes here passes against the
-// real corpus (testdata/README.md).
+// budgetDoc builds a Budget Book extraction of only the pages a test needs,
+// from the committed fixtures.
 func budgetDoc(t *testing.T, pages ...int) *corpus.Doc {
 	t.Helper()
 	return testDoc(t, budgetFixtures, pages)
 }
 
-// inlineDoc builds a document from page text written in the test itself, for
-// shapes the corpus does not currently contain. Fixtures copied from
-// data/extracted/ are preferred wherever a real page exercises the behaviour;
-// this is for the cases where none does.
+// inlineDoc builds a document from page text written in the test, for shapes
+// no real page exercises.
 func inlineDoc(t *testing.T, docID string, pages map[int]string) *corpus.Doc {
 	t.Helper()
 	return inlineDocWithGeometry(t, docID, pages, nil)
 }
 
-// inlineDocWithGeometry is inlineDoc for a test that also needs the second
-// substrate, with each page's geometry written as the extractor writes it. A
-// page with no geometry entry gets none, so a test can also state what a
-// document missing that artifact does.
+// inlineDocWithGeometry is inlineDoc plus geometry; a page with no geometry
+// entry gets none.
 func inlineDocWithGeometry(t *testing.T, docID string, pages, geometry map[int]string) *corpus.Doc {
 	t.Helper()
 	fsys := fstest.MapFS{}
@@ -143,12 +134,7 @@ func (f fixtureCopy) extraction() string {
 }
 
 // fixtureCopies is every fixture this package reads, as {document, artifact}
-// rows. It replaces a hard-coded list of page numbers against one document and
-// one substrate, which could express neither a second document nor the geometry
-// artifacts the column guard needs. Adding a fixture means adding a
-// row to fixturePages and nothing else — and TestEveryCommittedFixtureIsListed
-// is what makes that a rule rather than a habit, because three fixtures once
-// went in without one.
+// rows; adding a fixture means adding a row here.
 func fixtureCopies() []fixtureCopy {
 	var out []fixtureCopy
 	for _, doc := range []fixtureDoc{budgetFixtures, cipFixtures, acfrFixtures} {
@@ -175,12 +161,8 @@ var fixturePages = map[string][]int{
 	acfrFixtures.id: {41, 54, 167, 168, 169, 177},
 }
 
-// TestFixturesAreVerbatimCopies is what makes every other test in this package
-// mean anything. The fixtures are copies, and `make extract` does not touch
-// them, so they can drift from the extraction silently — and when they do, the
-// tests reading them stay green against a substrate that no longer exists. That
-// is not hypothetical: it is exactly what the xberg → poppler migration
-// produced, and the tests went on passing throughout.
+// TestFixturesAreVerbatimCopies: the fixtures are copies `make extract` does
+// not touch, so this holds their sha256s to the extraction's manifest.
 func TestFixturesAreVerbatimCopies(t *testing.T) {
 	copies := fixtureCopies()
 	if len(copies) == 0 {
@@ -205,22 +187,8 @@ func TestFixturesAreVerbatimCopies(t *testing.T) {
 	}
 }
 
-// TestEveryCommittedFixtureIsListed asserts fixturePages covers testdata/, and
-// it exists because the convention it replaces failed silently.
-//
-// TestFixturesAreVerbatimCopies iterates the LIST, not the directory, so a
-// fixture committed and not listed is read by tests and checked against the
-// extraction by nothing. That is not hypothetical: a430cec added budget pp.168,
-// 169 and 170 — six files — and did not add the rows, so the p168 two-level
-// rounding chain the whole Rollup design rests on and p170's tie to the citywide
-// spine were being proved against files nothing said were real. None had drifted
-// when this was found, which is the reason to close it now rather
-// than after one does.
-//
-// fixtureCopies' own doc comment says "Adding a fixture means adding a row here
-// and nothing else". That sentence was the gap: it describes a convention, and a
-// convention is not a check. Thirteen more pairs land with fisc-5gk.1, which is
-// twenty-six more chances to forget.
+// TestEveryCommittedFixtureIsListed: every file under testdata/ is a row of
+// fixtureCopies, since TestFixturesAreVerbatimCopies iterates the list.
 func TestEveryCommittedFixtureIsListed(t *testing.T) {
 	listed := map[string]bool{}
 	for _, f := range fixtureCopies() {
@@ -269,10 +237,8 @@ func spineResolver(t *testing.T, pages ...int) (*Resolver, *File) {
 	return r, f
 }
 
-// diagnosis is everything a user sees for an error: the message, plus the
-// remediation hint the runner prints under it. Tests assert on both, because a
-// hint is where this project puts the command to run next and dropping one is
-// a silent regression in the part of the error that is actually actionable.
+// diagnosis is an error's message plus the remediation hint printed under it;
+// tests assert on both.
 func diagnosis(t *testing.T, err error) string {
 	t.Helper()
 	if err == nil {
@@ -307,17 +273,10 @@ func partOn(t *testing.T, r *Rule, page int) *Part {
 	return nil
 }
 
-// omittedRowFixture builds a two-page document whose continuation page really
-// does omit a row, plus the rule that reads it. beta is the fields Beta's row
-// carries after its category: "page: 1" places it on the labelled page alone,
-// and "" places it on both.
-//
-// It is synthetic on purpose: no page in the corpus is known to omit a row,
-// and the machinery has to work the day one turns up.
-//
-// The placed row is deliberately in the MIDDLE. A trailing one makes a
-// Value's RowIndex and the part's position agree by accident, which is exactly
-// the bug the indices exist to prevent.
+// omittedRowFixture builds a two-page document whose continuation omits a row,
+// and the rule reading it. beta follows Beta's category: "page: 1" places it on
+// the labelled page alone. The placed row is in the middle, where RowIndex and
+// part position cannot agree by accident.
 func omittedRowFixture(t *testing.T, beta string) (*Resolver, *Rule) {
 	t.Helper()
 
@@ -370,10 +329,8 @@ rules:
 	return r, &f.Rules[0]
 }
 
-// TestAPlacedRowIsNotInvented guards the "absent is not zero" invariant: where
-// a row is placed on another page, reading this one yields no figure for it
-// rather than manufacturing zero facts pointing at a line the page has no line
-// for, and a row's page is not a blank cell, so the part declares no omission.
+// TestAPlacedRowIsNotInvented: a row placed on another page yields no figure
+// here and no omission.
 func TestAPlacedRowIsNotInvented(t *testing.T) {
 	r, ru := omittedRowFixture(t, "page: 1")
 	p := partOn(t, ru, 2)
@@ -395,10 +352,8 @@ func TestAPlacedRowIsNotInvented(t *testing.T) {
 	}
 }
 
-// TestUnmappedRowFailsLoudly is the guard on the labelled read. Most of the
-// corpus prints no total, so on those pages this check is the only thing
-// standing between a rule that forgets a row and a published breakdown that
-// quietly omits it.
+// TestUnmappedRowFailsLoudly: on pages printing no total this is the only
+// guard against a rule that forgets a row.
 func TestUnmappedRowFailsLoudly(t *testing.T) {
 	r, f := spineResolver(t, 66)
 	ru := rule(t, f, "spine-revenues")
@@ -447,15 +402,8 @@ func TestUndeclaredOmissionFailsLoudly(t *testing.T) {
 	}
 }
 
-// TestExtractionDropOutIsNotAnOmission is the regression test for fisc-c00.
-//
-// xberg's strip_repeating_text deleted the third of three identical all-dash
-// rows from Budget Book p67, and the project recorded the loss as a property
-// of the document by declaring the row absent from p67. That is the one thing
-// a row's page must never be used for: it is a claim about what the city
-// printed, and RowLabel is part of the fact id, so the mislabelled facts would
-// have been citable. This asserts the page carries all ten rows, so a
-// re-extraction that silently loses one fails here rather than downstream.
+// TestExtractionDropOutIsNotAnOmission: p67 prints three identical all-dash
+// rows and carries all ten rows, so a re-extraction losing one fails here.
 func TestExtractionDropOutIsNotAnOmission(t *testing.T) {
 	r, f := spineResolver(t, 66, 67)
 	ru := rule(t, f, "spine-revenues")
@@ -566,11 +514,8 @@ func TestResolveRejectsWhatItCannotRead(t *testing.T) {
 	})
 }
 
-// TestRowIndexIsStableAcrossAPlacedRow: a Value's RowIndex indexes the rule's
-// rows, not the part's active ones, or a caller laying two parts' values out
-// together collides at one slot and leaves another empty. The two agree by
-// accident when the row another page prints is last, as it is in the spine,
-// so the check moves it to the middle.
+// TestRowIndexIsStableAcrossAPlacedRow: RowIndex indexes the rule's rows, not
+// the part's active ones; the placed row is moved to the middle.
 func TestRowIndexIsStableAcrossAPlacedRow(t *testing.T) {
 	r, ru := omittedRowFixture(t, "page: 1")
 	p := partOn(t, ru, 2)
@@ -596,10 +541,8 @@ func TestRowIndexIsStableAcrossAPlacedRow(t *testing.T) {
 	}
 }
 
-// TestResolvedCellsAreCellsThePartPrints: every cell a read yields is of a row
-// the part prints and under a column the part does not declare blank on it,
-// and every value is a cell cellPublishes admits. Values' filter relies on
-// the read upholding the first two, so this is where they are asserted.
+// TestResolvedCellsAreCellsThePartPrints: every cell read is of a printed row,
+// under a column not declared blank, and admitted by cellPublishes.
 func TestResolvedCellsAreCellsThePartPrints(t *testing.T) {
 	blankR, blankRule := blankResolver(t, blankPair, blankPairPages())
 	placedR, placedRule := omittedRowFixture(t, "page: 1")
@@ -645,11 +588,9 @@ func TestResolvedCellsAreCellsThePartPrints(t *testing.T) {
 	}
 }
 
-// TestCurrencyMarkedTotalsRunSurvivesAGluedDataRow is the regression test for
-// fisc-gxt. Extraction puts Budget Book p67's TOTAL EXPENDITURES row and its
-// TRANSFER OUT row on one physical line, so sixteen amounts follow the "$"
-// anchor where the part has eight columns. The page marks its totals with "$"
-// and prints data rows bare, and that is the only thing separating them.
+// TestCurrencyMarkedTotalsRunSurvivesAGluedDataRow: p67's TOTAL EXPENDITURES
+// and TRANSFER OUT share a line, sixteen amounts after "$"; only the "$" marks
+// separate the totals from the bare data row.
 func TestCurrencyMarkedTotalsRunSurvivesAGluedDataRow(t *testing.T) {
 	const glued = "$1,061,355 $969,934 $6,984,597 $6,969,898 " +
 		"$19,267,561 $11,808,000 $25,077,367 $26,544,515 " +
@@ -679,10 +620,8 @@ func TestCurrencyMarkedTotalsRunSurvivesAGluedDataRow(t *testing.T) {
 }
 
 // TestDetachedCurrencyMarkedTotalsRunIsReadable pins amountRun's detached-mark
-// handling, which ACFR p167's totals lines need: the page prints "$ 47,139,536"
-// per column, mark and figure as separate tokens, so without the drop every run
-// is one amount wide. TestACFRStatisticalRulesPublishAndTie carries the
-// real-page half of this proof.
+// drop for ACFR p167's "$ 47,139,536"; TestACFRStatisticalRulesPublishAndTie
+// is the real-page half.
 func TestDetachedCurrencyMarkedTotalsRunIsReadable(t *testing.T) {
 	got, ok := amountRun("$ 1,061,355   $ 969,934   $ 6,984,597", 3, amount.Dollars)
 	if !ok {
@@ -725,25 +664,15 @@ rules:
       - {label: "Beta", category: beta}
 `
 
-// The scripted page, and the same page with different figures in its first row.
-// The totals are the ones the FIRST reading ties to, so a resolver that went
-// back to the document for a second look would not merely read different
-// figures — it would fail to tie.
+// The scripted page, and the same page with different first-row figures. The
+// totals tie only the FIRST reading, so a second read fails to tie.
 const (
 	memoPageFirstRead  = "REVENUES: Alpha 10 11 Beta 20 21 TOTAL: 30 32\n"
 	memoPageSecondRead = "REVENUES: Alpha 90 91 Beta 20 21 TOTAL: 30 32\n"
 )
 
-// TestCheckTotalsSeesTheFiguresValuesReturned pins the invariant fisc-uv6's
-// memo is in service of: a build emits a part's facts and then asks the
-// document's own totals to corroborate them, and those two steps must be
-// looking at one reading of the page.
-//
-// This pins the invariant, not the mechanism, and it passed before the part
-// memo existed: the page memo (Resolver.page) already made a second read of a
-// part deterministic, which is why the part memo is a performance change and
-// not a correctness one. The discriminating case is the failed read, which
-// TestAFailedPartFailsTheSameWayEveryTime covers.
+// TestCheckTotalsSeesTheFiguresValuesReturned: a part's facts and its totals
+// check see one reading of the page.
 func TestCheckTotalsSeesTheFiguresValuesReturned(t *testing.T) {
 	r, ru := scriptedResolver(t, memoFixtureRule, map[int][]pageRead{
 		1: {{text: memoPageFirstRead}, {text: memoPageSecondRead}},
@@ -780,17 +709,9 @@ func TestCheckTotalsSeesTheFiguresValuesReturned(t *testing.T) {
 	}
 }
 
-// TestAFailedPartFailsTheSameWayEveryTime is the one behavioural change
-// fisc-uv6's memo makes: the memo caches the error too, so a part that could
-// not be read does not become readable because a later caller happened to ask
-// again. That would make what a build publishes depend on how many times it
-// asked, and both answers would look equally authoritative.
-//
-// The scripted document fails the first read of the page and succeeds the
-// second, which is exactly the shape that lets CheckTotals contradict the
-// Values call before it: CheckTotals reads the page for the stated totals
-// before it looks at the figures, so without the memo the second read is the
-// one it gets.
+// TestAFailedPartFailsTheSameWayEveryTime: the part memo caches the error too.
+// The scripted page fails its first read and succeeds its second, so without
+// the memo CheckTotals would read a page Values could not.
 func TestAFailedPartFailsTheSameWayEveryTime(t *testing.T) {
 	errNoPage := errors.New("page is unavailable")
 	r, ru := scriptedResolver(t, memoFixtureRule, map[int][]pageRead{
@@ -810,10 +731,8 @@ func TestAFailedPartFailsTheSameWayEveryTime(t *testing.T) {
 	}
 }
 
-// TestValuesReturnsCopies: the memo hands out copies, or the first caller to
-// sort or rewrite what it got would rewrite what every later caller sees.
-// Value and Omission hold no slices, so a shallow copy is a whole one — this
-// asserts that claim rather than restating it.
+// TestValuesReturnsCopies: the memo hands out copies; Value and Omission hold
+// no slices, so a shallow copy is whole.
 func TestValuesReturnsCopies(t *testing.T) {
 	r, ru := blankResolver(t, blankPair, blankPairPages())
 	p := partOn(t, ru, 2)
@@ -843,10 +762,8 @@ func TestValuesReturnsCopies(t *testing.T) {
 }
 
 // TestActiveRowsIndexByPositionNotIdentity: two skipped rows may share an
-// identity, and with page they may sit on different parts. Pairing a part's
-// rows with the rule's by identity gives the row on page 1 the index of its
-// namesake on page 2, and CheckSubtotals, keyed on RowIndex, then sums one row
-// twice and the other not at all.
+// identity on different parts; pairing by identity makes CheckSubtotals sum
+// one twice and the other not at all.
 func TestActiveRowsIndexByPositionNotIdentity(t *testing.T) {
 	const src = `schema_version: 1
 doc_id: d

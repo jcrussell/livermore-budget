@@ -8,14 +8,9 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/amount"
 )
 
-// The guards on a document-derived tolerance and on a total the
-// page prints above its own rows.
-//
-// EVERY TEST HERE IS A MUTATION OF ONE WORKING RULE, and that is deliberate.
-// Both mechanisms open a guard that stood for a reason, so the question worth
-// answering is not "does the good case pass" -- acfr_p0041_test.go answers that
-// against the real page -- but "what still fails". A test that only exercised
-// the happy path would pass identically against a flag that opened everything.
+// The guards on a document-derived tolerance and on a total the page prints
+// above its own rows. Each test mutates one working rule and asserts what
+// still fails; acfr_p0041_test.go holds the good case against the real page.
 
 // probeGG returns acfrGeneralGovernmentProbe with one substring replaced, and
 // fails the test if the substring is not there. Silently replacing nothing is
@@ -43,13 +38,8 @@ func checkGG(t *testing.T, f *File) (*totalsResult, error) {
 	return r.CheckTotals(rule, &rule.Parts[0])
 }
 
-// TestPrintedDecimalsIsRequiredForTheBlockToTie is the baseline the rest of
-// this file mutates away from: with the declaration gone, the page's own $10,000
-// discrepancy fails the build.
-//
-// It is the plainest statement that the tolerance is load-bearing rather than
-// decorative, and it is the reverse of the usual worry -- here the risk is a
-// tolerance that does nothing, not one that hides something.
+// TestPrintedDecimalsIsRequiredForTheBlockToTie is the baseline: with the
+// declaration gone, the page's own $10,000 discrepancy fails the build.
 func TestPrintedDecimalsIsRequiredForTheBlockToTie(t *testing.T) {
 	_, err := checkGG(t, probeGG(t, "    printed_decimals: 2\n", ""))
 	if err == nil {
@@ -65,22 +55,10 @@ func TestPrintedDecimalsIsRequiredForTheBlockToTie(t *testing.T) {
 	}
 }
 
-// TestPrintedDecimalsOneDecimalFinerGoesRed is fisc-9hf's acceptance criterion,
-// under the reading that turned out to be the satisfiable one.
-//
-// THE LITERAL READING -- "a tolerance ONE UNIT too tight goes red" -- IS NOT
-// SATISFIABLE ON THIS CORPUS, which is worth recording because both fisc-9hf and
-// fisc-1wr.2 are written in those words. The derived bound here is 2.5 units
-// against a 1-unit error, so subtracting a unit still passes; every other
-// candidate the corpus offers is looser still. What does go red is one DECIMAL
-// finer: declaring three places makes the unit $1,000 and the bound $2,500,
-// against the same $10,000 error.
-//
-// IT IS DRIVEN THROUGH compareTotals RATHER THAN THROUGH YAML, and the reason is
-// itself a guard working: printed_decimals: 3 never reaches the arithmetic,
-// because the witness refuses a declaration no token bears out first. That
-// refusal is asserted separately below. Reaching past it here is what lets the
-// bound itself be tested.
+// TestPrintedDecimalsOneDecimalFinerGoesRed is fisc-9hf's acceptance: three
+// declared places make the bound $2,500 against the $10,000 error, and it goes
+// red. One unit tighter cannot (the bound is 2.5 units). Driven through
+// compareTotals because the witness refuses printed_decimals: 3 first.
 func TestPrintedDecimalsOneDecimalFinerGoesRed(t *testing.T) {
 	f := probeGG(t, "printed_decimals: 2", "printed_decimals: 2")
 	rule := &f.Rules[0]
@@ -146,11 +124,8 @@ func TestPrintedDecimalsRefusesADeclarationNoTokenBearsOut(t *testing.T) {
 	}
 }
 
-// TestPrintedDecimalsIsRefusedWhenNoColumnNeedsIt is the mirror of the stale
-// stated_total_delta arm: a declaration that has stopped loosening anything is
-// the one shape a declaration in this repository must not have.
-//
-// The subject is p41's Other Financing Sources block, which ties EXACTLY.
+// TestPrintedDecimalsIsRefusedWhenNoColumnNeedsIt holds that a declaration
+// loosening nothing is refused, on p41's exactly-tying Other Financing Sources.
 func TestPrintedDecimalsIsRefusedWhenNoColumnNeedsIt(t *testing.T) {
 	const yaml = `schema_version: 1
 doc_id: livermore-acfr-fy2025
@@ -194,11 +169,9 @@ rules:
 	}
 }
 
-// TestPrintedDecimalsIsRefusedOnDollarTables keeps the dollar branch from
-// existing at all. It would have no consumer here, and the dollar-level
-// discrepancies it looks like it would cover -- p127's $1 over thirteen rows,
-// six more on pp.168-170 -- are the city's own arithmetic, declared exactly
-// with stated_total_deltas rather than bounded.
+// TestPrintedDecimalsIsRefusedOnDollarTables holds that dollar tables cannot
+// declare a tolerance; their discrepancies (p127, pp.168-170) are declared
+// exactly with stated_total_deltas.
 func TestPrintedDecimalsIsRefusedOnDollarTables(t *testing.T) {
 	_, err := parse(strings.NewReader(strings.NewReplacer(
 		"units: millions", "units: dollars",
@@ -211,10 +184,8 @@ func TestPrintedDecimalsIsRefusedOnDollarTables(t *testing.T) {
 	}
 }
 
-// TestPrintedDecimalsAndStatedTotalDeltasCannotBothBeDeclared keeps the two
-// disjoint by construction rather than by prose. One names the exact figure a
-// document is out by; the other bounds an unnamed one. A rule holding both
-// offers somewhere to hide the difference.
+// TestPrintedDecimalsAndStatedTotalDeltasCannotBothBeDeclared holds the exact
+// and the bounded declaration disjoint.
 func TestPrintedDecimalsAndStatedTotalDeltasCannotBothBeDeclared(t *testing.T) {
 	_, err := parse(strings.NewReader(strings.Replace(acfrGeneralGovernmentProbe,
 		"        columns:", `        stated_total_deltas:
@@ -242,20 +213,10 @@ func TestTotalRowAboveRequiresTheSectionAnchorToBeTheTotalRow(t *testing.T) {
 	}
 }
 
-// TestTotalRowAboveStillRefusesABlockThatStartsTooEarly is the test that says
-// the leading-gap guard survived.
-//
-// IT IS THE ONE THAT MATTERS, and deleting the checkGap arm would not fail it --
-// that mutation makes the good case red, which the p41 tests catch. What this
-// catches is the OPPOSITE mistake: an arm written permissively enough to skip
-// every line rather than one, which would leave "the block starts too early"
-// with nothing to stand on and would look identical from the good case's exit
-// code.
-//
-// The mutation moves the anchor one printed line up, to the "Current:" heading,
-// so General Government's own figures are now inside the gap AFTER the skipped
-// line. Both anchors are renamed together, so the rule is internally consistent
-// and only its position on the page is wrong.
+// TestTotalRowAboveStillRefusesABlockThatStartsTooEarly holds the leading-gap
+// guard: the anchor moves one line up to "Current:", putting General
+// Government's figures in the gap. Mutation: let checkGap skip every line
+// rather than one and this goes green.
 func TestTotalRowAboveStillRefusesABlockThatStartsTooEarly(t *testing.T) {
 	f, err := parse(strings.NewReader(strings.NewReplacer(
 		`total_row: "General Government:"`, `total_row: "Current:"`,
@@ -284,15 +245,8 @@ func TestTotalRowAboveStillRefusesABlockThatStartsTooEarly(t *testing.T) {
 	}
 }
 
-// TestWrappedLabelsRefusesAnAmount closes the dishonest route to publishing an
-// orphan figure, and it is the reason fisc-hcus was worth landing rather than
-// declining.
-//
-// MEASURED BEFORE THE REFUSAL EXISTED: wrapped_labels: ["0.0"] on ACFR p41's
-// revenue block parsed, resolved all ten rows and tied to the printed total,
-// with nothing objecting. The mapping file told a human not to do it and the
-// parser did not care. An honest declaration is worth nothing while the
-// dishonest one still works.
+// TestWrappedLabelsRefusesAnAmount holds that wrapped_labels: ["0.0"] on ACFR
+// p41's revenue block is refused; unrefused it ties to the printed total.
 func TestWrappedLabelsRefusesAnAmount(t *testing.T) {
 	_, err := parse(strings.NewReader(strings.Replace(acfrRevenueProbe,
 		"        columns:", `        wrapped_labels: ["0.0"]
@@ -391,16 +345,9 @@ rules:
 	}
 }
 
-// TestToleranceIsSymmetric is the test abs() did not have, and review found it
-// by mutation: replacing abs's body with `return c` left the whole suite green
-// and facts.jsonl byte-identical, because every discrepancy in the corpus runs
-// the same way (the document prints MORE than the rows add to, so diff is
-// positive). Without abs a negative diff of any size compares <= the bound and
-// ties, so a page printing a total ten million short would have passed.
-//
-// The bound is symmetric on purpose: a document printing one unit LESS than its
-// rows add to is rounding exactly as one printing one more is. What must not be
-// symmetric is the SIZE.
+// TestToleranceIsSymmetric holds a negative diff to the same size bound.
+// Mutation: make abs return c and a total ten million short ties; every corpus
+// discrepancy is positive, so nothing else catches it.
 func TestToleranceIsSymmetric(t *testing.T) {
 	f := probeGG(t, "printed_decimals: 2", "printed_decimals: 2")
 	rule := &f.Rules[0]
@@ -436,10 +383,8 @@ func TestToleranceIsSymmetric(t *testing.T) {
 	}
 }
 
-// TestToleranceScalesWithTheTermCount pins the other half of the bound. Half a
-// printed unit PER ROW is what makes it derived rather than chosen, and a
-// version that ignored the count would tie the same discrepancy whatever the
-// block's size.
+// TestToleranceScalesWithTheTermCount pins half a printed unit per row.
+// Mutation: ignore the count and the bound no longer varies with block size.
 func TestToleranceScalesWithTheTermCount(t *testing.T) {
 	f := probeGG(t, "printed_decimals: 2", "printed_decimals: 2")
 	rule := &f.Rules[0]
@@ -461,18 +406,9 @@ func TestToleranceScalesWithTheTermCount(t *testing.T) {
 	}
 }
 
-// TestTotalRowAboveRefusesARowOnTheTotalsOwnLine is the arm the newline skip is
-// written with IndexByte rather than strings.Cut for.
-//
-// Cut returns an empty remainder when there is no newline, so a gap lying
-// entirely on the anchor's line would pass the digit refusal VACUOUSLY -- green
-// because nothing was examined, not because nothing was wrong. That gap is the
-// case where the first row's label was found on the same printed line as the
-// total, which means the anchors matched something other than the intended
-// block.
-//
-// The probe declares a first row of "18.45", which the page prints on the
-// anchor's own line, so the gap between anchor and row contains no newline.
+// TestTotalRowAboveRefusesARowOnTheTotalsOwnLine holds a first row "18.45"
+// on the anchor's own line refused. Mutation: skip the newline with
+// strings.Cut and the empty remainder passes the digit refusal vacuously.
 func TestTotalRowAboveRefusesARowOnTheTotalsOwnLine(t *testing.T) {
 	f := probeGG(t, `      - {label: "City Council", category: general-government}`,
 		`      - {label: "16.00", category: general-government}`)
@@ -491,17 +427,9 @@ func TestTotalRowAboveRefusesARowOnTheTotalsOwnLine(t *testing.T) {
 	}
 }
 
-// TestUnmappedTextIsHonouredBetweenRows covers the branch no page in the corpus
-// reaches yet.
-//
-// ACFR p41's orphan sits AFTER the last row, so only the trailing arm is
-// exercised by the committed rules; review found that deleting the between-rows
-// branch left the whole suite green. The two arms are not the same code and a
-// declaration that worked in one place and not the other would be a trap for
-// whoever meets the first mid-block orphan.
-//
-// The probe drops the Miscellaneous row, which puts the orphan "0.0" and that
-// row's own figures between two mapped rows.
+// TestUnmappedTextIsHonouredBetweenRows drops the Miscellaneous row so the
+// orphan "0.0" sits between mapped rows; p41's sits after the last. Mutation:
+// delete the between-rows branch and only this fails.
 func TestUnmappedTextIsHonouredBetweenRows(t *testing.T) {
 	const yaml = `schema_version: 1
 doc_id: livermore-acfr-fy2025
@@ -564,15 +492,10 @@ rules:
 	}
 }
 
-// The parse-time refusals on both new declarations, as a table.
-//
-// THEY ARE HERE BECAUSE REVIEW FOUND FIVE OF THEM MUTATION-GREEN: the
-// unmapped_text blank / whitespace / missing-note / duplicate arms and
-// printed_decimals' negative and multi-part arms could each be deleted with the
-// whole suite still passing. Each was written as "the mirror of the
-// wrapped_labels arm", and the wrapped_labels arms are themselves untested --
-// so the mirror was a claim about untested code. A refusal nothing exercises is
-// a refusal that will be deleted by whoever next tidies this function.
+// TestUnmappedTextParseRefusals is the parse-time refusals on both new
+// declarations. Mutation: delete any of the unmapped_text blank, whitespace,
+// missing-note or duplicate arms, or printed_decimals' negative or multi-part
+// arm, and its case fails.
 func TestUnmappedTextParseRefusals(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
@@ -679,16 +602,9 @@ func TestPrintedDecimalsParseRefusals(t *testing.T) {
 	}
 }
 
-// TestPrintedDecimalsWithoutATotalRowIsRefusedByItsOwnArm is split out of the
-// table above because getting it wrong is easy and was got wrong.
-//
-// validateTotalRowAbove and validatePrintedDecimals BOTH refuse a missing
-// total_row, in the same words -- "declared without a total_row" -- and the
-// first runs first. So dropping total_row from the probe tests the wrong arm
-// while reading as though it tested this one, and the field name is the only
-// thing in the message that tells them apart. This probe drops total_row_above
-// as well, and re-anchors the section, so only printed_decimals is left to
-// object.
+// TestPrintedDecimalsWithoutATotalRowIsRefusedByItsOwnArm drops
+// total_row_above too and re-anchors, since validateTotalRowAbove refuses a
+// missing total_row first in the same words; the field name tells them apart.
 func TestPrintedDecimalsWithoutATotalRowIsRefusedByItsOwnArm(t *testing.T) {
 	src := strings.Replace(acfrGeneralGovernmentProbe, `    total_row: "General Government:"`+"\n", "", 1)
 	src = strings.Replace(src, "    total_row_above: true\n", "", 1)
@@ -702,14 +618,9 @@ func TestPrintedDecimalsWithoutATotalRowIsRefusedByItsOwnArm(t *testing.T) {
 	}
 }
 
-// TestPrintedDecimalsIsRefusedOnAMultiPartRuleThatDoesNotSpan is the arm that
-// keeps the "tolerated no column" refusal exact.
-//
-// Such a rule is compared once PER PART, so a rule needing the tolerance on one
-// page and tying exactly on another would be refused as inert on the second --
-// a correct refusal of a correct rule. Declaring total_spans_parts makes it one
-// comparison; splitting the rule makes each part its own. Both are available,
-// and silently comparing per part is not.
+// TestPrintedDecimalsIsRefusedOnAMultiPartRuleThatDoesNotSpan holds that a
+// multi-part rule needs total_spans_parts, or would be compared per part and
+// refused as inert on a part that ties exactly.
 func TestPrintedDecimalsIsRefusedOnAMultiPartRuleThatDoesNotSpan(t *testing.T) {
 	_, err := parse(strings.NewReader(strings.Replace(acfrGeneralGovernmentProbe,
 		`          - {fiscal_year: 2024, skip: true}`,
@@ -728,15 +639,9 @@ func TestPrintedDecimalsIsRefusedOnAMultiPartRuleThatDoesNotSpan(t *testing.T) {
 	}
 }
 
-// TestPrintedDecimalsAndUnmappedTextCannotBothBeDeclared is the composition that
-// was left open.
-//
-// unmapped_text takes a printed figure OUT of the read on the author's word
-// that it belongs to no row. If that word is wrong, the row it belonged to is
-// short -- and a tolerance beside it is precisely what would absorb the
-// shortfall, removing the arithmetic that would otherwise catch the
-// misdeclaration. It is the same shape as the stated_total_deltas refusal one
-// declaration further out.
+// TestPrintedDecimalsAndUnmappedTextCannotBothBeDeclared holds that a
+// tolerance cannot sit beside unmapped_text, where it would absorb the
+// shortfall of a wrongly removed figure.
 func TestPrintedDecimalsAndUnmappedTextCannotBothBeDeclared(t *testing.T) {
 	_, err := parse(strings.NewReader(strings.Replace(acfrGeneralGovernmentProbe,
 		"        columns:", `        unmapped_text:
@@ -750,10 +655,8 @@ func TestPrintedDecimalsAndUnmappedTextCannotBothBeDeclared(t *testing.T) {
 	}
 }
 
-// TestTotalRowAboveRefusals covers the two arms of validateTotalRowAbove that
-// were mutation-green -- deleting either left the whole suite passing. They are
-// the same class as the sibling validator's, one file over: a fix applied to one
-// validator and not to its neighbour reads as done.
+// TestTotalRowAboveRefusals covers two arms of validateTotalRowAbove.
+// Mutation: delete either and its case fails.
 func TestTotalRowAboveRefusals(t *testing.T) {
 	t.Run("with total_spans_parts", func(t *testing.T) {
 		// A second part as well, because validateTotalSpansParts requires two
@@ -802,20 +705,9 @@ func TestTotalRowAboveRefusals(t *testing.T) {
 }
 
 // TestTotalRowAboveAllowsAWrappedLabelAfterTheTotalsLine holds checkGap to
-// skipping the total's line BEFORE the wrapped_labels test. Tested against
-// the whole gap, a label wrapped between the total's line and the first row
-// could be declared only with the total's own figures glued to the front of
-// it, so the declaration would fail as stale; and undeclared, the fragment is
-// accepted as any words before the first row are, so no corpus page can show
-// the order wrong.
-//
-// IT CALLS checkGap DIRECTLY rather than building a page-shaped probe, because
-// the claim is about the ORDER of two tests inside that function and a probe
-// would be asserting it through whatever shape the page happens to have. The
-// two gaps below differ only in whether the text after the total's line is
-// declared, and both are accepted: words before the first row are where column
-// headers live, and checkGap permits them undeclared on every rule. What the
-// declaration changes is that it is marked used.
+// skipping the total's line before the wrapped_labels test. Calls checkGap
+// directly, as the claim is the order of two tests inside it. Mutation: test
+// wrapped labels against the whole gap and the declared case fails as stale.
 func TestTotalRowAboveAllowsAWrappedLabelAfterTheTotalsLine(t *testing.T) {
 	rule := &Rule{TotalRow: "Total Revenues", TotalRowAbove: true}
 	rows := []Row{{Label: "General Government:"}}
@@ -832,10 +724,8 @@ func TestTotalRowAboveAllowsAWrappedLabelAfterTheTotalsLine(t *testing.T) {
 			"fail later as a stale declaration")
 	}
 
-	// Undeclared, the same fragment is accepted and nothing is marked used:
-	// words before the first row are where column headers live, and the
-	// digit refusal below is the only guard over them, with or without the
-	// flag.
+	// Undeclared, the same fragment is accepted and nothing is marked used;
+	// the digit refusal is the only guard over it.
 	used = map[string]bool{}
 	if err := res.checkGap(rule, &Part{Page: 41}, gap, rows, 0, used, nil); err != nil {
 		t.Errorf("undeclared words after the total's line were refused: %v", err)
@@ -857,16 +747,9 @@ func TestTotalRowAboveAllowsAWrappedLabelAfterTheTotalsLine(t *testing.T) {
 	}
 }
 
-// TestWithinToleranceRefusesRatherThanWrapping covers a fail-OPEN bound.
-//
-// amount.Parse admits a millions token up to roughly 9.2e18 cents, so an
-// inline `abs(diff)*2 <= unit*terms` wraps NEGATIVE on a diff that size and
-// ties; a diff at exactly math.MinInt64 doubles to 0 and ties too. Either
-// would let a column miss its printed total by an arbitrary amount.
-//
-// Every case here is refused, which is the fail-closed direction: a discrepancy
-// too large to compare against a bound built from a printed unit is not within
-// it.
+// TestWithinToleranceRefusesRatherThanWrapping holds the bound fail-closed:
+// an inline `abs(diff)*2 <= unit*terms` wraps negative near 9.2e18 cents, and
+// math.MinInt64 doubles to 0, and either would tie.
 func TestWithinToleranceRefusesRatherThanWrapping(t *testing.T) {
 	const unit = amount.Cents(1_000_000) // $10,000, ACFR p41's printed digit
 	for _, tc := range []struct {

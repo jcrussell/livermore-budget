@@ -9,20 +9,9 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/amount"
 )
 
-// p186Top maps the summary block at the top of Budget Book p186 and the first
-// detail row under it. Between "Total City Budget"'s figures and "Low Income
-// Housing Fund" the page prints, on a line of its own:
-//
-//	Total City Budget            $ 358,645,812  $ 255,315,420 ...
-//
-//	Special Revenue Funds
-//
-//	Low Income Housing Fund      $  39,881,994  $   5,852,912 ...
-//
-// "Special Revenue Funds" is also the label of the second row of this same
-// block, which is the collision the parser has to allow. The block also holds
-// the footnote marker "1" alone between two rows and a wrapped total, declared
-// with the two declarations that already say those things.
+// p186Top maps Budget Book p186's summary block and the first detail row under
+// it. The heading "Special Revenue Funds" between them is also the label of
+// the block's second row, the collision the parser has to allow.
 const p186Top = `schema_version: 1
 doc_id: livermore-budget-fy2026-2027
 
@@ -130,15 +119,8 @@ func TestStaleHeadingIsRefused(t *testing.T) {
 }
 
 // p190Mixed maps the two rows either side of p190's mixed gap, under the
-// column guard whose geometry raises the footnote marker "1": the marker and
-// the heading on consecutive lines between them.
-//
-//	Total Internal Service Funds   $  27,749,075 ...
-//
-//	                                       1
-//	Capital Improvement Program Funds
-//
-//	CIP Airport                    $           - ...
+// column guard: a raised footnote marker "1" and a heading on consecutive
+// lines between them.
 const p190Mixed = `schema_version: 1
 doc_id: livermore-budget-fy2026-2027
 
@@ -258,14 +240,9 @@ rules:
 	}
 }
 
-// TestAFigureSharesAGapOnlyAsAFootnoteMarker: a row broken over two lines
-// ("Foo Fund" then "1,234") declared as heading plus unmapped figure would drop
-// the row's figure, so a declared figure shares a gap with other declared
-// lines only when the geometry raises it as a footnote marker, with headings
-// alone, on the line above a heading or above the row the gap ends at: "12" in
-// millions among a wrapped label's fragments is a figure and not a marker, and
-// so is a "12" the page prints full height. Alone, a declared figure is still
-// the whole gap and is admitted.
+// TestAFigureSharesAGapOnlyAsAFootnoteMarker: a declared figure shares a gap
+// with other declared lines only when the geometry raises it as a marker,
+// above a heading or the row the gap ends at; alone it is the whole gap.
 func TestAFigureSharesAGapOnlyAsAFootnoteMarker(t *testing.T) {
 	p := &Part{
 		Headings:      []string{"Foo Fund", "Capital Improvement Program Funds"},
@@ -386,12 +363,9 @@ func overTallHeading(line int, _ string) [][2]string {
 	}
 }
 
-// TestOnlyARaisedMarkerSharesAGapWithAHeading reads the gap rule through the
-// resolver: a superscript "1" under a heading keys the row below it and is
-// read; the same "1" after the last row keys no row, a "12" the page prints
-// full height is the figure of a row broken over two lines, and so is a
-// body-size "12" on a line of its own above a heading set larger than it.
-// All three are refused.
+// TestOnlyARaisedMarkerSharesAGapWithAHeading, through the resolver: a raised
+// "1" under a heading is read; a "1" after the last row, a full-height "12"
+// and a body-size "12" above a larger heading are all refused.
 func TestOnlyARaisedMarkerSharesAGapWithAHeading(t *testing.T) {
 	if err := markerValues(t, "1", "Foo Fund\n1\n", "", superscript); err != nil {
 		t.Errorf("a raised marker between a heading and the next row: %v", err)

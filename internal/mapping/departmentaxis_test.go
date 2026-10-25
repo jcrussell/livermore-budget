@@ -6,17 +6,7 @@ import (
 )
 
 // p167Departments is Budget Book p167's CITY MANAGER and CITY ATTORNEY
-// sections, transcribed with their printed FY2023-24 Actual figures.
-//
-// Three divisions across two departments, which is the smallest shape that can
-// state the defect: City Manager and City Clerk roll up to CITY MANAGER TOTAL,
-// City Attorney alone to CITY ATTORNEY TOTAL.
-//
-//	City Manager    2,175,746 +   340,367 = $2,516,113
-//	City Clerk        970,912 +   728,300 = $1,699,212
-//	                            CITY MANAGER TOTAL $4,215,325
-//	City Attorney   1,843,067 +   482,362 = $2,325,429
-//	                            CITY ATTORNEY TOTAL $2,325,429
+// sections with their FY2023-24 Actuals: three divisions in two departments.
 const p167Departments = `CITY MANAGER
 
 City Manager          Wages & Benefits            2,175,746
@@ -100,15 +90,9 @@ rollups:
 #ROLLUPS
 `
 
-// correctAttribution is what p167 prints: City Clerk is a division of CITY
-// MANAGER.
-//
-// A one-division department covers its single rule, and does NOT declare the
-// rollup unassertable. The page is why: CITY COUNCIL TOTAL (p0167:15) is a
-// second printed line three lines below City Council's own Total (:13), and six
-// of the eleven departments here are in that shape. Declaring them unassertable
-// would be a false declaration, since `unassertable` means no rule structure CAN
-// assert the total. See TestARollupMayCoverOneRule.
+// correctAttribution is what p167 prints: City Clerk under CITY MANAGER. A
+// one-division department still covers its rule; see
+// TestARollupMayCoverOneRule.
 const correctAttribution = `  - id: dept-city-manager
     page: 167
     total_row: "CITY MANAGER TOTAL"
@@ -128,22 +112,9 @@ func departmentResolver(t *testing.T, rollups string) (*File, *Resolver) {
 	return f, r
 }
 
-// TestADivisionUnderTheWrongDepartmentIsCaughtOnlyByTheRollup is fisc-b9j.
-//
-// It is written as a pair, and the second half is the point. Moving City Clerk
-// from CITY MANAGER to CITY ATTORNEY leaves EVERY OTHER CHECK GREEN:
-//
-//   - each division's own rows still tie to its own printed Total, because a
-//     division's Total covers exactly its own rows and never names its
-//     department;
-//   - every category sum is unchanged, so an expenditure-detail tie keyed on
-//     {kind, category, fund_group} -- which does not carry department -- still
-//     holds to the cent;
-//   - the row labels, categories and department slugs are all well formed, so
-//     a vocabulary check sees nothing.
-//
-// The printed department total is the only thing that notices. That is why the
-// rollup had to be built rather than the twelve totals declared unassertable.
+// TestADivisionUnderTheWrongDepartmentIsCaughtOnlyByTheRollup: moving City
+// Clerk to CITY ATTORNEY leaves division totals, category sums and labels
+// green; only the printed department total notices.
 func TestADivisionUnderTheWrongDepartmentIsCaughtOnlyByTheRollup(t *testing.T) {
 	t.Run("as the document prints it", func(t *testing.T) {
 		f, r := departmentResolver(t, correctAttribution)
@@ -180,13 +151,8 @@ func TestADivisionUnderTheWrongDepartmentIsCaughtOnlyByTheRollup(t *testing.T) {
 	})
 }
 
-// TestTheCategorySumsAreBlindToTheDepartmentMove states, as arithmetic rather
-// than as prose, the reason the rollup is the only check that sees this.
-//
-// It sums the mapped values by category across all three rules under both
-// attributions. The numbers are identical, because moving a division between
-// departments moves no figure -- which is exactly why a check keyed on
-// {kind, category, fund_group} cannot notice.
+// TestTheCategorySumsAreBlindToTheDepartmentMove: category sums are identical
+// under both attributions, since moving a division moves no figure.
 func TestTheCategorySumsAreBlindToTheDepartmentMove(t *testing.T) {
 	byCategory := func(f *File, r *Resolver) map[string]int64 {
 		t.Helper()
@@ -219,9 +185,6 @@ func TestTheCategorySumsAreBlindToTheDepartmentMove(t *testing.T) {
 			t.Errorf("category %s: %d vs %d", k, v, got[k])
 		}
 	}
-	// And state the residual risk this mitigation does NOT close, per
-	// fisc-u54's discipline: a rollup whose covers list is wrong in a way that
-	// still sums correctly is not caught, and neither is a department registry
-	// entry whose parent relation is itself wrong. Nothing here asserts
-	// otherwise.
+	// Not caught: a covers list wrong in a way that still sums, or a wrong
+	// parent in the department registry.
 }

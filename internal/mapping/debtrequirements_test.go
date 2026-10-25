@@ -46,16 +46,10 @@ type reqKey struct {
 	Category string
 }
 
-// TestDebtServiceRequirementsCrossFootToTheGrandTotal holds the schedule to
-// both of its printed totals: every published column to the Total under it
-// (CheckTotals, which fisc verify runs), and every row's four fund types to
-// the Grand Total p81 prints beside them, which the rule skips because it
-// is their sum. The second is what catches a row of p81's positional read
-// filed one line off: both pages' columns would still tie.
-//
-// Mutation: give row "2031-2035" skip: true and CheckTotals goes red on
-// p80 by 12,521,661 and 9,563,191; drop the Water blanks under 2036-2040 and
-// the read refuses p81's count.
+// TestDebtServiceRequirementsCrossFootToTheGrandTotal holds each column to its
+// Total and each p81 row's four fund types to its printed Grand Total.
+// Mutation: skip row "2031-2035" and CheckTotals goes red on p80 by 12,521,661
+// and 9,563,191; drop the Water blanks under 2036-2040 and p81's count refuses.
 func TestDebtServiceRequirementsCrossFootToTheGrandTotal(t *testing.T) {
 	r, req, _, _ := debtResolver(t)
 	funds := map[reqKey]amount.Cents{}
@@ -90,10 +84,8 @@ func TestDebtServiceRequirementsCrossFootToTheGrandTotal(t *testing.T) {
 	}
 }
 
-// TestInternalServiceRequirementsAreTheLease: the Internal Service Funds'
-// 2026 and 2027 requirements are the Lease/Purchase Loan's FY2025-26 and
-// FY2026-27 debt service on p81, to the dollar -- the year ending June 30,
-// 2026 is fiscal_year 2026 on both schedules.
+// TestInternalServiceRequirementsAreTheLease: the Internal Service Funds' 2026
+// and 2027 requirements equal the Lease/Purchase Loan's debt service on p81.
 func TestInternalServiceRequirementsAreTheLease(t *testing.T) {
 	r, req, principal, interest := debtResolver(t)
 	got := map[reqKey]amount.Cents{}

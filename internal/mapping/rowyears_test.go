@@ -8,10 +8,9 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-// yearRows is Budget Book p80's DEBT SERVICE REQUIREMENTS in miniature: a row
-// per year ending June 30, a band printed as one figure, and two fund types
-// each printing "Principal" and "Interest", the second of which stops before
-// the band, so its blanks are named by column_ordinal.
+// yearRows is p80's DEBT SERVICE REQUIREMENTS in miniature: a row per year, a
+// band printed as one figure, and a second fund type whose blanks are named by
+// column_ordinal.
 const yearRows = `schema_version: 1
 doc_id: years-doc
 
@@ -57,13 +56,9 @@ func yearRowsPage() map[int]string {
 		row("Total", "800", "80", "15", "3")}
 }
 
-// TestARowCarriesItsYearsAndABandStaysABand reads year rows: each figure is
-// filed under its row's fiscal year, a band under its first and last year,
-// the second fund type's blanks under the band are named by ordinal, and the
-// columns tie to the printed Total.
-//
-// Mutation: drop the year arm from Row.EffectiveColumn and every figure comes
-// back with no fiscal year.
+// TestARowCarriesItsYearsAndABandStaysABand: figures file under their row's
+// year, a band under its first and last year, and columns tie to the Total.
+// Mutation: drop Row.EffectiveColumn's year arm and no figure has a year.
 func TestARowCarriesItsYearsAndABandStaysABand(t *testing.T) {
 	r, rule := blankResolver(t, yearRows, yearRowsPage())
 	p := &rule.Parts[0]
@@ -167,13 +162,9 @@ func TestAColumnOrdinalOnAHeaderPrintedOnceIsRefused(t *testing.T) {
 	}
 }
 
-// TestARowPrintingOnlyASkippedColumnIsRead is Budget Book p81's 2046-2050
-// line: a figure under Grand Total, which the rule skips, and nothing under
-// the fund types it publishes. The row is printed, publishes nothing on this
-// part, and the read still demands its figure.
-//
-// Mutation: count only publishing columns in validateOmittedCells again and
-// parse refuses the row as every column blank.
+// TestARowPrintingOnlyASkippedColumnIsRead is p81's 2046-2050 line: a figure
+// only under the skipped Grand Total, still demanded. Mutation: count only
+// publishing columns in validateOmittedCells and parse refuses the row.
 func TestARowPrintingOnlyASkippedColumnIsRead(t *testing.T) {
 	src := strings.Replace(blankPair, blankEntry, blankEntry+
 		`          - {label: "Beta", column: "FY B", note: "the page prints TOTAL alone"}`+"\n", 1)
@@ -202,12 +193,9 @@ func TestARowPrintingOnlyASkippedColumnIsRead(t *testing.T) {
 	}
 }
 
-// TestTwoGridsOfOnePageAreNamedApart: a page printing two schedules under
-// different headers reads each through its own named grid, two parts naming
-// one grid still declare one list, and two names for one list are refused.
-//
-// Mutation: key checkColumnGrids by (doc, page) alone again and the two
-// grids of pp.80-81 refuse the published file.
+// TestTwoGridsOfOnePageAreNamedApart: each schedule reads through its own named
+// grid; two names for one list are refused. Mutation: key checkColumnGrids by
+// (doc, page) alone and pp.80-81's two grids refuse the published file.
 func TestTwoGridsOfOnePageAreNamedApart(t *testing.T) {
 	two := func(gridA, headersA, gridB, headersB string) string {
 		part := func(id, grid, headers string) string {
@@ -238,10 +226,8 @@ func TestTwoGridsOfOnePageAreNamedApart(t *testing.T) {
 			`but rule "a" in grid.yaml declares`},
 		{"two grids, one list", two("budget", `["X", "Y"]`, "requirements", `["X", "Y"]`),
 			`one header list is one grid`},
-		// A headerless part escapes the all-or-none rule by naming no grid on
-		// a page whose grids are all named, or by naming one nobody declares.
-		// Mutation: look the headerless part up by (doc, page, grid) again and
-		// both read unguarded.
+		// Mutation: look the headerless part up by (doc, page, grid) and both
+		// read unguarded.
 		{"a headerless part beside a named grid", two("budget", `["X", "Y"]`, `""`, `[]`),
 			`declares no column_headers`},
 		{"a headerless part naming a grid", two("budget", `["X", "Y"]`, "budgte", `[]`),

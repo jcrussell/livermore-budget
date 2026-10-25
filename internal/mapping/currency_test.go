@@ -7,16 +7,8 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/amount"
 )
 
-// dollarPerToken reproduces the shape of ACFR p177's FY2016 row: the dollar
-// sign printed as its OWN whitespace-delimited token before each figure, with
-// the mark and the figure separated by a run of spaces, and a "$ -" published
-// zero among them.
-//
-// It is written inline rather than read from testdata/pages/acfr-p0177.txt
-// because this test is about the mark-and-figure shape alone; the real page's
-// rows end in two non-amount columns, which the quantity channel reads and
-// acfr_p177_test.go proves. The spacing below is copied from the page, and the
-// offset assertion is the same assertion either way.
+// dollarPerToken is ACFR p177's FY2016 row shape, spacing copied from the
+// page: "$" as its own token before each figure, and a "$ -" published zero.
 const dollarPerToken = `     Fiscal      Column A          Column B          Column C          Column D
      2016      $ 60,193,384     $    2,566,738    $            -   $     619,257
      2017        56,386,950          2,440,343                 -         512,946
@@ -59,15 +51,9 @@ func dollarTokenResolver(t *testing.T) (*Resolver, *Rule) {
 	return r, &f.Rules[0]
 }
 
-// TestStandaloneDollarRowResolves is fisc-yun's acceptance criterion: a page
-// whose rows print "$ 1,234" resolves, and the row printed WITHOUT the marks
-// reads identically. Before this, the labelled read took [$, 60,193,384, $,
-// 2,566,738] as its first four values and failed with `cannot parse amount
-// "$"`.
-//
-// The "$            -" cell is the one worth naming: the mark is dropped and
-// the dash is a PUBLISHED ZERO, not an absent cell. Conflating those is the
-// invariant this project is built on.
+// TestStandaloneDollarRowResolves: rows printing "$ 1,234" resolve and read
+// identically to the row without marks; "$            -" is a published zero,
+// not an absent cell.
 func TestStandaloneDollarRowResolves(t *testing.T) {
 	r, ru := dollarTokenResolver(t)
 	vals, _, err := r.Values(ru, &ru.Parts[0])
@@ -87,15 +73,9 @@ func TestStandaloneDollarRowResolves(t *testing.T) {
 	}
 }
 
-// TestOffsetStillPointsAtTheFigureWhenTheDollarIsItsOwnToken is the constraint
-// that rules out the obvious fix.
-//
-// Joining "$" to the figure in the tokenizer would give the fact a Token of
-// "$60,193,384" at the dollar sign's offset. The page bytes there are
-// "$ 60,193,3", so fisc verify's fact-offset-points-at-token -- which asserts
-// text[Offset:Offset+len(Token)] == Token -- would fail on every row of every
-// one of the 236 pages that print the mark detached. Dropping the mark instead
-// leaves the figure's own token pointing at itself, which it already did.
+// TestOffsetStillPointsAtTheFigureWhenTheDollarIsItsOwnToken: the mark is
+// dropped rather than joined, so the figure's token still sits at its own
+// offset and fact-offset-points-at-token holds.
 func TestOffsetStillPointsAtTheFigureWhenTheDollarIsItsOwnToken(t *testing.T) {
 	r, ru := dollarTokenResolver(t)
 	vals, _, err := r.Values(ru, &ru.Parts[0])
@@ -115,10 +95,8 @@ func TestOffsetStillPointsAtTheFigureWhenTheDollarIsItsOwnToken(t *testing.T) {
 	}
 }
 
-// TestCurrencyMarkWithNoFigureIsAnError keeps the grammar fail-closed. A mark
-// with nothing after it means the read has run off the end of the row, and
-// laundering it into a shorter token list would hide exactly the overrun the
-// column guard exists to catch.
+// TestCurrencyMarkWithNoFigureIsAnError: a trailing mark means the read ran
+// off the row, and is refused rather than dropped.
 func TestCurrencyMarkWithNoFigureIsAnError(t *testing.T) {
 	for _, tt := range []struct {
 		name string

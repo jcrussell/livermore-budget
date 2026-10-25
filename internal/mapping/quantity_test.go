@@ -184,10 +184,8 @@ func TestQuantityDeclarationsAreValidated(t *testing.T) {
 	}
 }
 
-// The row arm on a years-across page: p169's shape, inline because
-// testdata/ carries no p169 pair yet (that copy is batch one's own work).
-// A percentage row spans every year column, is read so the block stays whole,
-// and publishes nothing.
+// ratioRowPage is p169's years-across shape: a percentage row spans every
+// year column, is read so the block stays whole, and publishes nothing.
 const ratioRowPage = `Header
 Taxes 100 200
 Debt ratio 6.6% 4.9%
@@ -237,9 +235,8 @@ func TestRowQuantityOverrideReadsWithoutPublishing(t *testing.T) {
 	}
 }
 
-// TestRowQuantityOverrideIsLoadBearing is the mutation, kept: remove the
-// override and the read fails on amount.Parse rejecting the percentage — the
-// exact blocker fisc-9tn4 records, shown still present rather than remembered.
+// TestRowQuantityOverrideIsLoadBearing. Mutation: remove the override and
+// amount.Parse refuses the percentage.
 func TestRowQuantityOverrideIsLoadBearing(t *testing.T) {
 	src := strings.Replace(ratioRowRule, `, quantity: percentage`, ", category: taxes/other", 1)
 	r, rule := scriptedResolver(t, src, map[int][]pageRead{

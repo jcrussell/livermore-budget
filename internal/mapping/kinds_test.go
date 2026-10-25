@@ -8,13 +8,9 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
-// TestTheMessagesThatSayFiveStillMeanFive pins the count parse errors state in
-// prose. Adding a sixth kind must redden this rather than leave "is not one of
-// the five" quietly wrong on a page a reader is trying to fix.
-//
-// THE NUMBER OF SUCH MESSAGES IS MEASURED RATHER THAN NAMED: a count in a
-// failure message a reader acts on goes stale exactly the way the messages it
-// is about would. Counting them here cannot rot, and it costs one file read.
+// TestTheMessagesThatSayFiveStillMeanFive: adding a sixth kind reddens this
+// rather than leaving "is not one of the five" wrong; the messages are counted,
+// not named.
 func TestTheMessagesThatSayFiveStillMeanFive(t *testing.T) {
 	src, err := os.ReadFile("parse.go")
 	if err != nil {

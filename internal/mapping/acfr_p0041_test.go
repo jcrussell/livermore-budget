@@ -10,12 +10,8 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/geom"
 )
 
-// ACFR p41, the General Fund's "Statement of Revenues, Expenditures And Changes
-// In Fund Balances (in Millions)", the page mappings/livermore-acfr-fy2025.yaml
-// reads.
-//
-// Units are millions printed to two decimals, so the least significant printed
-// digit is 0.01 million = $10,000, and one cent of amount.Cents is one cent.
+// ACFR p41, the General Fund statement "(in Millions)" at two decimals: one
+// printed unit is $10,000.
 const acfrStatementPage = 41
 
 // The two substrates of that page, both committed under testdata/ and both
@@ -26,10 +22,8 @@ var (
 	acfrStatementGeometry = fmt.Sprintf("../../testdata/geometry/acfr-p%04d.json", acfrStatementPage)
 )
 
-// acfrRevenueProbe is the revenue block's rule WITHOUT the unmapped_text
-// declaration the production rule carries. Two tests read it -- one adds the
-// declaration and one does not -- so the difference between them is exactly the
-// declaration and nothing else.
+// acfrRevenueProbe is the revenue block's rule without its unmapped_text
+// declaration, so the two tests over it differ by exactly that declaration.
 const acfrRevenueProbe = `schema_version: 1
 doc_id: livermore-acfr-fy2025
 rules:
@@ -62,9 +56,7 @@ rules:
 `
 
 // acfrGeneralGovernmentProbe is acfr-p0041-gf-general-government as
-// mappings/livermore-acfr-fy2025.yaml declares it. It is spelled here rather
-// than loaded from that file because the tests below mutate it, and a test that
-// edited the committed mapping would be checking whatever the edit produced.
+// committed, spelled here because the tests below mutate it.
 const acfrGeneralGovernmentProbe = `schema_version: 1
 doc_id: livermore-acfr-fy2025
 rules:
@@ -92,14 +84,8 @@ rules:
       - {label: "General Services", category: general-government}
 `
 
-// TestACFRp0041RevenueBlockNeedsItsOrphanDeclared runs the rule that maps the
-// revenue block WITHOUT the unmapped_text declaration the production rule
-// carries, and asserts the resolver refuses it, naming the orphan.
-//
-// It is a real read rather than assertions about the page's text, so a claim
-// about what blocks the block cannot come from anywhere but the resolver:
-// whatever refuses, refuses. The declaration is LOAD-BEARING, and removing it
-// puts the block back out of reach.
+// TestACFRp0041RevenueBlockNeedsItsOrphanDeclared: without the unmapped_text
+// declaration the resolver refuses the block, naming the orphan.
 func TestACFRp0041RevenueBlockNeedsItsOrphanDeclared(t *testing.T) {
 	const yaml = acfrRevenueProbe
 	f, err := parse(strings.NewReader(yaml), "probe.yaml")
@@ -124,10 +110,8 @@ func TestACFRp0041RevenueBlockNeedsItsOrphanDeclared(t *testing.T) {
 		t.Errorf("the read was refused by something other than the orphan: %v", got)
 	}
 
-	// And the standalone "$" is NOT a blocker, said as an assertion because a
-	// comment saying so is what went wrong last time. The first row prints two
-	// bare marks and the resolver reads it anyway -- which is only observable
-	// because the refusal above happens after every row has been read.
+	// The standalone "$" is not a blocker: the first row prints two bare marks
+	// and is read before the refusal above.
 	bare := 0
 	for _, field := range strings.Fields(acfrLine(t, "Property taxes and special assessments")) {
 		if field == "$" {
@@ -140,14 +124,8 @@ func TestACFRp0041RevenueBlockNeedsItsOrphanDeclared(t *testing.T) {
 	}
 }
 
-// TestACFRp0041RevenueBlockResolvesWithTheOrphanDeclared is the other half of
-// the test above: the same rule, plus the one unmapped_text entry the production
-// rule carries, reads all ten rows and ties to the printed total EXACTLY.
-//
-// The exactness is the point and is why this block declares no
-// printed_decimals. A tolerance no column needs is refused, so a rule that
-// reached for one here would not build -- see
-// TestPrintedDecimalsIsRefusedWhenNoColumnNeedsIt.
+// TestACFRp0041RevenueBlockResolvesWithTheOrphanDeclared: with the declaration
+// all ten rows read and tie EXACTLY, with no printed_decimals.
 func TestACFRp0041RevenueBlockResolvesWithTheOrphanDeclared(t *testing.T) {
 	f, err := parse(strings.NewReader(strings.Replace(acfrRevenueProbe,
 		"        columns:", `        unmapped_text:
@@ -183,16 +161,9 @@ func TestACFRp0041RevenueBlockResolvesWithTheOrphanDeclared(t *testing.T) {
 	}
 }
 
-// TestACFRp0041GeneralGovernmentTiesOnlyWithinThePageDerivedTolerance is the
-// arithmetic behind acfr-p0041-gf-general-government, and it is the ONLY
-// consumer of a document-derived tolerance in this corpus.
-//
-// The five divisions print 18.44 against a subtotal of 18.45 printed ABOVE them.
-// The page is captioned "(in Millions)" and prints two decimals, so
-// the unit is $10,000 and the bound is half a unit per row: $25,000 over five
-// terms, against a $10,000 error. Read the CAPTION instead of the printed digits
-// and the same sum would carry $2,500,000, which is a hundredfold wider and is
-// the mistake the declaration exists to prevent.
+// TestACFRp0041GeneralGovernmentTiesOnlyWithinThePageDerivedTolerance: the
+// five divisions print 18.44 against a subtotal of 18.45; the bound is half a
+// printed unit per row ($25,000 over five terms), not the caption's millions.
 func TestACFRp0041GeneralGovernmentTiesOnlyWithinThePageDerivedTolerance(t *testing.T) {
 	f, err := parse(strings.NewReader(acfrGeneralGovernmentProbe), "probe.yaml")
 	if err != nil {
@@ -223,10 +194,8 @@ func TestACFRp0041GeneralGovernmentTiesOnlyWithinThePageDerivedTolerance(t *test
 	}
 }
 
-// acfrLine returns the one page line whose label begins with want.
-//
-// A prefix matching two lines is fatal: every assertion about it would be a
-// claim about whichever line came first, which nobody chose.
+// acfrLine returns the one page line whose label begins with want; a prefix
+// matching two lines is fatal.
 func acfrLine(t *testing.T, want string) string {
 	t.Helper()
 	b, err := os.ReadFile(acfrStatementText)
@@ -247,21 +216,9 @@ func acfrLine(t *testing.T, want string) string {
 	return found
 }
 
-// TestACFRp0041HasNoGeometryColumnGuard pins the claim that
-// mappings/livermore-acfr-fy2025.yaml and data/taxonomy.yaml's neighbourhood
-// both make in prose: the twenty figures this page publishes are read with NO
-// column-position guard over them.
-//
-// docs/extraction-substrate.md calls that guard "the designed answer" for a
-// token landing in the wrong column, so a page that cannot have it is a real
-// gap, and a gap asserted only in a comment is one nobody re-measures. Both
-// halves of the reason are measured here.
-//
-// If this test starts failing because the pairing now SUCCEEDS, that is good
-// news and the rule file's paragraph about the missing guard has to be
-// rewritten -- along with declaring column_headers, which is the other half and
-// is separately blocked (the page's printed headers are the bare years 2025 and
-// 2024, and the parser refuses a header amount.Parse accepts).
+// TestACFRp0041HasNoGeometryColumnGuard: the twenty figures on p41 are read
+// with no column-position guard, and both reasons are measured here. If the
+// pairing starts to SUCCEED, rewrite the rule file's paragraph on the guard.
 func TestACFRp0041HasNoGeometryColumnGuard(t *testing.T) {
 	txt, err := os.ReadFile(acfrStatementText)
 	if err != nil {
@@ -293,11 +250,8 @@ func TestACFRp0041HasNoGeometryColumnGuard(t *testing.T) {
 			"and every comment saying it does not is stale")
 	}
 
-	// WHY the two substrates disagree, so the count above is explained rather
-	// than merely recorded: the orphan "0.0" of
-	// TestACFRp0041RevenueBlockNeedsItsOrphanDeclared is printed close enough to the
-	// baseline of the row above that -bbox groups the two into one line, while
-	// -layout puts the orphan on its own. One page feature, both failures.
+	// The orphan "0.0" sits close enough to the row above that -bbox groups
+	// them into one line while -layout keeps it on its own.
 	var orphan, miscellaneous *geom.Word
 	for i := range g.Words {
 		switch g.Words[i].Text {

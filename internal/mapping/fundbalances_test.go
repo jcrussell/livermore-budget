@@ -28,11 +28,8 @@ func publishedFundBalances(t *testing.T) (*Resolver, *File) {
 	return r, f
 }
 
-// TestPublishedFundBalancesSummaryRowsAreTheirBlockTotals holds the relation a
-// subtotal cannot: each year's summary block prints one row per fund group,
-// and each is the printed "Total ..." of that group's detail block further
-// down, in all ten columns. CheckSubtotals holds the summary rows to their own
-// totals and each block total to its funds; this joins the two.
+// TestPublishedFundBalancesSummaryRowsAreTheirBlockTotals: each summary row
+// equals its group's printed "Total ..." further down, in all ten columns.
 func TestPublishedFundBalancesSummaryRowsAreTheirBlockTotals(t *testing.T) {
 	r, f := publishedFundBalances(t)
 	type column struct{ part, col int }

@@ -8,16 +8,8 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/geom"
 )
 
-// scriptedDoc is a hand-rolled doc, and the only one in this package: every
-// other test builds a real *corpus.Doc over an fstest.MapFS (budgetDoc,
-// inlineDoc), which is the right default because it exercises the manifest and
-// the artifact check on the way in.
-//
-// This exists for the one thing a real document cannot do — answer differently
-// each time it is asked. Whether the resolver reads a page or a part more than
-// once is not observable by counting calls (this project asserts behaviour, not
-// call counts, byob-testing.3); it is observable by making the second answer
-// differ from the first and asking whether the caller can tell.
+// scriptedDoc answers the same page differently on successive reads, so a
+// test can observe whether the resolver re-reads without counting calls.
 type scriptedDoc struct {
 	docID string
 	// script gives each page's successive reads, in order. The last entry
@@ -41,13 +33,8 @@ func newScriptedDoc(docID string, script map[int][]pageRead) *scriptedDoc {
 
 func (d *scriptedDoc) DocID() string { return d.docID }
 
-// Geometry is the third method of doc, and this double has none to give.
-//
-// That is not a gap: this document exists to answer the same page differently
-// on successive reads, which is a question about memoization, and no part any
-// of its tests resolve asks for the column guard. A part that did would fail
-// here rather than resolve without a guard it believed it had, which is the
-// behaviour the required method was chosen for.
+// Geometry has nothing to give: a part asking for the column guard fails here
+// rather than resolving unguarded.
 func (*scriptedDoc) Geometry(n int) (*geom.Page, error) {
 	return nil, fmt.Errorf("scriptedDoc carries no geometry for page %d", n)
 }

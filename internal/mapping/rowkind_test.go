@@ -7,18 +7,9 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
-// stormwaterPage is Budget Book p131's Stormwater block, transcribed with its
-// printed figures, spacing collapsed but rows and columns intact.
-//
-// It is the block fisc-uli exists for: five revenue rows and a Transfers In row
-// inside ONE printed `Total Stormwater`. All four columns tie only when the
-// transfer row is included -- FY2025-26 is 1,169,000 of Charges for Services
-// plus 3,247,000 of Transfers In, and there is no other way to reach the
-// printed 4,416,000.
-//
-// The page is inline rather than a committed fixture because testdata/ carries
-// no p131 pair yet; adding one owes both substrates and a README entry, which
-// is fisc-5gk.1's own work. The figures are the document's.
+// stormwaterPage is Budget Book p131's Stormwater block: five revenue rows and
+// a Transfers In row under one Total Stormwater; FY2025-26 ties only as
+// 1,169,000 + 3,247,000 = 4,416,000.
 const stormwaterPage = `Stormwater
 Fines & Forfeitures 1,211 - - -
 Intergovernmental 55,380 3,444,000 - -
@@ -72,14 +63,8 @@ func stormwaterResolver(t *testing.T, kinds string) (*Resolver, *Rule) {
 	return r, &f.Rules[0]
 }
 
-// TestAMixedBlockTiesBecauseCheckTotalsStaysKindBlind is the regression test
-// for the decision at the centre of fisc-uli.
-//
-// Row.Kind lets one rule carry rows of two kinds. The tempting next step --
-// making CheckTotals sum only the rule's own kind -- would break exactly the
-// blocks the override was promoted to enable: this printed total covers BOTH
-// kinds, so a kind-aware sum reaches 1,169,000 where the document prints
-// 4,416,000. Kind-blindness is the behaviour, not an oversight.
+// TestAMixedBlockTiesBecauseCheckTotalsStaysKindBlind: the printed total covers
+// both kinds, so a kind-aware sum would reach 1,169,000, not 4,416,000.
 func TestAMixedBlockTiesBecauseCheckTotalsStaysKindBlind(t *testing.T) {
 	r, rule := stormwaterResolver(t, "    #KINDS")
 	res, err := r.CheckTotals(rule, &rule.Parts[0])
@@ -91,15 +76,9 @@ func TestAMixedBlockTiesBecauseCheckTotalsStaysKindBlind(t *testing.T) {
 	}
 }
 
-// TestTotalRowKindsNarrowsWhatTheTotalCovers is the other half: where a printed
-// total covers only some of the kinds beneath it, the rule says so on the
-// declaration and CheckTotals honours it.
-//
-// The assertion is written as a pair on purpose. Declaring `[revenue]` here is
-// WRONG about this document -- Total Stormwater does cover the transfer row --
-// so the check must FAIL, and fail with the figure it actually summed. A filter
-// that could only ever narrow a passing check into another passing check would
-// not be a check.
+// TestTotalRowKindsNarrowsWhatTheTotalCovers: total_row_kinds narrows the sum.
+// `[revenue]` is wrong about this page, so the check must FAIL with the figure
+// it summed.
 func TestTotalRowKindsNarrowsWhatTheTotalCovers(t *testing.T) {
 	r, rule := stormwaterResolver(t, "    total_row_kinds: [revenue]")
 	_, err := r.CheckTotals(rule, &rule.Parts[0])
@@ -137,10 +116,8 @@ func TestTotalRowKindsRefusesWhatAssertsNothing(t *testing.T) {
 	}
 }
 
-// TestARowKindThatIsNotOneOfTheFiveIsRefused keeps the override inside the
-// vocabulary. Without this a typo'd kind reaches facts.jsonl, where the only
-// thing that would notice is a check over a category that happens to declare
-// its kinds.
+// TestARowKindThatIsNotOneOfTheFiveIsRefused keeps a row's kind inside the
+// vocabulary.
 func TestARowKindThatIsNotOneOfTheFiveIsRefused(t *testing.T) {
 	src := strings.Replace(stormwaterRule, "kind: transfer_in}", "kind: transfers}", 1)
 	_, err := parse(strings.NewReader(src), "stormwater.yaml")

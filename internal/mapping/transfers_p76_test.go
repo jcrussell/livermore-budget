@@ -10,9 +10,8 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/amount"
 )
 
-// p76PublishedScope is the scope the published p76 rules carry, decided by
-// fisc-aes: p76 and pp.66-67 are the same money, so a rule at the spine's scope
-// would double the city's transfers with every check still green.
+// p76PublishedScope is the published p76 rules' scope: p76 and pp.66-67 are
+// the same money, so the spine's scope would double the city's transfers.
 const p76PublishedScope = "transfers-by-fund"
 
 // p76Page is Budget Book p76, "SUMMARY OF TRANSFERS".
@@ -42,13 +41,8 @@ func loadPublishedP76(t *testing.T) *File {
 	return f
 }
 
-// TestP76ReadsUnderTheColumnGuardWithAHeaderlessColumn is fisc-wfi's evidence,
-// and it is on the page rather than on a fixture of my own construction.
-//
-// p76 is the first part in the corpus with a column the page prints no header
-// over, and until this it had no column_headers at all -- so the guard had
-// never run on this page in either direction. Three things are asserted, and
-// the third is the one that makes the first two mean anything.
+// TestP76ReadsUnderTheColumnGuardWithAHeaderlessColumn: p76's skipped last
+// column has no printed header.
 func TestP76ReadsUnderTheColumnGuardWithAHeaderlessColumn(t *testing.T) {
 	load := loadPublishedP76
 	readAll := func(t *testing.T, f *File) error {
@@ -92,10 +86,8 @@ func TestP76ReadsUnderTheColumnGuardWithAHeaderlessColumn(t *testing.T) {
 		t.Fatalf("p76 does not read under its own column guard: %v", err)
 	}
 
-	// (3) EXACTLY ONE COLUMN IS UNBANDED, and it is the skipped one. This is
-	// the claim the null entry is really making, and a passing read alone does
-	// not distinguish it from a guard that quietly checks nothing: a band map
-	// of all -1 would also let p76 through.
+	// (3) Exactly one column, the skipped one, is unbanded; an all -1 band map
+	// would also let p76 through.
 	r, err := NewResolver(budgetDoc(t, p76Page), f)
 	if err != nil {
 		t.Fatalf("NewResolver: %v", err)
@@ -112,11 +104,8 @@ func TestP76ReadsUnderTheColumnGuardWithAHeaderlessColumn(t *testing.T) {
 			"and only the footnote column is unplaceable", g.band, want)
 	}
 
-	// (4) THE HEADER LIST IS STILL A LIVE CLAIM ABOUT THE PAGE. Swapping two
-	// entries describes p76's columns in an order it does not print them in,
-	// and the read must refuse rather than shift every figure one band. Note
-	// what this catches is the ORDER claim in matchHeaders; the placement claim
-	// is (3)'s band map plus the read in (2).
+	// (4) Swapping two header entries must refuse (matchHeaders' order claim),
+	// not shift every figure one band.
 	swapped := load(t)
 	for i := range swapped.Rules {
 		h := swapped.Rules[i].Parts[0].ColumnHeaders
@@ -144,13 +133,9 @@ func TestP76ReadsUnderTheColumnGuardWithAHeaderlessColumn(t *testing.T) {
 	}
 }
 
-// TestPublishedP76SumsToItsPrintedGrandTotal holds the published p76 rules
-// to the one total the page prints for itself. It prints no label over it,
-// so no rule can carry it as a total_row and no rollup can cover the five
-// sections, and the lattice ties p76 to the spine only group by group: this
-// is the only arithmetic the page offers against itself. An equality in both
-// budget years. Mutation: swap one published p76 rule's two budget-year
-// columns and both years miss their totals.
+// TestPublishedP76SumsToItsPrintedGrandTotal: p76's unlabelled grand total, in
+// both budget years. Mutation: swap one rule's two budget-year columns and
+// both years miss.
 func TestPublishedP76SumsToItsPrintedGrandTotal(t *testing.T) {
 	f := loadPublishedP76(t)
 	r, err := NewResolver(budgetDoc(t, p76Page), f)

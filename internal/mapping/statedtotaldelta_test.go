@@ -8,14 +8,8 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/amount"
 )
 
-// p127PropertyTaxes is the Property Taxes block of Budget Book p127, mapped
-// against the committed page fixture. It is the smallest real rule that cannot
-// build without a declared delta, which is what makes it the test for one.
-//
-// Four columns, and only the first needs the declaration: the FY2023-24 Actual
-// column prints a total $1 higher than its thirteen rows add to, and the other
-// three tie exactly. The block is bounded by "Property Taxes" and its own total
-// line, so nothing below it is read.
+// p127PropertyTaxes is p127's Property Taxes block: its FY2023-24 Actual total
+// prints $1 above its thirteen rows, and the other three columns tie exactly.
 const p127PropertyTaxes = `schema_version: 1
 doc_id: livermore-budget-fy2026-2027
 
@@ -54,11 +48,8 @@ rules:
         #DELTAS
 `
 
-// declaration is the stated_total_deltas block the rule needs, indented to sit
-// under the part. Tests substitute it for the #DELTAS placeholder line, or
-// leave the placeholder in place to get the undeclared case. The placeholder is
-// a comment rather than a format verb because a bare "%s" at the start of a
-// line is a YAML directive marker.
+// declaration is the stated_total_deltas block substituted for the #DELTAS
+// placeholder; a "%s" verb would be a YAML directive marker.
 const declaration = `        stated_total_deltas:
           - column: 1
             delta_cents: 100
@@ -82,20 +73,9 @@ func p127Resolver(t *testing.T, deltas string) (*Resolver, *Rule) {
 	return r, &f.Rules[0]
 }
 
-// TestP127NeedsItsDeltaDeclared carries the arithmetic, because a claim about
-// these documents is only as good as the figures behind it. Summed from the
-// committed fixture, the thirteen Property Taxes rows of Budget Book p127:
-//
-//	FY2023-24 Actual   58,179,467   printed 58,179,468   off by +1
-//	FY2024-25 Revised  60,621,418   printed 60,621,418   exact
-//	FY2025-26 Budget   64,143,762   printed 64,143,762   exact
-//	FY2026-27 Budget   67,416,730   printed 67,416,730   exact
-//
-// Three of four columns tying exactly is what makes the fourth the document's
-// rounding rather than our read: a misread row would not land on three columns
-// and miss one by a dollar. This is the page fisc-2sd was opened for, and the
-// reason "all column totals tie exactly" must not be hardened into a property
-// of this corpus -- it is a property of pp.66-67 alone.
+// TestP127NeedsItsDeltaDeclared: FY2023-24 maps 58,179,467 against a printed
+// 58,179,468 while three columns tie exactly, so the dollar is the document's
+// rounding, not our read.
 func TestP127NeedsItsDeltaDeclared(t *testing.T) {
 	t.Run("undeclared, it fails closed", func(t *testing.T) {
 		r, ru := p127Resolver(t, "")
@@ -129,12 +109,8 @@ func TestP127NeedsItsDeltaDeclared(t *testing.T) {
 }
 
 // TestTheUndeclaredFailureStatesTheDeltaToPasteIn: compareTotals' undeclared
-// and declared branches both report `stated - mapped`, so the figure an
-// undeclared failure names is the one a stated_total_deltas declaration
-// accepts. p127 column 1 maps 58,179,467 against a printed 58,179,468; were the
-// branches to disagree in sign, the pasted delta would fail as the wrong one.
-// The test pins the two branches AGAINST EACH OTHER rather than against a
-// literal.
+// and declared branches both report `stated - mapped`, pinned against each
+// other.
 func TestTheUndeclaredFailureStatesTheDeltaToPasteIn(t *testing.T) {
 	r, ru := p127Resolver(t, "")
 	_, err := r.CheckTotals(ru, &ru.Parts[0])
@@ -164,10 +140,8 @@ func TestTheUndeclaredFailureStatesTheDeltaToPasteIn(t *testing.T) {
 	}
 }
 
-// TestDeclaredDeltaAcceptsThatFigureAndNoOther is the other half of fisc-2sd's
-// acceptance criteria. A declaration is a claim about one exact figure, so
-// every neighbouring figure must still fail -- otherwise it is a tolerance
-// with extra steps.
+// TestDeclaredDeltaAcceptsThatFigureAndNoOther: every neighbouring figure must
+// still fail, or the declaration is a tolerance.
 func TestDeclaredDeltaAcceptsThatFigureAndNoOther(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
@@ -193,10 +167,8 @@ func TestDeclaredDeltaAcceptsThatFigureAndNoOther(t *testing.T) {
 	}
 }
 
-// TestDeclaredDeltaOnAColumnThatTiesFails guards the direction nothing else
-// would catch. If the city reissues p127 with the arithmetic corrected, the
-// declaration becomes a false statement about the document -- and a check that
-// let it pass would be carrying a stale claim forever. Column 2 already ties.
+// TestDeclaredDeltaOnAColumnThatTiesFails: a delta on a column that ties
+// exactly (column 2) is a stale claim.
 func TestDeclaredDeltaOnAColumnThatTiesFails(t *testing.T) {
 	d := strings.Replace(declaration, "column: 1", "column: 2", 1)
 	r, ru := p127Resolver(t, d)
@@ -217,10 +189,8 @@ func amountLiteral(c amount.Cents) string {
 	return strconv.FormatInt(int64(c), 10)
 }
 
-// TestStatedTotalDeltaIsRefusedAtParseTime covers the ways of writing a
-// declaration that do not say what a declaration has to say. Each is refused by
-// the parser rather than reaching CheckTotals, so a rule file that is wrong is
-// wrong when it is read and not when it is applied.
+// TestStatedTotalDeltaIsRefusedAtParseTime: each malformed declaration is
+// refused by the parser, before CheckTotals.
 func TestStatedTotalDeltaIsRefusedAtParseTime(t *testing.T) {
 	for _, tc := range []struct {
 		name, block, want string

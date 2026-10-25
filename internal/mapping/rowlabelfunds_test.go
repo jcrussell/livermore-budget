@@ -5,10 +5,8 @@ import (
 	"testing"
 )
 
-// rowLabelFundsRule is a schedule whose rows are labelled with printed fund
-// names, which is the shape Budget Book pp.85-125 prints: the columns are
-// (year, basis) pairs carrying no fund at all, and the fund dimension is on the
-// row. #DECL and #ROWS are substituted per case.
+// rowLabelFundsRule is the pp.85-125 shape: (year, basis) columns carrying no
+// fund, the fund on the row. #DECL and #ROWS are substituted per case.
 const rowLabelFundsRule = `schema_version: 1
 doc_id: livermore-budget-fy2026-2027
 rules:
@@ -45,19 +43,9 @@ func parseRowLabelFunds(t *testing.T, decl, rows string) error {
 const fundedRows = `      - {label: "General Fund", category: department-funding-sources, fund: 100, fund_group: general}
       - {label: "General Liability", category: department-funding-sources, fund: 700, fund_group: internal-service}`
 
-// TestRowLabelsNameFundsRefusesARowItWouldSayNothingAbout is the precondition
-// the parser can check without the registry or the pages.
-//
-// The claim itself -- that "Water" is fund 640, and that the page prints that
-// label on that line -- belongs to row-funds-match-their-anchors, which has both.
-// What is checkable here is that the declaration ASSERTS something, and that is
-// validateTotalRowKinds' discipline applied one field over: a declaration that
-// cannot fail records an author's belief rather than a property of the page.
-//
-// A SINGLE UNFUNDED ROW IS ENOUGH TO REFUSE, and that is the point rather than
-// strictness for its own sake. The check reads every row of the rule, so one row
-// with no fund is one row the declaration silently does not cover -- and the
-// author, having declared it, has no way to tell which.
+// TestRowLabelsNameFundsRefusesARowItWouldSayNothingAbout: the declaration must
+// assert something, so a single unfunded row refuses it. Whether the label
+// names that fund is row-funds-match-their-anchors'.
 func TestRowLabelsNameFundsRefusesARowItWouldSayNothingAbout(t *testing.T) {
 	const decl = "    row_labels_name_funds: true"
 
@@ -80,10 +68,7 @@ func TestRowLabelsNameFundsRefusesARowItWouldSayNothingAbout(t *testing.T) {
 		}
 	})
 
-	// A SKIPPED ROW IS NOT READ, so the declaration is not about it. Refusing
-	// one would force an author to put a fund number on a row the resolver never
-	// reaches, which is a figure typed to satisfy a validator -- the shape
-	// Part.OmittedCells' comment refuses by name.
+	// A skipped row is not read, so it needs no fund.
 	t.Run("a skipped row declares none", func(t *testing.T) {
 		rows := fundedRows + "\n      - {label: \"Grants\", skip: true}"
 		if err := parseRowLabelFunds(t, decl, rows); err != nil {
@@ -91,11 +76,7 @@ func TestRowLabelsNameFundsRefusesARowItWouldSayNothingAbout(t *testing.T) {
 		}
 	})
 
-	// EVERY ROW SKIPPED IS THE STRONGER VERSION OF "one row declares none", and
-	// it was accepted while that one was refused. A skipped row is never read
-	// from the page, so the check drops it from every arm -- not a subject, not
-	// in the omission counters -- and the declaration stood over zero checked
-	// rows with the rule named nowhere in the summary.
+	// Every row skipped leaves the declaration over zero checked rows.
 	t.Run("every row is skipped", func(t *testing.T) {
 		rows := `      - {label: "General Fund", skip: true}
       - {label: "General Liability", skip: true}`
@@ -108,13 +89,8 @@ func TestRowLabelsNameFundsRefusesARowItWouldSayNothingAbout(t *testing.T) {
 		}
 	})
 
-	// A COUNTERPART IS AT THE FAR END AND NO BARE LABEL NAMES IT. The
-	// declaration speaks for the row's OWN fund; a counterpart's fund sits at
-	// the other end of the movement and a bare fund name carries no direction to
-	// reach it. Leaving it unchecked was not neutral: the counterpart fell into
-	// row-funds-match-their-anchors' unphrased counter, whose clause then named
-	// the rule as one that does NOT declare row_labels_name_funds while it did.
-	// A false sentence in a string fisc verify prints every run.
+	// The declaration speaks for the row's own fund; a counterpart's fund is at
+	// the far end, which a bare label cannot name.
 	t.Run("a row declares a counterpart", func(t *testing.T) {
 		rows := fundedRows + "\n      - {label: \"Transfers In\", category: \"transfers/in\", " +
 			"kind: transfer_in, fund: 100, fund_group: general, " +
@@ -134,9 +110,8 @@ func TestRowLabelsNameFundsRefusesARowItWouldSayNothingAbout(t *testing.T) {
 		}
 	})
 
-	// AND WITHOUT THE DECLARATION THE SAME FILE IS FINE. Every schedule mapped
-	// before pp.85-125 has rows with no fund, so a guard that fired regardless
-	// of the declaration would refuse most of the corpus.
+	// Without the declaration the same file is fine: most schedules have rows
+	// with no fund.
 	t.Run("no declaration, unfunded rows", func(t *testing.T) {
 		rows := fundedRows + "\n      - {label: \"Grants\", category: department-funding-sources}"
 		if err := parseRowLabelFunds(t, "", rows); err != nil {

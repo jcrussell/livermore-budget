@@ -10,10 +10,8 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/amount"
 )
 
-// blankPair is a labelled page and its label-less continuation, whose middle
-// row prints FY B and TOTAL and leaves FY C blank -- the shape of Budget Book
-// p207, where County Measure D prints five figures and nothing under Reserve
-// Increase/(Use).
+// blankPair is a labelled page and its label-less continuation whose middle
+// row leaves FY C blank, the shape of Budget Book p207.
 const blankPair = `schema_version: 1
 doc_id: blank-doc
 
@@ -159,10 +157,8 @@ func omittedCellsAt(omissions []Omission) []omittedCellAt {
 	return out
 }
 
-// TestABlankCellIsReadAsAbsent is the positional path: Beta's two figures are
-// filed under the two columns it prints, the blank yields no cell -- not a
-// zero, and not a skipped cell either -- and the declaration is reported as an
-// omission so a later check can tell the blank from a "-".
+// TestABlankCellIsReadAsAbsent: the blank yields no cell (not a zero, not a
+// skip) and is reported as an omission.
 func TestABlankCellIsReadAsAbsent(t *testing.T) {
 	p, cells, omissions, err := readBlank(t, blankPair, blankPairPages(), 1)
 	if err != nil {
@@ -226,10 +222,9 @@ func TestAnUndeclaredBlankCellIsRefused(t *testing.T) {
 	}
 }
 
-// TestADeclaredBlankThePagePrintsIsRefused covers each way a declaration can
-// be untrue: a printed cell declared besides the real blank, the declaration
-// on the wrong row, on the wrong column, and on a labelled row that prints
-// every figure, where no count can see it.
+// TestADeclaredBlankThePagePrintsIsRefused: a printed cell declared blank, or
+// a declaration on the wrong row, column, or a labelled row printing every
+// figure.
 func TestADeclaredBlankThePagePrintsIsRefused(t *testing.T) {
 	for _, tt := range []struct {
 		name, src string
@@ -413,10 +408,8 @@ func TestABlankAmountBesideAPrintedPercentageIsRead(t *testing.T) {
 	}
 }
 
-// p207CapitalFunds reads Budget Book pp.206-207's FY2026-27 Capital Funds
-// block, p207 positionally against p206's labels.
-// Only County Measure D publishes, and its line on p207 prints nothing under
-// Reserve Increase/(Use).
+// p207CapitalFunds reads pp.206-207's FY2026-27 Capital Funds block; only
+// County Measure D publishes, blank under Reserve Increase/(Use) on p207.
 const p207CapitalFunds = `schema_version: 1
 doc_id: livermore-budget-fy2026-2027
 
@@ -476,11 +469,8 @@ rules:
           - {fiscal_year: 2027, category: fund-balance/ending}
 `
 
-// TestP207ReadsCountyMeasureDWithItsBlankReserveCell is omitted_cells on the
-// page it exists for, guarded. County Measure D's p207 line prints 505,784 |
-// - | - | (blank) | 505,784 | (858,450), and p206 prints its sources as
-// (358,666) | 6,000 | - | (352,666): (352,666) - 505,784 = (858,450), so the
-// line is read as the page prints it.
+// TestP207ReadsCountyMeasureDWithItsBlankReserveCell: p207 prints 505,784 | - |
+// - | (blank) | 505,784 | (858,450), and (352,666) - 505,784 = (858,450).
 func TestP207ReadsCountyMeasureDWithItsBlankReserveCell(t *testing.T) {
 	f, err := parse(strings.NewReader(p207CapitalFunds), "p207.yaml")
 	if err != nil {
@@ -528,12 +518,9 @@ func TestP207ReadsCountyMeasureDWithItsBlankReserveCell(t *testing.T) {
 	}
 }
 
-// TestAnOmittedCellIsResolvedToItsColumnOnce: the header an entry names is
-// resolved to a column index by Part.columnHeaded alone, at validation, and
-// a reader takes the blank from Part.blank. So a header printed over two
-// columns is refused before any reader can mark both, and a part read with
-// its validation forgotten declares no blank: the page then prints one
-// figure fewer than the rule expects, and the count refuses the row.
+// TestAnOmittedCellIsResolvedToItsColumnOnce: the header resolves to a column
+// at validation only, so a header over two columns is refused, and an
+// unvalidated part declares no blank and the count refuses the row.
 func TestAnOmittedCellIsResolvedToItsColumnOnce(t *testing.T) {
 	twice := &Part{ColumnHeaders: columnHeaders{{Text: "FY C"}, {Text: "FY C"}, {Text: "TOTAL"}}}
 	if at, err := twice.columnHeaded("FY C"); err == nil ||

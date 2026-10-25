@@ -53,10 +53,8 @@ func leadingGapValues(t *testing.T, page string) error {
 	return err
 }
 
-// TestAnAllDashLineBeforeTheFirstRowIsRefused holds checkGap's leading arm to
-// the same rule as the gap between rows: a line of printed zeros is a row,
-// and dropping it silently loses one. Deleting the dash arm in checkGap turns
-// this red, since the digit refusal above it never sees a dash.
+// TestAnAllDashLineBeforeTheFirstRowIsRefused: a line of printed zeros is a
+// row. Mutation: delete checkGap's dash arm and this goes red.
 func TestAnAllDashLineBeforeTheFirstRowIsRefused(t *testing.T) {
 	if err := leadingGapValues(t, strings.Replace(leadingGapPage, "Unmapped Line - -\n", "", 1)); err != nil {
 		t.Fatalf("the page without the dash line must resolve, or the refusal below is vacuous: %v", err)
@@ -77,12 +75,9 @@ func TestAnAllDashLineBeforeTheFirstRowIsRefused(t *testing.T) {
 	}
 }
 
-// TestAnUnguardedLabelledReadNeedsWholeWordsAndItsOwnLine covers the two
-// shapes a part with no column_headers had nothing to refuse: a label found
-// inside a longer word, and a short row taking the next line's figures.
-// Mutation: search the label with strings.Index again and the first case
-// reads Alpha's figures out of "Alphabet"; drop the same-line arm and the
-// second reads Beta's first figure as Alpha's last.
+// TestAnUnguardedLabelledReadNeedsWholeWordsAndItsOwnLine. Mutation: search
+// the label with strings.Index and Alpha reads "Alphabet"'s figures; drop the
+// same-line arm and Alpha takes Beta's first figure.
 func TestAnUnguardedLabelledReadNeedsWholeWordsAndItsOwnLine(t *testing.T) {
 	base := strings.Replace(leadingGapPage, "Unmapped Line - -\n", "", 1)
 	if err := leadingGapValues(t, base); err != nil {

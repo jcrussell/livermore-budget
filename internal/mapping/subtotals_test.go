@@ -8,22 +8,10 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/geom/geomtest"
 )
 
-// The shape these tests are about, as Budget Book pp.224-235 print it: a
-// labelled page carrying one year, a label-less page continuing the same rows,
-// subtotals of two levels between the blocks, and a block that starts on one
-// page pair and is totalled on the next.
-//
-//	p1  P1 Alpha    10     p2   5   15
-//	    P2 Beta     20          7   27
-//	    SUBTOTAL X  30         12   42    level 1
-//	    P3 Gamma     1          2    3
-//	p3  SUBTOTAL Y   1     p4   2    3    level 1, over p1's Gamma
-//	    TOTAL FUND  31         14   45    level 2, over Alpha, Beta, Gamma
-//	    P4 Delta     4          4    8
-//	    TOTAL D      4          4    8    level 2
-//	    TOTAL       35         18   53    level 3
-//
-// The second page's TOTAL column is skipped, and is still compared.
+// subtotalRules is the pp.224-235 shape: a labelled page and its label-less
+// continuation, subtotals at levels 1-3, and a block opened on one page pair
+// and totalled on the next. The second page's skipped TOTAL column is still
+// compared.
 const subtotalRules = `schema_version: 1
 doc_id: subtotal-doc
 
@@ -149,12 +137,9 @@ func subtotalCheck(t *testing.T, src string, pages map[int]string) (*SubtotalsRe
 	return sum, nil
 }
 
-// TestASubtotalChainTiesAcrossRulesAndLevels is the whole capability: five
-// printed subtotals, three levels, one block crossing from the first rule into
-// the second, and the skipped TOTAL column compared like the others.
-//
-// Mutations: reset every level at every subtotal, and TOTAL FUND sees only
-// Gamma; drop the chain, and SUBTOTAL Y sees no row above it.
+// TestASubtotalChainTiesAcrossRulesAndLevels: five subtotals, three levels, one
+// block crossing rules. Mutations: reset every level at every subtotal and
+// TOTAL FUND sees only Gamma; drop the chain and SUBTOTAL Y sees no row.
 func TestASubtotalChainTiesAcrossRulesAndLevels(t *testing.T) {
 	res, err := subtotalCheck(t, subtotalRules, subtotalPages())
 	if err != nil {
@@ -277,10 +262,8 @@ func TestSubtotalDeclarationsAreRefusedWhereTheyCannotMean(t *testing.T) {
 	}
 }
 
-// TestTwoSkippedRowsMayShareALabel is p230's fund 611, printed once under its
-// federal grant and once under its state grant on lines identical but for
-// the figures. Skipped, the pair reads; a blank cell declared on it cannot
-// say which.
+// TestTwoSkippedRowsMayShareALabel is p230's fund 611, printed twice on lines
+// identical but for figures; a blank cell declared on it cannot say which.
 func TestTwoSkippedRowsMayShareALabel(t *testing.T) {
 	src := strings.Replace(subtotalRules,
 		`      - {label: "P2 Beta", category: capital-projects}`,
@@ -316,10 +299,9 @@ func TestASubtotalOverNoRowIsRefused(t *testing.T) {
 	}
 }
 
-// TestAColumnIsItsPositionNotItsHeader: Budget Book p81 prints Principal,
-// Interest and Total once a year, so two columns may share a header. Keyed by
-// header, the second column's figures overwrite the first's and a wrong
-// subtotal in the first is never compared.
+// TestAColumnIsItsPositionNotItsHeader: p81 repeats Principal, Interest and
+// Total each year; keyed by header, a wrong first-column subtotal is never
+// compared.
 func TestAColumnIsItsPositionNotItsHeader(t *testing.T) {
 	src := strings.ReplaceAll(subtotalRules, `column_headers: ["FY B", "TOTAL"]`, `column_headers: ["TOTAL", "TOTAL"]`)
 	pages := subtotalPages()
@@ -351,12 +333,8 @@ func TestAChainLaidOutUnlikeItsFirstRuleIsRefused(t *testing.T) {
 	}
 }
 
-// TestAChainWhoseColumnsMeanDifferentThingsIsRefused: headers alike are not
-// enough. A position whose second rule files its figures under another year,
-// or, on a chain whose columns carry the category, under another category or
-// another kind, would be summed with the first rule's figures as though they
-// were one column. The kind case declares none on the column, so it is the
-// rule's kind the column inherits that differs.
+// TestAChainWhoseColumnsMeanDifferentThingsIsRefused: a position whose second
+// rule files under another year, category or (inherited) kind is refused.
 func TestAChainWhoseColumnsMeanDifferentThingsIsRefused(t *testing.T) {
 	last := func(src, old, repl string) string {
 		i := strings.LastIndex(src, old)
@@ -436,11 +414,9 @@ func TestAChainWithNoSubtotalSaysWhere(t *testing.T) {
 	}
 }
 
-// TestASubtotalRefusalNamesThePageOfItsColumn: a delta naming a column no
-// figure is summed under -- a TOTAL column read as a quantity -- is refused on
-// the page that prints that column, p4, not the rule's first, p3.
-//
-// Mutation: report the rule's first page, and this names p3.
+// TestASubtotalRefusalNamesThePageOfItsColumn: a delta on a column no figure is
+// summed under is refused on p4, which prints it. Mutation: report the rule's
+// first page and this names p3.
 func TestASubtotalRefusalNamesThePageOfItsColumn(t *testing.T) {
 	src := strings.ReplaceAll(subtotalRules, "          - {fiscal_year: 2026}\n          - {skip: true}\n",
 		"          - {fiscal_year: 2026}\n          - {quantity: number}\n")
