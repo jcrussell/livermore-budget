@@ -1,142 +1,42 @@
 # City of Livermore, Adopted Budget FY2025-26 / FY2026-27.
 #
-# This file maps the CITYWIDE SPINE: the two-page schedule "CITYWIDE REVENUES,
-# EXPENDITURES, AND FUND BALANCE/WORKING CAPITAL" printed at PDF pages 66 and
-# 67. It is the first published rule file in this project, and it is meant to
-# be read, so every anchor below says what it is anchored to and why.
-#
-# WHAT THE SCHEDULE LOOKS LIKE
-#
-# One logical table, six fund groups wide, split across two pages:
+# THE CITYWIDE SPINE: "CITYWIDE REVENUES, EXPENDITURES, AND FUND BALANCE/WORKING
+# CAPITAL", PDF pages 66 and 67, one table six fund groups wide:
 #
 #   p66  General Fund and Enterprise Funds, WITH row labels.
 #   p67  Capital, Debt Service, Special Revenue and Internal Service Funds,
-#        with NO row labels at all. Row identity there is positional against
-#        p66's order, which is what `labels_from: 66` declares.
+#        with NO row labels; row identity is positional against p66's order,
+#        which is what `labels_from: 66` declares.
 #
-# Each page stacks two column headers — a fund-group name over a "Budget"
-# over an "FY 2025-26 / FY 2026-27" pair — so a column is identified by
-# (fund_group, fiscal_year) rather than by any single header string.
+# `fiscal_year` is the ENDING year of the fiscal year, always: the column printed
+# "FY 2025-26" is `fiscal_year: 2026`.
 #
-# `fiscal_year` is the ENDING year of the fiscal year, always. The column the
-# document prints as "FY 2025-26" is `fiscal_year: 2026`. This is stated once
-# here and relied on everywhere: a fact whose year means "the year printed
-# first" in one file and "the year printed second" in another is unusable.
+# ANCHORS. An anchor is a plain substring search over the -layout text.
+#   - It may not assume single spacing: p67's header runs differ between its two
+#     halves, so those parts anchor on the header's last name plus the newline,
+#     "Internal Service Funds\n".
+#   - A string that occurs more than once carries a `section_ordinal`.
+#   - Every block needs a `stop_at`: the footer's page number is a bare integer
+#     amount.Parse reads as a figure, so parts reading to the foot of the
+#     schedule stop at "BUDGET FY 2025-27".
 #
-# HOW THE PAGES EXTRACT
+# COLUMNS. `column_headers` opts a part into the column-position guard. It has
+# one entry per COLUMN, skipped ones included, so entries repeat; it is a claim
+# about column order; and every part on a page must declare the same list.
 #
-# `pdftotext -layout` reproduces the printed page: one text line per printed
-# line, with the columns held apart by runs of spaces. Every block below is
-# still bounded by a `section` string and a `stop_at` string — nothing in
-# internal/mapping is line-aware, an anchor is a plain substring search — but
-# the text those anchors run over now looks like the page a reader would open.
-# Three consequences shape the anchors in this file.
+# A ROW NAMES A PAGE ONLY WHERE ITS TABLE CROSSES A PAGE BREAK, and that page is
+# a checked claim about what the city printed, never a way to absorb a pipeline
+# defect (fisc-c00).
 #
-# FIRST, AN ANCHOR MAY NOT ASSUME SINGLE SPACING. p67's fund-group header
-# prints as "Capital Funds", fourteen spaces, "Debt Service Funds", and so on in
-# runs of nine to fifteen; and the runs are not even the same for the two halves
-# of that one page, because the revenue half and the expenditure half are
-# typeset independently. An anchor spelling the header out in full would be
-# encoding the kerning of one release. The three parts that need that header
-# anchor instead on its LAST name plus the line break, "Internal Service Funds\n",
-# which is the same idea the revenue half uses with the fourth "FY 2026-27": the
-# end of the header line is the page's real boundary between labels and figures,
-# and naming the last thing printed on it is how a rule says so without spelling
-# out the gaps. Requiring the newline is what makes "last" a claim rather than a
-# hope — the anchor fails outright if that name stops ending its line.
+# PADDED BLOCKS. p66 prints the sources and uses runs with nothing between their
+# rows, and a block whose header carries digits is refused, so a rule wanting one
+# row from the middle declares the whole run and marks the rows it does not own
+# `skip: true`.
 #
-# SECOND, SEVERAL STRINGS OCCUR MORE THAN ONCE. "REVENUES:" is also the tail of
-# "TOTAL REVENUES:"; p67 prints its four fund-group names twice, once over each
-# half; p67's header line prints "FY 2026-27" once per fund group. So most
-# anchors carry a `section_ordinal` saying which occurrence the author looked at.
-# An ordinal is a claim, not a convenience: if the page's shape changes the rule
-# fails to resolve instead of quietly reading the wrong block.
-#
-# THIRD, EVERY BLOCK NEEDS A `stop_at`. Both pages end with the document's
-# running footer — "BUDGET FY 2025-27" and then "Page 62" on p66, "Page 63" on
-# p67 — and that page number is a bare integer, which `amount.Parse` reads as a
-# perfectly good $62. A block with no
-# `stop_at` runs to the end of the page and takes the footer with it. The four
-# parts here that read to the foot of the schedule are caught today by other
-# guards (the unmapped-row check on labelled p66, the value count on label-less
-# p67), but relying on that would be relying on luck: the footer is not part of
-# the table, a rule that includes it is making a false claim about the table's
-# extent, and on a page whose block ended differently the page number would land
-# in a column as a figure. This is a corpus-wide hazard and not a p66/p67 quirk —
-# the previous extractor deleted repeating text and hid it. So every such part
-# stops at "BUDGET FY 2025-27", the footer's own words.
-#
-# WHERE THE COLUMNS ARE
-#
-# Every part below declares `column_headers`, one entry per column, and that is
-# what opts it into the resolver's column-position guard: the named headers are
-# found on the page's own header line, their x-extents give each column a band,
-# and every figure the part reads must fall in the band of the column the rule
-# assigned it to. Three things about the list are easy to get wrong.
-#
-# It has one entry per COLUMN, not one per distinct header, so the entries repeat
-# -- "FY 2025-26" appears over the General Fund and again over Enterprise Funds.
-# That is the opposite of the rule for `columns`, where a duplicate is an error:
-# a column is identified by (fund_group, fiscal_year), and the header only says
-# where on the page it sits. It would include any column marked `skip: true`,
-# because a missing entry would build a grid one band too narrow and shift every
-# figure to its right one place left -- silently, with the value count still
-# matching.
-#
-# It is a claim about column ORDER. Each header must occur after the one before
-# it on the header line, so a page that dropped a column fails to resolve instead
-# of shifting every figure one place. A page that GAINED one fails too, because
-# the header line would then carry a printed header no column claims.
-#
-# All five parts on a page declare the SAME list, and the parser enforces it. Two
-# parts describing one page's grid differently would read the same figures into
-# different columns, and each would still tie against its own printed total.
-#
-# A ROW NAMES A PAGE ONLY WHERE ITS TABLE RUNS ACROSS A PAGE BREAK, and every
-# such `page:` is a checked claim about what the CITY printed: the part it
-# names reads the row and the other part reads the page without it. The spine
-# places no row, and that too is checked: p67 prints all ten revenue rows at
-# the same ten y-positions as p66's ten labels, including the three that are
-# zero in all four of its fund groups. A row's page must never be used to
-# absorb a pipeline defect (fisc-c00); if a row goes missing between the PDF
-# and the artifact, fix extraction.
-#
-# THE PADDED BLOCKS
-#
-# p66 prints two runs of rows with no blank line or heading between them:
-#
-#   sources:  the ten revenue rows, TOTAL REVENUES:, TRANSFER IN:, TOTAL SOURCES
-#   uses:     four object rows, TOTAL EXPENDITURES:, TRANSFER OUT:,
-#             ADDITION TO RESERVES, TOTAL USES:, and the three working-capital
-#             rows
-#
-# A rule that wants only one row from the middle of such a run — the transfers
-# rules and the fund-balance rule each want one or four — cannot start its block
-# at that row: resolution refuses a block whose header carries digits, precisely
-# so that a mis-set anchor cannot swallow a row's figures into the header. So
-# those rules declare the WHOLE run and mark every row they do not own
-# `skip: true`. A skipped row still consumes its position and its figures are
-# still parsed — it just yields no fact. Three rules therefore read the same
-# text and disagree only about which rows are theirs, which is the intended use
-# of `skip` and not a workaround.
-#
-# WHAT TIES
-#
-# `total_row` is set on the two rules the document prints a total for, covering
-# 24 columns, and all 24 reconcile exactly to that printed total. The "$" the
-# city puts on a totals row and withholds from a data row is load-bearing twice
-# over: it is the `stop_at` for both label-less p67 parts, which have no
-# "TOTAL ...:" label to stop at because p67 prints no row labels at all. It used
-# also to be the only thing separating p67's TOTAL EXPENDITURES figures from the
-# TRANSFER OUT figures below, which the previous extractor ran onto one line
-# (fisc-gxt); `-layout` keeps them on the two lines the page prints them on, so
-# the totals now read as an ordinary eight-wide run and the resolver's
-# currency-marked-prefix fallback is not exercised by this file.
-#
-# The three rules with no `total_row` read single rows the document prints no
-# subtotal for, and are checked by the balance
-# identity in internal/mapping/mappings_test.go, which reconciles all six fund
-# groups in both years against the city's own TOTAL SOURCES and TOTAL USES rows.
+# WHAT TIES. The two rules with a `total_row` reconcile exactly in all 24
+# columns; the "$" on a totals row is the `stop_at` for the label-less p67 parts.
+# The rules without one are checked by the balance identity in
+# internal/mapping/mappings_test.go against TOTAL SOURCES and TOTAL USES.
 schema_version: 1
 doc_id: livermore-budget-fy2026-2027
 
@@ -150,22 +50,14 @@ rules:
     units: dollars
     total_row: "TOTAL REVENUES:"
     note: >-
-      The ten revenue rows of the citywide schedule, for all six fund groups.
-      p66 carries the row labels and the General Fund and Enterprise columns
-      (4 values per row); p67 continues the same ten rows for the other four
-      fund groups with nothing but numbers, so its row identity is positional
-      against p66. All 12 columns reconcile exactly to the "TOTAL REVENUES:"
-      row the city prints: General Fund FY2025-26 $157,873,470, all funds
-      $299,969,007. The scope is all-funds-GROSS — it includes Internal Service
-      Fund charges the city bills to itself, which a chart must net out before
-      calling anything "revenue from outside the city".
+      The ten revenue rows of the citywide schedule for all six fund groups,
+      p66 labelled and p67 positional, tying exactly to "TOTAL REVENUES:" in all
+      12 columns. The scope is all-funds-GROSS: it includes Internal Service
+      Fund charges the city bills to itself.
     parts:
       - page: 66
         section: "REVENUES:"
-        # "REVENUES:" occurs twice on this page: here, and as the tail of the
-        # "TOTAL REVENUES:" row below. The section header is the first, and
-        # saying so is what lets resolution refuse an anchor it cannot place
-        # rather than take whichever match it happens to find first.
+        # The second "REVENUES:" is inside "TOTAL REVENUES:".
         section_ordinal: 1
         stop_at: "TOTAL REVENUES:"
         column_headers: ["FY 2025-26", "FY 2026-27", "FY 2025-26", "FY 2026-27"]
@@ -176,30 +68,15 @@ rules:
           - {fund_group: enterprise, fiscal_year: 2027}
       - page: 67
         labels_from: 66
-        # p67 has no row labels, so it has no section header either. The block
-        # starts where the column headers end: the fund-group names, then eight
-        # "Budget" cells, then the four "FY 2025-26 / FY 2026-27" pairs. The
-        # last of those four "FY 2026-27" ends exactly at the end of the header
-        # line, which makes it the page's real boundary between labels and
-        # figures -- and it fails closed if the city adds a fifth fund group,
-        # since a fourth occurrence would then land mid-header and the "Budget"
-        # tokens after it are not amounts.
+        # p67 has no row labels: the block starts after the fourth "FY 2026-27",
+        # which ends the header line and fails closed on a fifth fund group.
         section: "FY 2026-27"
         section_ordinal: 4
-        # There is no "TOTAL REVENUES:" to stop at. The totals row is the first
-        # line whose figures are prefixed with "$" -- every data row above it is
-        # bare -- so "$" is the boundary. Anchoring on the total's VALUE would be
-        # circular: it is the figure the totals check exists to verify, and it
-        # changes on any revision.
+        # The totals row is the first line whose figures carry "$"; anchoring on
+        # the total's value would be circular.
         stop_at: "$"
-        # Every row is on this page, so no row of the rule names a page.
-        # `pdftotext -bbox` puts ten revenue rows here at the same ten
-        # y-positions as p66's ten labelled rows, "Licenses & Permits" among
-        # them though it is zero in all four of this page's fund groups. An
-        # extractor that drops one of the three identical all-dash rows as
-        # boilerplate is refused by the count guard, 72 tokens where 80 are
-        # required, and is fixed in extraction (fisc-c00), never by placing
-        # the row on p66.
+        # p67 prints all ten revenue rows at p66's y-positions, all-dash rows
+        # included; an extractor dropping one is fixed in extraction (fisc-c00).
         column_headers: ["FY 2025-26", "FY 2026-27", "FY 2025-26", "FY 2026-27",
                          "FY 2025-26", "FY 2026-27", "FY 2025-26", "FY 2026-27"]
         columns:
@@ -232,25 +109,15 @@ rules:
     units: dollars
     total_row: "TOTAL EXPENDITURES:"
     note: >-
-      Object categories, not departments. The city publishes department-by-
-      category only for the General Fund (p167); everywhere else the department
-      and category breakdowns are two marginals of the same total with no
-      published joint, so a four-column Sankey outside the GF would require
-      inventing numbers. Same two-page shape as the revenue rule: p66 labelled,
-      p67 positional. The four rows sum to the city's printed
-      "TOTAL EXPENDITURES:" in every column — General Fund FY2025-26
-      $144,650,802, all funds $254,095,412 — and all twelve columns are
-      machine-checked against it. p67 prints no row labels, so its totals row is
-      found by the "$" the city marks it with and the data rows above it lack.
-      Note that this is the cost of services only:
-      transfers out and additions to reserves are separate rows and separate
-      rules, and adding all three together is the $313,708,146 double count the
-      project exists to avoid.
+      Object categories, not departments: outside the General Fund the city
+      publishes the department and category breakdowns as two marginals with
+      no joint. The four rows tie to "TOTAL EXPENDITURES:" in all twelve
+      columns. This is the cost of services only; transfers out and additions
+      to reserves are separate rules, and adding all three double counts.
     parts:
       - page: 66
         section: "EXPENDITURES:"
-        # As with REVENUES: above, the second occurrence is inside
-        # "TOTAL EXPENDITURES:".
+        # The second "EXPENDITURES:" is inside "TOTAL EXPENDITURES:".
         section_ordinal: 1
         stop_at: "TOTAL EXPENDITURES:"
         column_headers: ["FY 2025-26", "FY 2026-27", "FY 2025-26", "FY 2026-27"]
@@ -261,25 +128,11 @@ rules:
           - {fund_group: enterprise, fiscal_year: 2027}
       - page: 67
         labels_from: 66
-        # The expenditure half of p67 restates the four fund-group names as its
-        # own header — the page prints that run of names twice, once at the top
-        # for the revenue half and once here — so the second occurrence ends this
-        # section's header and the block starts immediately after it.
-        #
-        # The anchor is the LAST name on that line plus the line break, not the
-        # whole header: the four names are separated by runs of nine to fifteen
-        # spaces, and the runs differ between the two halves of this one page
-        # (14 here against 15 above), so a full-header anchor would be pinning
-        # the typesetting rather than the structure. Ending
-        # on "Internal Service Funds\n" says the same thing the revenue half says
-        # with its fourth "FY 2026-27" — the block starts where the header line
-        # ends — and it fails closed if the city adds a fifth fund group, because
-        # this name would then no longer end a line and the anchor would not
-        # occur at all.
+        # p67 prints the fund-group names again over its expenditure half; the
+        # anchor is the last name plus the newline because the spacing between
+        # names differs between the two halves.
         section: "Internal Service Funds\n"
         section_ordinal: 2
-        # As on the revenue half, the data rows are bare and the totals row is
-        # the first one printed with "$".
         stop_at: "$"
         column_headers: ["FY 2025-26", "FY 2026-27", "FY 2025-26", "FY 2026-27",
                          "FY 2025-26", "FY 2026-27", "FY 2025-26", "FY 2026-27"]
@@ -291,15 +144,11 @@ rules:
           - {fund_group: special-revenue, fiscal_year: 2026}
           - {fund_group: special-revenue, fiscal_year: 2027}
           - {fund_group: internal-service, fiscal_year: 2026}
-          # THIS COLUMN CARRIES THE CORPUS'S ONE CONTESTED FIGURE, and it is
-          # published as printed on purpose. p0067 gives this column's Services
-          # & Supplies as 16,796,010 and its TOTAL EXPENDITURES as 26,544,515;
-          # p0183, p0075, p0205 and p0209 all print that total as 26,294,515.
-          # The S&S row that would yield it is 16,546,010, which is printed on NO
-          # page of the corpus -- it is the sum of five per-fund cells on p0183 --
-          # so publishing it would put a value we computed into the fact store.
-          # docs/sankey-contract.md, "The contested total", carries the mutation
-          # proof that both correction routes fail closed. fisc-av0w.
+          # THE CORPUS'S ONE CONTESTED FIGURE, published as printed. p0067 gives
+          # Services & Supplies 16,796,010 and TOTAL EXPENDITURES 26,544,515;
+          # p0183, p0075, p0205 and p0209 print that total as 26,294,515. The S&S
+          # figure that would yield it is printed on no page.
+          # docs/sankey-contract.md, "The contested total". fisc-av0w.
           - {fund_group: internal-service, fiscal_year: 2027}
     rows:
       - {label: "Wages & Benefits", category: wages-and-benefits}
@@ -315,31 +164,16 @@ rules:
     grain: fund-group-by-category
     units: dollars
     note: >-
-      One row: "TRANSFER IN:", money moving between the city's own funds. It
-      sits between "TOTAL REVENUES:" and "TOTAL SOURCES" inside the sources
-      block, and the block cannot start there, because resolution refuses a
-      block whose header contains digits. So this rule declares the whole
-      13-row sources run and marks the twelve rows it does not own skip: true —
-      they are read and positionally accounted for, and produce no facts. The
-      ten revenue rows and "TOTAL REVENUES:" belong to spine-revenues;
-      "TOTAL SOURCES" is the city's own control total and is claimed by no rule,
-      because mapping a subtotal alongside its components double counts. FY2026
-      total across the six fund groups is $21,525,997, against $59,612,734 out.
-      The two do not balance, and mapping p76 would not close the gap: p76
-      itemises transfers RECEIVED and its grand total is this row to the cent,
-      so the $38,086,737 difference lies outside it (fisc-5gk.3). The city does
-      itemise that difference, under a heading, on a schedule not mapped here:
-      pp.72-75 print a "Transfers Out to CIP" column beside this one, and
-      p0073.txt:58 gives $21,525,997 and $38,086,737 on one line (fisc-4ac).
-      An earlier version of this note said the city itemises it nowhere.
+      One row, "TRANSFER IN:", padded over the 13-row sources run; the other
+      rows belong to spine-revenues or, for "TOTAL SOURCES", to no rule. FY2026
+      in is $21,525,997 against $59,612,734 out; the $38,086,737 difference is
+      the "Transfers Out to CIP" column of pp.72-75 (p0073.txt:58, fisc-4ac),
+      outside p76's itemisation (fisc-5gk.3).
     parts:
       - page: 66
         section: "REVENUES:"
         section_ordinal: 1
-        # The sources block runs from the "REVENUES:" header to the
-        # "EXPENDITURES:" header, taking in the totals rows the revenue rule
-        # stops short of. The first "EXPENDITURES:" after the block start is
-        # that header; the second is the tail of "TOTAL EXPENDITURES:".
+        # The sources run ends at the "EXPENDITURES:" header.
         stop_at: "EXPENDITURES:"
         column_headers: ["FY 2025-26", "FY 2026-27", "FY 2025-26", "FY 2026-27"]
         columns:
@@ -349,9 +183,7 @@ rules:
           - {fund_group: enterprise, fiscal_year: 2027}
       - page: 67
         labels_from: 66
-        # Same header boundary as the revenue rule's p67 part, but the block
-        # runs on past the "$" totals row to the start of the expenditure
-        # half's repeated fund-group header: 13 rows x 8 columns = 104 values.
+        # Runs past the "$" totals row to the expenditure half's header.
         section: "FY 2026-27"
         section_ordinal: 4
         stop_at: "Capital Funds"
@@ -390,26 +222,15 @@ rules:
     grain: fund-group-by-category
     units: dollars
     note: >-
-      One row: "TRANSFER OUT:", the other leg of the internal transfers. Padded
-      the same way spine-transfers-in is, over the 11-row uses block: four
-      object rows, "TOTAL EXPENDITURES:", this row, "ADDITION TO RESERVES",
-      "TOTAL USES:", and the three working-capital rows. Everything but
-      "TRANSFER OUT:" is skip: true here and belongs to spine-expenditures or
-      spine-fund-balance. FY2026 total $59,612,734, of which $28,584,740 is the
-      Capital Funds leg — the General Fund and the enterprise funds paying for
-      the capital programme. Counting this as spending on top of the expenditure
-      rows would count the same dollar twice, once where it leaves and once
-      where it is spent.
+      One row, "TRANSFER OUT:", padded over the 11-row uses run; the other rows
+      belong to spine-expenditures or spine-fund-balance. Counting it as
+      spending on top of the expenditure rows counts the same dollar twice.
     parts:
       - page: 66
         section: "EXPENDITURES:"
         section_ordinal: 1
-        # The uses block runs past "TOTAL USES:" to the last of the three
-        # working-capital rows, because those rows are part of the same
-        # positional run on p67 and have to be declared to keep the count. What
-        # is printed below them is the running footer, so that is where the block
-        # stops: leaving stop_at unset would take "BUDGET FY 2025-27 Page 62" into
-        # the block, and "62" is a figure as far as the parser is concerned.
+        # The uses run ends at the running footer, whose page number would
+        # parse as a figure.
         stop_at: "BUDGET FY 2025-27"
         column_headers: ["FY 2025-26", "FY 2026-27", "FY 2025-26", "FY 2026-27"]
         columns:
@@ -419,14 +240,8 @@ rules:
           - {fund_group: enterprise, fiscal_year: 2027}
       - page: 67
         labels_from: 66
-        # Same header boundary as the expenditure rule's p67 part; see the note
-        # there for why the anchor is the header's last name and not the header.
         section: "Internal Service Funds\n"
         section_ordinal: 2
-        # 11 rows x 8 columns = 88 values, ending at the running footer. The
-        # count guard would catch the footer's five stray tokens, but a boundary
-        # a rule relies on another check to enforce is a boundary the rule has
-        # not stated.
         stop_at: "BUDGET FY 2025-27"
         column_headers: ["FY 2025-26", "FY 2026-27", "FY 2025-26", "FY 2026-27",
                          "FY 2025-26", "FY 2026-27", "FY 2025-26", "FY 2026-27"]
@@ -460,23 +275,14 @@ rules:
     grain: fund-group-by-category
     units: dollars
     note: >-
-      The four fund-balance rows of the uses block, over the same padded 11-row
-      run as spine-transfers-out. They are four different things and the
-      taxonomy keeps them apart. "ADDITION TO RESERVES" is a budgeted
-      contribution to reserves and is a use of money in the year, so it appears
-      on the spending side of the balance identity. "CHANGE IN WORKING CAPITAL"
-      is a flow and is signed — the General Fund's FY2025-26 figure is printed
-      "(1,034,154)", a planned draw on accumulated balance, which the identity
-      treats as a SOURCE. "BEGINNING" and "ENDING WORKING CAPITAL" are stocks,
-      not flows: they are recorded as facts because the city printed them, but
-      they must never be summed with a flow, and the Sankey projection excludes
-      them by category rather than by guessing from the label.
+      The four fund-balance rows of the uses run. "ADDITION TO RESERVES" is a
+      use in the year; "CHANGE IN WORKING CAPITAL" is a signed flow; BEGINNING
+      and ENDING WORKING CAPITAL are stocks, never summed with a flow, and the
+      Sankey excludes them by category.
     parts:
       - page: 66
         section: "EXPENDITURES:"
         section_ordinal: 1
-        # The same 11-row uses block spine-transfers-out reads, stopped at the
-        # same running footer for the same reason.
         stop_at: "BUDGET FY 2025-27"
         column_headers: ["FY 2025-26", "FY 2026-27", "FY 2025-26", "FY 2026-27"]
         columns:
@@ -516,65 +322,24 @@ rules:
   # ==========================================================================
   # GENERAL FUND EXPENDITURES BY MAJOR CATEGORY, PDF pp. 167-170
   #
-  # A SECOND, FINER DECOMPOSITION OF MONEY THE SPINE ABOVE ALREADY PUBLISHES,
-  # and that is the whole reason these rules carry their own scope. The 49
-  # object rows below sum, per object category, to exactly what p66 prints for
-  # the General Fund -- Wages & Benefits 81,801,011 / 83,825,633, Services &
-  # Supplies 62,849,791 / 65,188,946, Capital Outlay and Debt Services zero in
-  # both budget years, total 144,650,802 / 149,014,579. Mapped at
-  # `all-funds-gross` they would be summed ON TOP of the spine's cells and the
-  # published General Fund expenditure would double with every check green.
-  # That is fisc-brx's decision and fisc-u2v's mechanism;
-  # cuts-tie-along-the-lattice is what ties the two together, through the
-  # general-fund-departments cut.
+  # A finer decomposition of money the spine already publishes: per object
+  # category these rows sum exactly to p66's General Fund cells, so they carry
+  # their own scope (fisc-brx, fisc-u2v); cuts-tie-along-the-lattice ties them
+  # to the spine through the general-fund-departments cut.
   #
-  # WHAT THE PAGES LOOK LIKE. Eleven ALL-CAPS DEPARTMENT headings, each opening
-  # a run of mixed-case DIVISIONS. A division prints two or three object rows
-  # and then its own `Total`; a department closes with `<DEPARTMENT> TOTAL`;
-  # p170 closes the schedule with `General Fund Total Expenses`. One rule per
-  # division (fisc-28s A-prime), because the division is the level whose rows
-  # and printed total sit together, and twelve `rollups:` below for the totals
-  # that cover more than one line of rules.
+  # One rule per division (fisc-28s A-prime), each tying to its printed
+  # `Total`; `rollups:` cover the `<DEPARTMENT> TOTAL` lines and p170's
+  # `General Fund Total Expenses`. No ordinals: department headings are ALL CAPS
+  # and the case-sensitive division anchors each occur once per page.
   #
-  # ANCHORS NEED NO ORDINALS HERE, and that is worth saying because every rule
-  # in the spine above needs one. The department headings are ALL CAPS and the
-  # division labels are Title Case, an anchor is a case-sensitive substring
-  # search, and each of the 23 division labels occurs exactly once on its page
-  # -- `General Services` on p167 does not match `GENERAL SERVICES` two lines
-  # above it, and `Administrative Services` on p168 does not match
-  # `ADMINISTRATIVE SERVICES`. Adding ordinals defensively would pin a
-  # coincidence rather than a claim.
+  # Every part states a stop_at: StatedTotals searches the text after the block.
+  # Wrapped division labels declare only the tail (fisc-0cs); p167's bare
+  # `TOTAL` belongs to a rollup's line, outside every block, and is not declared.
+  # Three divisions straddle a page break and use `total_spans_parts` (fisc-w0o).
   #
-  # EVERY PART STATES A stop_at, for two reasons and not the one that is easy
-  # to assume. A part whose rule prints a total NEEDS one, because StatedTotals
-  # searches the text after the block and a block running to the end of the
-  # page leaves nothing to search. And a part with no stop_at takes the running
-  # footer with it, which the unmapped-trailing-text guard then reports -- the
-  # footer's bare page number never reaches amount.Parse, because the token
-  # list is truncated to the column count first.
-  #
-  # FOUR DIVISION LABELS WRAP, and a wrapped tail lands between one row's
-  # figures and the next row's label (fisc-0cs). Only the TAIL is declared --
-  # `Devel`, `Development Admin`, `Services`, `Administration` -- because the
-  # head is what the section anchor consumed. p167 line 62's bare `TOTAL` is a
-  # fifth wrapped fragment on these pages and is deliberately NOT declared: it
-  # belongs to the INNOVATION rollup's own line and falls outside every rule's
-  # block, so declaring it would be a declaration the page never uses.
-  #
-  # THREE DIVISIONS STRADDLE A PAGE BREAK -- General Services, Special
-  # Operations, Environmental Services -- so their rows are in two parts and
-  # their printed Total in one. `total_spans_parts` is what lets CheckTotals
-  # sum both parts against it (fisc-w0o). THREE DEPARTMENTS straddle one too,
-  # which costs nothing: a rollup names the page that PRINTS its total.
-  #
-  # FOUR DECLARED DELTAS, all in the FY2023-24 Actual column, all one dollar,
-  # two positive and two negative, each re-derived by summing that division's
-  # object rows off the page. They are the document's own arithmetic, and the
-  # two-level chain is what keeps them honest: each division's rows tie to its
-  # printed Total by way of its declared dollar, and the department rollups sum
-  # the printed TOTALS rather than the rows, so no rounding is absorbed twice.
-  # ADMINISTRATIVE SERVICES is the worked example -- $6,311,564 against object
-  # rows of $6,311,563.
+  # Four declared one-dollar deltas, all in the FY2023-24 Actual column, each
+  # re-derived from the page; the department rollups sum printed TOTALS, so no
+  # rounding is absorbed twice.
   # ==========================================================================
 
   # --------------------------------------------------------------------------
@@ -1175,34 +940,13 @@ rules:
 
   # ==========================================================================
   # REVENUE SOURCES BY FUND, Budget Book pp.127-140 (fisc-5gk.1, scope
-  # revenue-by-fund per fisc-u2v). 79 rules, 231 data rows, 924 facts.
+  # revenue-by-fund per fisc-u2v).
   #
-  # BEFORE YOU ADD pp.68-75 TO THIS SCOPE: DON'T. They are per-fund and they
-  # carry revenue, so they read like more of the same schedule, and they are a
-  # THIRD citywide revenue total that does not agree with the spine.
-  #
-  # Measured. p0074.txt:52 prints "Total All Funds: $318,509,884 $310,669,663
-  # $72,386,884 $701,566,431" -- beginning balance, revenues, transfers in,
-  # total sources, confirmed because the first three sum to the fourth exactly.
-  # The spine's FY2026-27 revenue, summing the six TOTAL REVENUES: cells on
-  # pp.66-67, is 302,443,043. The difference is 8,226,620.
-  #
-  # The delta is NOT just a different basis, because the transfers column on
-  # those same pages reconciles exactly: p74's Transfers In 72,386,884 equals
-  # p76's FY2026-27 grand total 21,624,633 plus p0075.txt:58's Transfers Out to
-  # CIP 50,762,251. So pp.73-75 and p76 are the same money and agree; it is the
-  # REVENUE column that does not.
-  #
-  # The difference is the CIP funds. p0204.txt prints the same 310,669,663 as
-  # Total Operating Budget 282,447,173 (the spine's five non-internal-service
-  # groups) + Internal Service 19,995,870 + Capital Improvement Program Funds
-  # 8,226,620, and p0208.txt:60 prints that 8,226,620 again. pp.66-67 carry no
-  # CIP-fund column, so pp.68-75 include funds the spine does not.
-  #
-  # cuts-tie-along-the-lattice WOULD catch the over-inclusion -- it requires
-  # this scope's per-cell sums to equal the spine's -- but it would surface as a
-  # mysterious red check rather than as a known property of the document, which
-  # is why this note is here rather than only in the tracker. fisc-zs5.
+  # pp.68-75 do NOT belong in this scope. Their revenue column (p0074.txt:52,
+  # FY2026-27 $310,669,663) exceeds the spine's 302,443,043 by 8,226,620, the
+  # Capital Improvement Program Funds that p0204.txt and p0208.txt:60 print and
+  # pp.66-67 carry no column for. cuts-tie-along-the-lattice would refuse the
+  # over-inclusion. fisc-zs5.
   # ==========================================================================
 
   - id: gf-rev-property-taxes
@@ -3115,43 +2859,23 @@ rules:
   # ==========================================================================
   # BUDGET BOOK p76, "SUMMARY OF TRANSFERS" -- scope: transfers-by-fund.
   #
-  # THIS PAGE AND THE SPINE ARE THE SAME MONEY, which is why it carries its own
-  # scope rather than joining all-funds-gross. Every destination fund group's
-  # section total here equals pp.66-67's TRANSFER IN cell EXACTLY, and General
-  # Fund's out-flows equal TRANSFER OUT exactly. A rule written at the spine's
-  # scope would double the city's transfers with every check still green --
-  # fisc-u2v's mechanism one lane over, and the reason fisc-aes decided this.
+  # The same money as the spine: each receiving group's section total equals
+  # pp.66-67's TRANSFER IN cell exactly, so this page has its own scope
+  # (fisc-aes, fisc-u2v).
   #
-  # ONE PRINTED FIGURE, TWO FACTS. The page names both ends of every movement,
-  # and fact.Fact carries one fund field, so each row declares its DESTINATION
-  # as the row's own fund and its PAYER as a counterpart. Both legs cite the
-  # same doc_id/page/offset/token, because that figure is the evidence for both
-  # directions (fisc-4rh). 22 rows x 2 budget years x 2 legs = 88 facts.
+  # ONE PRINTED FIGURE, TWO FACTS: each row's fund is the DESTINATION and its
+  # counterpart the PAYER, both citing the one figure (fisc-4rh). A column is a
+  # year and the section the receiving group, so fund_group is on the column
+  # and fund on the row.
   #
-  # THE FUND DIMENSION IS PER ROW HERE, WHICH IS THE OPPOSITE OF EVERY OTHER
-  # SCHEDULE IN THIS FILE. A column is a YEAR; the section is the receiving
-  # GROUP, so fund_group sits on the column and fund on the row. Three of the
-  # five sections are mixed on the paying side.
+  # Only the two budget columns publish: FY2023-24 and FY2024-25 miss the
+  # page's grand total by 6,858,051 and 5,000,000, and the spine prints no
+  # column to reconcile them.
   #
-  # ONLY THE TWO BUDGET COLUMNS ARE PUBLISHED. The page's FY2023-24 and
-  # FY2024-25 columns miss its own printed grand total by 6,858,051 and by
-  # exactly 5,000,000 -- millions, nothing like the <=$5 rounding class that
-  # stated_total_deltas is for -- and pp.66-67 print no actual or revised
-  # column, so nothing on the spine could reconcile them either. They are read
-  # and skipped, and publish nothing.
-  #
-  # NO total_row. p76 prints ONE grand total for the whole schedule, beneath its
-  # last section, with no printed label to anchor on (p0076.txt:64 is a bare
-  # "$29,947,677  $27,679,706  $21,525,997  $21,624,633"). A rollup is refused
-  # twice over -- a covered rule must print its own total, and covered rules
-  # must declare the same columns, which these do not because each names its own
-  # fund_group -- and an `unassertable` rollup still requires a total_row it
-  # would have to invent. So the cross-rule sum is held in Go:
-  # TestPublishedP76SumsToItsPrintedGrandTotal holds the five rules to that
-  # printed total, and cuts-tie-along-the-lattice ties them to the spine
-  # group by group (fisc-9m7). Consequence,
-  # stated so it is not discovered afterwards: fisc build's parts_unchecked
-  # goes 6 -> 11.
+  # NO total_row: the one grand total (p0076.txt:64) has no label and a rollup
+  # is refused, so TestPublishedP76SumsToItsPrintedGrandTotal holds the five
+  # rules to it and cuts-tie-along-the-lattice ties them to the spine
+  # (fisc-9m7).
   # ==========================================================================
   - id: p76-transfers-in-general
     kind: transfer_in
@@ -3160,32 +2884,23 @@ rules:
     grain: fund-by-category
     units: dollars
     note: >-
-      Nine transfers into the General Fund. The section anchor carries its
-      trailing newline because "General Fund" also ends every one of these nine
-      row labels: without it the anchor matches a data row rather than the
-      section header. FY2026 sums to 480,400 and FY2027 to 486,735, which is
-      p0066.txt:24's General Fund TRANSFER IN cell to the cent -- and the cell
-      structure.BudgetBookExceptions holds apart on the revenue-detail cut,
-      naming this scope as what carries it.
+      Nine transfers into the General Fund, tying to p0066.txt:24's General
+      Fund TRANSFER IN cell. The anchor's newline separates the heading from
+      the row labels that end in "General Fund".
     parts:
       - page: 76
         section: "General Fund\n"
         section_ordinal: 1
         stop_at: "Enterprise Funds"
-        # Four year headers on one printed line (p0076.txt:9) and nothing over
-        # the footnote-marker column, which is what the trailing null says
-        # (fisc-wfi).
+        # The trailing null is the unheaded footnote-marker column (fisc-wfi).
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27", ~]
         columns:
           - {skip: true}
           - {skip: true}
           - {fund_group: general, fiscal_year: 2026}
           - {fund_group: general, fiscal_year: 2027}
-          # The footnote marker. Not a column, but it sits between this row's
-          # last figure and the next row's label, where checkGap refuses
-          # anything that is not whitespace. Load-bearing twice over:
-          # amount.Parse reads "(10)" as NEGATIVE TEN DOLLARS, and nothing
-          # downstream sees that only because the column is skipped.
+          # The footnote marker: skipped, since amount.Parse reads "(10)" as
+          # negative ten dollars.
           - {skip: true}
     rows:
       - {label: "Transfer From Low Income Hsng", label_tail: "to General Fund", category: "transfers/in", fund: 100,
@@ -3202,11 +2917,8 @@ rules:
          counterpart: {category: "transfers/out", kind: transfer_out, fund: 310, fund_group: special-revenue}}
       - {label: "Transfer From Other LMDs", label_tail: "to General Fund", category: "transfers/in", fund: 100,
          counterpart: {category: "transfers/out", kind: transfer_out, fund: 311, fund_group: special-revenue}}
-      # THE OPERATING FUND, NOT ITS CIP TWIN, for both of these. "Traffic Imp
-      # Fee" matches 510 and 823, "State Gas Tax" 560 and 834. data/funds.yaml's
-      # header settles it arithmetically: the capital funds' Transfers Out
-      # (211,150 / 217,485) is exactly Traffic Imp Fee + State Gas Tax +
-      # Measure D each year, and both of these are type: capital.
+      # The operating fund, not its CIP twin (823, 834): the capital funds'
+      # Transfers Out equals Traffic Imp Fee + State Gas Tax + Measure D.
       - {label: "Transfer From Traffic Imp Fee", label_tail: "to General Fund", category: "transfers/in", fund: 100,
          counterpart: {category: "transfers/out", kind: transfer_out, fund: 510, fund_group: capital}}
       - {label: "Transfer From State Gas Tax", label_tail: "to General Fund", category: "transfers/in", fund: 100,
@@ -3220,12 +2932,8 @@ rules:
     grain: fund-by-category
     units: dollars
     note: >-
-      Six transfers into Enterprise funds, three of them paid by other
-      Enterprise funds. FY2026 sums to 13,247,000 and FY2027 to 13,330,000,
-      which is p0066.txt's Enterprise TRANSFER IN cell exactly. "Connection" is
-      the wrapped tail of "to LAVWMA / Wastewater Connection" and prints on its
-      own line BETWEEN that row's figures and the next row's label; declaring it
-      is what lets one printed section be one rule (fisc-0cs).
+      Six transfers into Enterprise funds, tying to p0066.txt's Enterprise
+      TRANSFER IN cell. "Connection" is a wrapped label tail (fisc-0cs).
     parts:
       - page: 76
         section: "Enterprise Funds"
@@ -3243,20 +2951,13 @@ rules:
          counterpart: {category: "transfers/out", kind: transfer_out, fund: 100, fund_group: general}}
       - {label: "Transfer From Wastewater", label_tail: "to Stormwater", category: "transfers/in", fund: 610,
          counterpart: {category: "transfers/out", kind: transfer_out, fund: 620, fund_group: enterprise}}
-      # A CONTINUATION ROW: the page prints no source on its own line, the
-      # "Transfer From Wastewater" above carries over. The counterpart is what
-      # lets the rule DECLARE that payer rather than a reader inferring it --
-      # and it is why the three continuation rows have no printed anchor of
-      # their own for a row-label fund check to test against (fisc-30j).
+      # A continuation row: "Transfer From Wastewater" carries over, declared
+      # by the counterpart (fisc-30j).
       - {label: "to Wastewater Replacement", category: "transfers/in", fund: 622,
          counterpart: {category: "transfers/out", kind: transfer_out, fund: 620, fund_group: enterprise}}
-      # NO fund ON THIS ROW. "LAVWMA / Wastewater Connection" names a joint
-      # powers authority, not a City fund; data/funds.yaml has no entry and no
-      # alias for it, and internal/registry/fundlabel_test.go asserts by name
-      # that it resolves to nothing -- deliberately, because the alternative is
-      # silently picking Wastewater Connection Fees (623). The column's
-      # fund_group stands alone, which ColumnPath emits and which is
-      # addressable. Both budget figures are "-", published zeros (fisc-30j).
+      # NO fund: "LAVWMA / Wastewater Connection" is a joint powers authority,
+      # not a City fund, and must not resolve to Wastewater Connection Fees
+      # (623). Both budget figures are "-" (fisc-30j).
       - {label: "Transfer From Wastewater", label_tail: "to LAVWMA / Wastewater", category: "transfers/in",
          counterpart: {category: "transfers/out", kind: transfer_out, fund: 620, fund_group: enterprise}}
       - {label: "Transfer From Water", label_tail: "to Water Replacement", category: "transfers/in", fund: 642,
@@ -3272,9 +2973,8 @@ rules:
     grain: fund-by-category
     units: dollars
     note: >-
-      Three transfers into Debt Service funds. FY2026 sums to 6,984,597 and
-      FY2027 to 6,969,898, which is p0067.txt's Debt Service TRANSFER IN cell
-      exactly.
+      Three transfers into Debt Service funds, tying to p0067.txt's Debt
+      Service TRANSFER IN cell.
     parts:
       - page: 76
         section: "Debt Service Funds"
@@ -3304,13 +3004,9 @@ rules:
     grain: fund-by-category
     units: dollars
     note: >-
-      One transfer into a Permanent fund, and both budget figures are "-" --
-      published zeros, not absent. pp.66-67 print NO Permanent column at all
-      (fisc-u8o), so this is the one key the transfers-detail cut has with no
-      spine counterpart. It is published because the page publishes it:
-      "absent is not zero" cuts both ways, and a zero the city printed is a
-      figure. The payer, "Open Space", is 300 and not Doolan Canyon Open Space
-      (471), which is the receiving side's near-twin.
+      One transfer into a Permanent fund, both budget figures "-": published
+      zeros. pp.66-67 print no Permanent column (fisc-u8o). The payer "Open
+      Space" is 300, not Doolan Canyon Open Space (471).
     parts:
       - page: 76
         section: "Permanent Funds"
@@ -3334,10 +3030,8 @@ rules:
     grain: fund-by-category
     units: dollars
     note: >-
-      Three transfers into Special Revenue funds. FY2026 sums to 814,000 and
-      FY2027 to 838,000, which is p0067.txt's Special Revenue TRANSFER IN cell
-      exactly. The block stops at the page's grand-total line, which is the only
-      "$" on the page below this section.
+      Three transfers into Special Revenue funds, tying to p0067.txt's Special
+      Revenue TRANSFER IN cell. The page's grand total is the only "$" below.
     parts:
       - page: 76
         section: "Special Revenue Funds"
@@ -3362,38 +3056,23 @@ rules:
   # ==========================================================================
   # BUDGET BOOK p222, CIP "FUNDING SOURCES" -- scope: cip-funding-sources.
   #
-  # THE DESTINATION OF THE SPINE'S TRANSFERS TO THE CIP. pp.66-67's TRANSFER
-  # OUT includes each group's transfers to the Capital Improvement Program and
-  # p76 lists none of them; this page lists them fund by fund, as a receiving
-  # CIP fund and a transferring operating fund. The 26 rows naming an operating
-  # fund sum to 38,086,737 and 50,762,251, p0073.txt:58 and p0075.txt:58's
-  # "Transfers Out to CIP", and to 92,968,752 in FY2024-25, p0071.txt:58's.
+  # Where the spine's transfers to the CIP land, fund by fund. The rows naming
+  # an operating fund sum to p0073.txt:58 and p0075.txt:58's "Transfers Out to
+  # CIP" (38,086,737 / 50,762,251) and p0071.txt:58's 92,968,752. Own scope:
+  # the CIP funds are outside the spine (p0204); each receiving leg carries its
+  # CIP fund's type from data/funds.yaml as its group.
   #
-  # ITS OWN SCOPE, because the CIP funds are outside the spine: p0204 prints
-  # "Capital Improvement Program Funds" apart from the operating fund groups,
-  # while data/funds.yaml types each CIP fund by the fund type the appendix
-  # prints (811-840 capital, 601/611/621/641 enterprise, 731/741 internal
-  # service). So the receiving leg carries its CIP fund's type as its group.
+  # ONE PRINTED FIGURE, TWO FACTS, as on p76: label is the receiving fund
+  # number, label_tail the transferring number and description.
   #
-  # ONE PRINTED FIGURE, TWO FACTS, as on p76: the row's fund is the receiving
-  # CIP fund and the counterpart the transferring operating fund, both citing
-  # the figure's one offset. The row IS the two printed fund numbers, so the
-  # label is the receiving number and label_tail the transferring number and,
-  # where the page prints it on that line, the description.
-  #
-  # THREE KINDS UNDER ONE PRINTED "Totals", which covers every row:
-  #   - transfers: the 26 rows naming an operating fund;
-  #   - grants, printed with no operating fund at 816/817/818/611/601/731/621,
-  #     as revenue of the CIP fund: pp.198/204's CIP Funds row prints revenues
-  #     of 7,814,799 and 8,226,620, these rows exactly. They are filed at
-  #     `intergovernmental` and not at its grant lines, which are pp.127-140's
-  #     row vocabulary; the row label keeps federal, state and local;
-  #   - Measure B 831/832, printed with no operating fund and not revenue, as a
-  #     draw on the CIP funds' own balance. p0198.txt:19 prints that row
-  #     opening at 1,603,591 and closing at 420,504 in FY2025-26, a change of
-  #     exactly 1,183,087 = 293,087 + 890,000, and p0204.txt:19 opens and
-  #     closes at 420,504 with both rows "-". fund-balance/use-for-cip is
-  #     oriented as this page prints it: positive is money drawn.
+  # THREE KINDS UNDER ONE PRINTED "Totals":
+  #   - transfers: rows naming an operating fund;
+  #   - grants (no operating fund; 816/817/818/611/601/731/621), revenue of the
+  #     CIP fund at `intergovernmental`, matching pp.198/204's CIP Funds
+  #     revenues of 7,814,799 and 8,226,620;
+  #   - Measure B 831/832, a draw on the CIP funds' own balance: p0198.txt:19's
+  #     change of 1,183,087 = 293,087 + 890,000. fund-balance/use-for-cip is
+  #     positive for money drawn.
   # ==========================================================================
   - id: p222-cip-funding-sources
     kind: transfer_in
@@ -3408,9 +3087,7 @@ rules:
         section: "(Receiving) (Transferring)"
         stop_at: "Totals"
         column_headers: ["FY 2024-25", "FY 2025-26", "FY 2026-27"]
-        # Every description that wraps prints its figures on its middle line,
-        # so the fragments land either side of the row. 838's tail and 839's
-        # head share one gap, a line each.
+        # Wrapped descriptions print their figures on the middle line.
         wrapped_labels:
           - "Community Development Block"
           - "Grant (CDBG)"
@@ -3505,98 +3182,30 @@ rules:
   # ==========================================================================
   # DEPARTMENT FUNDING SOURCES, pp. 85-125 (fisc-71j)
   #
-  # Fourteen pages print "DEPARTMENTWIDE EXPENDITURES WITH FUNDING SOURCES" for
-  # eleven departments; three of those departments run onto a second page. The
-  # block at the foot of each answers a question no other schedule in this book
-  # answers directly: WHICH FUNDS PAY FOR THIS DEPARTMENT. 78 rows, four columns
-  # each.
+  # "DEPARTMENTWIDE EXPENDITURES WITH FUNDING SOURCES": which funds pay for each
+  # of eleven departments. The row is a fund and the column a year, so `fund`
+  # and `fund_group` sit on the ROW, and fact-funds-resolve checks each pair.
   #
-  # THE ROW IS A FUND AND THE COLUMN IS A YEAR, which is p76's inversion and not
-  # the usual shape -- so `fund` and `fund_group` sit on the ROW here, and the
-  # columns carry no fund dimension at all. Each row's pair is what makes
-  # fact-funds-resolve a real check on this schedule: it refuses a fund whose
-  # type in data/funds.yaml disagrees with the group the row claims.
+  # ITS OWN SCOPE: summed by fund group the rows give pp.66-67's TOTAL
+  # EXPENDITURES to the cent in eleven of twelve cells, so publishing them at
+  # all-funds-gross would double the city's expenditure (fisc-u2v). The twelfth
+  # is internal-service FY2026-27: these pages and p0183:64, p0075:53, p0205:17,
+  # p0209:20, p0061:39 print 26,294,515, p0067 prints 26,544,515 (fisc-av0w);
+  # the funding-sources cut carries one named exception for it,
+  # p0067-internal-service-is-250000-high-by-fund-group. Doolan Canyon Preserve
+  # Endow (470) is `permanent`, has no spine column (fisc-u8o), and is zero in
+  # every budget column.
   #
-  # ITS OWN SCOPE, AND THE MEASUREMENT IS THE REASON. Summed by fund group these
-  # 78 rows give, per group, pp.66-67's printed TOTAL EXPENDITURES:
+  # ANCHORS. "Department Funding Sources\n": the trailing newline separates the
+  # heading from "Total Department Funding Sources". Continuation parts anchor
+  # on "FY 2026-27\n", which occurs once per page. No ordinals needed.
   #
-  #        FY2025-26                     FY2026-27
-  #        capital            1,061,355     969,934
-  #        debt-service       6,984,597   6,969,898
-  #        enterprise        57,053,730  57,547,970
-  #        general          144,650,802 149,014,579
-  #        internal-service  25,077,367  26,294,515  (p0067 prints 26,544,515)
-  #        special-revenue   19,267,561  11,808,000
-  #        total            254,095,412 252,604,896
+  # column_headers are per (doc_id, page) and all-or-none, so a later block on
+  # these pages (fisc-7q6) must repeat them byte for byte.
   #
-  # The total row is THESE PAGES' total and not the spine's. FY2025-26 is also
-  # all_funds_gross_expenditure_cents, the headline the site publishes;
-  # FY2026-27's headline is 252,854,896, because the spine carries p0067's
-  # 26,544,515. Reading the second column as the spine's is the mistake the
-  # rest of this comment exists to prevent.
-  #
-  # Eleven of twelve cells tie TO THE CENT. That is the same money pp.66-67
-  # already publish, cut by paying fund instead of by object -- so publishing it
-  # at all-funds-gross would double the city's expenditure with every check
-  # green, which is fisc-u2v's mechanism (see the bd memory
-  # detail-pages-double-the-spine). Hence scope: department-funding-sources,
-  # and the funding-sources cut cuts-tie-along-the-lattice compares against
-  # the spine.
-  #
-  # THE TWELFTH CELL IS THE CITY'S ERROR, NOT OURS. pp.172-183 ("Citywide
-  # Expenditures") print every fund's object rows and one Total per fund group.
-  # DERIVED from those printed lines -- no page prints a group-by-object
-  # subtotal, so the grid is ours -- the six groups by four objects over two
-  # budget years give 48 cells, and 47 agree with pp.66-67 to the dollar. The
-  # one that does not is internal-service Services & Supplies FY2026-27, where
-  # p0067 prints 16,796,010 and the five internal service funds' printed rows
-  # sum to 250,000 less. 16,546,010 is that sum and is PRINTED ON NO PAGE; do
-  # not cite it as one. Five other published schedules --
-  # p0183:64, p0075:53, p0205:17, p0209:20, p0061:39 -- all say 26,294,515 and
-  # none says 26,544,515. Tracked as fisc-av0w; the funding-sources cut
-  # carries one named exception for that cell --
-  # p0067-internal-service-is-250000-high-by-fund-group -- and nothing else.
-  #
-  # A SEVENTH GROUP APPEARS AND IS HARMLESS. Doolan Canyon Preserve Endow (470)
-  # is `permanent`, which has no spine column (fisc-u8o). It is 620,581 in
-  # FY2023-24 and ZERO in all three later columns, so the budget-year tie above
-  # is unaffected -- but the check names it rather than leaving a group silently
-  # unmentioned.
-  #
-  # THE ANCHORS. "Department Funding Sources" occurs twice on every page that
-  # prints its own total, because "Total Department Funding Sources" contains
-  # it; the trailing newline is what makes the heading unique, the same device
-  # the spine uses with "Internal Service Funds\n", and it fails closed if the
-  # heading stops ending its line. The three continuation parts print no such
-  # heading, so they anchor on the end of the column header line, "FY 2026-27\n"
-  # -- which occurs exactly once on all fourteen pages. No section_ordinal is
-  # needed anywhere in this block, and that is a checked claim rather than an
-  # omission.
-  #
-  # EVERY PART DECLARES column_headers, and fisc-7q6 must repeat them BYTE FOR
-  # BYTE when it maps the Expenditures by Category block above. checkColumnGrids
-  # is per (doc_id, page) and all-or-none: a later part on one of these pages
-  # that omitted the list would be a hard parse error, not a silently weaker
-  # read. One printed header line serves both blocks on each page.
-  #
-  # WHAT GUARDS THE 78 HAND-TYPED FUND NUMBERS, and it is not the arithmetic.
-  # A fund of a different type breaks its group's sum against the spine, and
-  # fact-funds-resolve refuses a fund whose type disagrees with the group typed
-  # beside it -- but a SAME-TYPE substitution moves no sum and neither sees it.
-  #
-  # Every rule below therefore declares `row_labels_name_funds: true`, which is
-  # the claim that its row labels are the printed names of the funds they carry.
-  # row-funds-match-their-anchors reads each label whole against data/funds.yaml
-  # and checks the number typed beside it (fisc-90fp). Before that declaration
-  # existed the swap was red under `go test` -- TestEveryFundingSourceFactMatches-
-  # ThePrintedRow has asserted it since this lane landed -- and GREEN under
-  # `fisc verify`, which is the gate a reader of the published site runs.
-  # rule-funds-match-their-headings still never enters: it reads column funds
-  # and these rules declare none.
-  #
-  # The numbers below were resolved by matching each printed label against
-  # data/funds.yaml's `name` and `aliases[].term` -- 54 by name, 9 by alias, and
-  # no label matches two funds. No fund-registry edit was needed for this lane.
+  # A same-type fund substitution moves no sum, so every rule declares
+  # `row_labels_name_funds: true` and row-funds-match-their-anchors reads each
+  # label against data/funds.yaml (fisc-90fp).
   # ==========================================================================
 
   # --------------------------------------------------------------------------
@@ -3654,10 +3263,8 @@ rules:
     total_row: "Total Department Funding Sources"
     row_labels_name_funds: true
     note: >-
-      The department is General Fund plus the two risk funds it administers,
-      General Liability (700) and Workers Comp Insurance (710) -- both
-      internal-service, so more than half of this department's money is not the
-      General Fund's.
+      General Fund plus the two internal-service risk funds it administers,
+      General Liability (700) and Workers Comp Insurance (710).
     parts:
       - page: 93
         section: "Department Funding Sources\n"
@@ -3672,13 +3279,7 @@ rules:
           - column: 1
             delta_cents: 100
             note: >-
-              The city's own rounding, and it is the same shape this file already
-              declares on pp.127/128/129/130/131/135/168/169/170: five of these
-              eleven departments miss
-              their own printed total by exactly one dollar, EVERY ONE of them in the
-              FY 2023-24 Actual column and nowhere else. Three are short by a dollar and
-              two are over by one. All three of the revised and budget columns tie
-              exactly on all eleven. Measured off the page, stated minus mapped.
+              The city's own rounding, stated minus mapped, measured off the page.
     rows:
       - {label: "General Fund", category: department-funding-sources, department: city-attorney, fund: 100, fund_group: general}
       - {label: "General Liability", category: department-funding-sources, department: city-attorney, fund: 700, fund_group: internal-service}
@@ -3694,10 +3295,8 @@ rules:
     total_row: "Total Department Funding Sources"
     row_labels_name_funds: true
     note: >-
-      Information Technology (720) pays more of this department than the General
-      Fund does: 7,505,369 against 6,686,710 in FY2025-26. It is an internal
-      service fund, so that half is charges to other departments coming back
-      round -- the double-count fisc-5gk.4 exists to surface.
+      Information Technology (720), an internal service fund, pays more of
+      this department than the General Fund (fisc-5gk.4).
     parts:
       - page: 97
         section: "Department Funding Sources\n"
@@ -3712,13 +3311,7 @@ rules:
           - column: 1
             delta_cents: 100
             note: >-
-              The city's own rounding, and it is the same shape this file already
-              declares on pp.127/128/129/130/131/135/168/169/170: five of these
-              eleven departments miss
-              their own printed total by exactly one dollar, EVERY ONE of them in the
-              FY 2023-24 Actual column and nowhere else. Three are short by a dollar and
-              two are over by one. All three of the revised and budget columns tie
-              exactly on all eleven. Measured off the page, stated minus mapped.
+              The city's own rounding, stated minus mapped, measured off the page.
     rows:
       - {label: "General Fund", category: department-funding-sources, department: administrative-services, fund: 100, fund_group: general}
       - {label: "Information Technology", category: department-funding-sources, department: administrative-services, fund: 720, fund_group: internal-service}
@@ -3734,9 +3327,8 @@ rules:
     row_labels_name_funds: true
     total_spans_parts: true
     note: >-
-      Straddles a page break: eight funds on p101, eighteen more and the printed
-      total on p102. The widest funding base in the book -- 26 funds, four fund
-      groups, and the corpus's only `permanent` fund appearing as a payer.
+      Straddles a page break: eight funds on p101, eighteen more and the
+      printed total on p102.
     parts:
       - page: 101
         section: "Department Funding Sources\n"
@@ -3817,10 +3409,8 @@ rules:
     total_row: "Total Department Funding Sources"
     row_labels_name_funds: true
     note: >-
-      The city's debt service lives here. The three COPS funds (400, 401, 402) sum
-      to 6,984,597 in FY2025-26 and 6,969,898 in FY2026-27, which is pp.66-67's
-      whole Debt Service Funds TOTAL EXPENDITURES column in both budget years --
-      no other department names a debt-service fund.
+      The three COPS funds (400, 401, 402) are pp.66-67's whole Debt Service
+      TOTAL EXPENDITURES column in both budget years.
     parts:
       - page: 108
         section: "Department Funding Sources\n"
@@ -3847,11 +3437,8 @@ rules:
     total_row: "Total Department Funding Sources"
     row_labels_name_funds: true
     note: >-
-      The Airport (600) is an enterprise fund and it funds a department that is
-      otherwise General Fund; it is the only enterprise money outside Public
-      Works. `Devel` wraps onto its own line in the Expenditures by Category block
-      above, which is fisc-7q6's problem and not this rule's -- the funding block
-      prints no wrapped label.
+      The Airport (600), an enterprise fund, is the only enterprise money
+      outside Public Works.
     parts:
       - page: 111
         section: "Department Funding Sources\n"
@@ -3890,13 +3477,7 @@ rules:
           - column: 1
             delta_cents: 100
             note: >-
-              The city's own rounding, and it is the same shape this file already
-              declares on pp.127/128/129/130/131/135/168/169/170: five of these
-              eleven departments miss
-              their own printed total by exactly one dollar, EVERY ONE of them in the
-              FY 2023-24 Actual column and nowhere else. Three are short by a dollar and
-              two are over by one. All three of the revised and budget columns tie
-              exactly on all eleven. Measured off the page, stated minus mapped.
+              The city's own rounding, stated minus mapped, measured off the page.
     rows:
       - {label: "General Fund", category: department-funding-sources, department: library-department, fund: 100, fund_group: general}
       - {label: "Grant - State Grant Fund", category: department-funding-sources, department: library-department, fund: 240, fund_group: special-revenue}
@@ -3914,9 +3495,8 @@ rules:
     row_labels_name_funds: true
     total_spans_parts: true
     note: >-
-      Straddles a page break: eight funds on p119, two more and the printed total
-      on p120. `Horizons` (210) and `Asset Seizure - County` (211) are the two
-      funds whose identification data/funds.yaml had to settle arithmetically.
+      Straddles a page break: eight funds on p119, two more and the printed
+      total on p120.
     parts:
       - page: 119
         section: "Department Funding Sources\n"
@@ -3940,13 +3520,7 @@ rules:
           - column: 1
             delta_cents: -100
             note: >-
-              The city's own rounding, and it is the same shape this file already
-              declares on pp.127/128/129/130/131/135/168/169/170: five of these
-              eleven departments miss
-              their own printed total by exactly one dollar, EVERY ONE of them in the
-              FY 2023-24 Actual column and nowhere else. Three are short by a dollar and
-              two are over by one. All three of the revised and budget columns tie
-              exactly on all eleven. Measured off the page, stated minus mapped.
+              The city's own rounding, stated minus mapped, measured off the page.
     rows:
       - {label: "General Fund", page: 119, category: department-funding-sources, department: police-department, fund: 100, fund_group: general}
       - {label: "Horizons", page: 119, category: department-funding-sources, department: police-department, fund: 210, fund_group: special-revenue}
@@ -3971,18 +3545,9 @@ rules:
     total_spans_parts: true
     note: >-
       Straddles a page break: nine funds on p124, twelve more and the printed
-      total on p125. Every enterprise fund in the city pays into this department,
-      and the operating/CIP twin hazard is concentrated here -- Water (640) not
-      641, Wastewater (620) not 621, Stormwater (610) not 611, Facilities Rehab
-      Pgm (740) not 741. Each was resolved by exact label match against
-      data/funds.yaml; no twin's printed name appears on this page. NO SUM WOULD
-      CATCH A SWAP -- every one of these four twins carries its operating fund's
-      own type, so replacing 640 with 641 moves no money out of its group and
-      leaves fact-funds-resolve and cuts-tie-along-the-lattice both green. It
-      is caught by row-funds-match-their-anchors, via the
-      row_labels_name_funds declaration above: measured, that swap takes
-      `fisc verify` from zero failures to one, where before the declaration
-      the same swap left the whole run green. That was fisc-90fp.
+      total on p125. The operating/CIP twins (640/641, 620/621, 610/611,
+      740/741) share a type, so no sum catches a swap;
+      row-funds-match-their-anchors does (fisc-90fp).
     parts:
       - page: 124
         section: "Department Funding Sources\n"
@@ -4006,13 +3571,7 @@ rules:
           - column: 1
             delta_cents: -100
             note: >-
-              The city's own rounding, and it is the same shape this file already
-              declares on pp.127/128/129/130/131/135/168/169/170: five of these
-              eleven departments miss
-              their own printed total by exactly one dollar, EVERY ONE of them in the
-              FY 2023-24 Actual column and nowhere else. Three are short by a dollar and
-              two are over by one. All three of the revised and budget columns tie
-              exactly on all eleven. Measured off the page, stated minus mapped.
+              The city's own rounding, stated minus mapped, measured off the page.
     rows:
       - {label: "General Fund", page: 124, category: department-funding-sources, department: public-works, fund: 100, fund_group: general}
       - {label: "Grant - State Grant Fund", page: 124, category: department-funding-sources, department: public-works, fund: 240, fund_group: special-revenue}
@@ -4040,45 +3599,20 @@ rules:
   # DEPARTMENTWIDE EXPENDITURES BY CATEGORY, pp.85-125 -- scope
   # departmentwide-expenditures.
   #
-  # The UPPER block of the same fourteen pages whose lower block is mapped above
-  # as department-funding-sources. Fourteen pages print the header; the
-  # "Expenditures by Category" block is on ELEVEN of them, one per department
-  # (p102, p120 and p125 are continuation pages carrying funding sources only).
-  # 29 division blocks, 73 object rows.
+  # The upper block of the pages mapped above as department-funding-sources,
+  # on eleven of them (p102, p120 and p125 carry funding sources only). Own
+  # scope: these rows overlap pp.167-170's General Fund divisions (fisc-u2v).
+  # The columns carry no fund: this block prints a department's spending
+  # whatever pays for it.
   #
-  # WHY ITS OWN SCOPE. These rows OVERLAP pp.167-170's, which publish the
-  # General Fund slice of 23 of these same 29 divisions at scope
-  # expenditure-by-department. Netting the two together would double every
-  # General Fund division. Same hazard and same answer as fisc-u2v.
+  # Against p0183:66 "Grand Total" the eleven department totals tie in the
+  # three later columns; FY2023-24 is 266,799 over, which is dw-maintenance's
+  # Transfers Out row (266,798) plus the year's one-dollar rounding. Against
+  # the spine, FY2026-27 is short by p0067's contested 250,000 (fisc-av0w).
   #
-  # THE COLUMNS CARRY NO FUND, and that is the page rather than an omission:
-  # this block prints a department's spending whatever pays for it, and the
-  # fund breakdown is the OTHER block on the same page. So these facts tie to a
-  # citywide grand total and cannot tie to the spine's six per-group cells.
-  #
-  # WHAT THEY RECONCILE TO, measured. The eleven printed Total Department
-  # Expenditures rows against p0183:66 "Grand Total":
-  #
-  #     FY2023-24   207,274,363  vs  207,007,564   diff 266,799
-  #     FY2024-25   253,257,192  vs  253,257,192   tie
-  #     FY2025-26   254,095,412  vs  254,095,412   tie
-  #     FY2026-27   252,604,896  vs  252,604,896   tie
-  #
-  # The one difference decomposes entirely: 266,798 is dw-maintenance's
-  # Transfers Out row, which p183 correctly excludes from an EXPENDITURE total,
-  # and the remaining 1 is the FY2023-24 rounding this file declares on eleven
-  # other blocks.
-  #
-  # AND AGAINST THE SPINE: FY2025-26 ties at 254,095,412 exactly, while
-  # FY2026-27 is 252,604,896 against the spine's 252,854,896 -- exactly p0067's
-  # contested internal-service figure (fisc-av0w), from a decomposition that
-  # shares no row with any of that bead's other five witnesses.
-  #
-  # FOUR ANCHORS NEED section_ordinal, because each also matches something in the
-  # funding-sources block below it on the same page. Three of the four are the
-  # division's own name appearing again as a FUND -- Information Technology,
-  # Airport, Horizons. The fourth is not: p115:29 prints "Library Donations", and
-  # an anchor matches by substring, so "Library" finds it.
+  # Four anchors carry section_ordinal because the funding-sources block below
+  # matches them: Information Technology, Airport and Horizons as fund names,
+  # and "Library" inside p115's "Library Donations".
   # ==========================================================================
 
   # --------------------------------------------------------------------------
@@ -4187,11 +3721,7 @@ rules:
           - column: 1
             delta_cents: 100
             note: >-
-              The city's own rounding, stated minus mapped, and the same shape
-              this file already declares on the revenue blocks of pp.127-140 and
-              the division blocks of pp.167-170. No page list is given: which
-              pages carry a declaration moves whenever a block is mapped, so a
-              list here is a second copy that goes stale silently.
+              The city's own rounding, stated minus mapped, measured off the page.
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
           - {fiscal_year: 2024, basis: actual}
@@ -4240,11 +3770,7 @@ rules:
           - column: 1
             delta_cents: 100
             note: >-
-              The city's own rounding, stated minus mapped, and the same shape
-              this file already declares on the revenue blocks of pp.127-140 and
-              the division blocks of pp.167-170. No page list is given: which
-              pages carry a declaration moves whenever a block is mapped, so a
-              list here is a second copy that goes stale silently.
+              The city's own rounding, stated minus mapped, measured off the page.
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
           - {fiscal_year: 2024, basis: actual}
@@ -4286,11 +3812,8 @@ rules:
     units: dollars
     total_row: "Division Total"
     note: >-
-      Not on pp.167-170, and the largest division missing from them: $6,840,179 in
-      FY2025-26 against the department's $14,192,079. section_ordinal is required
-      because p97 prints "Information Technology" twice -- here as a division and
-      at :49 as fund 720, which pays more of this department than the General
-      Fund does.
+      Not on pp.167-170. section_ordinal: p97 prints "Information Technology"
+      again at :49 as fund 720.
     parts:
       - page: 97
         section: "Information Technology"
@@ -4300,11 +3823,7 @@ rules:
           - column: 1
             delta_cents: 100
             note: >-
-              The city's own rounding, stated minus mapped, and the same shape
-              this file already declares on the revenue blocks of pp.127-140 and
-              the division blocks of pp.167-170. No page list is given: which
-              pages carry a declaration moves whenever a block is mapped, so a
-              list here is a second copy that goes stale silently.
+              The city's own rounding, stated minus mapped, measured off the page.
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
           - {fiscal_year: 2024, basis: actual}
@@ -4325,9 +3844,7 @@ rules:
     units: dollars
     total_row: "Division Total"
     note: >-
-      Not on pp.167-170. Wages & Benefits falls to $0 in both budget years after
-      $54,865 and $276,442 in the historical pair, with Services & Supplies flat
-      at $665,190.
+      Not on pp.167-170.
     parts:
       - page: 97
         section: "Cybersecurity"
@@ -4351,9 +3868,8 @@ rules:
     units: dollars
     total_row: "Division Total"
     note: >-
-      The label wraps, and NOT where p169 wraps it: "Community Development" /
-      "Admin" here against "Community" / "Development Admin" there. The anchor is
-      this page's head.
+      The label wraps differently from p169: "Community Development" / "Admin".
+      The anchor is this page's head.
     parts:
       - page: 101
         section: "Community Development"
@@ -4472,10 +3988,7 @@ rules:
     units: dollars
     total_row: "Division Total"
     note: >-
-      ONE object row, and it is Services & Supplies. The Livermore-Pleasanton fire
-      service is contracted, so there is no wages line to map -- this division's
-      Total, Total Department Expenditures and that single row are three printed
-      statements of one figure.
+      ONE object row: fire service is contracted, so there is no wages line.
     parts:
       - page: 105
         section: "Fire Administration"
@@ -4548,11 +4061,8 @@ rules:
     units: dollars
     total_row: "Division Total"
     note: >-
-      Not on pp.167-170: enterprise money, and ONE fund rather than two. p111's
-      Airport row is 3,000,829, this division's whole Division Total in all four
-      columns, and that label resolves to fund 600. 601, CIP Airport, pays none
-      of it. section_ordinal is required because that funding-source row at :35
-      prints the same word this section anchors on.
+      Not on pp.167-170: enterprise money, all fund 600. section_ordinal: the
+      funding-source row at :35 prints the same word.
     parts:
       - page: 111
         section: "Airport"
@@ -4562,11 +4072,7 @@ rules:
           - column: 1
             delta_cents: 100
             note: >-
-              The city's own rounding, stated minus mapped, and the same shape
-              this file already declares on the revenue blocks of pp.127-140 and
-              the division blocks of pp.167-170. No page list is given: which
-              pages carry a declaration moves whenever a block is mapped, so a
-              list here is a second copy that goes stale silently.
+              The city's own rounding, stated minus mapped, measured off the page.
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
           - {fiscal_year: 2024, basis: actual}
@@ -4587,11 +4093,8 @@ rules:
     units: dollars
     total_row: "Division Total"
     note: >-
-      section_ordinal is required because p115:29 prints the funding-source row
-      "Library Donations", and an anchor matches by SUBSTRING -- so "Library"
-      finds that row too. Unlike the other three ordinals on these pages, the
-      second occurrence is not the division's own name appearing again as a fund;
-      it is a longer fund name that contains it.
+      section_ordinal: p115:29's funding-source row "Library Donations"
+      contains "Library".
     parts:
       - page: 115
         section: "Library"
@@ -4745,11 +4248,7 @@ rules:
           - column: 1
             delta_cents: 100
             note: >-
-              The city's own rounding, stated minus mapped, and the same shape
-              this file already declares on the revenue blocks of pp.127-140 and
-              the division blocks of pp.167-170. No page list is given: which
-              pages carry a declaration moves whenever a block is mapped, so a
-              list here is a second copy that goes stale silently.
+              The city's own rounding, stated minus mapped, measured off the page.
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
           - {fiscal_year: 2024, basis: actual}
@@ -4769,12 +4268,8 @@ rules:
     units: dollars
     total_row: "Division Total"
     note: >-
-      FIVE object rows, and the fifth is a TRANSFER, not an expenditure: p124:25
-      prints Transfers Out 266,798 in FY2023-24 Actual and "-" in all three later
-      columns. It carries kind: transfer_out rather than being swept into an
-      object category, and it is why this page's four Division Totals sum past
-      p183's Grand Total in that column and nowhere else -- p183 is an
-      EXPENDITURE total and correctly excludes it.
+      The fifth row is a TRANSFER: p124:25 prints Transfers Out 266,798 in
+      FY2023-24 Actual, which p183's expenditure Grand Total excludes.
     parts:
       - page: 124
         section: "Maintenance"
@@ -4823,9 +4318,7 @@ rules:
     units: dollars
     total_row: "Division Total"
     note: >-
-      Not on pp.167-170, and the largest division in the city: $53,143,833 in
-      FY2025-26, more than a fifth of all citywide expenditure. Water and sewer
-      are enterprise funds.
+      Not on pp.167-170. Water and sewer are enterprise funds.
     parts:
       - page: 124
         section: "Water Resources"
@@ -6298,45 +5791,22 @@ rules:
   # ==========================================================================
   # DEBT SERVICE BUDGET, pp.80-81: principal and interest by debt issue.
   #
-  # p80 prints the issues, labelled, with FY2024-25's Principal, Interest and
-  # Total; p81 continues the same rows for FY2025-26 and FY2026-27 with nothing
-  # but figures, so its row identity is positional against p80, as p67's is
-  # against p66. A column cannot carry a category, so principal and interest are
-  # two rules over the same block, each reading its own column and skipping the
-  # rest. The Total column is Principal plus Interest and publishes nothing:
-  # publishing it too would count every issue twice.
+  # p80 prints the issues labelled with FY2024-25's columns; p81 continues the
+  # rows positionally for FY2025-26 and FY2026-27. Principal and interest are
+  # two rules over one block; the Total column publishes nothing.
   #
-  # p80's FY2024-25 column is the REVISED year. Measured: each issue's printed
-  # Total equals the revised Debt Services row of one fund on pp.172-183 --
-  # 2020A COP fund 400, 2020B COP fund 401, 2022 COP fund 402, HUD Loans fund
-  # 224, the Lease/Purchase Loan fund 740, Airport's two rows fund 600, Water's
-  # fund 640, the Interfund Loan the General Fund (fund 100, p172) -- all to the
-  # dollar.
+  # p80's FY2024-25 column is the REVISED year: each issue's Total equals one
+  # fund's revised Debt Services row on pp.172-183 to the dollar. The rows carry
+  # no fund: the governmental issues name none.
   #
-  # The rows carry no fund. Only the business-type headings name one; the
-  # governmental issues name none, and a grain is per rule.
+  # "2020B Certificates of Participation" prints once per payer, so the Airport
+  # and Water rows take their heading lines into their labels. "Actitivies" is
+  # the page's spelling. The Banc of America dash line is skipped; the loan's
+  # figures print on its "Lease/Purchase Loan" line.
   #
-  # "2020B Certificates of Participation" prints three times, once per payer,
-  # and a rule's row labels are unique, so the Airport and Water rows take the
-  # heading lines above them into their labels, as printed. "Actitivies" is
-  # the page's spelling.
-  #
-  # "Banc of America Equipment" under Internal Service Fund prints a dash in
-  # every column and "Lease/Purchase Loan" the figures on the next line; the
-  # business-type block prints the same loan on one line. The dash line is
-  # skipped rather than published as a separate zero-dollar issue: either
-  # reading leaves every total unchanged, and only one of them is a row.
-  #
-  # Both activity totals are subtotal rows, consumed and not published and
-  # held to the issues above them in every column, Total included; the grand
-  # Total is the stated total. On p80 the block stops at "Total  ", the grand Total's
-  # label followed by the run of spaces before its figure: the subtotals' labels
-  # follow "Total" with one space. On p81 nothing but "$" marks the total, and
-  # the first row is "$"-prefixed too, so stop_at_ordinal counts it: six "$" on
-  # the first row, six on each subtotal, and the grand Total's is the 19th.
-  #
-  # The DEBT SERVICE REQUIREMENTS schedule below each block is
-  # debt-service-requirements, the next rule.
+  # The activity totals are subtotals held to their issues. p80 stops at
+  # "Total  " (the grand Total's label plus its spaces; subtotals have one); on
+  # p81 only "$" marks it, the 19th.
   # --------------------------------------------------------------------------
   - id: debt-service-principal
     kind: expenditure
@@ -6428,39 +5898,20 @@ rules:
       - {label: "Total Business-Type Activities", skip: true, subtotal: 1}
 
   # --------------------------------------------------------------------------
-  # DEBT SERVICE REQUIREMENTS, pp.80-81: the principal and interest the city
-  # owes on the issues above, by year ending June 30 and by fund type.
-  #
-  # ROWS ARE YEARS, so the year is on the row and not the column. "2026" is
-  # the year ending June 30, 2026, fiscal_year 2026 -- the FY2025-26 column of
-  # the issues above, whose Lease/Purchase Loan prints 989,284 and 81,073 there
-  # and whose Internal Service Funds row here prints the same. From 2031 the
-  # page prints five years as one figure, "2031-2035"; such a row is a BAND,
-  # fiscal_year its first year and fiscal_year_through its last, and no fact
-  # of it is a year. The last band is labelled 2051-2055; ACFR p86 prints the
-  # same two figures under 2051-2052.
-  #
-  # PROJECTED, NOT ADOPTED. These are payments scheduled under the city's debt
-  # agreements, printed beside the budget; no year of them is an
+  # DEBT SERVICE REQUIREMENTS, pp.80-81: principal and interest owed, by year
+  # ending June 30 and by fund type. PROJECTED, NOT ADOPTED: no year is an
   # appropriation.
   #
-  # FUND TYPES ARE COLUMNS, two to a page. p80 prints Governmental Funds,
-  # which is no single fund type (the General Fund, special revenue and debt
-  # service funds together) and so carries no fund dimension, and Internal
-  # Service Funds. p81 continues the rows with nothing but figures, read
-  # positionally against p80, for the Airport Fund (600), the Water Fund (640)
-  # and a Grand Total, which is skipped: it is the four fund types summed,
-  # measured exact in every row, and publishing it would count each twice.
-  # TestDebtServiceRequirementsCrossFootToTheGrandTotal holds that sum.
+  # Rows are years: "2026" is fiscal_year 2026. From 2031 a row is a BAND,
+  # fiscal_year its first year and fiscal_year_through its last; the last band
+  # prints 2051-2055 where ACFR p86 prints 2051-2052.
   #
-  # BLANKS ARE ABSENT. Internal Service prints nothing from 2030, Water from
-  # 2036 and Airport from 2046. Each blank is an omitted cell, named by its
-  # header's ordinal because each page prints "Principal" and "Interest" over
-  # every fund type. On p81 the 2046-2050 and 2051-2055 lines print a Grand
-  # Total figure and nothing else.
+  # Columns are fund types: Governmental Funds (no single type, so no fund),
+  # Internal Service, then on p81 Airport (600), Water (640) and a skipped
+  # Grand Total (TestDebtServiceRequirementsCrossFootToTheGrandTotal).
   #
-  # Every column ties to the Total the page prints beneath it. p81's Total is
-  # its seventh "$": the first row prints six.
+  # Blanks are absent, declared as omitted cells by header ordinal. p81's Total
+  # is its seventh "$".
   - id: debt-service-requirements
     kind: expenditure
     basis: projected
@@ -6535,44 +5986,23 @@ rules:
   # ==========================================================================
   # CAPITAL IMPROVEMENT PROGRAM, PROJECT LISTING BY FUND, pp.224-235.
   #
-  # Every CIP project, by the fund paying for it, for FY2024-25 through
-  # FY2030-45. The CIP document prints the same listing, but its tables are
-  # raster images under an OCR text layer that drops every "-" and splits
-  # digits ("25 1,000" for 251,000), so it is read here and not there
-  # (fisc-8ln).
+  # Every CIP project by paying fund, FY2024-25 through FY2030-45. Read here and
+  # not in the CIP document, whose OCR layer drops dashes and splits digits
+  # (fisc-8ln). Six page pairs, one rule each: the odd page continues the even
+  # page's lines positionally. The label is the fund number, the tail the
+  # project number and name.
   #
-  # SIX PAGE PAIRS, ONE RULE EACH. An even page prints fund, project, name and
-  # FY2024-25; the odd page after it continues the same lines with the other
-  # seven columns and no labels, so it is read positionally against its even
-  # page, as p67 is against p66. The label is the fund number, which the page
-  # prints first on the line, and the tail is the project number and name.
+  # FY2025-26 and FY2026-27 publish as adopted, FY2027-28 to FY2029-30 as
+  # projected. Read and not published: FY2024-25 (basis unstated; its total is
+  # not p222's revised figure), FY2030-45 (fifteen years in one figure) and
+  # TOTAL. The budget years carry forward unspent appropriations
+  # (structure.BudgetBookResidue).
   #
-  # COLUMNS. FY2025-26 and FY2026-27 publish as adopted, and FY2027-28 to
-  # FY2029-30 as projected: printed plan figures, not appropriations. Three
-  # columns are read and not published: FY2024-25, whose basis nothing on these
-  # pages states and whose 59,192,538 total is not p222's FY2024-25 revised
-  # 104,665,416; FY2030-45, fifteen years in one figure; and TOTAL, each row's
-  # sum.
-  # The budget years are not p222's new appropriations either: the listing's
-  # totals carry forward unspent appropriations (structure.BudgetBookResidue).
-  #
-  # SUBTOTALS. Each fund's block ends in a printed total, fund 101's four
-  # sub-blocks in a SUBTOTAL each, and p234 in the grand TOTAL. The odd pages
-  # print the same lines as figures alone, so no rule boundary can fall
-  # between blocks; instead each total is a subtotal row -- 1 for fund 101's
-  # sub-blocks, 2 for a fund, 3 for the grand total -- held to the rows above
-  # it in every column, the unpublished three included. The six rules are one
-  # subtotal_chain because funds 290, 552 and 560 begin on one page pair and
-  # are totalled on the next.
-  #
-  # FUND 611 IS READ AND NOT PUBLISHED. p230 lists its projects twice, under
-  # TOTAL - FEDERAL GRANT - STORM and again under TOTAL - STATE GRANT - STORM,
-  # on lines identical but for their figures. A fact's identity is its printed
-  # row, so the two cannot both publish, and publishing one would understate
-  # the fund. Both blocks are skipped rows that their totals still check.
-  #
-  # The stray "." on p224 below fund 101's total is a mark the page prints
-  # between blocks, declared so the read does not refuse it.
+  # Totals are subtotal rows (1 fund 101 sub-block, 2 fund, 3 grand total), held
+  # in every column; the six rules are one subtotal_chain because funds 290, 552
+  # and 560 are totalled on the next pair. Fund 611 is skipped: p230 lists its
+  # projects twice on lines identical but for their figures. The stray "." on
+  # p224 is declared.
   # --------------------------------------------------------------------------
   - id: cip-listing-p0224
     kind: expenditure
@@ -7038,59 +6468,27 @@ rules:
   # ==========================================================================
   # AVAILABLE FUNDS, USES OF FUNDS, AND FUND BALANCES, pp.186-209.
   #
-  # Every fund's sources, uses and balance, for FY2023-24 actuals (pp.186-191),
-  # FY2024-25 revised (pp.192-197) and the two adopted years (pp.198-203,
-  # pp.204-209). The schedule is transposed against the rest of the book: a
-  # row is a FUND and a column is a budget LINE, so each column carries the
-  # category and kind and each row the fund.
+  # Every fund's sources, uses and balance: FY2023-24 actuals (pp.186-191),
+  # FY2024-25 revised (pp.192-197), the two adopted years (pp.198-209).
+  # Transposed: a row is a FUND and a column a budget LINE carrying category
+  # and kind. Twelve page pairs, one rule each, the odd page positional; the
+  # last pair of each year also has a rule for the CIP funds, which
+  # fundBalancesRules keeps out of the cuts held to pp.66-67.
   #
-  # TWELVE PAGE PAIRS, ONE RULE EACH, AND THE CIP BLOCK ONE MORE. An even
-  # page prints the fund name, its beginning balance, Revenues, Transfers In
-  # and Total Sources; the odd page after it continues the same lines with
-  # Expenses, Transfers Out, Transfers Out to CIP, Reserve Increase/(Use),
-  # Total Uses and the ending balance, and no labels, so it is read
-  # positionally against its even page, as p67 is against p66. The last pair
-  # of each year prints the Capital Improvement Program Funds below the
-  # internal service funds, and reads them as a rule of their own: those are
-  # p222's funds, which fundBalancesRules keeps out of the cuts held to
-  # pp.66-67's totals, and a cut selects rules, not rows. The funds above the block are the
-  # pair's `-above-cip` rule.
+  # The four years print the same 129 rows; each is anchored in the first rule
+  # that prints it and aliased after, so its fund is typed once.
   #
-  # ROWS ARE WRITTEN ONCE. The four years print the same 129 rows in one
-  # order, labelled identically but for one summary row ("Internal Service
-  # Funds" in FY2023-24, "Internal Service" after), and break them across
-  # pages differently. Each row is anchored in the first rule that prints it
-  # and every later rule aliases it, so a fund's number and group are typed
-  # once. The printed totals carry per-year subtotal_deltas and are written
-  # per year.
+  # Not published: CIP Multi Funded Governmental (no appendix number), the
+  # summary block's group rows (the detail totals again,
+  # mapping.TestPublishedFundBalancesSummaryRowsAreTheirBlockTotals), every
+  # printed total (fisc-0ijw), and Total Sources / Total Uses. Revenues and
+  # Expenses carry the placeholder categories `revenues` and `expenses`.
   #
-  # PUBLISHED: every fund row but CIP Multi Funded Governmental, which names
-  # no fund the appendix numbers, and the summary block's General Fund, which
-  # has no detail block of its own. Read and not published: the summary block's
-  # other group rows, which are the detail blocks' printed totals again
-  # (mapping.TestPublishedFundBalancesSummaryRowsAreTheirBlockTotals holds
-  # that); every printed total (fisc-0ijw); and the Total Sources and Total
-  # Uses columns, each a row's sum.
-  #
-  # The two flow columns Revenues and Expenses are a fund's total, not a
-  # category of either, so they carry the placeholder categories `revenues`
-  # and `expenses`.
-  #
-  # SUBTOTALS. A fund block's "Total X Funds" is level 1 over the funds since
-  # the previous total. In the summary block, Total Operating Budget is level
-  # 1 over its six group rows, Total Capital Improvement Program & Internal
-  # Service level 1 over its two, and Total City Budget level 2 over all
-  # eight. Every column is held, the unpublished two included. Each year is
-  # one subtotal_chain because Special Revenue straddles its first page break
-  # and, in three years, Enterprise or Internal Service its second.
-  #
-  # ROUNDING. FY2023-24 actuals are printed rounded to the dollar figure by
-  # figure, so four block totals and both summary totals miss their rows by
-  # one to three dollars, each declared below; 18 fund lines miss their own
-  # identity by a dollar, held in structure.BalanceExceptions. The later
-  # years print no rounding of their own: Special Revenue's and Capital's
-  # dollar, and the summary totals', carry forward from FY2023-24's endings
-  # into each later beginning, Total Sources and ending.
+  # Totals are subtotal rows held in every column; each year is one
+  # subtotal_chain. FY2023-24 actuals are rounded figure by figure: block and
+  # summary totals miss by one to three dollars, declared below, and 18 fund
+  # lines miss their identity by a dollar (structure.BalanceExceptions); later
+  # years inherit those dollars through their beginning balances.
   # --------------------------------------------------------------------------
   - id: fund-balances-fy2024-p0186
     kind: fund_balance
@@ -7365,9 +6763,7 @@ rules:
       - page: 191
         labels_from: 190
         section: "6/30/24"
-        # p191 prints no labels. Four empty lines part the Total Internal
-        # Service Funds line from CIP Airport's, and the block ends at the
-        # first of them, so its stop_at line prints no figure.
+        # p191 prints no labels; the block ends at the first empty line.
         stop_at: "\n\n\n\n\n"
         column_headers: ["Expenses", "Transfers Out", "Transfers Out to CIP", "Increase/(Use)", "Total Uses", "6/30/24"]
         columns:
@@ -7402,8 +6798,7 @@ rules:
     row_labels_name_funds: true
     parts:
       - page: 190
-        # The heading, and not the Total Capital Improvement Program Funds
-        # line that also prints it.
+        # Not the Total line that also prints it.
         section: "Capital Improvement Program Funds"
         section_ordinal: 1
         stop_at: "Footnote:"
@@ -7415,8 +6810,7 @@ rules:
           - {skip: true}
       - page: 191
         labels_from: 190
-        # p191 prints no labels; the block opens after the run of empty
-        # lines the rule above ends at.
+        # The block opens after the empty lines the rule above ends at.
         section: "\n\n\n\n\n"
         section_ordinal: 1
         stop_at: "BUDGET FY 2025-27"
@@ -7435,9 +6829,7 @@ rules:
       - &f641 {label: "CIP Water", fund: 641, fund_group: enterprise}
       - &f731 {label: "CIP Fleet & Equipment Svcs", fund: 731, fund_group: internal-service}
       - &f741 {label: "CIP Facilities", fund: 741, fund_group: internal-service}
-      # CIP MULTI FUNDED GOVERNMENTAL names no fund pp.253-257 number, and
-      # prints a dash in every column of every year, so it is read and not
-      # published (fisc-8c90).
+      # Names no numbered fund and prints dashes throughout (fisc-8c90).
       - &cipmulti {label: "CIP Multi Funded Governmental", skip: true}
       - &f811 {label: "CIP General Fund", fund: 811, fund_group: capital}
       - &f812 {label: "CIP Low Income Housing", fund: 812, fund_group: capital}
@@ -7714,9 +7106,7 @@ rules:
       - page: 197
         labels_from: 196
         section: "6/30/25"
-        # p197 prints no labels. Four empty lines part the Total Internal
-        # Service Funds line from CIP Airport's, and the block ends at the
-        # first of them, so its stop_at line prints no figure.
+        # p197 prints no labels; the block ends at the first empty line.
         stop_at: "\n\n\n\n\n"
         column_headers: ["Expenses", "Transfers Out", "Transfers Out to CIP", "Increase/(Use)", "Total Uses", "6/30/25"]
         columns:
@@ -7744,8 +7134,7 @@ rules:
     row_labels_name_funds: true
     parts:
       - page: 196
-        # The heading, and not the Total Capital Improvement Program Funds
-        # line that also prints it.
+        # Not the Total line that also prints it.
         section: "Capital Improvement Program Funds"
         section_ordinal: 1
         stop_at: "Footnote:"
@@ -7757,8 +7146,7 @@ rules:
           - {skip: true}
       - page: 197
         labels_from: 196
-        # p197 prints no labels; the block opens after the run of empty
-        # lines the rule above ends at.
+        # The block opens after the empty lines the rule above ends at.
         section: "\n\n\n\n\n"
         section_ordinal: 1
         stop_at: "BUDGET FY 2025-27"
@@ -8050,9 +7438,7 @@ rules:
       - page: 203
         labels_from: 202
         section: "6/30/26"
-        # p203 prints no labels. Four empty lines part the Total Internal
-        # Service Funds line from CIP Airport's, and the block ends at the
-        # first of them, so its stop_at line prints no figure.
+        # p203 prints no labels; the block ends at the first empty line.
         stop_at: "\n\n\n\n\n"
         column_headers: ["Expenses", "Transfers Out", "Transfers Out to CIP", "Increase/(Use)", "Total Uses", "6/30/26"]
         columns:
@@ -8076,8 +7462,7 @@ rules:
     row_labels_name_funds: true
     parts:
       - page: 202
-        # The heading, and not the Total Capital Improvement Program Funds
-        # line that also prints it.
+        # Not the Total line that also prints it.
         section: "Capital Improvement Program Funds"
         section_ordinal: 1
         stop_at: "BUDGET FY 2025-27"
@@ -8089,8 +7474,7 @@ rules:
           - {skip: true}
       - page: 203
         labels_from: 202
-        # p203 prints no labels; the block opens after the run of empty
-        # lines the rule above ends at.
+        # The block opens after the empty lines the rule above ends at.
         section: "\n\n\n\n\n"
         section_ordinal: 1
         stop_at: "BUDGET FY 2025-27"
@@ -8381,10 +7765,8 @@ rules:
       - page: 209
         labels_from: 208
         section: "6/30/27"
-        # p209 prints no labels. Four empty lines part the Total Enterprise
-        # Funds line from General Liability's, and four more the Total
-        # Internal Service Funds line from CIP Airport's; the block ends at the
-        # first of the second run, so its stop_at line prints no figure.
+        # p209 prints no labels; the block ends at the first empty line of
+        # the second run, after Total Internal Service Funds.
         stop_at: "\n\n\n\n\n"
         stop_at_ordinal: 2
         column_headers: ["Expenses", "Transfers Out", "Transfers Out to CIP", "Increase/(Use)", "Total Uses", "6/30/27"]
@@ -8415,8 +7797,7 @@ rules:
     row_labels_name_funds: true
     parts:
       - page: 208
-        # The heading, and not the Total Capital Improvement Program Funds
-        # line that also prints it.
+        # Not the Total line that also prints it.
         section: "Capital Improvement Program Funds"
         section_ordinal: 1
         stop_at: "BUDGET FY 2025-27"
@@ -8428,8 +7809,7 @@ rules:
           - {skip: true}
       - page: 209
         labels_from: 208
-        # p209 prints no labels; the block opens after the run of empty
-        # lines the rule above ends at.
+        # The block opens after the empty lines the rule above ends at.
         section: "\n\n\n\n\n"
         section_ordinal: 2
         stop_at: "BUDGET FY 2025-27"
@@ -8510,10 +7890,8 @@ rollups:
     page: 167
     total_row: "INNOVATION & ECONOMIC DEVELOPEMENT"
     note: >-
-      TWO ANOMALIES IN ONE LINE, both the city's. The anchor carries the page's
-      own misspelling -- DEVELOPEMENT, where the heading on line 53 spells it
-      correctly -- and the word TOTAL wraps onto the next line, so the anchor
-      must be the department name, which is what the figures share a line with.
+      The anchor carries the page's misspelling DEVELOPEMENT, and TOTAL wraps
+      onto the next line, so the anchor is the department name.
     covers: [div-innovation-and-economic-devel]
 
   # --------------------------------------------------------------------------
@@ -8527,10 +7905,9 @@ rollups:
     page: 168
     total_row: "ADMINISTRATIVE SERVICES TOTAL"
     note: >-
-      The measurement the rollup design rests on: this total is $6,311,564 and so
-      is the sum of the three printed division Totals, while the six object rows
-      beneath them give $6,311,563. Finance's declared dollar is absorbed by its
-      own printed Total and reappears here. A rollup summing leaves would fail.
+      This total equals the sum of the three printed division Totals
+      ($6,311,564), not the object rows ($6,311,563): a rollup sums printed
+      Totals.
     covers: [div-administrative-services, div-finance, div-human-resources]
 
   # --------------------------------------------------------------------------
@@ -8548,9 +7925,7 @@ rollups:
     page: 169
     total_row: "COMMUNITY DEVELOPMENT TOTAL"
     note: >-
-      Planning's declared -$1 is absorbed by its own printed Total, so this total
-      ties exactly against the five printed Totals -- the same two-level chain
-      ADMINISTRATIVE SERVICES shows with the opposite sign.
+      Planning's declared -$1 is absorbed by its own printed Total.
     covers:
       - div-community-development-admin
       - div-building-and-safety
@@ -8563,10 +7938,8 @@ rollups:
     page: 170
     total_row: "PUBLIC WORKS DEPARTMENT TOTAL"
     note: >-
-      The one department whose total row is not its heading plus " TOTAL": the
-      heading on p169 line 47 is PUBLIC WORKS. Its two declared dollars have
-      opposite signs and cancel, which is why this total ties against the object
-      rows too -- an accident of the document, not something to rely on.
+      The heading on p169 line 47 is PUBLIC WORKS, so the total row is not
+      heading plus " TOTAL". Its two declared dollars cancel.
     covers: [div-public-works-administration, div-maintenance, div-environmental-services]
 
   # --------------------------------------------------------------------------
@@ -8580,10 +7953,8 @@ rollups:
     page: 170
     total_row: "General Fund Total Expenses"
     note: >-
-      The schedule's own closing total, over all 23 divisions. It is what ties the
-      department axis to the citywide spine: $144,650,802 in FY2025-26 and
-      $149,014,579 in FY2026-27 are p66's TOTAL EXPENDITURES for the General
-      Fund, to the cent.
+      The schedule's closing total over all 23 divisions: p66's General Fund
+      TOTAL EXPENDITURES to the cent.
     covers:
       - div-city-council
       - div-city-manager
