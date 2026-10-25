@@ -2,28 +2,13 @@
 // and an erratum about a comment's own former text. AGENTS.md's "History's
 // home is git" is the rule; this is that rule as something that can go red.
 //
-// THE COMMENT BLOCK IS THE UNIT, NOT THE LINE. A refused phrase is several
-// words at roughly 77 columns, so it wraps, and the wrap point is chosen by
-// whoever gofmt'd the comment rather than by whoever wrote the history. A
-// line-based pattern cannot see a phrase split across two lines, and cannot
-// see a bare interior line of a /* */ block at all, which carries no marker
-// to hold on to. The sibling arm over the memories, tools/memcheck, matches
-// each phrase with \s+ between its words for the same reason -- and only a
-// scan over the joined block can honour that in a file of marked-up lines.
+// THE COMMENT BLOCK IS THE UNIT, NOT THE LINE, so a phrase wrapped across
+// lines still matches. A block is a run of comments with no code token and no
+// blank line between them; joining wider would let two comments add up to a
+// finding neither contains.
 //
-// A block is a run of comments with no code token and no blank line between
-// them, and joining any wider would be the defect in the other direction: the
-// last words of one comment and the first words of the next, adjacent across
-// a blank line or a line of code, must never add up to a finding neither
-// comment contains.
-//
-// NEITHER REFUSED PHRASE APPEARS CONTIGUOUSLY IN THIS FILE'S COMMENTS, for
-// the reason tools/doccheck's package comment spells no citation out: the
-// examples this comment wants are exactly what the patterns match. The
-// pattern strings below and the fixtures in main_test.go carry the phrases
-// only inside string literals, and a string literal is not a comment --
-// go/scanner is what guarantees that, which is also why a // inside a string
-// can never read as a comment marker here.
+// NEITHER REFUSED PHRASE APPEARS CONTIGUOUSLY IN THIS FILE'S COMMENTS, or the
+// command would report itself; string literals are not comments (go/scanner).
 package main
 
 import (
@@ -37,10 +22,8 @@ import (
 	"strings"
 )
 
-// refused matches over a comment block's joined text. Every gap between words
-// is \s+ rather than a space, so a phrase keeps matching wherever the block
-// happens to wrap. Case-insensitive because the erratum form opens sentences,
-// where its first word arrives capitalised.
+// refused matches over a comment block's joined text, with \s+ gaps so a
+// wrap point does not matter, case-insensitive for sentence openings.
 var refused = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)Found\s+by\s+/code-review`),
 	regexp.MustCompile(`(?i)this\s+comment\s+used\s+to\s+say`),
@@ -82,9 +65,7 @@ func main() {
 }
 
 // scanPaths walks the named files and directories for .go files. Anything
-// unreadable is an error rather than a skip, because the path list is
-// hand-maintained in the Makefile and an entry gone from the tree must take
-// the gate red rather than silently narrow the scan.
+// unreadable is an error, so a Makefile entry gone from the tree goes red.
 func scanPaths(paths []string) ([]finding, int, error) {
 	var findings []finding
 	scanned := 0
@@ -138,8 +119,7 @@ type segment struct {
 }
 
 // scanSource tokenises one file and matches the refused phrases over each
-// comment block. go/scanner is the lexer so that the tokens BETWEEN comments
-// are what tell a block's edge from a line that merely looks like one.
+// comment block; the tokens between comments mark a block's edge.
 func scanSource(path string, src []byte) ([]finding, error) {
 	fset := token.NewFileSet()
 	file := fset.AddFile(path, fset.Base(), len(src))
@@ -160,13 +140,9 @@ func scanSource(path string, src []byte) ([]finding, error) {
 			break
 		}
 		if tok != token.COMMENT {
-			// Any code token ends the block -- except the semicolon the
-			// scanner inserts at a line break, whose literal is the newline
-			// itself. One of those lands AFTER a comment trailing code on the
-			// same line, and honouring it would cut that comment off from the
-			// lines directly under it, which no non-comment LINE separates
-			// from it. Every line of actual code still flushes, because its
-			// tokens arrive before any inserted semicolon does.
+			// Any code token ends the block, except an inserted newline
+			// semicolon: it lands after a trailing comment and would cut it
+			// off from the comment lines under it.
 			if tok != token.SEMICOLON || lit != "\n" {
 				flush()
 			}
@@ -174,8 +150,7 @@ func scanSource(path string, src []byte) ([]finding, error) {
 		}
 		line := file.Position(pos).Line
 		if len(block) > 0 && line > endLine+1 {
-			// A blank line between comments ends the block too; see the
-			// package comment for what joining across one would cost.
+			// A blank line between comments ends the block too.
 			flush()
 		}
 		text := commentText(lit)
@@ -189,18 +164,9 @@ func scanSource(path string, src []byte) ([]finding, error) {
 	return findings, nil
 }
 
-// commentText drops the comment markers and nothing else, so that \s+ in a
-// pattern is what bridges the remaining line breaks and indentation.
-//
-// The markers include the decorative `*` a block comment's interior lines may
-// each open with: two blocks with identical prose must match identically
-// however they are decorated, and a leading `*` glued to a phrase's next word
-// is a gap \s+ cannot bridge. It is stripped line by line rather than with
-// tools/doccheck's furniture set because only `*` decorates a Go block
-// interior -- `//` and `#` open lines in the formats doccheck reads, not
-// continuation lines here -- and stripping a marker mid-line would eat prose.
-// Newlines are preserved so the line accounting in scanSource and lineAt
-// stays exact.
+// commentText drops the comment markers and nothing else, including the
+// decorative leading `*` of a block comment's interior lines (\s+ cannot
+// bridge it). Newlines are preserved so line accounting stays exact.
 func commentText(lit string) string {
 	if strings.HasPrefix(lit, "//") {
 		return lit[2:]

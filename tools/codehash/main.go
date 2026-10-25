@@ -5,21 +5,9 @@
 // not scanned. Two versions of a file whose comments differ hash identically;
 // a version whose code differs in any token does not.
 //
-// The obvious cheaper check -- read `git diff` and require every changed line
-// to begin with // -- answers a different question. A diff reports which LINES
-// differ, not whether any code moved, and it cannot see a token that changed
-// while its line did not.
-//
-// It is also unsound line by line, because a comment line is not a
-// self-contained unit in this tree: measured at 256f733, 20 comment lines
-// across 9 files end with a backtick span still open, so the command they name
-// is completed by the line below and the two cannot be judged apart. The count
-// is pinned to a commit because nothing re-measures it.
-//
-// The token stream is used rather than a printed AST because go/printer decides
-// blank lines from node positions, and those shift when a comment's length
-// changes. Comments are absent from both inputs either way; only the token
-// stream is also position-independent.
+// A line diff cannot prove this: it sees which lines changed, not which
+// tokens. The token stream is used rather than a printed AST because it is
+// position-independent.
 package main
 
 import (
@@ -49,10 +37,8 @@ func main() {
 }
 
 func hashFile(path string) ([]byte, error) {
-	// #nosec G304,G703 -- the path is tainted because it comes from argv, which
-	// is the whole of this command's interface: it fingerprints the files it is
-	// asked to. A developer tool run by hand, off the build path and never
-	// linked into fisc.
+	// #nosec G304,G703 -- the path is this command's argument: it fingerprints
+	// the files it is asked to.
 	src, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -75,9 +61,8 @@ func hashSource(path string, src []byte) ([]byte, error) {
 		if tok == token.EOF {
 			break
 		}
-		// The literal is hashed alongside the token so that a changed string,
-		// number or identifier moves the sum. Without it every string literal
-		// in the file would be interchangeable.
+		// The literal is hashed too, so a changed string, number or
+		// identifier moves the sum.
 		fmt.Fprintf(h, "%s\x00%s\n", tok, lit)
 	}
 	if errs.Len() > 0 {

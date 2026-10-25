@@ -1,54 +1,18 @@
 // Command doccheck refuses a pointer at nothing: a citation naming no section
-// of AGENTS.md, a citation of it written outside the canonical form, and a
-// docs/ path that resolves to no file.
+// of AGENTS.md, a citation of it written outside the canonical form, a docs/
+// or source path that resolves to no file, a Go test name no _test.go
+// declares, and a schema reference naming no node.
 //
-// AGENTS.md is cited by name from Go, from the Makefile and from site/app.js: a
-// see-also naming a section of it in quotes. Nothing checked those strings, so
-// renaming a section silently turned every citation of it into a pointer at
-// nothing, which reads as though the rule is written down somewhere and sends
-// the reader looking for a heading that is gone.
+// THIS COMMENT SPELLS NO CITATION OUT: an example would be exactly the shape
+// citePattern matches, and the command would report itself.
 //
-// THIS COMMENT DELIBERATELY SPELLS NO CITATION OUT. The examples it wants are
-// exactly the shape citePattern matches, so writing one here would make the
-// command report itself. beadrefs solved the same problem by exempting its own
-// fixtures; that is the wrong trade here, because the only other citation in
-// this file is the one the failure message prints, and it is worth checking.
-//
-// FOUR OF THE CITATIONS ARE PRINTED TO A TERMINAL by a failing gate rather than
-// only sitting in a comment -- tools/narration, tools/memcheck,
-// tools/beadrefs, and this command's own failure message below -- so a stale one
-// is a false claim the program makes to a user at the moment they are already
-// dealing with a failure.
-//
-// It resolves against the committed AGENTS.md and nothing else: no bd, no Dolt,
-// no node, no network. So it is a full gate in pre-commit and in CI both, unlike
-// the memory arm of `make narration`, which warns and continues whenever bd
-// cannot answer.
-//
-// A CITATION IS NOT A LINE. Three of the ones in the tree wrap across two lines
-// -- two in Go comments and one in a docs/ blockquote -- so the scan joins the
-// file and normalises markers out of the captured title rather than matching
-// line by line. See titleOf.
-//
-// ONLY THE CANONICAL FORM IS RESOLVED. A looser net catches the anchor followed
-// within one sentence by a quoted run, and a hit the canonical pattern did not
-// claim is REFUSED AS MALFORMED only when that run resolves against the section
-// anchors --
-// resolution is what separates a citation from a sentence, because prose may
-// mention the anchor file and quote a word for any reason at all, and a
-// required gate that refuses true sentences teaches people to reword around
-// it. THREE SHAPES ARE OUT OF REACH OF BOTH PATTERNS, declared here rather
-// than papered over: prose that names a section without quoting it; a
-// malformed citation naming a section that has since been renamed away, which
-// resolves against nothing; and a near-misspelling of a section title, which
-// resolves against nothing either. loosePattern's comment argues the exchange.
-//
-// A DOCS/ PATH IS A CLAIM ABOUT THE TREE exactly as a section name is, so every
-// one cited in the scanned files must resolve. That is the narrow half of the
-// evidence-doc contract and deliberately no more of it: the declared map, the
-// opening markers and the backlinks belong to fisc-ak39.
-//
-// A cited Go test name must resolve too: a dead one reads as coverage.
+// It resolves against the committed tree only (no bd, no Dolt, no network), so
+// it is a full gate in pre-commit and CI. A citation may wrap across lines, so
+// files are scanned whole; see titleOf. A non-canonical hit is refused as
+// malformed only when its quoted run resolves against the section anchors.
+// Out of reach: prose naming a section without quoting it, a malformed
+// citation of a renamed-away section, and a near-misspelling of a title.
+// The rest of the evidence-doc contract belongs to fisc-ak39.
 package main
 
 import (
@@ -63,109 +27,43 @@ import (
 	"strings"
 )
 
-// citePattern finds a citation of AGENTS.md that names a section in quotes.
-//
-// The separators are the three the tree actually uses: a comma, a possessive,
-// and a comma followed by the word "under". Anything between the anchor and the
-// opening quote may be comment furniture, because a citation is allowed to wrap:
-// the run in the middle absorbs newlines, `//`, `#` and leading `*`.
-//
-// The opening and closing quotes are optionally backslashed, because some
-// citations are written with escaped quotes -- in Go string literals, and in a
-// shell echo in the Makefile.
-//
-// ITS GAP CLASS MUST MATCH furniture's. They are two halves of one rule: this
-// one decides whether a wrapped citation is FOUND, and furniture decides how its
-// title is normalised once it is. A marker missing here is a dead citation that
-// passes the gate in silence, which is the worse direction of the two -- and `>`
-// was missing here after being added there.
+// citePattern finds a citation of AGENTS.md that names a section in quotes:
+// a comma, a possessive, or a comma and "under", with comment furniture
+// allowed in the gap and the quotes optionally backslashed (Go literals, the
+// Makefile's echo). ITS GAP CLASS MUST MATCH furniture's: a marker missing
+// here is a wrapped citation never found, which passes in silence.
 var citePattern = regexp.MustCompile(`AGENTS\.md(?:'s|,)((?:[\s*>]|//|#)*(?:under)?(?:[\s*>]|//|#)*)\\?"([^"]*)"`)
 
-// furniture is what a wrapped citation picks up between its words: a newline,
-// the marker that opens the next line, and the indentation around it. The
-// markers are per-language and `>` is one of them, because a citation inside a
-// markdown blockquote -- which is how every docs/ evidence file names the
-// section it belongs to -- wraps with a `>` at the head of the next line.
+// furniture is what a wrapped citation picks up between its words: newline,
+// next-line marker and indentation. `>` is one because docs/ evidence files
+// cite from a markdown blockquote.
 var furniture = regexp.MustCompile(`(?:[\s]|//|#|\*|>)+`)
 
-// loosePattern is the malformed-citation net: the anchor, a run of anything
-// but a quote, then a quoted run that opens the way a section title does and
-// is captured as group 1. citePattern decides which of its hits are canonical;
-// of the hits left over, malformedIn refuses exactly those whose captured run
-// RESOLVES against the section anchors. Resolution is the rule, not proximity:
-// what makes a hit a citation rather than a sentence is that its quoted run
-// names a section, so prose that mentions the anchor file and quotes a word
-// that names no section is out of the net BY CONSTRUCTION, at any distance,
-// on one line or several.
-//
-// THE GAP MAY CROSS A NEWLINE ONLY INTO CITATION FURNITURE. A citation is
-// allowed to wrap, so a gap that refused every newline would let a wrapped
-// near-miss escape the net -- but one that crosses into an arbitrary next line
-// walks off the anchor's own sentence and into the following statement, where a
-// string literal turns true prose into a finding. This command is a required
-// gate, and a detector that refuses true sentences teaches people to reword
-// around them. The markers are the set furniture declares -- the gap classes
-// here and there are halves of one rule, as with citePattern's.
-//
-// THE GAP MAY NOT CROSS A SENTENCE END -- a full stop followed by whitespace,
-// on the line or closing it. A citation and its separator live inside one
-// sentence, while a mention of the anchor file whose paragraph quotes a real
-// section title sentences later is true prose, and this tree carries comment
-// blocks shaped exactly that way whose quoted titles resolve, so no
-// resolution test tells them apart. There is no length bound: a bounded gap
-// lets a near-miss whose quote sits past the bound escape in silence, and
-// distance guards against a false-positive class the sentence rule and the
-// anchors test remove between them. A quoted run cannot be crossed either, so
-// the net reads the first quote after each anchor and no other; the run must
-// still OPEN like a title so that a list of string literals with the anchor's
-// file name among them is not even a hit. The costs, declared: a near-miss whose
-// separator itself contains a full sentence escapes, as does one whose
-// sentence ends in ? or ! -- shapes no separator in this tree has taken.
-//
-// TWO NEAR-MISS SHAPES ARE GIVEN UP TO GET THAT, both resolving against
-// nothing: a malformed citation of a section that has since been RENAMED
-// AWAY, which the canonical arm never matches and this arm no longer
-// resolves; and a near-MISSPELLING of a section title -- the net catches a
-// near-separator of a real title, never a near-misspelling of one. The
-// exchange is worth it because a required gate that refuses true prose is
-// worse than one that misses a malformed citation of a heading that is
-// already gone: the reader following either one finds no such section, while
-// the refused sentence teaches people to reword around the gate.
-//
-// ONE WRAP SHAPE IS GIVEN UP: a near-miss whose quote sits at the head of the
-// next line with no marker in front of it -- the anchor's line ends bare, and
-// the title's quote opens the following one. Netting it means crossing a bare
-// newline, and whatever opens the next line then -- a string literal, a quoted
-// value, a new sentence of prose that happens to quote a real section title --
-// reads as the tail of the sentence above it. Every wrap whose continuation
-// carries a marker is still netted by the furniture branch.
+// loosePattern is the malformed-citation net: the anchor, a gap, then the
+// first quoted run after it, which must open like a title (group 1).
+// malformedIn refuses only hits citePattern did not claim whose run RESOLVES
+// against the section anchors, so prose quoting a non-title is out by
+// construction. The gap crosses a newline only into furniture's markers, never
+// a sentence end (a full stop then whitespace), and has no length bound.
+// Declared escapes: a separator containing a full sentence, one ending in ?
+// or !, and a quote opening a bare next line with no marker.
 var loosePattern = regexp.MustCompile("AGENTS\\.md(?:[^\".\\n]|\\.[^\" \t\n]|\\n[ \t]*(?://|#|\\*|>)+[ \t]*)*\\\\?\"([A-Za-z0-9`][^\"]{0,79})\"")
 
-// docPathPattern finds a docs/ markdown path cited as a claim about this
-// tree, bare or behind a run of ./ and ../ -- a markdown link written from a
-// subdirectory reaches docs/ relatively, and a guard class that refused every
-// dot and slash refused the relative form with the URL tails, so those links
-// were never collected and a dead one passed in silence. The character before
-// the whole path is still part of the rule rather than trivia: a slash or a
-// word character in front means the path is the tail of something longer -- a
-// URL naming some other repository's docs directory -- and a claim about a
-// different tree is not this gate's to check. Group 2 is the path, prefix
-// included; missingDocs decides what a prefixed one resolves against.
+// docPathPattern finds a docs/ markdown path, bare or behind ./ and ../ (a
+// relative markdown link). The guard before the path excludes a URL tail
+// naming another repository's docs. Group 2 is the path, prefix included;
+// missingDocs decides what a prefixed one resolves against.
 var docPathPattern = regexp.MustCompile(`(^|[^A-Za-z0-9_./-])((?:\.\.?/)*docs/[A-Za-z0-9._/-]+\.md)`)
 
-// srcPathPattern finds a source path cited as a claim about this tree, with
-// docPathPattern's guard. Four directories and two extensions, because the
-// other repo-shaped paths are false positives: data/, dist/ and facts/ are
-// build output cited by their served spelling, a bare testdata/ path is
-// package-relative, and site/*.html exists only after `make site`. The usual
-// fix for a hit is to drop the path, not correct it.
+// srcPathPattern finds a source path, with docPathPattern's guard. Only four
+// directories and two extensions: other repo-shaped paths (data/, dist/,
+// facts/, testdata/, site/*.html) are false positives.
 var srcPathPattern = regexp.MustCompile(
 	`(^|[^A-Za-z0-9_./-])((?:internal|pkg|cmd|tools)/[A-Za-z0-9._/-]+\.(?:go|mjs))`)
 
 // testNamePattern finds a Go test cited by name, and testDeclPattern is what it
-// resolves against. Unlike a general identifier, `Test` plus a capital is a
-// shape nothing else in the tree spells. A wrapped name is tried both unwrapped
-// and joined; see unwrap.
+// resolves against. A wrapped name is tried both unwrapped and joined; see
+// unwrap.
 var (
 	testNamePattern = regexp.MustCompile(`(^|[^A-Za-z0-9_])(Test[A-Z][A-Za-z0-9_]*)`)
 	testDeclPattern = regexp.MustCompile(`(?m)^func (Test[A-Z][A-Za-z0-9_]*)\(`)
@@ -178,22 +76,15 @@ var (
 var unwrap = regexp.MustCompile(`([A-Za-z0-9_])-?\n[ \t]*(?://+|\*|#)?[ \t]*([A-Za-z0-9_])`)
 
 // headingPattern and boldPattern are the two shapes an anchor takes in AGENTS.md.
-// Bold is an anchor and not only a decoration because the tree cites one:
-// "History's home is git" is a bolded lead phrase inside a section, not a
-// heading, and four separate places cite it as though it were a section name.
+// Bold counts because the tree cites bolded lead phrases as section names.
 var (
 	headingPattern = regexp.MustCompile(`(?m)^#{1,6}[ \t]+(.*\S)[ \t]*$`)
 	boldPattern    = regexp.MustCompile(`(?sm)^[ \t]*(?:(?:[-*+]|[0-9]+\.)[ \t]+)?\*\*(.+?)\*\*`)
 )
 
-// exempt is the files whose citations are not claims about the tree. It is one
-// entry and should stay near one: main_test.go's fixtures are synthetic
-// citations, some of which must NOT resolve, so scanning them means a rename
-// reports the fixtures beside the real orphan and a negative-path test cannot be
-// written at all.
-//
-// Its own main.go is deliberately NOT here. The only citation in that file is the
-// one the failure message prints, and that one is worth checking.
+// exempt is the files whose citations are not claims about the tree: test
+// fixtures that must NOT resolve. This command's own main.go is NOT exempt,
+// because its failure messages' citations are worth checking.
 var exempt = map[string]string{
 	"tools/doccheck/main_test.go": "its fixtures are citations and paths that must not resolve",
 	"tools/beadrefs/main_test.go": "its fixtures name source paths that must NOT resolve, so a test for that command cannot be written out of real ones",
@@ -213,14 +104,11 @@ func checkExemptions(root string) error {
 func main() { os.Exit(run(os.Args[1:], os.Stderr)) }
 
 // treeRoot is the directory every root-relative claim resolves against: the one
-// holding the AGENTS.md argument, which the usage line makes the tree root by
-// construction. The process's working directory is no part of the interface --
-// the same arguments check the same tree from anywhere -- and a bare "AGENTS.md"
-// argument yields ".", so the Makefile's invocation keeps meaning what it meant.
+// holding the AGENTS.md argument. The working directory is no part of the
+// interface.
 func treeRoot(agents string) string { return filepath.Dir(agents) }
 
-// run carries main's whole behaviour behind a testable seam: args is everything
-// after the command name, and the exit code is returned rather than taken.
+// run is main behind a testable seam, returning the exit code.
 func run(args []string, stderr io.Writer) int {
 	if len(args) < 2 {
 		fmt.Fprintln(stderr, "usage: doccheck AGENTS.md path...")
@@ -237,9 +125,7 @@ func run(args []string, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "doccheck: %v\n", err)
 		return 2
 	}
-	// An AGENTS.md with no anchors would pass every citation in the tree, so the
-	// one shape that must never be silent is the one where the substrate failed
-	// to parse.
+	// No anchors would pass every citation.
 	if len(anchors) == 0 {
 		fmt.Fprintf(stderr, "doccheck: %s yielded no headings at all, so every citation would resolve\n", agents)
 		return 2
@@ -249,27 +135,15 @@ func run(args []string, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "doccheck: %v\n", err)
 		return 2
 	}
-	// A SCAN THAT FINDS NO CITATION AT ALL IS NOT A GREEN RUN, it is a broken
-	// pattern. citePattern has already lost a marker class once -- `>` was added
-	// to furniture and not to it -- and that failure is invisible from the exit
-	// code, because a command that matches nothing reports nothing dead. The
-	// committed tree has never carried zero, so zero means the matcher stopped
-	// working rather than that the tree got clean.
-	//
-	// IT IS A FLOOR AND NOT A COVERAGE CHECK. It cannot see a PARTIAL loss --
-	// dropping one marker class from citePattern would stop it reading docs/ and
-	// site/app.js while the Go citations still counted, and the run would exit 0.
-	// Exempting this command's own fixtures at least stops those standing in for
-	// a tree that is no longer being read.
+	// Zero citations means a broken pattern, not a clean tree. It is a floor,
+	// not a coverage check: a partial loss (one marker class) still exits 0.
 	if len(cites) == 0 {
 		fmt.Fprintf(stderr, "doccheck: no citation of %s found anywhere in the scanned paths\n", agents)
 		fmt.Fprintln(stderr, "  The tree has always carried some, so this is citePattern failing to")
 		fmt.Fprintln(stderr, "  match rather than a tree with nothing to check.")
 		return 2
 	}
-	// The same floor for the same reason: the root files have always cited
-	// docs/ by path, so an empty sweep is docPathPattern failing to match
-	// rather than a tree with no claims to check.
+	// The same floor for docPathPattern.
 	if len(docRefs) == 0 {
 		fmt.Fprintln(stderr, "doccheck: no docs/ path found anywhere in the scanned paths")
 		fmt.Fprintln(stderr, "  The tree has always carried some, so this is docPathPattern failing")
@@ -323,8 +197,7 @@ func run(args []string, stderr io.Writer) int {
 	if len(missing) > 0 {
 		fail = true
 		sortCites(missing)
-		// A markdown link writes its path twice on one line -- once as the
-		// visible text, once as the target -- and one report line is enough.
+		// A markdown link writes its path twice on one line; report it once.
 		var prev cite
 		for _, c := range missing {
 			if c == prev {
@@ -547,12 +420,8 @@ type cite struct {
 }
 
 // anchorsIn collects every name a citation may legitimately use, folded for
-// comparison.
-//
-// A heading that carries a colon offers TWO names, and the tree uses the second
-// one: `### The failure mode to look for: green because the gate fired` is cited
-// as "green because the gate fired". Refusing that would be refusing a citation
-// that names its section perfectly well.
+// comparison. A heading with a colon offers two names: the whole, and the part
+// after the colon.
 func anchorsIn(path string) (map[string]bool, error) {
 	b, err := os.ReadFile(path) // #nosec G304,G703 -- the path is this command's argument, which is the whole of its interface: it reads the file it is asked to.
 	if err != nil {
@@ -566,32 +435,11 @@ func anchorsIn(path string) (map[string]bool, error) {
 			anchors[fold(after)] = true
 		}
 	}
-	// BOLD IS PAIRED OVER THE WHOLE FILE, LAZILY, AND MUST BE ABLE TO CROSS A
-	// LONE ASTERISK. Two failures got here in two commits, and the second was
-	// caused by the fix for the first.
-	//
-	// Line by line, the `**` CLOSING a run opened on the previous line pairs with
-	// the `**` OPENING the next, which loses every wrapped anchor and invents one
-	// from the prose between two runs.
-	//
-	// Pairing over the whole file fixed that and introduced worse: with `[^*]+`
-	// as the body, the lone `*` in **... `byob-*` bead** desynchronised every
-	// pair after it. Measured on the committed file at the time, 14 spans of
-	// ordinary prose became anchors and four real lead phrases vanished, among
-	// them BOTH rules that have to sit above the generated block. THAT FIGURE
-	// WAS TAKEN BEFORE THE `^` ANCHOR BELOW; with it, the same mutation loses
-	// one anchor and invents none, because a desynchronised run rarely starts a
-	// line. The body still has to cross a lone `*`, which is what the test pins.
-	//
-	// ONLY A LEAD PHRASE COUNTS -- bold opening a line, a bullet or a NUMBERED
-	// item. Accepting bold anywhere made one-word inline emphasis into anchors,
-	// so "not", "range" and "message" resolved and a citation naming no section
-	// of this file passed the gate; that is the fail-open direction, and a lead
-	// phrase is the shape a cited rule actually takes.
-	//
-	// The ordered-list arm is not decoration: leaving it out took the generated
-	// block's seven numbered rules out of the anchor set, so a citation of
-	// "Push to remote" would have been reported dead.
+	// Bold is paired over the whole file, lazily, and must cross a lone `*`
+	// (as in `byob-*`): line by line, a wrapped run is lost, and a `[^*]+` body
+	// desynchronises every pair after the lone star. Only a lead phrase counts
+	// (bold opening a line, a bullet or a numbered item): inline emphasis as an
+	// anchor would let a citation of a single emphasised word pass, fail-open.
 	for _, m := range boldPattern.FindAllStringSubmatch(text, -1) {
 		anchors[fold(m[1])] = true
 	}
@@ -599,11 +447,8 @@ func anchorsIn(path string) (map[string]bool, error) {
 }
 
 // fold puts a title in the form both sides are compared in: collapsed
-// whitespace, no surrounding quotes or trailing sentence punctuation, lowercase.
-//
-// Trailing punctuation has to go because a bolded lead phrase carries the
-// sentence's full stop INSIDE the bold -- `**History's home is git.**` -- while
-// the citations of it do not.
+// whitespace, no surrounding quotes or trailing sentence punctuation (a bold
+// lead phrase carries its full stop inside the bold), lowercase.
 func fold(s string) string {
 	s = furniture.ReplaceAllString(s, " ")
 	s = strings.TrimSpace(s)
@@ -611,19 +456,11 @@ func fold(s string) string {
 	return strings.ToLower(strings.TrimSpace(s))
 }
 
-// scanUnder collects every citation, malformed citation and docs/ path in the
-// named files and directories. As in beadrefs, a path that cannot be READ is an
-// error rather than a skip, so an entry that has gone from the tree takes this
-// red.
-//
-// A path DELETED FROM THE MAKEFILE'S LIST is a different thing and this cannot
-// see it: the path is simply never walked, and the scan gets quietly smaller.
-// Neither that list nor scannable can know about an entry nobody added.
-//
-// root is what a walked path is made repo-relative against before the exempt
-// lookup, so the same arguments exempt the same file from anywhere -- the
-// working directory is no part of the interface here any more than it is in
-// treeRoot.
+// scanUnder collects every citation, malformed citation, path and test
+// reference in the named files and directories, plus the declared tests. A path
+// that cannot be read is an error, not a skip; a path dropped from the
+// Makefile's list is invisible. root makes walked paths repo-relative for the
+// exempt lookup.
 func scanUnder(root string, paths []string, anchors map[string]bool) (cites, malformed, docRefs, srcRefs []cite, testRefs []testRef, declared map[string]bool, err error) {
 	declared = map[string]bool{}
 	for _, p := range paths {
@@ -687,9 +524,7 @@ func scanUnder(root string, paths []string, anchors map[string]bool) (cites, mal
 	return cites, malformed, docRefs, srcRefs, testRefs, declared, nil
 }
 
-// citesIn reads the whole file rather than scanning it line by line, because a
-// citation may wrap across two comment lines and a line-wise scan sees only the
-// half that carries the opening quote.
+// citesIn reads the whole file, because a citation may wrap across lines.
 func citesIn(path string) ([]cite, error) {
 	b, err := os.ReadFile(path) // #nosec G304,G703 -- see scanUnder.
 	if err != nil {
@@ -713,12 +548,8 @@ func citesIn(path string) ([]cite, error) {
 
 // malformedIn reports the loosePattern hits that citePattern did not claim and
 // whose quoted title resolves against anchors. A loose hit is claimed when a
-// canonical match STARTS ANYWHERE INSIDE ITS SPAN, not only at its own anchor:
-// a passing mention of the anchor file shortly before a canonical citation
-// would otherwise capture that citation's quotes and report prose that is
-// fine. A hit whose title resolves against no anchor is a sentence rather
-// than a citation and is not a finding at all -- along with the mention
-// carrying no quoted title, that is the class this gate declares out of reach.
+// canonical match starts anywhere inside its span, so a mention of the anchor
+// file just before a canonical citation is not reported.
 func malformedIn(path string, anchors map[string]bool) ([]cite, error) {
 	b, err := os.ReadFile(path) // #nosec G304,G703 -- see scanUnder.
 	if err != nil {
@@ -849,13 +680,9 @@ func deadTests(refs []testRef, declared map[string]bool) []cite {
 	return dead
 }
 
-// missingDocs returns the cited paths that resolve to nothing. A bare docs/
-// path is a root-relative claim and resolves under root; one opening with ./
-// or ../ is a markdown-style relative link and resolves against the CITING
-// FILE'S directory, exactly as a reader following it would -- resolving those
-// against root would report a link that works on the page as dead. A path that
-// exists is not examined further: its opening marker and its backlink belong
-// to the wider contract this arm deliberately leaves alone.
+// missingDocs returns the cited paths that resolve to nothing. A bare path
+// resolves under root; one opening with ./ or ../ resolves against the citing
+// file's directory, as a reader following the link would.
 func missingDocs(root string, refs []cite) []cite {
 	var missing []cite
 	for _, r := range refs {
@@ -881,11 +708,8 @@ func titleOf(raw string) string {
 func norm(path string) string { return filepath.ToSlash(filepath.Clean(path)) }
 
 // relTo puts a walked path in the repo-relative slash form exempt's keys are
-// written in, whatever mix of relative and absolute the invocation used. Both
-// sides go through Abs first because filepath.Rel refuses to relate a relative
-// path to an absolute one, and the walk hands back paths shaped like the
-// argument they came from. On any error the path is returned in norm's form,
-// which can only fail toward scanning a file the exemption meant to skip --
+// written in, whatever mix of relative and absolute the invocation used. On
+// error it returns norm's form, which fails toward scanning an exempt file --
 // reported, not hidden.
 func relTo(root, path string) string {
 	absRoot, err := filepath.Abs(root)
@@ -904,9 +728,7 @@ func relTo(root, path string) string {
 }
 
 // scannable says whether a file found by walking a directory can carry a
-// citation. It is deliberately the same list beadrefs uses, minus the data
-// formats that cannot carry prose about this file: a citation is a sentence,
-// and .json here is extracted geometry.
+// citation: beadrefs' list minus .json, which here is extracted geometry.
 func scannable(path string) bool {
 	switch filepath.Ext(path) {
 	case ".md", ".go", ".mjs", ".js", ".tmpl", ".css", ".py", ".yaml", ".yml":

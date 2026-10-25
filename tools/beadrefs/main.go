@@ -1,21 +1,8 @@
 // Command beadrefs refuses a bead id that names no bead.
 //
-// An invented id does not read as a mistake: the work really is tracked and only
-// the pointer is dead, so nobody goes looking. It has happened twice here.
-// Writing one is easy, because `bd create` prints an id that is not guessable
-// and a sentence citing it is often drafted before the bead exists.
-//
-// It resolves against .beads/issues.jsonl, the committed export, and NOT against
-// bd. That is what makes it a gate rather than an advisory check: the export is
-// in every checkout, so CI can run this with no bd, no Dolt server and no
-// network -- unlike the memory arm of `make narration`, which reads a database
-// no checkout carries.
-//
-// THE EXPORT LAGS THE DATABASE, which is the one way this can be wrong about a
-// real bead. It is a passive export, so an id filed minutes ago may not be in it
-// yet. Where bd IS on PATH the misses are re-asked of it before anything is
-// reported, and where bd is absent -- CI -- a miss is a failure, because the
-// export is the only artifact CI has and the remedy is to commit it.
+// It resolves against .beads/issues.jsonl, the committed export, so CI can run
+// it with no bd, no Dolt and no network. The export lags the database: where bd
+// is on PATH a miss is re-asked of it; where bd is absent (CI) a miss fails.
 package main
 
 import (
@@ -34,26 +21,16 @@ import (
 )
 
 // exempt names files whose fisc- literals are fixtures rather than claims about
-// the tracker, with the reason each is here. It is a declaration and not a
-// pattern, so adding one is a visible decision.
-//
-// A declaration that has gone stale fails, the way internal/check/vacuity.go's
-// does: the file must still exist. Staleness is measured against the FILESYSTEM
-// rather than against the walk, because a run over a narrower path set is a
-// narrower run and not a stale declaration.
+// the tracker. A declaration whose file is gone from the filesystem fails.
 var exempt = map[string]string{
 	"tools/beadrefs/main_test.go":    "its fixtures are ids that must NOT resolve, so a test for this command cannot be written out of real ones",
 	"internal/beadid/beadid_test.go": "its fixtures are id shapes, most of which name no bead, so a test of the matcher cannot be written out of real ones",
 	"tools/beadcheck/main_test.go":   "its fixtures are synthetic bead records, and building them out of real ids would tie a prose check to whichever beads happen to exist",
 }
 
-// exemptIDs names tokens that are shaped like a bead id and are not one, with
-// what each actually is. None can be told from a bead id by any rule, and
-// renaming them would orphan values a returning reader's browser holds.
-//
-// Each names ONE anchor file: the file must exist, and if a run scanned it the
-// token must have been seen there, from outside this file (the declaration
-// below is itself scanned, so it would satisfy its own staleness test).
+// exemptIDs names tokens shaped like a bead id that are not one. Each names
+// ONE anchor file: it must exist, and if a run scanned it the token must have
+// been seen there, not in this declaration.
 var exemptIDs = map[string]exemptID{
 	"fisc-theme": {file: "site/theme.js", what: "the localStorage key holding the reader's light/dark choice, and the event a switch dispatches; also read by the head script in site/chrome.html.tmpl"},
 }
@@ -118,29 +95,20 @@ func main() {
 	os.Exit(1)
 }
 
-// checkExemptions refuses a declaration that has outlived the file it exempts,
-// which is otherwise a hole nobody can see. It takes the root explicitly because
-// the declared paths are repo-relative and this must be answerable from anywhere
-// -- refsUnder deliberately does not do it, since a run over a narrower path set
-// is a narrower run rather than a stale declaration.
+// checkExemptions refuses a declaration that has outlived the file it exempts.
 func checkExemptions(root string) error {
 	for file, reason := range exempt {
 		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(file))); err != nil {
 			return fmt.Errorf("the exemption for %s (%q) names a file that is not there: %w", file, reason, err)
 		}
 	}
-	// declarationFile is a hardcoded path and so is a claim about the tree like
-	// any other: nothing else ever resolves it, so a rename would leave the
-	// self-anchor guard below silently disarmed.
+	// A renamed declarationFile would silently disarm the self-anchor guard.
 	if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(declarationFile))); err != nil {
 		return fmt.Errorf("declarationFile names %s, which is not there: %w", declarationFile, err)
 	}
 	for id, e := range exemptIDs {
-		// A declaration cannot anchor itself to the file it is written in: the
-		// declaration below would then be the sighting that keeps it alive, and
-		// the staleness check could never fire. Refused here, where the message
-		// can say so, rather than left to produce a permanent unexplained error
-		// in dropExemptIDs.
+		// Anchored to its own declaration file, the staleness check could
+		// never fire.
 		if e.file == declarationFile {
 			return fmt.Errorf("the exemption for %s (%q) names %s, which is where the declaration itself lives; anchor it to the file that actually carries the token",
 				id, e.what, e.file)
@@ -153,19 +121,14 @@ func checkExemptions(root string) error {
 }
 
 // dropExemptIDs removes the declared non-bead tokens, and refuses a declaration
-// that no longer has a subject. It belongs here rather than in refsUnder because
-// only a run over the whole path list can say an id appears nowhere; a narrower
-// run is a narrower run.
+// whose anchor file was scanned without the token.
 func dropExemptIDs(refs []ref, scanned map[string]bool) ([]ref, error) {
 	seen := map[string]bool{}
 	kept := refs[:0:0]
 	for _, r := range refs {
 		if e, ok := exemptIDs[r.id]; ok {
-			// The sighting must be in the file the declaration names. Accepting
-			// one anywhere else made the check unfalsifiable in the ordinary
-			// way: the token could vanish from its own file entirely and any
-			// other occurrence -- including in this file's own declaration --
-			// would keep the exemption alive.
+			// Only a sighting in the named file counts, or any other
+			// occurrence would keep the exemption alive.
 			if norm(r.file) == e.file {
 				seen[r.id] = true
 			}
@@ -186,9 +149,8 @@ func dropExemptIDs(refs []ref, scanned map[string]bool) ([]ref, error) {
 // does not turn on whether the caller wrote ./Makefile or Makefile.
 func norm(path string) string { return filepath.ToSlash(filepath.Clean(path)) }
 
-// declarationFile is where exemptIDs is written, and a sighting there does not
-// count. It is a path rather than something derived because nothing in Go tells
-// a file its own name at runtime that a test could also assert against.
+// declarationFile is where exemptIDs is written; a sighting there does not
+// count.
 const declarationFile = "tools/beadrefs/main.go"
 
 // ref is one citation: which id, and where it was written.
@@ -235,21 +197,11 @@ func knownIDs(path string) (map[string]bool, error) {
 	return known, nil
 }
 
-// unrecognisable returns the export ids beadid.Cited could never return, sorted so a
-// failure reads the same way twice. bd chooses what a bead id looks like and
-// this repo does not, and beadid.Cited refuses a match that runs into a hyphen
-// because the second hyphen is what tells a fact id from a bead id. An export
-// id on the wrong side of that boundary is not invalid -- it is INVISIBLE, and
-// every citation to it would be dropped with no report, which is this command's
-// own failure mode happening inside it. Failing at startup takes the run red in
-// the run where the export first carries such an id, before anyone writes a
-// citation nothing can check; the hyphen refusal is safe to keep because this
-// is watching it.
-//
-// The probe is beadid.Cited itself, on the id alone on a line, rather than a second
-// pattern: a parallel regex would be a copy of the boundaries that nothing
-// keeps in step. Recognised means recognised WHOLE -- an id beadid.Cited returns a
-// prefix of is as unseeable as one it drops.
+// unrecognisable returns the export ids beadid.Cited could never return,
+// sorted. bd mints ids and beadid.Cited refuses a match running into a second
+// hyphen (a fact id), so an export id past that boundary would be INVISIBLE and
+// every citation of it dropped unreported. The probe is beadid.Cited itself,
+// and recognised means recognised WHOLE.
 func unrecognisable(known map[string]bool) []string {
 	var bad []string
 	for id := range known {
@@ -261,9 +213,8 @@ func unrecognisable(known map[string]bool) []string {
 	return bad
 }
 
-// refsUnder collects every citation in the named files and directories. A
-// directory is walked; anything unreadable is an error rather than a skip,
-// because a path that cannot be read is a path that cannot be checked.
+// refsUnder collects every citation in the named files and directories.
+// Anything unreadable is an error rather than a skip.
 func refsUnder(paths []string) ([]ref, map[string]bool, error) {
 	var refs []ref
 	scanned := map[string]bool{}
@@ -277,9 +228,8 @@ func refsUnder(paths []string) ([]ref, map[string]bool, error) {
 			if d.IsDir() {
 				return nil
 			}
-			// A file named on the command line is scanned whatever it is called,
-			// which is how Makefile gets read; the extension filter is only for
-			// deciding what to pick up while walking a DIRECTORY.
+			// A file named on the command line is scanned whatever its
+			// extension (Makefile); the filter applies only to a walk.
 			if norm(path) != norm(p) && !scannable(path) {
 				return nil
 			}
@@ -302,18 +252,8 @@ func refsUnder(paths []string) ([]ref, map[string]bool, error) {
 }
 
 // scannable says whether a file found by walking a directory can carry a claim
-// about the tracker.
-//
-// .json IS IN THE LIST, which is not obvious: it is mostly extracted geometry,
-// where a fisc- token would be a value. But testdata/sankey.golden.json carries
-// a prose note citing a bead, so "a golden holds values and not claims" was
-// simply false, and the beadid.Cited boundaries already reject the one value shape
-// that occurs there (fact ids, fisc-f-<hash>).
-//
-// .txt IS NOT, and that is the same judgement going the other way: the page
-// fixtures under testdata/pages/ are the city's own printed text and cannot
-// contain a claim about this tracker. requirements.txt is named directly in the
-// Makefile instead.
+// about the tracker. .json is in (a golden carries prose notes; fact ids are
+// refused by beadid.Cited); .txt is out (testdata/pages/ is the city's text).
 func scannable(path string) bool {
 	switch filepath.Ext(path) {
 	case ".md", ".go", ".mjs", ".js", ".tmpl", ".css", ".py", ".yaml", ".yml", ".json":
@@ -371,13 +311,9 @@ func resolve(refs []ref, known map[string]bool, secondOpinion func(string) bool)
 	return dead
 }
 
-// bdKnows asks bd about an id the export lacks, which covers the window between
-// filing a bead and committing the export. With bd absent it answers no, so CI
-// -- where bd never exists -- decides on the export alone.
-//
-// The deadline is not decoration. bd talks to a Dolt server that can be locked
-// by another process, and this runs inside pre-commit; without one, an id the
-// export happens to lack would hang the commit rather than fail it.
+// bdKnows asks bd about an id the export lacks. With bd absent it answers no,
+// so CI decides on the export alone. The deadline keeps a locked Dolt server
+// from hanging pre-commit.
 func bdKnows(ctx context.Context) func(string) bool {
 	path, err := exec.LookPath("bd")
 	if err != nil {
@@ -394,17 +330,9 @@ func bdKnows(ctx context.Context) func(string) bool {
 	}
 }
 
-// answersFor says whether bd's reply is about the id that was asked for.
-//
-// bd RESOLVES A UNIQUE PREFIX: asked about the first few characters of an id it
-// exits 0 and returns the whole one, and exec gives the caller no way to tell
-// that from a hit. A truncated id is a dead pointer whatever bd does with it,
-// and accepting one would pass pre-commit and fail CI, where bd is absent and
-// only the export answers.
-//
-// It is a function of bytes rather than a step inside bdKnows because the
-// version inside could not be tested: bdKnows closes over exec.LookPath, so
-// reducing this comparison to "did bd return anything" left every test green.
+// answersFor says whether bd's reply is about the id that was asked for. bd
+// RESOLVES A UNIQUE PREFIX and exits 0, so a truncated id would pass
+// pre-commit and fail CI. It is a function of bytes so it can be tested.
 func answersFor(out []byte, id string) bool {
 	var recs []struct {
 		ID string `json:"id"`

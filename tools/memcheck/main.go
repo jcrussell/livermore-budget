@@ -3,42 +3,15 @@
 //
 // It reads `bd memories --json` on stdin -- a flat object of key to body, with
 // non-string values (schema_version) skipped -- and exits non-zero on any body
-// containing a phrase that can only be a claim about the memory's own former
-// text. AGENTS.md's "History's home is git" already forbids that shape in a
-// source comment, and `make narration` already enforces it there; a memory is
-// worse placed for it, because injection means a stale line arrives whether or
-// not anyone opens the file it is about.
+// claiming something about the memory's own former text, per
+// AGENTS.md's "History's home is git".
 //
-// THE PHRASE LIST IS DELIBERATELY NARROW, for the reason narration's Go arm
-// gives. "an earlier version" and "used to say" have honest uses in a sentence
-// about a DOCUMENT -- the city reprints schedules, and one memory correctly
-// reports that an ACFR row "was quoted as producing '-512,946'". A present-tense
-// scope limit ("WHAT THIS MEMORY CANNOT TELL YOU IS THE CURRENT PUSH STATE") is
-// a true and useful sentence and must keep passing.
-//
-// THREE OF THE FIVE REQUIRE PAST-TENSE SELF-REFERENCE and two do not, which is
-// the thing to know before adding a sixth. The demonstrative patterns name the
-// memory as the subject and are safe on that ground. A full ISO date after
-// "corrected" and an ALL-CAPS line-leading CORRECTED are house-style SHAPES, and
-// each carries a residual risk of refusing a true sentence about the corpus that
-// happens to take that shape; the bare-year form is already refused for being
-// too easy to hit, because "the city corrected 2024's printed total" is about
-// the corpus. A parenthesised "(correction: ...)" must not be added for the same
-// reason: it refuses a true parenthetical about a reprinted ACFR figure, and no
-// memory carries the form it would be aimed at. See fisc-kaq1 for the residue
-// this leaves in the two shape patterns.
-//
-// EVERY GAP BETWEEN WORDS IS \s+ AND NOT A SPACE. The bodies are hard-wrapped
-// paragraphs -- most of them span lines -- so a pattern with a literal space
-// misses any erratum that happens to wrap at the wrong word, which is the
-// majority of the places one could sit.
-// TestScanFindsOnlyPastTenseSelfReference carries these cases and the others
-// that decide where each pattern's edge is.
-//
-// Unlike narration's Go arm this one has no file-touch signal to defer a
-// pre-existing hit to the session that was editing that file anyway: memories
-// are not files, so it fires on every commit against all of them at once. It
-// can only be added to a tree whose memories are already clean.
+// THE PHRASE LIST IS NARROW: "used to say" has honest uses about a DOCUMENT
+// the city reprinted. Three patterns require past-tense self-reference; the
+// ISO-dated "corrected" and line-leading CORRECTED are house-style shapes that
+// may refuse a true sentence about the corpus (fisc-kaq1). A bare-year or
+// "(correction: ...)" form must not be added. Gaps are \s+ because bodies are
+// hard-wrapped. TestScanFindsOnlyPastTenseSelfReference holds each edge.
 package main
 
 import (
@@ -52,9 +25,7 @@ import (
 	"unicode/utf8"
 )
 
-// errata are matched against a memory body. Each requires the memory itself to
-// be the subject of a past-tense claim; see the package comment for why nothing
-// looser belongs here.
+// errata are matched against a memory body; see the package comment.
 var errata = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)th(is|e)\s+memory\s+(used\s+to|previously|once|said|no\s+longer)`),
 	regexp.MustCompile(`(?i)earlier\s+versions?\s+of\s+this\s+memory`),
@@ -75,11 +46,8 @@ func main() {
 		os.Exit(2)
 	}
 	if examined == 0 {
-		// A beads database that exists and holds no memories at all -- what a
-		// fresh `bd init` looks like before the project's memories are pulled.
-		// It is reported rather than refused, because refusing it stops a
-		// contributor in that state from committing anything, and the arm this
-		// runs under is advisory in the same way when bd is absent entirely.
+		// A fresh `bd init` holds no memories; warn rather than refuse, as the
+		// arm is advisory when bd is absent too.
 		fmt.Fprintln(os.Stderr, "warning: the memory set is empty, so nothing was checked")
 		return
 	}
@@ -99,21 +67,10 @@ func main() {
 	os.Exit(1)
 }
 
-// scan reports one line per erratum found, sorted by key so the output is
-// stable across runs of a map.
-//
-// IT REFUSES ANY SHAPE IT CANNOT READ AS BODIES rather than reporting it clean.
-// A top-level null unmarshals into a nil map without error, and a NESTED value
-// means the bodies have moved down a level
-// ({"schema_version":1,"memories":{...}}) -- and note that counting the bodies
-// does not catch the second on its own, because one stray top-level string
-// beside the envelope makes the count non-zero while the real bodies go unread.
-// Both are the shape AGENTS.md calls green because the gate fired: an exit code
-// that says nothing was wrong when it means nothing was looked at.
-//
-// A WELL-FORMED OBJECT HOLDING NO BODIES IS NOT ONE OF THOSE. It is what a fresh
-// `bd init` returns, and the count is handed back to the caller to report rather
-// than refused here; see main.
+// scan reports one line per erratum found, sorted by key. It refuses any shape
+// it cannot read as bodies -- a top-level null, or a nested value (the bodies
+// moved down a level, which a body count alone misses) -- rather than reporting
+// it clean. An empty object is returned with a zero count; see main.
 func scan(in []byte) ([]string, int, error) {
 	var raw map[string]any
 	if err := json.Unmarshal(in, &raw); err != nil {
@@ -160,9 +117,7 @@ func excerpt(body string, start, end int) string {
 	if hi >= len(body) {
 		hi, suffix = len(body), ""
 	}
-	// pad is a byte count and the bodies carry em-dashes, so both ends have to
-	// be walked out to a rune boundary or the excerpt prints the tail of a
-	// multi-byte character as replacement bytes.
+	// pad is in bytes and bodies carry em-dashes: walk out to rune boundaries.
 	for lo > 0 && !utf8.RuneStart(body[lo]) {
 		lo--
 	}
