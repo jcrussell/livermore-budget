@@ -16,10 +16,8 @@ import (
 	"github.com/jcrussell/livermore-budget/schema"
 )
 
-// deptDocs are a department-funding and a department-spending document of
-// FY2026-27 adopted: two departments, police with two divisions and council
-// with one, each paid by the General Fund and police by an internal service
-// fund too, and Horizons spending a Transfers Out row beside its wages.
+// deptDocs are FY2026-27 department-funding and department-spending
+// documents: police (two divisions, two funds) and council (one of each).
 func deptDocs() map[string][]byte {
 	meta := func(scope string, pages string) string {
 		return fmt.Sprintf(`"metadata":{"generated_by":"fisc (test)","fiscal_year":2027,`+
@@ -103,13 +101,11 @@ func departmentConfigOf(t *testing.T, html string) map[string]any {
 	return cfg
 }
 
-// TestDepartmentPageCarriesItsMembershipAndItsTies holds the department view
-// to the chrome it renders, the module it boots, the sentences it says in its
-// body, and a config stating every department with its divisions and, per
-// year, whether each ties or the declared reason it does not.
+// TestDepartmentPageCarriesItsMembershipAndItsTies: chrome, module, body
+// sentences, and a config stating each department, its divisions and its ties.
 //
-// Mutation: write a held-apart cell's side as tying in buildDepartmentPage
-// and police reads as tying in a column its checks declare it does not.
+// Mutation: write a held-apart side as tying and police ties where its checks
+// declare it does not.
 func TestDepartmentPageCarriesItsMembershipAndItsTies(t *testing.T) {
 	dir := t.TempDir()
 	if _, err := writeSite(deptOptions(t, dir)); err != nil {
@@ -189,12 +185,10 @@ func TestDepartmentPageCarriesItsMembershipAndItsTies(t *testing.T) {
 	}
 }
 
-// TestTheDepartmentPageLinksNoSourcesPageWhereTheSiteHasNone: on a site
-// with no provenance view the body's sentence points at the footer's Sources
-// list, which the footer then carries, and links no page the site does not
-// write. The arm with a sources page is held by department.golden.html.
-// Mutation: hard-code href="provenance.html" in department.html.tmpl again
-// and the first arm goes red.
+// TestTheDepartmentPageLinksNoSourcesPageWhereTheSiteHasNone: with no
+// provenance view the body points at the footer's Sources list.
+// Mutation: hard-code href="provenance.html" in department.html.tmpl and the
+// first arm goes red.
 func TestTheDepartmentPageLinksNoSourcesPageWhereTheSiteHasNone(t *testing.T) {
 	dir := t.TempDir()
 	if _, err := writeSite(deptOptions(t, dir)); err != nil {
@@ -211,16 +205,13 @@ func TestTheDepartmentPageLinksNoSourcesPageWhereTheSiteHasNone(t *testing.T) {
 	}
 }
 
-// TestDepartmentPageRefusesASideLessThanTheDepartment: every way a side of a
-// department could be summed over less than the department, or a page offer a
-// department or a declaration the documents do not bear out, refuses the
-// export by name.
+// TestDepartmentPageRefusesASideLessThanTheDepartment: a side summed over
+// less than its department, or a declaration the documents do not bear out,
+// is refused by name.
 //
-// Mutation: drop the arm requiring every filed division to draw, and "a
-// division the spending side draws nothing for" is refused only by the label
-// arm after it, which reads the undrawn division's label as empty.
-// Drop the arm holding a spending link's kind to its object end's role, and
-// the four kind cases export.
+// Mutation: drop the every-division-draws arm and "a division the spending
+// side draws nothing for" is refused only by the label arm. Mutation: drop
+// the spending kind-to-role arm and the four kind cases export.
 func TestDepartmentPageRefusesASideLessThanTheDepartment(t *testing.T) {
 	police := func(m []export.Department) *export.Department { return &m[1] }
 	for _, tt := range []struct {
@@ -337,10 +328,8 @@ func editFunding(t *testing.T, o *export.Options, old, new string) []byte {
 	return []byte(strings.Replace(doc, old, new, 1))
 }
 
-// TestOnlyTheDepartmentPageReadsASecondSchedule: a view reading a schedule
-// beside its own on a template that reads none is refused, and a year whose
-// column carries no such schedule is refused, rather than the page reading
-// nothing.
+// TestOnlyTheDepartmentPageReadsASecondSchedule: a second schedule on a
+// template that reads none is refused, as is a year lacking it.
 func TestOnlyTheDepartmentPageReadsASecondSchedule(t *testing.T) {
 	o := deptOptions(t, t.TempDir())
 	o.Views[0].Reads = []string{project.DepartmentSpendingProjection}

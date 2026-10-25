@@ -78,27 +78,17 @@ func TestWritableDir(t *testing.T) {
 	}
 }
 
-// TestRefuseForeignDir: export writes only into a directory that is
-// missing, empty, or carries a valid manifest. A directory holding anything
-// else -- `fisc export -o data` names one holding YAML and subdirectories,
-// and `-o site` one holding Go -- is refused, and so is one holding a
-// finished site's index.html with no manifest, or with a marker that is not
-// one: the bare "fisc export" an older binary wrote, or any listing that
-// could name a path outside the directory or name one twice. Every refusal
-// says how to recover: remove the directory and export again.
+// TestRefuseForeignDir: export writes only into a directory that is missing,
+// empty, or carries a valid manifest; every refusal says how to recover.
 //
-// Mutation: make RefuseForeignDir return nil for any directory and every
-// refused case goes red with "got nil error, want a refusal"; make
-// parseManifest accept any marker and the invalid-marker cases go red with
-// "got nil error, want a refusal"; drop the header check and "the older
-// binary's marker" goes red the same way; drop the order check and
-// "unsorted" and "repeated" do; drop the hint and the refused cases go red
-// with "want it to say how to recover"; stop disregarding a stranded write
-// probe and "only a stale write probe" goes red with "want the directory
-// accepted"; stop disregarding a stranded manifest temp file and "only a
-// stranded manifest temp file" goes red the same way; disregard every entry
-// cmdutil.IsTempName accepts whatever its type and "a directory named like a
-// temp file" goes red with "got nil error, want a refusal".
+// Mutation: RefuseForeignDir returns nil and every refused case goes red.
+// Mutation: parseManifest accepts any marker and the invalid-marker cases go
+// red. Mutation: drop the header check and "the older binary's marker" goes
+// red. Mutation: drop the order check and "unsorted" and "repeated" go red.
+// Mutation: drop the hint and the refused cases go red. Mutation: stop
+// disregarding a stranded write probe, or manifest temp file, and its case
+// goes red. Mutation: disregard every IsTempName entry whatever its type and
+// "a directory named like a temp file" goes red.
 func TestRefuseForeignDir(t *testing.T) {
 	const h = export.ManifestHeader + "\n"
 	noMarker := "carries no " + export.MarkerName
@@ -141,16 +131,12 @@ func TestRefuseForeignDir(t *testing.T) {
 		{name: "another tool's temp file", files: []string{".tmp-123"}, refuse: noMarker},
 		{name: "a finished export", files: []string{export.MarkerName, "index.html"}, dirs: []string{"data"}},
 		{name: "a manifest listing files", marker: h + "index.html\nvendor/d3.js\n", files: []string{"index.html"}},
-		// The directory fisc-3s5d.65 is about: an older marker over nothing
-		// but subdirectories holding source. Only a manifest says fisc's.
+		// An older marker over subdirectories holding source.
 		{name: "the older binary's marker over source below", marker: "fisc export\n", files: []string{"cmd/fisc/main.go", "src/x/x.go"}, refuse: notManifest},
-		// A manifest is the whole rule: what else is there is never at risk,
-		// because --clean removes no file the manifest does not list but a
-		// stranded manifest temp file.
+		// A manifest is the whole rule: --clean removes only what it lists.
 		{name: "a manifest beside files no export wrote", files: []string{export.MarkerName, "notes.md", "sub/keep.go", ".git/HEAD"}},
-		// An unmarked GitHub Pages checkout is refused, and the refusal
-		// names the route: export elsewhere and copy. Mutation: drop that
-		// sentence and this case goes red.
+		// An unmarked Pages checkout is refused, naming export-and-copy.
+		// Mutation: drop that sentence and this case goes red.
 		{name: "an unmarked pages checkout", files: []string{".git/HEAD", "CNAME", "README.md"}, refuse: "export into a new directory and copy its files across"},
 	}
 	for _, tc := range cases {
@@ -190,10 +176,9 @@ func TestRefuseForeignDir(t *testing.T) {
 // A refusal matches ErrForeignDir; failing to read the directory or its
 // manifest does not.
 //
-// Mutation: return a plain fmt.Errorf from the unmarked-directory arm and the
-// first case goes red with "does not match ErrForeignDir"; make readManifest
-// report a read failure as an invalid manifest and the last goes red with
-// "reading the manifest matches ErrForeignDir".
+// Mutation: return a plain fmt.Errorf from the unmarked arm and the first
+// case goes red. Mutation: have readManifest report a read failure as an
+// invalid manifest and the last goes red.
 func TestRefuseForeignDirTellsARefusalFromAnIOError(t *testing.T) {
 	refused := t.TempDir()
 	if err := os.WriteFile(filepath.Join(refused, "sources.yaml"), []byte("x"), 0o600); err != nil {

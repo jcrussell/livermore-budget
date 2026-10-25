@@ -10,10 +10,8 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/project"
 )
 
-// changeDocs are a ten-year changes document of two audited years and a
-// revenue-trends document of two budget columns: revenue, expenditure and the
-// printed excess on the audited side, a revenue line and a transfer in on the
-// budget side. `extra` adds a series of a kind the page draws nowhere.
+// changeDocs are a two-year audited changes document and a two-column
+// revenue-trends document. `extra` adds a series of a kind drawn nowhere.
 func changeDocs(extra bool) map[string][]byte {
 	point := func(year int, basis string, cents int64, page int) string {
 		return fmt.Sprintf(`{"fiscal_year":%d,"basis":%q,"amount_cents":%d,"fact_id":"fisc-f-%012x",`+
@@ -73,13 +71,11 @@ func changeOptions(t *testing.T, dir string, extra bool) export.Options {
 
 var changeCell = regexp.MustCompile(`<tr data-category="([^"]+)">\s*<th scope="row">([^<]+)</th>[\s\S]*?</tr>`)
 
-// TestChangePagePrintsADocumentsCaveatsOnce holds the page to one statement
-// of a document's caveats, on the page's line below every figure and inside
-// none, where three figures are drawn from the audited document.
+// TestChangePagePrintsADocumentsCaveatsOnce: one statement of a document's
+// caveats, below every figure and inside none.
 //
-// Mutation: render the "caveats-line" template inside each figure and the
-// audited caveat is printed five times. Mutation: move the line inside the
-// last figure, before its closing tag, and it is printed once but inside it.
+// Mutation: render "caveats-line" inside each figure and it prints five
+// times. Mutation: move it inside the last figure and it prints inside it.
 func TestChangePagePrintsADocumentsCaveatsOnce(t *testing.T) {
 	dir := t.TempDir()
 	o := changeOptions(t, dir, false)
@@ -164,13 +160,10 @@ func TestChangePageRendersEachKindAsItsOwnFigure(t *testing.T) {
 	}
 }
 
-// TestChangePageRefusesWhatItCannotDraw: the page is refused with no
-// revenue-trends document, over another projection, and when a kind of the
-// audited document is drawn in no figure, so a point can go missing in
-// silence.
+// TestChangePageRefusesWhatItCannotDraw: no revenue-trends document, another
+// projection, or a kind drawn in no figure is refused.
 //
-// Mutation: drop the placed-points check in buildChangePage and the "kind
-// drawn nowhere" case writes a page short of the document.
+// Mutation: drop the placed-points check and "kind drawn nowhere" writes.
 func TestChangePageRefusesWhatItCannotDraw(t *testing.T) {
 	o := changeOptions(t, t.TempDir(), false)
 	delete(o.Projections, project.TrendsProjection)
@@ -206,8 +199,7 @@ func TestChangePageRefusesWhatItCannotDraw(t *testing.T) {
 			t.Errorf("%s: got %v, want a refusal", edit.name, err)
 		}
 	}
-	// A budget point in a column the document does not declare has no cell
-	// to land in, and the budget document is reconciled against nothing else.
+	// A budget point in an undeclared column has no cell to land in.
 	// Mutation: drop the placed-against-published refusal in changeRows and
 	// the page renders with the point gone.
 	o = changeOptions(t, t.TempDir(), false)

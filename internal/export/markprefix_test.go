@@ -13,11 +13,9 @@ import (
 	"github.com/jcrussell/livermore-budget/schema"
 )
 
-// TestMarkPrefixesAreTheMarkSchemasIDPattern holds export.MarkPrefixes, which
-// ColumnsOf refuses producer ids under, to the alternatives
-// of schema/mark.schema.json's id pattern, in order: a prefix the client
-// moved and the schema followed is otherwise a guard on ids nothing makes.
-// site/pins.test.mjs holds the client's constants to the same pattern.
+// TestMarkPrefixesAreTheMarkSchemasIDPattern holds export.MarkPrefixes to the
+// alternatives of schema/mark.schema.json's id pattern, in order;
+// site/pins.test.mjs holds the client to the same pattern.
 func TestMarkPrefixesAreTheMarkSchemasIDPattern(t *testing.T) {
 	raw, err := fs.ReadFile(schema.FS(), schema.Mark)
 	if err != nil {

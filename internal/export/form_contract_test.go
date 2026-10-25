@@ -11,11 +11,8 @@ import (
 	"github.com/jcrussell/livermore-budget/schema"
 )
 
-// TestTheSchemaHoldsAChartToItsForm is the arm Go's validate does not spell: a
-// hint foreign to the declared form, and a form's hints on a chart of another
-// form, are refused by schema/page.schema.json at the write. Over the config
-// of testdata/flows.golden.html, the Sankey page this build writes over the client
-// subset, so the control is a shape this build produces.
+// TestTheSchemaHoldsAChartToItsForm: schema/page.schema.json refuses a hint
+// foreign to the chart's form, over testdata/flows.golden.html's config.
 func TestTheSchemaHoldsAChartToItsForm(t *testing.T) {
 	page, err := os.ReadFile("../../testdata/flows.golden.html")
 	if err != nil {
@@ -131,10 +128,8 @@ func TestTheSchemaHoldsTheExpansionsCanvasAndCaps(t *testing.T) {
 	}
 }
 
-// TestAHintIsSpelledOnceInTheFileAndOnTheWire holds every field of the
-// declared hints to one key: data/views.yaml decodes the hints as these types,
-// and the page config marshals them, so a field whose yaml and json keys
-// differed would be authored under one name and shipped under another.
+// TestAHintIsSpelledOnceInTheFileAndOnTheWire: every hint field's yaml key
+// is its json key.
 // Mutation: give SankeyHints.Grow the yaml key "grows", and it goes red.
 func TestAHintIsSpelledOnceInTheFileAndOnTheWire(t *testing.T) {
 	for _, typ := range []reflect.Type{reflect.TypeOf(export.SankeyHints{}), reflect.TypeOf(export.CanvasGrowth{}), reflect.TypeOf(export.SplitCap{})} {

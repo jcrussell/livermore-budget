@@ -21,10 +21,7 @@ import (
 )
 
 // TestTheSchemaStatesWhatThePageConfigCarries holds schema/page.schema.json to
-// the structs [encodeConfig] marshals, both ways, over the whole tree. The
-// template reads Go field names and never sees the JSON, so a dropped tag is
-// silent until a reader switches year. The schema's additionalProperties: false
-// is also what refuses a `text` on caveatRef.
+// the structs [encodeConfig] marshals, both ways, over the whole tree.
 func TestTheSchemaStatesWhatThePageConfigCarries(t *testing.T) {
 	// Deep, because the Sankey hints are a $def, and a $ref is a leaf to
 	// Names.
@@ -45,10 +42,8 @@ func TestTheSchemaStatesWhatThePageConfigCarries(t *testing.T) {
 	}
 }
 
-// TestBasisLabelForRewritesOnlyTheAuditedBasisOfAnUnauditedDocument covers the
-// three answers separately, because two of them are the ones a careless
-// widening would break: a document without the caveat must keep its word, and a
-// document with it must keep a basis that was never "audited".
+// TestBasisLabelForRewritesOnlyTheAuditedBasisOfAnUnauditedDocument: a
+// document without the caveat, or a basis not "audited", keeps its word.
 func TestBasisLabelForRewritesOnlyTheAuditedBasisOfAnUnauditedDocument(t *testing.T) {
 	unaudited := []caveatMeta{{ID: "some-other-caveat"}, {ID: project.UnauditedCaveatID}}
 	other := []caveatMeta{{ID: "some-other-caveat"}}
@@ -74,9 +69,7 @@ func TestBasisLabelForRewritesOnlyTheAuditedBasisOfAnUnauditedDocument(t *testin
 }
 
 // TestTheWordingFillsEveryPlaceholderTheClientHands holds each wording
-// template to the variables site/app.js fills it with: a placeholder the
-// client never hands is left on the page as written, and a variable the
-// template never names is a figure the reader is not shown.
+// template to the variables site/app.js fills it with, both ways.
 func TestTheWordingFillsEveryPlaceholderTheClientHands(t *testing.T) {
 	hands := map[string][]string{
 		"counts":              {"links", "nodes", "facts"},
@@ -145,11 +138,9 @@ func TestTheWordingFillsEveryPlaceholderTheClientHands(t *testing.T) {
 	}
 }
 
-// TestTheFilterLineMarksItsCounts holds every sentence of the filter line
-// that states how many flows the client took to the mark the client's
-// arithmetic licence puts on a count of what is drawn (AGENTS.md, "Go vets,
-// JavaScript renders"). Mutation: drop the ◇ from filter_hidden and this
-// goes red.
+// TestTheFilterLineMarksItsCounts: every count in the filter line carries ◇
+// (AGENTS.md, "Go vets, JavaScript renders").
+// Mutation: drop the ◇ from filter_hidden and this goes red.
 func TestTheFilterLineMarksItsCounts(t *testing.T) {
 	blob, err := json.Marshal(defaultWording())
 	if err != nil {
@@ -176,10 +167,8 @@ func TestTheFilterLineMarksItsCounts(t *testing.T) {
 	}
 }
 
-// TestEverySplitKeyHasItsWords holds the page's words for what a node splits
-// into to the split keys the expansion schedule declares, both ways: a key
-// with no words is a chooser button the client cannot name, and words for no
-// key are a promise about a split that is never drawn.
+// TestEverySplitKeyHasItsWords holds the page's split words to the split keys
+// the expansion schedule declares, both ways.
 func TestEverySplitKeyHasItsWords(t *testing.T) {
 	labels := splitLabels()
 	got := slices.Sorted(maps.Keys(labels))
@@ -216,10 +205,8 @@ func TestEverySplitKeyHasItsMemberNoun(t *testing.T) {
 	}
 }
 
-// TestAMemberNounNamingAFundIsSaidOfAFund holds each split whose member noun
-// names {fund} to the committed column fixtures: every member of it the
-// client qualifies, one labelled as its parent, carries the fund number the
-// noun is filled with, so the client never meets a {fund} it has nothing for.
+// TestAMemberNounNamingAFundIsSaidOfAFund: every qualified member of a split
+// whose noun names {fund} carries a fund number, over the column fixtures.
 func TestAMemberNounNamingAFundIsSaidOfAFund(t *testing.T) {
 	paths, err := filepath.Glob("../../testdata/*.column.json")
 	if err != nil || len(paths) == 0 {
@@ -281,10 +268,8 @@ func TestAMemberNounNamingAFundIsSaidOfAFund(t *testing.T) {
 	}
 }
 
-// TestTheTemplatesCountsHeadIsTheWordingsCounts holds the counts line
-// site/flows.html.tmpl renders before app.js runs to the wording app.js
-// repaints it with: the same sentence, the plural fixed as the template
-// prints it, so a reworded default reaches both or neither.
+// TestTheTemplatesCountsHeadIsTheWordingsCounts: site/flows.html.tmpl's
+// counts line is the sentence app.js repaints it with.
 func TestTheTemplatesCountsHeadIsTheWordingsCounts(t *testing.T) {
 	tmpl, err := fs.ReadFile(site.FS(), "flows.html.tmpl")
 	if err != nil {
@@ -300,11 +285,8 @@ func TestTheTemplatesCountsHeadIsTheWordingsCounts(t *testing.T) {
 	}
 }
 
-// TestEveryGestureSentenceSaysASecondClickFolds holds the two places the page
-// says how a split node folds back -- an open hub's accessible name and the
-// hint beside a chart with a split open -- to the activation that opened the
-// node folding it: a sentence naming only ⊖ or the chip tells a reader the
-// node's own click does something it does not.
+// TestEveryGestureSentenceSaysASecondClickFolds: an open hub's accessible
+// name and the open-split hint both say the node's own click folds it.
 func TestEveryGestureSentenceSaysASecondClickFolds(t *testing.T) {
 	w := defaultWording()
 	for name, s := range map[string]string{

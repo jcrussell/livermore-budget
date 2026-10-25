@@ -9,11 +9,8 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/project"
 )
 
-// sidesExpansion is an expansion schedule of the golden spine's column,
-// FY2025-26 adopted: two revenue roots at tier 0, one fund group at tier 2
-// that both takes in and pays out, one object category at tier 5, and a
-// split of the first revenue root into two lines. `both` adds a link from the
-// tier-5 root back to the second revenue root, so each flows both ways.
+// sidesExpansion is a FY2025-26 expansion schedule with roots at tiers 0, 2
+// and 5. `both` adds a link making a root flow both ways.
 func sidesExpansion(both bool) []byte {
 	link := func(from, to string, cents int64) string {
 		return fmt.Sprintf(`{"source":%q,"target":%q,"value_cents":%d,"kind":"external","fact_ids":["fisc-f-%012x"],`+
@@ -100,9 +97,8 @@ func TestSidesPagesCarryTheirSidesAndConfig(t *testing.T) {
 	}
 }
 
-// TestSidesPagesRefuseWhatTheyCouldNotDraw: a side with no heading, a tier
-// twice, a tier with no root, a root flowing both ways, hints of another
-// form, and no hints at all are each refused by name before a page is written.
+// TestSidesPagesRefuseWhatTheyCouldNotDraw: each malformed side declaration
+// is refused by name before a page is written.
 //
 // Mutation: drop the leaving-and-arriving arm of validateSides and the
 // "both ways" case writes a page whose side has no one figure.

@@ -19,13 +19,8 @@ type historySeries struct {
 	label, kind, group string
 }
 
-// historyDoc is a minimal ACFR-shaped history document: every series spans the
-// same two audited columns, and — as on the real p167 — two blocks may print
-// the same row label, distinguished only by fund group.
-//
-// Hand-written rather than built by internal/project, for trendsDoc's reason:
-// the packager consumes bytes and a test reaching for the producer would
-// retire that seam.
+// historyDoc is a hand-written ACFR-shaped history document: two audited
+// columns, and, as on p167, one row label in two blocks told apart by fund group.
 func historyDoc(series ...historySeries) []byte {
 	years := []int{2016, 2017}
 	columns := make([]map[string]any, 0, len(years))
@@ -118,9 +113,8 @@ func writeHistorySite(t *testing.T, doc []byte, sections []export.Section) (stri
 	return dir, err
 }
 
-// TestTheHistoryViewGroupsRowsUnderPrintedHeadings is the happy path: two rows
-// printing the same label land under the two headings that tell them apart, in
-// declared order, every figure a link.
+// TestTheHistoryViewGroupsRowsUnderPrintedHeadings: two rows of one label
+// land under their two headings, in declared order, every figure a link.
 func TestTheHistoryViewGroupsRowsUnderPrintedHeadings(t *testing.T) {
 	dir, err := writeHistorySite(t, historyDoc(balancesFixture()...), balancesSections())
 	if err != nil {
@@ -150,9 +144,8 @@ func TestTheHistoryViewGroupsRowsUnderPrintedHeadings(t *testing.T) {
 	}
 }
 
-// TestTheHistoryViewRefusesASeriesNoSectionClaims: a row under the wrong
-// printed heading is a claim the schedule does not make, so an unclaimed one is
-// an error rather than a guess.
+// TestTheHistoryViewRefusesASeriesNoSectionClaims: an unclaimed series is an
+// error rather than a guess.
 func TestTheHistoryViewRefusesASeriesNoSectionClaims(t *testing.T) {
 	_, err := writeHistorySite(t, historyDoc(balancesFixture()...),
 		[]export.Section{{Heading: "General Fund", Kind: "fund_balance", FundGroup: "general"}})
@@ -177,9 +170,8 @@ func TestTheHistoryViewRefusesASectionClaimingNoSeries(t *testing.T) {
 	}
 }
 
-// TestTheHistoryViewRefusesTwoSectionsForOneKey: exact matching is what makes
-// the grouping deterministic, and a contested key would decide by declaration
-// order in silence.
+// TestTheHistoryViewRefusesTwoSectionsForOneKey: a contested key is refused
+// rather than settled by declaration order.
 func TestTheHistoryViewRefusesTwoSectionsForOneKey(t *testing.T) {
 	_, err := writeHistorySite(t, historyDoc(balancesFixture()...),
 		append(balancesSections(),
@@ -192,13 +184,11 @@ func TestTheHistoryViewRefusesTwoSectionsForOneKey(t *testing.T) {
 	}
 }
 
-// TestTheHistoryViewRefusesADocumentShortASeries is the missing-row proof: a
-// document whose own counts promise more than its series carry is refused
-// rather than rendered smaller.
+// TestTheHistoryViewRefusesADocumentShortASeries: a document whose counts
+// promise more series than it carries is refused.
 func TestTheHistoryViewRefusesADocumentShortASeries(t *testing.T) {
-	// Three series so the dropped one is NOT a whole section: its block keeps a
-	// row, no heading goes empty, and the count reconciliation is the only
-	// thing left standing between the reader and a quietly smaller table.
+	// Three series, so the dropped one empties no heading and only the count
+	// reconciliation can catch it.
 	raw := historyDoc(append(balancesFixture(),
 		historySeries{label: "Assigned", kind: "fund_balance", group: "general"})...)
 	var doc map[string]any
@@ -230,9 +220,8 @@ func changesFixture() []historySeries {
 	}
 }
 
-// changesSections is the declaration the real view makes for that shape: the
-// revenue block open, the excess section closed on its one row with the whole
-// printed phrase as its display label.
+// changesSections is the real view's declaration for that shape: revenue
+// open, excess closed on its one row under the whole printed phrase.
 func changesSections() []export.Section {
 	return []export.Section{
 		{Heading: "Revenues", Kind: "revenue"},
@@ -269,11 +258,8 @@ func TestTheHistoryViewDisplaysADeclaredRowLabel(t *testing.T) {
 	}
 }
 
-// TestTheHistoryViewRefusesASeriesItsSectionDoesNotName is the swallow test: a
-// second fund_balance series with no fund group lands at the excess section's
-// (kind, fund_group) key, so the unclaimed-series refusal cannot see it, and
-// the section's Rows is the only thing standing between it and the wrong
-// heading.
+// TestTheHistoryViewRefusesASeriesItsSectionDoesNotName: a second series at
+// the excess section's key is caught only by the section's Rows.
 func TestTheHistoryViewRefusesASeriesItsSectionDoesNotName(t *testing.T) {
 	series := append(changesFixture(),
 		historySeries{label: "Net change in fund balances", kind: "fund_balance", group: ""})
@@ -287,9 +273,8 @@ func TestTheHistoryViewRefusesASeriesItsSectionDoesNotName(t *testing.T) {
 	}
 }
 
-// TestTheHistoryViewRefusesARowNameMatchingNoSeries: a name that matches
-// nothing checks nothing, so a stale or typo'd Rows key is an error rather
-// than a silently inert declaration.
+// TestTheHistoryViewRefusesARowNameMatchingNoSeries: a Rows key matching no
+// series is an error.
 func TestTheHistoryViewRefusesARowNameMatchingNoSeries(t *testing.T) {
 	sections := changesSections()
 	sections[1].Rows["Net change in fund balances"] = ""
@@ -302,10 +287,8 @@ func TestTheHistoryViewRefusesARowNameMatchingNoSeries(t *testing.T) {
 	}
 }
 
-// TestAnUnauditedDocumentsColumnsAreLabelledUnaudited holds both pages that
-// print an audited column -- history and change -- to the word the caveat
-// leaves standing, in the column chip and in every mark's tooltip, where the
-// page meets basisLabelFor's answer.
+// TestAnUnauditedDocumentsColumnsAreLabelledUnaudited: history and change
+// label columns by basisLabelFor, in the chip and every mark's tooltip.
 // Mutation: label buildHistoryPage's or buildChangePage's columns with the
 // document's raw basis and that page's arm goes red on "audited".
 func TestAnUnauditedDocumentsColumnsAreLabelledUnaudited(t *testing.T) {

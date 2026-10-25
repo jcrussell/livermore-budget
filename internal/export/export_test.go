@@ -28,9 +28,7 @@ import (
 )
 
 // goldenPath is the frozen worked example of the sankey contract: real FY2026
-// figures with real fact ids. Testing against it rather than a toy fixture is
-// the point — the numbers a reviewer checks by eye are the numbers the page
-// has to show.
+// figures with real fact ids.
 const goldenPath = "../../testdata/sankey.golden.json"
 
 func goldenSankey(t *testing.T) []byte {
@@ -54,16 +52,9 @@ func budgetDocs() []export.Doc {
 // budgetDocID is the one document the golden projection cites.
 const budgetDocID = "livermore-budget-fy2026-2027"
 
-// pageTextFS stands in for data/extracted/. It holds more than the golden
-// projection cites — an uncited page of the same document and a whole second
-// document — because "only the cited pages ship" is the claim, and a tree
-// holding exactly the cited pages could not fail it.
-//
-// The bytes are synthetic rather than copied from data/extracted/: this package
-// does not read page text, it copies it, so what is asserted is that the bytes
-// arrive unchanged. A real fixture here would be one more file to re-copy when
-// the extraction changes (AGENTS.md, "Testing") and would prove nothing
-// extra.
+// pageTextFS stands in for data/extracted/, holding an uncited page and a
+// second document so "only the cited pages ship" can fail. The bytes are
+// synthetic: this package copies page text and never reads it.
 func pageTextFS() fstest.MapFS {
 	return fstest.MapFS{
 		budgetDocID + "/pages/p0066.txt":        {Data: []byte("REVENUE    123,456    789\n")},
@@ -133,8 +124,7 @@ func TestWriteProducesTheSiteLayout(t *testing.T) {
 		shippedPageText(budgetDocID, 66),
 		shippedPageText(budgetDocID, 67),
 	}
-	// The returned list is sorted; sort the expectation the same way by
-	// comparing sets of names rather than trusting two orderings to agree.
+	// The returned list is sorted.
 	if diff := cmp.Diff(sorted(want), got); diff != "" {
 		t.Errorf("written files (-want +got):\n%s", diff)
 	}
@@ -144,9 +134,7 @@ func TestWriteProducesTheSiteLayout(t *testing.T) {
 		}
 	}
 
-	// .nojekyll has to be there and has to be empty: GitHub Pages only reads
-	// its presence, and //go:embed silently skips dotfiles unless they are
-	// named, so an empty-but-present file is the thing worth asserting.
+	// .nojekyll must be present and empty; //go:embed skips unnamed dotfiles.
 	info, err := os.Stat(filepath.Join(dir, ".nojekyll"))
 	if err != nil {
 		t.Fatalf("stat .nojekyll: %v", err)
@@ -205,16 +193,12 @@ func indexSite(t *testing.T) string {
 	return dir
 }
 
-// TestThePlanWritesTheIndexLast holds Prepare's write order: the pages after
-// every asset they fetch, with index.html, the completed-site sentinel, last
-// of all. The index is declared first here so that writing the pages in
-// declaration order fails. The manifest is not in the plan: Write writes it
-// around the plan, listing it.
+// TestThePlanWritesTheIndexLast holds Prepare's order: pages after every
+// asset, index.html (the completed-site sentinel) last, the manifest unplanned.
 //
-// Mutation: add the pages in declaration order without holding IndexPath back
-// and this goes red with "the last planned file is \"caveats.html\"".
-// Adding MarkerName to the plan goes red with "want the manifest left to
-// Write".
+// Mutation: plan pages in declaration order and this goes red with "the last
+// planned file is \"caveats.html\""; plan MarkerName and it goes red with
+// "want the manifest left to Write".
 func TestThePlanWritesTheIndexLast(t *testing.T) {
 	p, err := export.Prepare(export.Options{
 		Dir:         t.TempDir(),
@@ -271,14 +255,11 @@ func (c *cancelFromCall) Err() error {
 	return nil
 }
 
-// Write stops on a cancelled context: one already cancelled creates nothing,
-// not even the output directory, and one cancelled once the directory exists
-// writes no file into it.
+// Write on a cancelled context creates nothing, not even the output directory.
 //
 // Mutation: drop the ctx check before MkdirAll and the first case goes red
-// with "the output directory was created after cancellation"; drop the
-// per-file check and the second goes red with "wrote [...] after
-// cancellation".
+// with "the output directory was created"; drop the per-file check and the
+// second goes red with "wrote [...] after cancellation".
 func TestWriteStopsOnACancelledContext(t *testing.T) {
 	type writer interface {
 		Write(context.Context, bool) ([]string, export.Removal, error)
@@ -331,13 +312,10 @@ func TestWriteStopsOnACancelledContext(t *testing.T) {
 	})
 }
 
-// A write over an earlier export that stops partway leaves none of that
-// export's pages beside the mix of old and new data. Without --clean, Err is
-// asked before the directory, before the manifest, and before each file: the
-// fourth call stops the write after its first file.
+// A write over an earlier export that stops partway leaves none of its pages
+// beside the mixed data. The fourth Err call stops it after its first file.
 //
-// Mutation: drop Write's removal of the earlier export's pages and this goes
-// red naming index.html.
+// Mutation: drop Write's removal of the earlier pages; red naming index.html.
 func TestAWriteStoppedOverAnEarlierExportLeavesNoPage(t *testing.T) {
 	dir, written := writeGolden(t)
 	pages := slices.DeleteFunc(slices.Clone(written), func(rel string) bool { return !strings.HasSuffix(rel, ".html") })
@@ -426,12 +404,11 @@ func TestTheManifestListsWhatTheExportWrote(t *testing.T) {
 	}
 }
 
-// A write stopped after its first file leaves a manifest listing everything
-// the previous one did and everything this export plans, so whatever is on
-// disk is listed whichever export put it there.
+// A write stopped after its first file leaves a manifest listing both the
+// previous export and this plan, so whatever is on disk is listed.
 //
-// Mutation: write the first manifest from the plan alone and this goes red
-// with "old/gone.txt" missing from the listing.
+// Mutation: write the first manifest from the plan alone; red with
+// "old/gone.txt" missing.
 func TestAStoppedWriteLeavesAManifestOfBothExports(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "out")
 	seedExport(t, dir, []string{"old/gone.txt"}, []string{"old/gone.txt"})
@@ -446,9 +423,7 @@ func TestAStoppedWriteLeavesAManifestOfBothExports(t *testing.T) {
 		t.Fatalf("Prepare: %v", err)
 	}
 	planned := export.PlannedPaths(p)
-	// Err is asked before the directory, before the manifest, before the
-	// clean's removal, and before each file: the fifth call stops the write
-	// after its first file.
+	// The fifth Err call stops the write after its first file.
 	_, _, err = p.Write(&cancelFromCall{Context: context.Background(), n: 5}, true)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("got error %v, want it to wrap context.Canceled", err)
@@ -466,21 +441,16 @@ func TestAStoppedWriteLeavesAManifestOfBothExports(t *testing.T) {
 	}
 }
 
-// --clean removes before it writes only what stands in the way of a planned
-// path, and the rest of the earlier export's leftovers after the last file,
-// so a served site keeps what it links to while the write runs: a run
-// stopped after its first file has removed the leftover in the way and left
-// the other on disk and in the manifest, and a full run removes both.
+// --clean removes only what is in a planned path's way before writing, and
+// the other leftovers after the last file, so a served site keeps its links.
 //
-// Mutation: remove every leftover before the write loop and this goes red
-// with "old/gone.txt was removed before the write finished".
+// Mutation: remove every leftover before the write loop; red with
+// "old/gone.txt was removed before the write finished".
 func TestCleanRemovesOnlyWhatIsInTheWayBeforeItWrites(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "out")
 	seedExport(t, dir, []string{"facts", "old/gone.txt"}, []string{"facts", "old/gone.txt"})
 	p := planFiles(t, dir, map[string][]byte{"facts/d/p0001.jsonl": []byte("now\n")})
-	// Err is asked before the directory, before the manifest, before the
-	// removal of what is in the way, and before each file: the fifth call
-	// stops the write after its first file.
+	// The fifth Err call stops the write after its first file.
 	_, _, err := p.Write(&cancelFromCall{Context: context.Background(), n: 5}, true)
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("got error %v, want it to wrap context.Canceled", err)
@@ -506,13 +476,11 @@ func TestCleanRemovesOnlyWhatIsInTheWayBeforeItWrites(t *testing.T) {
 	}
 }
 
-// A write without --clean removes nothing, and its manifest keeps listing what
-// the earlier export wrote and is still there, so a later --clean can still
-// remove it. A listed path that is gone, or is now a directory, drops out.
+// A write without --clean removes nothing and keeps listing the earlier
+// export's surviving files; a listed path gone or now a directory drops out.
 //
-// Mutation: write the final manifest from the plan alone and this goes red
-// with "old/gone.txt" missing from the listing; carry forward every earlier
-// entry and it goes red listing "vanished.txt".
+// Mutation: final manifest from the plan alone goes red missing
+// "old/gone.txt"; carrying every earlier entry goes red listing "vanished.txt".
 func TestAWriteKeepsListingWhatTheEarlierExportLeft(t *testing.T) {
 	dir := t.TempDir()
 	seedExport(t, dir, []string{"now-a-dir", "old/gone.txt", "vanished.txt"}, []string{"now-a-dir/inside.txt", "old/gone.txt"})
@@ -539,18 +507,13 @@ func TestAWriteKeepsListingWhatTheEarlierExportLeft(t *testing.T) {
 	}
 }
 
-// --clean removes what the earlier export's manifest lists and this one does
-// not write, and the directories that leaves empty, and nothing else: not a
-// file the manifest never listed, wherever it sits, not a directory still
-// holding one, not a file reached through a symlinked directory, and not the
-// output directory itself.
+// --clean removes listed, unplanned files and the directories that leaves
+// empty, and nothing else: no unlisted file, nothing through a symlink.
 //
-// Mutation: make leftover return every earlier entry the plan does not
-// write, unchecked, and this goes red with "outside/x.txt was removed";
-// remove each leftover's parent directories with RemoveAll rather than only
-// when empty and it goes red with "old/mixed/mine.txt was removed"; skip the
-// pruning and it goes red with "old/sub was left behind empty"; leave the
-// directories out of Write's Removal and it goes red with a removed diff.
+// Mutation: leftover returning every unplanned entry unchecked goes red with
+// "outside/x.txt was removed"; RemoveAll on parents goes red with
+// "old/mixed/mine.txt was removed"; skipping the pruning goes red with
+// "old/sub was left behind empty"; dirs left out of Removal, a removed diff.
 func TestCleanRemovesOnlyWhatTheEarlierExportListed(t *testing.T) {
 	root := t.TempDir()
 	dir := filepath.Join(root, "out")
@@ -628,16 +591,12 @@ func planFiles(t *testing.T, dir string, files map[string][]byte) interface {
 	return p
 }
 
-// A path the earlier export wrote as a file and this one needs as a
-// directory, or the reverse, converges under --clean, which removes the
-// earlier export's leftovers before it writes anything. Without --clean the
-// write is refused before anything is written, naming --clean, since only
-// --clean may remove what is in the way.
+// A path turning between file and directory converges under --clean; without
+// it the write is refused up front with a hint naming --clean.
 //
-// Mutation: remove the leftovers after the write loop rather than before it
-// and both "with --clean" cases go red with "not a directory" and "is a
-// directory"; drop the refusal without clean and both "without --clean" cases
-// go red with an I/O error that does not match ErrForeignDir.
+// Mutation: remove leftovers after the write loop and the "with --clean" cases
+// go red with "not a directory"/"is a directory"; drop the refusal and the
+// "without --clean" cases go red with an I/O error not matching ErrForeignDir.
 func TestCleanLetsAPathTurnBetweenFileAndDirectory(t *testing.T) {
 	cases := map[string]struct {
 		earlier, now string
@@ -693,12 +652,11 @@ func TestCleanLetsAPathTurnBetweenFileAndDirectory(t *testing.T) {
 	}
 }
 
-// A directory a planned file lands in is kept, though removing a leftover
-// beside it would leave it empty for a moment: the dry run does not list it,
-// and --clean neither lists it as removed nor removes and recreates it.
+// A directory a planned file lands in is kept: neither listed by the dry run
+// nor removed and recreated by --clean.
 //
-// Mutation: drop the keep check from prunedBy and this goes red with an
-// Obsolete dirs diff naming facts/doc/pages, facts/doc and facts.
+// Mutation: drop the keep check from prunedBy; red with Obsolete dirs naming
+// facts/doc/pages, facts/doc and facts.
 func TestCleanKeepsTheDirectoriesAPlannedFileLandsIn(t *testing.T) {
 	dir := t.TempDir()
 	seedExport(t, dir, []string{"facts/doc/pages/p0001.txt"}, []string{"facts/doc/pages/p0001.txt"})
@@ -737,14 +695,11 @@ func TestCleanKeepsTheDirectoriesAPlannedFileLandsIn(t *testing.T) {
 	}
 }
 
-// An empty directory at or under a path this export writes as a file holds
-// no data, whoever left it: --clean removes it so the file can land, and a
-// write without --clean refuses with a hint naming --clean, never calling it
-// something no manifest lists.
+// An empty directory in a planned file's way is removed by --clean, and
+// without --clean refused with a hint naming --clean, not as unlisted.
 //
-// Mutation: drop the walk under planned paths from prunedBy and every case
-// goes red, the --clean ones with a refusal and the others with a message
-// saying no earlier export's manifest lists facts.
+// Mutation: drop the walk under planned paths from prunedBy; --clean cases go
+// red with a refusal, the others with "no earlier export's manifest lists".
 func TestAnEmptyDirectoryInTheWayIsCleanable(t *testing.T) {
 	cases := map[string][]string{
 		"its file removed by hand": {"facts/d/p0001.jsonl"},
@@ -794,16 +749,12 @@ func TestAnEmptyDirectoryInTheWayIsCleanable(t *testing.T) {
 	}
 }
 
-// Write refuses, before it writes anything, a plan whose write would
-// overwrite, write through or be blocked by anything the previous valid
-// manifest does not list, with or without --clean, and so does the dry run's
-// Obsolete: recording such a file in the first manifest would license a later
-// --clean to delete it.
+// Write and Obsolete refuse up front, with or without --clean, a plan that
+// would overwrite, write through or be blocked by anything no manifest lists.
 //
-// Mutation: drop the foreign refusal from screen and every case goes red, the
-// overwrites with "got error <nil>" and the blocked ones with an I/O error
-// that does not match ErrForeignDir; treat a listed symlink as a regular file
-// and "a symlink at a listed path" goes red with "got error <nil>".
+// Mutation: drop the foreign refusal from screen; overwrites go red with "got
+// error <nil>", blocked ones with an I/O error not matching ErrForeignDir.
+// Treat a listed symlink as a file; "a symlink at a listed path" goes red.
 func TestWriteRefusesToWriteOverWhatNoManifestLists(t *testing.T) {
 	type seed func(t *testing.T, dir, outside string)
 	put := func(t *testing.T, dir, rel, body string) {
@@ -901,13 +852,11 @@ func TestWriteRefusesToWriteOverWhatNoManifestLists(t *testing.T) {
 	}
 }
 
-// --clean removes a manifest temp file an interrupted export stranded at the
-// top of the output directory, and Obsolete lists it; a plain write leaves
-// it, and nothing of another shape or in a subdirectory is touched.
+// --clean removes, and Obsolete lists, a stranded top-level manifest temp
+// file; a plain write leaves it, and nothing else is touched.
 //
-// Mutation: leave strandedTemps out of the clean's removal and this goes red
-// with ".fisc-tmp-42 survived --clean" and a removed diff; leave it out of
-// Obsolete and it goes red with an Obsolete diff.
+// Mutation: strandedTemps out of the removal goes red with ".fisc-tmp-42
+// survived --clean"; out of Obsolete, with an Obsolete diff.
 func TestCleanRemovesAStrandedManifestTempFile(t *testing.T) {
 	dir := t.TempDir()
 	keep := []string{".fisc-tmp-x", "sub/.fisc-tmp-43"}
@@ -943,12 +892,11 @@ func TestCleanRemovesAStrandedManifestTempFile(t *testing.T) {
 	}
 }
 
-// A directory prunedBy chose that something has landed in since is skipped,
-// not removed and not an error, and so is every directory above it; one
-// still empty is removed, and only what was removed is reported.
+// A chosen directory something has since landed in is skipped, with those
+// above it; one still empty is removed, and only removals are reported.
 //
-// Mutation: drop notEmpty from removeListed's skip and this goes red with
-// "directory not empty".
+// Mutation: drop notEmpty from removeListed's skip; red with "directory not
+// empty".
 func TestRemovalSkipsADirectoryThatIsNoLongerEmpty(t *testing.T) {
 	dir := t.TempDir()
 	for _, d := range []string{"a/full", "b"} {
@@ -1022,9 +970,8 @@ func TestACleanRemovalFailureCarriesAHint(t *testing.T) {
 // --clean over a directory with no manifest, or one that does not parse,
 // removes nothing: there is no record of what an export wrote there.
 //
-// Mutation: make previousManifest return the paths of an invalid manifest as
-// though it were valid and the "unsorted" case goes red with "gone.txt was
-// removed".
+// Mutation: previousManifest trusting an invalid manifest turns "unsorted"
+// red with "gone.txt was removed".
 func TestCleanWithoutAValidManifestRemovesNothing(t *testing.T) {
 	for name, marker := range map[string]string{
 		"none":     "",
@@ -1077,14 +1024,12 @@ func TestTheIndexLeadsWithWhatTheCitySpends(t *testing.T) {
 	}
 }
 
-// TestTheChartComesBeforeAnyApparatus pins the reading order: the title in
-// the page head, then the chart card, the chart and its captions, then the
-// lede and everything that explains them. Above the chart is only what
-// operates it, so the opening chart fits the window app.js's roomHeight lays
-// it out to: no paragraph but the filter line, which carries its Reset. Every marker is Fatalf-guarded, because an absent one is -1 and
-// before everything. Mutation: put the lede back in the page head -- red;
-// a hint paragraph under the title -- red; put an <h2> or a <details> back
-// above the card -- red.
+// TestTheChartComesBeforeAnyApparatus pins the reading order: title, chart
+// card, chart and captions, then the lede; above the chart only the filter
+// line. Every marker is Fatalf-guarded: an absent one is -1.
+//
+// Mutation: a lede in the page head, a hint paragraph under the title, or an
+// <h2> or <details> above the card each go red.
 func TestTheChartComesBeforeAnyApparatus(t *testing.T) {
 	page := readerVisible(t, readPage(t, indexSite(t)))
 	markers := []string{`<h1`, `id="chart-card"`, `id="chart"`,
@@ -1114,10 +1059,8 @@ func TestTheChartComesBeforeAnyApparatus(t *testing.T) {
 	}
 }
 
-// TestTheIndexLinksItsCaveatsAndPrintsNone: caveats.html carries every
-// caveat whole, and a chart mark carries its own, so the index prints none
-// of them and links the page. Mutation: drop the link -- red; render the
-// summaries back -- red.
+// TestTheIndexLinksItsCaveatsAndPrintsNone: the index links caveats.html and
+// prints no caveat. Mutation: drop the link, or render the summaries -- red.
 func TestTheIndexLinksItsCaveatsAndPrintsNone(t *testing.T) {
 	dir := indexSite(t)
 	visible := readerVisible(t, readPage(t, dir))
@@ -1146,10 +1089,8 @@ func TestTheIndexLinksItsCaveatsAndPrintsNone(t *testing.T) {
 	}
 }
 
-// TestAnIndexWithNoCaveatsPageListsTheCaveats: a site with no caveats view
-// (writeGolden's views) links no caveats page, so the index lists every
-// caveat's summary itself, as the footer lists the cited pages with no
-// sources page. Mutation: drop the template's fallback list -- red.
+// TestAnIndexWithNoCaveatsPageListsTheCaveats: with no caveats view the index
+// lists every caveat summary itself. Mutation: drop the fallback list -- red.
 func TestAnIndexWithNoCaveatsPageListsTheCaveats(t *testing.T) {
 	dir, _ := writeGolden(t)
 	page := readPage(t, dir)
@@ -1182,15 +1123,8 @@ func TestAnIndexWithNoCaveatsPageListsTheCaveats(t *testing.T) {
 	}
 }
 
-// The acceptance test for the whole change: a site exported with the extraction
-// tree in hand resolves BOTH classes of citation — the city's PDF and the
-// committed page text — and reaches github.com for neither.
-//
-// The two classes are not symmetric and the asymmetry is deliberate. The PDF is
-// the city's document at the city's URL: 1.6 GB of it lives in Git LFS and
-// republishing it would be a copy of somebody else's publication. The extracted
-// text is ours, it is small, and it is the artifact every figure on the page is
-// actually traced to — so it ships.
+// A site exported with the extraction tree cites the city's PDF at the city's
+// URL and the page text it ships, and reaches github.com for neither.
 func TestPageCitesThePDFPageAndTheTextTheSiteShips(t *testing.T) {
 	dir, _ := writeGolden(t)
 	page := readPage(t, dir)
@@ -1206,18 +1140,13 @@ func TestPageCitesThePDFPageAndTheTextTheSiteShips(t *testing.T) {
 		}
 	}
 
-	// No forge, anywhere: not in the rendered citations and not in the config
-	// the client composes its own links from. A citation that needs github.com
-	// to be up, reachable and still hosting this repository is the defect this
-	// change removes.
-	// The footer's repository link is not a citation.
+	// No forge in the citations or the config; the footer's repository link is
+	// not a citation.
 	if strings.Contains(strings.ReplaceAll(page, `href="`+export.RepositoryURL+`"`, ""), "github.com") {
 		t.Error("the page still cites github.com; the shipped page text should have replaced it")
 	}
 
-	// Every page-text citation has to be a file in the output. Resolve them the
-	// way a browser would — relative to the page — rather than trusting the
-	// string.
+	// Every page-text citation resolves, relative to the page, to a file.
 	for _, doc := range configDocs(t, page) {
 		for _, page := range []string{"66", "67"} {
 			ref := doc.Pages[page].Text
@@ -1232,9 +1161,8 @@ func TestPageCitesThePDFPageAndTheTextTheSiteShips(t *testing.T) {
 	}
 }
 
-// The copy has to be byte-for-byte: the runs of spaces ARE the printed column
-// grid (AGENTS.md, "The extraction boundary"), so text that arrives reflowed is text a
-// reader cannot check a figure against.
+// Cited page text ships byte for byte, since its runs of spaces are the
+// printed column grid, and uncited pages do not ship.
 func TestCitedPageTextIsShippedVerbatimAndOnlyWhenCited(t *testing.T) {
 	tree := pageTextFS()
 	dir, written := writeGoldenOpts(t, export.Options{PageText: tree})
@@ -1251,8 +1179,7 @@ func TestCitedPageTextIsShippedVerbatimAndOnlyWhenCited(t *testing.T) {
 		}
 	}
 
-	// The corpus is 786 pages and the projection cites two. Shipping the whole
-	// extraction would put it in every deploy to publish a handful of links.
+	// Only the two cited pages ship.
 	for _, rel := range written {
 		if !strings.HasPrefix(rel, export.PageTextDir+"/") {
 			continue
@@ -1263,9 +1190,7 @@ func TestCitedPageTextIsShippedVerbatimAndOnlyWhenCited(t *testing.T) {
 	}
 }
 
-// A citation the extraction cannot back is an error, not a link left dangling:
-// the page renders the citation either way, and only one of the two outcomes is
-// visible before somebody clicks it.
+// A citation the extraction cannot back is an error, not a dangling link.
 func TestWriteRefusesACitedPageMissingFromTheExtraction(t *testing.T) {
 	tree := pageTextFS()
 	delete(tree, budgetDocID+"/pages/p0067.txt")
@@ -1284,9 +1209,7 @@ func TestWriteRefusesACitedPageMissingFromTheExtraction(t *testing.T) {
 	}
 }
 
-// Without an extraction tree the citation has to go somewhere, and the
-// documented somewhere is the forge's blob view. This is the fallback, not the
-// normal path: `fisc export` always passes the tree.
+// Without an extraction tree the page text is cited at the forge's blob view.
 func TestPageTextFallsBackToTheBlobViewWithoutAnExtractionTree(t *testing.T) {
 	dir, written := writeGoldenOpts(t, export.Options{})
 	page := readPage(t, dir)
@@ -1295,14 +1218,7 @@ func TestPageTextFallsBackToTheBlobViewWithoutAnExtractionTree(t *testing.T) {
 	if !strings.Contains(page, want) {
 		t.Errorf("page does not cite %q", want)
 	}
-	// raw.githubusercontent.com would serve these bytes correctly —
-	// data/extracted/ is ordinary git, not LFS, and the artifacts are .txt, so
-	// GitHub's blob view renders the runs of spaces that ARE the column grid
-	// rather than collapsing them the way it would for .md (corpus.PagePath
-	// says the same thing from the other end). So this is a policy choice, not
-	// a correctness one: raw serves the bytes bare — no line numbers, no
-	// history, no way to reach the rest of the document — and a provenance
-	// citation should land somewhere a reader can navigate from.
+	// The blob view, not raw: a citation lands where a reader can navigate.
 	if strings.Contains(page, "raw.githubusercontent.com") {
 		t.Error("page links to raw.githubusercontent.com rather than the github.com blob view")
 	}
@@ -1313,9 +1229,7 @@ func TestPageTextFallsBackToTheBlobViewWithoutAnExtractionTree(t *testing.T) {
 	}
 }
 
-// An explicit remote is the caller overruling the default, so it must not also
-// ship the text: two published answers to "where is this page" is one more than
-// the site can keep true.
+// An explicit remote is cited and the page text is not also shipped.
 func TestSourceBrowseURLCitesTheRemoteAndShipsNothing(t *testing.T) {
 	const browse = "https://example.invalid/tree/main/"
 	dir, written := writeGoldenOpts(t, export.Options{
@@ -1335,8 +1249,7 @@ func TestSourceBrowseURLCitesTheRemoteAndShipsNothing(t *testing.T) {
 	}
 }
 
-// The channel fisc-4ua.8 inherits: an arbitrary path -> bytes, written verbatim
-// beside the site. The page text is its first user; the fact store is next.
+// Options.Files ships an arbitrary path -> bytes verbatim beside the site.
 func TestFilesShipVerbatimBesideTheSite(t *testing.T) {
 	facts := []byte(`{"id":"f1","amount_cents":1234}` + "\n")
 	dir, written := writeGoldenOpts(t, export.Options{
@@ -1360,9 +1273,8 @@ func TestFilesShipVerbatimBesideTheSite(t *testing.T) {
 	}
 }
 
-// The output is a web root somebody will serve or rsync. A path that escapes it
-// or lands on the fixed layout is refused at the door: shadowing index.html or
-// data/sankey.json would export cleanly and break only in a browser.
+// An asset path that escapes the web root or lands on the fixed layout is
+// refused before any side effect.
 func TestWriteRefusesAnAssetPathOutsideTheSite(t *testing.T) {
 	cases := map[string]string{
 		"empty":              "",
@@ -1400,13 +1312,11 @@ func TestWriteRefusesAnAssetPathOutsideTheSite(t *testing.T) {
 	}
 }
 
-// A planned path that does not come from Options.Files, which assetPath
-// screens first, is still put through manifestEntry as it joins the plan: a
-// view path is checked for its suffix and its directory, not for a line
-// break, and a manifest could not list it.
+// A view path joining the plan is screened by manifestEntry too, so one with
+// a line break is refused.
 //
-// Mutation: drop the manifestEntry check from Prepare's add and this goes
-// red with "Prepare accepted the view path".
+// Mutation: drop the manifestEntry check from Prepare's add; red with
+// "Prepare accepted the view path".
 func TestPrepareRefusesAViewPathAManifestCouldNotList(t *testing.T) {
 	views := append(spineOnly(), export.View{Path: "notes\nindex.html", Nav: "Caveats", Template: export.CaveatsTemplate})
 	_, err := export.Prepare(export.Options{
@@ -1424,15 +1334,12 @@ func TestPrepareRefusesAViewPathAManifestCouldNotList(t *testing.T) {
 	}
 }
 
-// Prepare refuses every plan Write could only fail on, so that what is left
-// for Write is I/O: a path its manifest could not list on one line, a path
-// planned both as a file and as a directory above another, and a path under
-// the manifest, which Write would need as a directory.
+// Prepare refuses every plan Write could only fail on, leaving Write only I/O.
 //
 // Mutation: drop '\n' from manifestEntry's refused characters and "two
 // manifest lines" goes red with "Prepare accepted"; drop the nesting check
-// and "a file and a directory" goes red the same way; drop the MarkerName
-// check and "under the manifest" does.
+// and "a file and a directory" does; drop the MarkerName check and "under the
+// manifest" does.
 func TestPrepareRefusesWhatWriteCouldOnlyFailOn(t *testing.T) {
 	cases := map[string]map[string][]byte{
 		"two manifest lines":     {"notes.txt\nindex.html": []byte("x")},
@@ -1456,9 +1363,8 @@ func TestPrepareRefusesWhatWriteCouldOnlyFailOn(t *testing.T) {
 	}
 }
 
-// Two writers on one path is a silent overwrite whose winner depends on map
-// order. The page text and an asset are written by different code paths, so
-// this is the collision that can actually happen.
+// A page text and an asset claiming one path are refused, not a silent
+// overwrite.
 func TestWriteRefusesTwoAssetsClaimingOnePath(t *testing.T) {
 	_, err := writeSite(export.Options{
 		Dir:         t.TempDir(),
@@ -1506,16 +1412,14 @@ func TestPageConfigCarriesTheProjectionMetadataVerbatim(t *testing.T) {
 	if want := "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=66"; p66.PDF != want {
 		t.Errorf("got p66's pdf link %q, want %q", p66.PDF, want)
 	}
-	// The site ships the cited pages, so the text link is same-origin and the
-	// provenance resolves with no network access to a forge.
+	// The shipped page text makes the text link same-origin.
 	if !strings.HasPrefix(p66.Text, export.LocalPageTextBase(budgetDocID)) {
 		t.Errorf("got p66's text link %q, want one under %q", p66.Text, export.LocalPageTextBase(budgetDocID))
 	}
 }
 
 func TestConfigCannotCloseItsScriptElement(t *testing.T) {
-	// A caveat is free text out of a data file. If it ever contains markup,
-	// the page must not break — or worse, execute it.
+	// Markup in a caveat must neither break the page nor execute.
 	doc := map[string]any{
 		"schema_version": 1,
 		"projection":     "sankey",
@@ -1523,10 +1427,8 @@ func TestConfigCannotCloseItsScriptElement(t *testing.T) {
 			"fiscal_year_label": "FY 2025-26",
 			"basis":             "adopted",
 			"headline":          map[string]any{"all_funds_gross_expenditure_cents": 25409541200},
-			// BOTH FIELDS CARRY THE MARKUP, because both reach a page by
-			// different routes: text is rendered into the caveat list by
-			// html/template, and summary rides in the FISC_CONFIG blob as JSON
-			// inside a <script>.
+			// Both fields carry the markup: text renders via html/template,
+			// summary rides in the FISC_CONFIG <script> as JSON.
 			"caveats": []map[string]any{{
 				"id":      `</script><script>alert("pwned")</script>`,
 				"summary": `</script><script>alert("pwned")</script>`, "theme": "left-out",
@@ -1588,10 +1490,8 @@ func TestWriteRefusesBadInput(t *testing.T) {
 	}
 }
 
-// The client's copies are the ones nothing compiles against, so they are the
-// ones that would drift in silence. Read them out of the same embedded asset
-// tree the packager ships and pin each literal to its producer's constant.
-// Mutation: set PageConfigVersion back to 1 and the page arm goes red; set
+// The embedded core.js's schema literals are pinned to their producers'
+// constants. Mutation: set PageConfigVersion back to 1 and the page arm goes red; set
 // PROJECTION_VERSION to 2 and the projection arm does.
 func TestClientSchemaVersionIsPinnedToTheProducer(t *testing.T) {
 	b, err := fs.ReadFile(site.FS(), "core.js")
@@ -1614,9 +1514,8 @@ func TestClientSchemaVersionIsPinnedToTheProducer(t *testing.T) {
 }
 
 // TestThePageBootsTheClientAsAModule pins both halves of the handshake: the
-// template imports boot from ./app.js in a module script after the three
-// classic scripts whose globals it reads, and app.js exports boot. A rename on
-// either side draws nothing, and nothing in this tree runs the page.
+// template imports boot from ./app.js after the three classic scripts whose
+// globals it reads, and app.js exports boot.
 func TestThePageBootsTheClientAsAModule(t *testing.T) {
 	page, err := fs.ReadFile(site.FS(), export.SankeyTemplate)
 	if err != nil {
@@ -1649,13 +1548,10 @@ func TestThePageBootsTheClientAsAModule(t *testing.T) {
 	}
 }
 
-// A projection whose schema this binary does not know has to be refused, not
-// rendered: the keys still decode, so the page would come out plausible and
-// wrong. Both directions are errors — an older document is as unreadable as a
-// newer one, because the version says what the numbers mean.
+// A projection at any schema version but this binary's, older or newer, is
+// refused rather than rendered plausible and wrong.
 func TestWriteRefusesASchemaVersionItDoesNotUnderstand(t *testing.T) {
-	// wantVersion is what the error has to report as "got": a missing key and
-	// an explicit 0 both decode to 0, and the message says so either way.
+	// A missing key and an explicit 0 both report "got 0".
 	type badVersion struct {
 		version int
 		absent  bool
@@ -1665,9 +1561,7 @@ func TestWriteRefusesASchemaVersionItDoesNotUnderstand(t *testing.T) {
 		"an explicit zero":       {version: 0},
 		"no schema_version key":  {absent: true},
 	}
-	// At schema version 1 there is no older non-zero version to hand it, and
-	// faking one with 0 would just re-run the case above under another name.
-	// The case appears on its own the first time there is a real one.
+	// At version 1 there is no older non-zero version to test.
 	if export.SchemaVersion > 1 {
 		cases["older than this binary"] = badVersion{version: export.SchemaVersion - 1}
 	}
@@ -1692,8 +1586,7 @@ func TestWriteRefusesASchemaVersionItDoesNotUnderstand(t *testing.T) {
 	}
 }
 
-// The gate must not be a blanket refusal: the golden projection carries the
-// version this binary understands and has to go through.
+// The golden projection, at this binary's version, goes through.
 func TestWriteAcceptsTheSchemaVersionItUnderstands(t *testing.T) {
 	dir, _ := writeGolden(t)
 	if _, err := os.Stat(filepath.Join(dir, "index.html")); err != nil {
@@ -1702,8 +1595,7 @@ func TestWriteAcceptsTheSchemaVersionItUnderstands(t *testing.T) {
 }
 
 // reversionedGolden is the golden projection with schema_version rewritten, or
-// removed when absent is set, and nothing else touched — so a refusal cannot be
-// mistaken for a reaction to some other malformation.
+// removed when absent is set, and nothing else touched.
 func reversionedGolden(t *testing.T, version int, absent bool) []byte {
 	t.Helper()
 	var doc map[string]json.RawMessage
@@ -1726,8 +1618,7 @@ func reversionedGolden(t *testing.T, version int, absent bool) []byte {
 }
 
 func TestWriteReportsAMissingAsset(t *testing.T) {
-	// A hand-built asset tree missing app.js stands in for a botched embed:
-	// the failure has to be an error, not a site that 404s in the browser.
+	// An asset tree missing app.js stands in for a botched embed.
 	assets := fstest.MapFS{
 		"flows.html.tmpl":     {Data: []byte(`<!doctype html><title>{{.Title}}</title>`)},
 		export.SourcesPartial: {Data: []byte(`{{define "sources"}}{{end}}`)},
@@ -1749,17 +1640,12 @@ func TestWriteReportsAMissingAsset(t *testing.T) {
 	}
 }
 
-// The site is published before its coverage is complete, so the page has to say
-// so. The claim is about COVERAGE, not accuracy: every figure on the page is
-// traced to a printed schedule and `fisc verify` fails if one is not, so a
-// banner calling the figures preliminary would contradict the thing the project
-// exists to assert.
+// The page carries one work-in-progress banner, about coverage, not accuracy.
 func TestPageCarriesTheWorkInProgressBanner(t *testing.T) {
 	dir, _ := writeGolden(t)
 	page := readPage(t, dir)
 
-	// Exactly once: a second copy means the template grew a duplicate block,
-	// which renders as two stacked bars rather than as an error.
+	// Exactly once: a duplicate renders as two stacked bars, not an error.
 	if got := strings.Count(page, `class="wip-banner"`); got != 1 {
 		t.Errorf("got %d wip-banner elements, want 1", got)
 	}
@@ -1811,14 +1697,8 @@ func readPage(t *testing.T, dir string) string {
 	return string(b)
 }
 
-// readerVisible is the page with the FISC_CONFIG script removed.
-//
-// EVERY "does the page say X" ASSERTION NEEDS IT. index.html ships the whole
-// projection as JSON in that one element, so every caveat's text, every
-// figure's note and every source's title is in the file whatever the markup
-// does. Two tests were measured passing on it -- one with the caveat list
-// emptied to <ul></ul>, and the p76 guard after its paragraph moved to another
-// page entirely -- so this is a live failure mode rather than a precaution.
+// readerVisible is the page with the FISC_CONFIG script removed. Every "does
+// the page say X" assertion needs it: that script holds the whole projection.
 func readerVisible(t *testing.T, page string) string {
 	t.Helper()
 	const open = "<script>window.FISC_CONFIG"
@@ -1861,10 +1741,8 @@ func sorted(in []string) []string {
 	return out
 }
 
-// TestAFragmentTargetLandsBelowTheStickyBanner: .wip-banner is sticky at the
-// top of every page, so html carries a scroll-padding-top or a link to a
-// caveat on caveats.html scrolls its summary under the banner. Like the
-// measure test below it witnesses a declaration, not a rendering.
+// TestAFragmentTargetLandsBelowTheStickyBanner: html declares a
+// scroll-padding-top so a fragment target clears the sticky .wip-banner.
 //
 // Mutation: delete the html rule and this goes red.
 func TestAFragmentTargetLandsBelowTheStickyBanner(t *testing.T) {
@@ -1882,22 +1760,9 @@ func TestAFragmentTargetLandsBelowTheStickyBanner(t *testing.T) {
 	}
 }
 
-// TestTheStylesheetHasOneTextMeasure witnesses ONE DECLARATION, NOT ONE
-// RENDERING, and the distinction is the whole of what this test is worth.
-//
-// Nothing in this tree parses or renders CSS (fisc-6at), so this cannot say
-// that --measure applies to any rendered element; that is read in a browser
-// after `make site`.
-//
-// What it CAN say is that the three hand-written measures became one token and
-// stay one: 68ch on .lede, 46em on .caveat and main's 1180px inherited by
-// everything else were three answers to one question, and the way that comes
-// back is a fourth literal added beside the token rather than the token being
-// deleted.
-//
-// THE 1180px ARM IS THE ANTI-VACUITY ONE. Without it a stylesheet that clamped
-// main itself to the reading measure -- squeezing the chart, which is the exact
-// defect this rule is written to avoid -- satisfies every other arm here.
+// TestTheStylesheetHasOneTextMeasure holds style.css to one --measure token,
+// a declaration and not a rendering (fisc-6at). The 1180px container arm is
+// the anti-vacuity one: without it, clamping main to the measure passes.
 func TestTheStylesheetHasOneTextMeasure(t *testing.T) {
 	b, err := fs.ReadFile(site.FS(), "style.css")
 	if err != nil {
@@ -1918,16 +1783,10 @@ func TestTheStylesheetHasOneTextMeasure(t *testing.T) {
 			t.Errorf("style.css still hand-writes %q beside the token that replaced it", gone)
 		}
 	}
-	// THE CONTAINER RULE ITSELF, not the number anywhere in the file. Grepping
-	// for "max-width: 1180px" passes over a stylesheet that split this rule in
-	// two and clamped `main` to the reading measure while leaving .page-head at
-	// 1180px -- which squeezes the page's tiles and tables.
-	// Mutation-measured: that split was green.
+	// The container rule itself, not the number anywhere. Mutation: split it
+	// and clamp main to the measure; a bare 1180px grep stays green.
 	const container = "main,\n.page-head,\n.year-bar,\nfooter {\n  max-width: 1180px;\n  margin: 0 auto;"
-	// THE PRINT BLOCK OPENS WHAT THE PAGE FOLDS. Declared only -- this cannot
-	// say a folded panel prints, which is fisc-yj4w.18 -- but a fold added
-	// without it silently drops the caveats from a printed copy, and the print
-	// block's own comment about the banner argues that is a defect.
+	// The print block opens what the page folds; declared only (fisc-yj4w.18).
 	for _, rule := range []string{"details > *:not(summary)", "details::details-content"} {
 		if !strings.Contains(css, rule) {
 			t.Errorf("style.css no longer carries %q, so a printed copy loses whatever "+
@@ -1990,11 +1849,8 @@ func TestAnExportNamingNoViewIsRefused(t *testing.T) {
 	}
 }
 
-// TestTheGateRunsAfterValidationAndBeforeAnyPageRenders: a caller's refusal
-// is never reported over a site validation refuses, whose refusal names the
-// declaration, and is reported before a page renders. Rendering an unstamped
-// page is refused (TestAPageWithNoBuildStampIsRefused), so a gate whose error
-// wins over that one ran first.
+// TestTheGateRunsAfterValidationAndBeforeAnyPageRenders: validation's refusal
+// wins over the gate's, and the gate's over the unstamped page's render error.
 func TestTheGateRunsAfterValidationAndBeforeAnyPageRenders(t *testing.T) {
 	gated := errors.New("the caller's gate")
 	called := false
@@ -2023,10 +1879,7 @@ func TestTheGateRunsAfterValidationAndBeforeAnyPageRenders(t *testing.T) {
 }
 
 // spineOnly is the one-page site most of these tests write: the spine's
-// Sankey, with no hint and no year control. data/views.yaml's index
-// view is far more than this, and export.Prepare refuses an Options naming no
-// view, so the fixture lives here and the tests that want it say so through
-// writeSite.
+// Sankey, with no hint and no year control.
 func spineOnly() []export.View {
 	return []export.View{{
 		Path:       export.IndexPath,
@@ -2038,9 +1891,7 @@ func spineOnly() []export.View {
 }
 
 // writeSite prepares and writes one site, stamping the build and naming
-// spineOnly where the caller did not. The binary cleans the directory between
-// Prepare and Write, so a failed render does not destroy the previous site;
-// the one-step form lives only here.
+// spineOnly where the caller did not.
 func writeSite(o export.Options) ([]string, error) {
 	if o.GeneratedBy == "" {
 		o.GeneratedBy = "fisc (test)"

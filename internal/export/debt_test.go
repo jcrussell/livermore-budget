@@ -14,11 +14,9 @@ func debtFig(cents int64, token string, page int) map[string]any {
 		"doc_id": budgetDocID, "page": page, "offset": 1, "token": token}
 }
 
-// debtDoc is a minimal debt-service document. Hand-written rather than built
-// by internal/project, for historyDoc's reason: four issues in one column,
-// one of them a printed dash, and two requirements rows, a year and a band,
-// with one fund type printing nothing in the band. figures is the counts
-// block's, or -1 for the true number.
+// debtDoc is a hand-written debt-service document: four issues, one a dash,
+// and a year and a band row, one fund type blank in the band. figures is the
+// counts block's, or -1 for the true number.
 func debtDoc(t *testing.T, figures int) []byte {
 	t.Helper()
 	through := 2035
@@ -87,10 +85,8 @@ func debtView() export.View {
 		Projection: "debt-service", Title: "A debt title", Lede: "A debt lede."}
 }
 
-// TestDebtPageRendersEveryFigureOfItsDocument holds the debt view to its
-// document: each figure links to its page, a printed dash renders as a dash
-// and is a figure, a blank cell renders as not printed and is not a zero, a
-// band says it is a band.
+// TestDebtPageRendersEveryFigureOfItsDocument: each figure links to its page,
+// a dash is a figure, a blank is "not printed", a band says so.
 //
 // Mutation: render a nil figure as "$0" and "not printed" vanishes.
 func TestDebtPageRendersEveryFigureOfItsDocument(t *testing.T) {
@@ -134,9 +130,8 @@ func TestDebtPageRendersEveryFigureOfItsDocument(t *testing.T) {
 	}
 }
 
-// TestDebtPageRefusesADocumentThatDoesNotReconcile: a document whose figure
-// count is not the figures it lays out would put a page in front of a
-// reader with a figure missing and nothing saying so.
+// TestDebtPageRefusesADocumentThatDoesNotReconcile: a figure count that
+// disagrees with the figures laid out is refused.
 //
 // Mutation: drop the count comparison in buildDebtPage and this builds.
 func TestDebtPageRefusesADocumentThatDoesNotReconcile(t *testing.T) {

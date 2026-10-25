@@ -34,8 +34,7 @@ var capitalColumns = []struct {
 	basis string
 }{{2026, "adopted"}, {2027, "adopted"}, {2028, "projected"}, {2029, "projected"}, {2030, "projected"}}
 
-// capitalDoc is a minimal cip-projects document. Hand-written rather than
-// built by internal/project, for historyDoc's reason. counts is the counts
+// capitalDoc is a hand-written cip-projects document. counts is the counts
 // block's points and facts, or -1 for the true number.
 func capitalDoc(counts int, series ...capitalSeries) []byte {
 	cols := make([]map[string]any, 0, len(capitalColumns))
@@ -126,15 +125,12 @@ func writeCapitalSite(t *testing.T, doc []byte) (string, error) {
 	return dir, err
 }
 
-// TestCapitalPageRendersEveryProjectCitedToItsPage holds the capital view to
-// its document: one row per series under its fund, one fund option per fund,
-// every figure a link to the page its point cites, a printed dash rendered as
-// the dash, the projected columns saying so in their headers, and the
-// footer's sum labelled as ours rather than as the listing's TOTAL.
+// TestCapitalPageRendersEveryProjectCitedToItsPage: one row per series under
+// its fund, every figure linked to its page, a dash as a dash, projected
+// headers saying so, and the footer's sum labelled ours.
 //
-// Mutation: render a zero cell as its formatted Value rather than its token
-// and the dash assertion goes red ("$0" is printed); drop the {{$c.Basis}}
-// span from the template's header and the projected assertion goes red.
+// Mutation: render a zero cell as its Value and "$0" is printed. Mutation:
+// drop {{$c.Basis}} from the header and the projected assertion goes red.
 func TestCapitalPageRendersEveryProjectCitedToItsPage(t *testing.T) {
 	dir, err := writeCapitalSite(t, capitalDoc(-1, capitalFixture()...))
 	if err != nil {

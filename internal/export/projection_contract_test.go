@@ -9,11 +9,9 @@ import (
 	"github.com/jcrussell/livermore-budget/schema"
 )
 
-// TestEveryNameThisPackageDecodesIsOneAProjectionStates holds the decoders in
-// this package to schema/projection.schema.json and schema/series.schema.json.
-// Each decoder here spells its own tags, so a renamed tag reads as a zero
-// value with no error. Containment, not equality: a decoder may read a
-// subset, never a name no document carries.
+// TestEveryNameThisPackageDecodesIsOneAProjectionStates: every name this
+// package's decoders read is in schema/projection.schema.json or
+// schema/series.schema.json (containment, not equality).
 func TestEveryNameThisPackageDecodesIsOneAProjectionStates(t *testing.T) {
 	for _, tc := range []struct {
 		name     string

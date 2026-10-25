@@ -12,10 +12,8 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/project"
 )
 
-// glanceFunding is a department-funding document of the golden spine's
-// column, FY2025-26 adopted, whose whole_department links sum to the spine's
-// all-funds gross expenditure less short: two departments paid by the General
-// Fund, police by an internal service fund too.
+// glanceFunding is a FY2025-26 department-funding document whose links sum
+// to the golden spine's all-funds gross expenditure less short.
 func glanceFunding(short int64) []byte {
 	const whole = 25409541200
 	police := int64(20000000000)
@@ -98,15 +96,11 @@ func barsOf(t *testing.T, html string) map[string]string {
 	return out
 }
 
-// TestGlancePageRendersEveryCellAndTheCitedWhole holds the glance page to
-// one row per link of each bar, each with the link's own cents and group,
-// and to the spine's own figure printed beside each bar as the whole the
-// rows sum to, with no declaration where none is needed.
+// TestGlancePageRendersEveryCellAndTheCitedWhole: one row per link of each
+// bar, with the spine's own figure beside it as the whole.
 //
-// Mutation: pick revenue links by target instead of source in buildGlancePage
-// and the revenue bar draws no row; render Whole from the client's sum
-// instead of the headline and the whole test fails to find the headline's
-// figure.
+// Mutation: pick revenue links by target and the revenue bar draws no row.
+// Mutation: render Whole from the client's sum and the headline is not found.
 func TestGlancePageRendersEveryCellAndTheCitedWhole(t *testing.T) {
 	dir := t.TempDir()
 	if _, err := writeSite(glanceOptions(t, dir, glanceFunding(0), nil)); err != nil {
@@ -170,9 +164,8 @@ func TestGlancePageRendersEveryCellAndTheCitedWhole(t *testing.T) {
 	}
 }
 
-// TestGlancePageRefusesRowsThatDoNotSumToTheCitedWhole: the whole the page
-// prints beside a bar is the city's, and the rows are what the client sums,
-// so rows that do not reach it are refused rather than drawn under it.
+// TestGlancePageRefusesRowsThatDoNotSumToTheCitedWhole: rows that do not
+// reach the city's whole are refused.
 //
 // Mutation: return nil from glanceTies and the first case writes a page whose
 // departments bar is a dollar short of the figure beside it.
@@ -216,13 +209,11 @@ func TestGlancePageRefusesRowsThatDoNotSumToTheCitedWhole(t *testing.T) {
 	}
 }
 
-// TestGlancePagePrintsADeclaredResidualInsteadOfATie: where the caller
-// declares the department rows apart from the spine, the page says by how
-// much and why, in Go's words, and marks the bar as not tying; the client
-// computes no difference.
+// TestGlancePagePrintsADeclaredResidualInsteadOfATie: a declared residual is
+// stated in Go's words and the bar marked not tying.
 //
-// Mutation: drop the residual from glanceTies' sum and the declared column is
-// refused; set Ties to true unconditionally and data-ties lies.
+// Mutation: drop the residual from glanceTies' sum and the column is refused.
+// Mutation: set Ties to true unconditionally and data-ties lies.
 func TestGlancePagePrintsADeclaredResidualInsteadOfATie(t *testing.T) {
 	dir := t.TempDir()
 	apart := []export.ApartFromSpine{{FiscalYear: 2026, Basis: "adopted", ResidualCents: 25000000,
@@ -256,9 +247,7 @@ func TestGlancePagePrintsADeclaredResidualInsteadOfATie(t *testing.T) {
 		t.Errorf("the departments bar does not say the rows sum to $250,000 more than the whole")
 	}
 
-	// The declaration applies to its own column only: the same page over a
-	// funding document that ties is refused, because the residual would then
-	// be unaccounted for.
+	// The same declaration over a funding document that ties is refused.
 	_, err := writeSite(glanceOptions(t, t.TempDir(), glanceFunding(0), apart))
 	if err == nil || !strings.Contains(err.Error(), "1 declared residuals") {
 		t.Errorf("a declaration over rows that tie: got %v, want a refusal", err)

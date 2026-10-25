@@ -40,18 +40,14 @@ func caveatSite(a, b, c string) (*Options, []navItem) {
 	return o, nav
 }
 
-// TestTheCaveatIndexStatesEachCaveatOnce: one id is one entry under one
-// anchor however many documents carry it, its texts variants told apart by
-// year; two views stating the same entries share one section; each view's
-// line counts that section. "In data no page states caveats for" holds only what no view
-// states: c, which no view reaches, carries x as well as z, and a and b state
-// x.
+// TestTheCaveatIndexStatesEachCaveatOnce: one id is one entry, its texts
+// told apart by year; views stating the same entries share a section; the
+// unviewed list holds only what no view states.
 //
-// Mutation: key entries on (id, text) and "y" is two entries, b's link
-// landing on a's. Mutation: drop the variants' sort and y's texts are in
-// document order, a's year after b's. Mutation: start a new section for every view and a.html and
-// b.html each get one. Mutation: list as unviewed every entry an unreached
-// document carries and x is in it beside the a and b section.
+// Mutation: key entries on (id, text) and "y" is two entries. Mutation: drop
+// the variants' sort and y's texts are in document order. Mutation: a section
+// per view and a.html and b.html each get one. Mutation: list every entry an
+// unreached document carries as unviewed and x is in it.
 func TestTheCaveatIndexStatesEachCaveatOnce(t *testing.T) {
 	o, nav := caveatSite(
 		`[{"id":"x","summary":"X.","theme":"left-out","text":"Same.","applies_to":[]},{"id":"y","summary":"Y.","theme":"our-reading","text":"In a.","applies_to":[]}]`,
@@ -145,15 +141,13 @@ func TestTwoTextsOfOneYearAreRefused(t *testing.T) {
 }
 
 // TestADataFilesCaveatIsStatedOnNoPageAndACheckIsNoLimit: a data-files
-// caveat is in no section, no count and not "In data no page states caveats for", which
-// would say a page is owed it; a checked one is listed and not counted. Views
-// whose lists differ get sections of their own.
+// caveat is in no section, count or unviewed list; a checked one is listed
+// and not counted.
 //
-// Mutation: drop the data-files test from the section loop and a.html's
-// section lists d. Mutation: drop the data-files arm of the list split and
-// d falls into the list no page states. Mutation: keep the checked group in here and a.html's
-// line is 2 in two themes. Mutation: drop the caveats template's Checked
-// branch and k's entry says a.html states it.
+// Mutation: drop the data-files test from the section loop and a.html lists
+// d. Mutation: drop the data-files arm of the list split and d is unviewed.
+// Mutation: keep the checked group and a.html's line is 2 in two themes.
+// Mutation: drop the template's Checked branch and k says a.html states it.
 func TestADataFilesCaveatIsStatedOnNoPageAndACheckIsNoLimit(t *testing.T) {
 	o, nav := caveatSite(
 		`[{"id":"x","summary":"X.","theme":"left-out","text":"T.","applies_to":[]},`+
@@ -222,9 +216,8 @@ func TestTwoCaveatsTheIndexWouldHeadAlikeAreRefused(t *testing.T) {
 	}
 }
 
-// TestOneIDUnderTwoHeadingsIsRefused: the caveats page lists an id once, so
-// a summary or theme that varies by document would publish one document's
-// heading over another's text.
+// TestOneIDUnderTwoHeadingsIsRefused: a summary or theme that varies by
+// document is refused, since the caveats page lists an id once.
 //
 // Mutation: drop buildCaveatIndex's heading arm and both go red with
 // "buildCaveatIndex = nil".
@@ -291,13 +284,10 @@ func TestTheHeadingsRefusalNamesOnePairEveryRun(t *testing.T) {
 	}
 }
 
-// TestASankeyViewWhoseYearDrawsNoScheduleIsRefused: a Sankey view drawing a
-// schedule a year's column does not carry has no drawn document to flag, and
-// the caveat index refuses it as [View.drawnStems] does rather than flagging
-// nothing.
+// TestASankeyViewWhoseYearDrawsNoScheduleIsRefused: the caveat index refuses
+// a view drawing a schedule its year lacks, as [View.drawnStems] does.
 //
-// Mutation: have flaggedStems skip a view drawnStems refuses and the index
-// builds, flagging no document.
+// Mutation: have flaggedStems skip such a view and it builds, flagging nothing.
 func TestASankeyViewWhoseYearDrawsNoScheduleIsRefused(t *testing.T) {
 	o, nav := caveatSite(`[{"id":"x","summary":"X.","theme":"left-out","text":"T.","applies_to":[]}]`, `[]`, `[]`)
 	o.Views[0].Template, o.Views[0].Draws = SankeyTemplate, "fund-flows"
@@ -307,9 +297,8 @@ func TestASankeyViewWhoseYearDrawsNoScheduleIsRefused(t *testing.T) {
 	}
 }
 
-// TestASectionsThemeAnchorIsClaimedLikeAnyOther: a view's theme list is at
-// "caveats-on-<view>--<theme>", which a view whose path is "<view>--<theme>"
-// would compose as its own section.
+// TestASectionsThemeAnchorIsClaimedLikeAnyOther: a theme list's anchor
+// "caveats-on-<view>--<theme>" collides with a view at "<view>--<theme>".
 //
 // Mutation: drop the claim on a section's groups and it builds, one fragment
 // on two lists.
@@ -330,8 +319,7 @@ func TestASectionsThemeAnchorIsClaimedLikeAnyOther(t *testing.T) {
 // another carried by one of them would head two texts with that year.
 //
 // Mutation: compare whole Of strings rather than each year and it builds,
-// "FY 2024-25 adopted" over one text and "FY 2024-25 adopted, FY 2025-26
-// adopted" over another.
+// FY 2024-25 heading both texts.
 func TestOneYearInTwoTextsIsRefused(t *testing.T) {
 	o, nav := caveatSite(
 		`[{"id":"x","summary":"X.","theme":"left-out","text":"Both.","applies_to":[]}]`,
@@ -366,10 +354,8 @@ func TestATextOfADocumentStatingNoYearIsHeadedByItsStem(t *testing.T) {
 	}
 }
 
-// TestACaveatNoPageCountsNamesNoNode: a data-files or checked caveat is no
-// limit on any page, so a chart chipping one on a mark would warn of what
-// the page does not count; the export refuses it as validateCaveats does,
-// since it reads bytes.
+// TestACaveatNoPageCountsNamesNoNode: a data-files or checked caveat naming
+// a node is refused, as validateCaveats does.
 //
 // Mutation: drop the arm and both build.
 func TestACaveatNoPageCountsNamesNoNode(t *testing.T) {
@@ -398,15 +384,12 @@ func TestViewsStatingOneSetInTwoOrdersShareASection(t *testing.T) {
 	}
 }
 
-// TestACaveatTwoSectionsShareIsLinkedToEachViewsOwn: x is in two sections,
-// so the caveats page writes it twice; the canonical anchor is on the first,
-// in nav order, the second takes its section's fragment, and each view's
-// link lands on its own section's text. z is in one section and is linked
-// at its canonical anchor from any view.
+// TestACaveatTwoSectionsShareIsLinkedToEachViewsOwn: x, in two sections,
+// takes the canonical anchor on the first and each view links its own; z, in
+// one, is linked at its canonical anchor.
 //
-// Mutation: have href ignore the view and b.html links x at caveat-x, which
-// is a.html's section. Mutation: put the canonical anchor on every section
-// and b's anchor for x reads caveat-x.
+// Mutation: have href ignore the view and b.html links x at caveat-x.
+// Mutation: put the canonical anchor on every section and b's reads caveat-x.
 func TestACaveatTwoSectionsShareIsLinkedToEachViewsOwn(t *testing.T) {
 	o, nav := caveatSite(
 		`[{"id":"x","summary":"X.","theme":"left-out","text":"T.","applies_to":[]}]`,
@@ -430,9 +413,8 @@ func TestACaveatTwoSectionsShareIsLinkedToEachViewsOwn(t *testing.T) {
 	}
 }
 
-// TestTheFallbackLineListsTheLimitsTheLinkedLineCounts: with no caveats page a
-// page's line lists the summaries of the limits the linked line would count,
-// under "What these figures do not say", and not a check that passed.
+// TestTheFallbackLineListsTheLimitsTheLinkedLineCounts: with no caveats page
+// a page's line lists the limits' summaries, not a check that passed.
 //
 // Mutation: list .Entries in the fallback and K. is listed as a limit.
 func TestTheFallbackLineListsTheLimitsTheLinkedLineCounts(t *testing.T) {
@@ -456,9 +438,8 @@ func TestTheFallbackLineListsTheLimitsTheLinkedLineCounts(t *testing.T) {
 	}
 }
 
-// TestAVariantsYearsAreHeadedInOrder: a text carried by two years is headed by
-// them in year order whatever order its documents sort in, so variants sort
-// by their first year.
+// TestAVariantsYearsAreHeadedInOrder: a text carried by two years is headed
+// by them in year order whatever order its documents sort in.
 //
 // Mutation: drop the sort of a variant's labels and "Both." is headed
 // "FY 2025-26 adopted, FY 2024-25 adopted", after "FY 2024-25 actual".

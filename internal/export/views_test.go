@@ -23,12 +23,8 @@ import (
 	"github.com/jcrussell/livermore-budget/site"
 )
 
-// trendsDoc is a minimal revenue-trends document citing pages the SPINE does
-// not, which is the whole point: it is the shape fisc-fjy was filed about.
-//
-// It is hand-written rather than built by internal/project: the packager
-// consumes projections as bytes and knows nothing about how they were built,
-// and a test that reached for the producer would quietly retire that seam.
+// trendsDoc is a minimal revenue-trends document citing pages the spine does
+// not. Hand-written so the packager is tested on bytes, not on the producer.
 func trendsDoc(pages ...int) []byte {
 	type point struct {
 		FiscalYear  int    `json:"fiscal_year"`
@@ -73,14 +69,9 @@ func trendsDoc(pages ...int) []byte {
 			"columns":      columns,
 			"sources":      []map[string]any{{"doc_id": budgetDocID, "pages": pages}},
 			"counts":       map[string]any{"facts": len(points), "series": 1, "points": len(points)},
-			// applies_to IS NON-EMPTY, and that is what makes
-			// TestTheCaveatsPagePromisesAChartFlagOnlyWhereThereIsAChart able
-			// to fail. caveats.html prints its chart-flag promise inside
-			// {{if .AppliesTo}}, so a document whose caveats all carry an empty
-			// one never reaches that branch -- and the check asserting the
-			// promise is absent from the trends section passed whether the
-			// predicate behind it worked or not. No real revenue-trends caveat
-			// names a node today; this fixture is where that case lives.
+			// A non-empty applies_to is what lets
+			// TestTheCaveatsPagePromisesAChartFlagOnlyWhereThereIsAChart fail: the
+			// promise renders only inside {{if .AppliesTo}}.
 			"caveats": []map[string]any{{
 				"id":      "a-caveat-this-document-carries",
 				"summary": "a caveat this document carries", "theme": "left-out",
@@ -139,15 +130,8 @@ func twoViews(t *testing.T, trendsPages ...int) string {
 	return dir
 }
 
-// TestTwoViewsCitingDisjointPagesBothShip is fisc-fjy, and it is the acceptance
-// criterion that bead names.
-//
-// A view citing pages another does not must still get them shipped. Composing
-// the page-text set from the primary projection's metadata alone renders
-// citation links styled exactly like the working ones beside them, resolving in
-// the template and 404ing in the browser -- invisible to every other check,
-// because fact-offset-points-at-token reads the committed corpus and nothing
-// else walks the built tree.
+// TestTwoViewsCitingDisjointPagesBothShip: a view citing pages another does
+// not still gets them shipped, else its citation links 404.
 func TestTwoViewsCitingDisjointPagesBothShip(t *testing.T) {
 	dir := twoViews(t, 127, 128)
 
@@ -170,13 +154,8 @@ func TestTwoViewsCitingDisjointPagesBothShip(t *testing.T) {
 	}
 }
 
-// TestEachViewsFooterCitesItsOwnSources is the other half of fisc-fjy's
-// decision, and it is the half that is easy to get wrong by fixing the first.
-//
-// The SHIPPED FILE SET is unioned; the FOOTER is not. A page listing the union
-// would claim provenance for figures it never showed, which is its own defect --
-// so the spine page must not advertise pp.127-128 and the revenue page must not
-// advertise pp.66-67.
+// TestEachViewsFooterCitesItsOwnSources: the shipped file set is unioned, the
+// footer is not -- the spine page lists no pp.127-128, the revenue page no pp.66-67.
 func TestEachViewsFooterCitesItsOwnSources(t *testing.T) {
 	dir := twoViews(t, 127, 128)
 
@@ -192,10 +171,8 @@ func TestEachViewsFooterCitesItsOwnSources(t *testing.T) {
 }
 
 // TestEveryCitationTheClientComposesResolves crosses the client's config
-// against every document it can fetch. site/app.js composes citation links at
-// runtime from CONFIG.docs[d].pages[n].text, so a walk of the markup cannot
-// see them. It walks the years' columns, so it reaches a source cited only by
-// a schedule behind a click.
+// against every document it can fetch, walking the years' columns so a source
+// cited only by a schedule behind a click is reached.
 func TestEveryCitationTheClientComposesResolves(t *testing.T) {
 	dir := twoViews(t, 127, 128)
 	cfg := clientConfigOf(t, readFile(t, dir, "index.html"))
@@ -249,14 +226,8 @@ func TestEveryCitationTheClientComposesResolves(t *testing.T) {
 	}
 }
 
-// chartView is a well-formed chart view with one thing broken.
-//
-// A CONSTRUCTOR RATHER THAN TEN LITERALS, because the point of each case is the
-// ONE field it breaks: written out in full, a case that stopped breaking
-// anything -- a field renamed, a default filled in -- would still name a
-// message and still pass, and nothing would say which arm had gone quiet.
-//
-// It is a second SankeyTemplate view, at a path the site does not open on.
+// chartView is a well-formed second SankeyTemplate view, at a path the site
+// does not open on, with the one field each case breaks.
 func chartView(breaks func(*export.View)) export.View {
 	v := export.View{
 		Path: "extra.html", Template: export.SankeyTemplate, Projection: "sankey",
@@ -331,23 +302,15 @@ func TestAViewDrawsAnotherScheduleOfItsColumn(t *testing.T) {
 }
 
 func TestTheCaveatsPageRefusesWhatWouldRender(t *testing.T) {
-	// THE CAVEATS VIEW IS THE INDEX HERE, which is not how the site is
-	// configured and is the smallest thing that reaches the builder. Options
-	// requires exactly one view at IndexPath, and pairing this with a spine
-	// view means the spine's own "no sankey projection to build the page from"
-	// fires first and the caveats page is never built -- which is how the first
-	// draft of this test passed five refusals without reaching any of them.
+	// The caveats view is the index so the builder is reached: paired with a
+	// spine view, the spine's own refusal fires first.
 	caveatsView := export.View{
 		Path: export.IndexPath, Nav: "Caveats", Template: export.CaveatsTemplate,
 		Title: "What these figures do not say", Lede: "A lede.",
 	}
-	// A minimal document of a shape this package has never been taught -- no
-	// nodes, no links, no series. The aggregator is shape-blind and building
-	// the fixture that way is what asserts it.
-	//
-	// STEMMED "sankey" BECAUSE Options.validate REQUIRES THAT ONE to be among
-	// the projections, whatever the views are. It is not the spine document and
-	// nothing here treats it as one; it is the stem the packager insists exists.
+	// A shape this package was never taught -- no nodes, links or series -- since
+	// the aggregator is shape-blind. Stemmed "sankey" because Options.validate
+	// requires that stem.
 	doc := func(caveats string) map[string][]byte {
 		return map[string][]byte{export.PrimaryProjection: []byte(
 			`{"schema_version":1,"projection":"sankey","metadata":{` +
@@ -422,16 +385,9 @@ func TestTheCaveatsPageRefusesWhatWouldRender(t *testing.T) {
 }
 
 // TestTheCaveatsPagePromisesAChartFlagOnlyWhereThereIsAChart pins
-// caveatAbout.Flagged.
-//
-// THE PAGE SAYS "the chart flags these marks where it draws them" of the
-// documents a caveat is about nodes of, and only a Sankey page's drawn
-// schedule is chipped. table.html names revenue-trends and ships no app.js,
-// and "unviewed" carries the spine's very caveats while no view renders it,
-// so its line must not inherit the spine's promise through the dedup.
-//
-// Mutation: set Flagged true for every file and the unviewed document's
-// line promises a flag.
+// caveatAbout.Flagged: only a Sankey page's schedule is chipped, so the table
+// and unviewed documents' lines carry no flag promise.
+// Mutation: set Flagged true for every file and the unviewed line promises a flag.
 func TestTheCaveatsPagePromisesAChartFlagOnlyWhereThereIsAChart(t *testing.T) {
 	dir := t.TempDir()
 	_, err := writeSite(export.Options{
@@ -756,12 +712,8 @@ func TestAnAssetCannotShadowAView(t *testing.T) {
 	}
 }
 
-// TestTheTableViewRendersWhatTheDocumentPublishes, and computes nothing.
-//
-// The packager's standing rule is that it does not recompute what a projection
-// published. A table is where that is most tempting to break -- a total column,
-// a growth percentage and a subtotal are each one line -- so the assertion is
-// that the figures on the page are the document's own and that no total appears.
+// TestTheTableViewRendersWhatTheDocumentPublishes, and computes nothing: the
+// figures on the page are the document's own and no total appears.
 func TestTheTableViewRendersWhatTheDocumentPublishes(t *testing.T) {
 	dir := twoViews(t, 127, 128)
 	html := readFile(t, dir, "table.html")
@@ -837,12 +789,9 @@ func readFile(t *testing.T, dir, name string) string {
 	return string(b)
 }
 
-// TestTheSpineTemplatePublishesTheColumnOrderItDeclares: the chart template
-// publishes the overview's hints, and only a rendered page can say it does. A
-// spine whose order was dropped places no root of the expansion, and nothing
-// reports it.
-//
-// The mutation: drop Overview from buildSankeyPage's clientConfig.
+// TestTheSpineTemplatePublishesTheColumnOrderItDeclares: a spine whose order
+// was dropped places no root of the expansion.
+// Mutation: drop Overview from buildSankeyPage's clientConfig.
 func TestTheSpineTemplatePublishesTheColumnOrderItDeclares(t *testing.T) {
 	dir := t.TempDir()
 	if _, err := writeSite(export.Options{
@@ -888,17 +837,9 @@ func clientConfigOf(t *testing.T, page string) clientCfg {
 	return cfg
 }
 
-// TestAShortSeriesDoesNotShiftItsNeighboursIntoTheWrongColumn is the defect the
-// positional layout had, pinned.
-//
-// A series short a column is a state the project supports: internal/check
-// declares one through incompleteSeries, and `fisc export` runs no checks, so a
-// document with a gap can be packaged. Laid out positionally -- one cell per
-// point, against headers built from metadata.columns -- every figure after the
-// gap slides one column left, so FY2026's money prints under FY2025 with a
-// citation link to FY2026's page. That is a plausible wrong value, published,
-// with provenance that disagrees with it, which is the whole class of error this
-// project exists to prevent.
+// TestAShortSeriesDoesNotShiftItsNeighboursIntoTheWrongColumn: a series short
+// a column keeps every later figure under its own year, not slid one left
+// beside another year's citation.
 func TestAShortSeriesDoesNotShiftItsNeighboursIntoTheWrongColumn(t *testing.T) {
 	// Two columns; the series publishes only the SECOND.
 	raw := trendsDoc(127, 128)
@@ -915,19 +856,12 @@ func TestAShortSeriesDoesNotShiftItsNeighboursIntoTheWrongColumn(t *testing.T) {
 	// column it belongs in, and that is what the layout must honour.
 	kept := points[1].(map[string]any)
 	series["points"] = []any{kept}
-	// AND SAY SO IN THE DOCUMENT'S OWN COUNTS, which is not bookkeeping. A
-	// series short a column is a state this project supports; a document whose
-	// counts.points disagrees with the points it carries is a different thing,
-	// and Write refuses it. Leaving the count at 2 would make this test assert
-	// the refusal instead of the layout it is named for.
+	// Match counts.points, or Write's count refusal fires before the layout
+	// under test.
 	meta := doc["metadata"].(map[string]any)
 	meta["counts"].(map[string]any)["points"] = 1
-	// AND counts.facts WITH IT, because that is what the producer would have
-	// emitted. trends.go appends exactly one Point per selected fact and counts
-	// facts as len(selected), so a series short a column is short a fact and a
-	// point alike -- the two diverge only in a document somebody edited. Write
-	// reconciles the rendered cells against BOTH now, since facts is the number
-	// the lede prints.
+	// And counts.facts, as the producer would: a series short a column is short a
+	// fact and a point alike, and Write reconciles against both.
 	meta["counts"].(map[string]any)["facts"] = 1
 	short, err := json.Marshal(doc)
 	if err != nil {
@@ -1000,15 +934,8 @@ func between(t *testing.T, s, open, close string) string {
 	return rest[:j]
 }
 
-// TestTheMarkReachesTheRenderedPage is the end-to-end half of the mark: the
-// geometry tests in mark_test.go assert what buildMark computes, and this
-// asserts that it survives the template and lands in the file a reader gets.
-//
-// IT ALSO PINS THE PROPERTY THAT LETS THE MARK EXIST AT ALL. The mark carries no
-// citation, and that is only defensible because every figure it draws is already
-// in the same row as linked text. So this checks the two together: the row has
-// its marks AND it still has its links. If a future change ever drew a figure in
-// the mark that is not in the row, this is where it should stop.
+// TestTheMarkReachesTheRenderedPage: buildMark's marks survive the template,
+// and the row still links every figure the uncited mark draws.
 func TestTheMarkReachesTheRenderedPage(t *testing.T) {
 	dir := t.TempDir()
 	pages := []int{127, 128}
@@ -1082,24 +1009,9 @@ func writeTrends(t *testing.T, raw []byte, pages ...int) error {
 	return err
 }
 
-// TestADocumentThatLosesAFigureBetweenProjectionAndPageIsRefused is fisc-4j5's
-// exact case, built directly rather than reasoned about.
-//
-// buildCells drops a point whose (fiscal_year, basis) is in no published column,
-// and its comment justified that by saying "the caller compares counts.points
-// against what it rendered". THE CALLER DID NOT: counts.points was decoded and
-// read nowhere. So a one-column document carrying a two-point series exported
-// successfully, rendered ONE cell, lost the other figure with no error, and the
-// page's own lede still said how many figures were in it.
-//
-// That is a published page whose prose contradicts what it draws -- a plausible
-// wrong value with provenance disagreeing with it, which is the class this
-// project exists to refuse.
-//
-// NOT REACHABLE THROUGH internal/project TODAY, because Trends.Document filters
-// points on the same columns the metadata is built from. This is a packager that
-// did not fail closed, so it is built here by hand, which is the only way to
-// reach it at all.
+// TestADocumentThatLosesAFigureBetweenProjectionAndPageIsRefused: a point in
+// no published column is refused rather than dropped while the lede counts it.
+// Built by hand: internal/project filters points on the same columns.
 func TestADocumentThatLosesAFigureBetweenProjectionAndPageIsRefused(t *testing.T) {
 	// Two columns and two points, then the SECOND column removed -- leaving a
 	// point that belongs to no column the page will draw.
@@ -1128,25 +1040,9 @@ func TestADocumentThatLosesAFigureBetweenProjectionAndPageIsRefused(t *testing.T
 	}
 }
 
-// TestALedeClaimingMoreFiguresThanTheTableShowsIsRefused is fisc-5tu: the
-// figure-loss above, reached through the OTHER count.
-//
-// The guard beside this one reconciles the rendered cells against
-// counts.points, and the sentence it exists to protect prints a DIFFERENT
-// number -- history.html.tmpl renders {{.Facts}}, "N figures in all", from
-// counts.facts. project.TrendCounts' doc comment states the two are computed
-// independently, facts off the selection and points off the series actually
-// built, so they are free to disagree.
-//
-// So this document -- facts 2, points 1, one point carried, one cell rendered
-// -- exported cleanly and published a lede claiming two figures over a table
-// showing one. Every guard was green; the page contradicted itself in prose.
-//
-// UNREACHABLE THROUGH internal/project, like its neighbour and for a sharper
-// reason: trends.go appends exactly one Point per selected fact and counts
-// facts as len(selected), so the producer cannot emit facts != points at all.
-// That is also why reconciling against facts costs nothing legitimate -- a
-// series short a column is short a fact and a point alike.
+// TestALedeClaimingMoreFiguresThanTheTableShowsIsRefused: the lede prints
+// counts.facts, so facts 2 over one rendered cell is refused even though
+// counts.points reconciles. Unreachable through internal/project; built by hand.
 func TestALedeClaimingMoreFiguresThanTheTableShowsIsRefused(t *testing.T) {
 	var doc map[string]any
 	if err := json.Unmarshal(trendsDoc(127, 128), &doc); err != nil {
@@ -1175,11 +1071,9 @@ func TestALedeClaimingMoreFiguresThanTheTableShowsIsRefused(t *testing.T) {
 	}
 }
 
-// TestTwoPointsInOneColumnAreRefused is the same figure-loss from the other
-// side: a plain map assignment kept the last point and dropped the first as
-// quietly as an undrawn column did, and the two need not even agree. The counts
-// still reconcile in that case, so this needs its own refusal rather than
-// riding on the one above.
+// TestTwoPointsInOneColumnAreRefused: two points in one column would keep the
+// last and drop the first with the counts still reconciling, so this has its
+// own refusal.
 func TestTwoPointsInOneColumnAreRefused(t *testing.T) {
 	var doc map[string]any
 	if err := json.Unmarshal(trendsDoc(127, 128), &doc); err != nil {
@@ -1232,18 +1126,9 @@ func TestASeriesCountThatDisagreesWithTheSeriesIsRefused(t *testing.T) {
 	}
 }
 
-// TestASecondYearsCitationsSurviveTheYearItDoesNotOpenOn is fisc-yi4.
-//
-// The footer's sources and clientConfig.Docs were built from ONE document's
-// metadata -- the year the view opens on -- while CONFIG.years lists every
-// published year and app.js will switch to any of them. citations() drops a
-// fact whose doc_id is not in that map with `if (!doc) continue`, no fallback
-// and no diagnostic, so a year citing a document the opening year does not
-// would render its chart normally and show a provenance panel with fewer rows
-// than the chart has facts. Nothing anywhere would say so.
-//
-// The second year here cites the ACFR, which the opening year does not. Before
-// the union, FISC_CONFIG's docs map held only the budget book.
+// TestASecondYearsCitationsSurviveTheYearItDoesNotOpenOn: the footer and
+// clientConfig.Docs union every year's documents, so citations() keeps the
+// second year's ACFR citations, which the opening year does not cite.
 func TestASecondYearsCitationsSurviveTheYearItDoesNotOpenOn(t *testing.T) {
 	const acfr = "livermore-acfr-fy2025"
 
@@ -1321,11 +1206,7 @@ func TestASecondYearsCitationsSurviveTheYearItDoesNotOpenOn(t *testing.T) {
 
 // twoYearSankey writes a two-year spine view whose second year is the golden
 // document with `edit` applied to its metadata, and returns the rendered
-// index.html.
-//
-// EVERY DEFECT BELOW IS LATENT IN THE COMMITTED CORPUS -- both published years
-// are adopted, carry one scope and cite the same two pages -- so a test that
-// only exported the real store would assert nothing. The state has to be built.
+// index.html. The committed years agree, so each defect's state is built here.
 func twoYearSankey(t *testing.T, view export.View, edit func(meta map[string]any)) (string, error) {
 	t.Helper()
 	var second map[string]any
@@ -1367,17 +1248,8 @@ func twoYearSankey(t *testing.T, view export.View, edit func(meta map[string]any
 	return string(markup), nil
 }
 
-// TestBothChartTemplatesAcceptYearStems pins the OTHER half of
-// templateSpec.years.
-//
-// A refusal test alone pins only that the set is non-empty. A guard spelled
-// as one template's name, `v.Template == SankeyTemplate`, goes stale in
-// silence the next time a template that renders a year control lands, and
-// refuses a year list on a page that would render one perfectly well.
-//
-// So both arms are asserted, and by rendering rather than by calling the
-// unexported helper: what matters is that a caller can hand either chart
-// template a year list and get a page.
+// TestBothChartTemplatesAcceptYearStems pins the accepting half of
+// templateSpec.years: both chart templates render a page from a year list.
 func TestBothChartTemplatesAcceptYearStems(t *testing.T) {
 	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
 	if err != nil {
@@ -1506,14 +1378,8 @@ func TestEachYearCarriesItsOwnBasisAndTitle(t *testing.T) {
 	}
 }
 
-// TestACallersOwnTitleSurvivesEveryYear pins the half of fisc-rn0 that a
-// client test cannot see: it is about what the PACKAGER hands over.
-//
-// The caller's title is carried verbatim onto every year rather than having a
-// year appended, and refusing a Title on this template was rejected -- see
-// sankeyTitle for both arguments. What must not happen is the packager
-// composing over the top of a caller's words, which is the trap View.Title's
-// own doc comment warns about.
+// TestACallersOwnTitleSurvivesEveryYear: the packager carries a caller's
+// title verbatim onto every year rather than composing over it.
 func TestACallersOwnTitleSurvivesEveryYear(t *testing.T) {
 	// No apostrophe: html/template escapes one to &#39; in the <title>, which is
 	// correct and would make this assertion about escaping rather than about the
@@ -1535,13 +1401,8 @@ func TestACallersOwnTitleSurvivesEveryYear(t *testing.T) {
 	}
 }
 
-// TestAYearStemOnAnotherScopeIsRefused is the fail-closed half of fisc-iyt.
-//
-// The lede states the scope in prose ("all funds, gross") that is not
-// repainted, so a view whose years disagreed about scope would state the
-// opening year's under every year. It cannot happen today --
-// Sankey.Slices fixes the scope -- and the answer to a state nothing can emit is
-// to refuse it, not to build a repaint and a test that can never go red.
+// TestAYearStemOnAnotherScopeIsRefused: the lede's scope is not repainted,
+// so years disagreeing on scope are refused.
 func TestAYearStemOnAnotherScopeIsRefused(t *testing.T) {
 	_, err := twoYearSankey(t, export.View{}, func(meta map[string]any) {
 		meta["scopes"] = []string{"revenue-by-fund"}
@@ -1574,28 +1435,12 @@ func TestAYearStemBuiltByAnotherProjectionIsRefused(t *testing.T) {
 	}
 }
 
-// TestATemplateWithNoArmIsRefusedRatherThanRenderedAsASpine is the fail-closed
-// half of buildSite's dispatch.
-//
-// THE ARM THAT USED TO BE THERE WAS `default: buildSankeyPage`, and its failure
-// mode is silent by construction. A template name that is not the trends one --
-// a typo, or a third template added to the asset tree without a matching arm --
-// was handed pageData and rendered as a spine. A template that reads none of the
-// fields it is given renders a page of BLANKS, not an error: nothing in the
-// pipeline compares a template against the shape of the data it received, and
-// renderPage cannot, because the whole point of html/template is that a missing
-// field is an empty string.
-//
-// The asset tree here CARRIES the third template, which is what makes the test
-// about the dispatch rather than about a missing file. Under the old default the
-// page below renders successfully and ships a title and nothing else.
+// TestATemplateWithNoArmIsRefusedRatherThanRenderedAsASpine: a template with
+// no arm in buildSite's dispatch is refused, not rendered as a page of blanks.
+// The asset tree carries the template, so this is about the dispatch.
 func TestATemplateWithNoArmIsRefusedRatherThanRenderedAsASpine(t *testing.T) {
-	// A NAME NO TEMPLATE IN THE TREE HAS, and it has to stay that way. This
-	// read "drilldown.html.tmpl" until that became a real template with a real
-	// arm, at which point the test asserted the opposite of reality and said so
-	// by going red. Whatever this is renamed to next, check first that
-	// buildSite has no case for it -- a test about an unhandled template is
-	// worthless the moment its template is handled.
+	// A name no template in the tree has and no buildSite case handles; check
+	// both before renaming it.
 	const orphan = "unclaimed.html.tmpl"
 	assets := fstest.MapFS{
 		"flows.html.tmpl":     {Data: []byte(`<!doctype html><title>{{.Title}}</title>`)},
@@ -1635,16 +1480,9 @@ func TestATemplateWithNoArmIsRefusedRatherThanRenderedAsASpine(t *testing.T) {
 	}
 }
 
-// TestAProjectionWithNoViewStillShipsItsCitedPages: a projection written to
-// data/<stem>.json but rendered on no page still ships the pages its
-// metadata.sources names under dist/extracted/, because buildSite collects
-// citations from the projections and not only from the views.
-//
-// The consequence is not a blank page. It is a published document whose
-// provenance links resolve to nothing -- 404s from the one part of this site
-// that exists to be checkable -- and no check sees it, because
-// fact-offset-points-at-token reads the committed corpus and nothing walks the
-// built tree.
+// TestAProjectionWithNoViewStillShipsItsCitedPages: a projection on no page
+// still ships its metadata.sources pages under dist/extracted/, else its
+// provenance links 404.
 func TestAProjectionWithNoViewStillShipsItsCitedPages(t *testing.T) {
 	dir := t.TempDir()
 	_, err := writeSite(export.Options{
@@ -1723,15 +1561,9 @@ func provenanceSite(t *testing.T, edit func(*export.Options)) (string, error) {
 	return base.Dir, err
 }
 
-// TestTheProvenanceViewNeedsNoProjection is the weakening this page required,
-// asserted in both directions so it stays narrow.
-//
-// View.validate refused a view naming no projection, unconditionally. The
-// provenance index renders none -- it is built from Options.PageIndex and
-// decodes nothing -- so the guard had to become conditional on the template.
-// The mirror arm is what keeps that from being a hole: a template that DOES
-// render a document must still name one, and a projection named on a template
-// that renders none is refused rather than ignored.
+// TestTheProvenanceViewNeedsNoProjection: a template rendering no document
+// needs no projection; one that renders a document must name one, and a
+// projection named on one that renders none is refused.
 func TestTheProvenanceViewNeedsNoProjection(t *testing.T) {
 	dir, err := provenanceSite(t, nil)
 	if err != nil {
@@ -1780,10 +1612,8 @@ func sourcesPageSite(t *testing.T, edit func(*export.Options)) (string, error) {
 }
 
 // TestEveryViewLinksTheSourcesPageInPlaceOfItsList: beside a provenance
-// index, every page lists no cited page, and its footer links the sources page
-// and the repository, the sources page's own footer the repository alone; the
-// sources page lists every data file written; and Write refuses a page any view
-// cites that the provenance index does not list, naming the view.
+// index, footers link the sources page instead of listing pages, the sources
+// page lists every data file, and an unindexed cited page is refused by view.
 // Mutation: drop listedBy's call in citedSources -- both refusal arms go red;
 // drop .SourcesPage from the footer's condition -- the self-link arm goes red;
 // render the footer's sources list whatever .SourcesPath -- the first goes red;
@@ -1859,13 +1689,10 @@ func TestEveryViewLinksTheSourcesPageInPlaceOfItsList(t *testing.T) {
 	}
 }
 
-// TestAFigureCitingAPageItsMetadataOmitsRefuses: a trend cell citing a page
-// its document's metadata does not list is held to the sources page by its
-// own citation, and refuses the export naming the view when that page is not
-// indexed.
-// Mutation: drop the cells arm in citedSources -- the metadata's p66 is
-// listed, the cell's p127 drops out of every list on the site, and the export
-// writes.
+// TestAFigureCitingAPageItsMetadataOmitsRefuses: a trend cell's own citation
+// must be indexed even when its metadata omits the page.
+// Mutation: drop the cells arm in citedSources -- p127 drops out of every list
+// and the export writes.
 func TestAFigureCitingAPageItsMetadataOmitsRefuses(t *testing.T) {
 	_, err := sourcesPageSite(t, func(o *export.Options) {
 		var doc map[string]any
@@ -2017,16 +1844,9 @@ func TestWriteRefusesAProvenanceRowWithNoShard(t *testing.T) {
 	}
 }
 
-// TestRecordsBaseStaysSiteRelativeUnderSourceBrowseURL is the asymmetry the
-// clientDoc doc comment warns about, asserted rather than described.
-//
-// --source-browse-url ships no page text and cites a remote URL, so
-// a page's text link goes ABSOLUTE. The shards are written into the output tree
-// on every export, so its records link must stay SITE-RELATIVE -- two keys that
-// look alike, sit beside each other in one clientPage, and differ in kind.
-// Making records follow text would publish a browse URL for 21 files
-// the remote does not have, which is the mistake facts.go's index comment
-// records having already been made once.
+// TestRecordsBaseStaysSiteRelativeUnderSourceBrowseURL: under
+// --source-browse-url a page's text link goes absolute, but the shards are
+// always written, so its records link stays site-relative.
 func TestRecordsBaseStaysSiteRelativeUnderSourceBrowseURL(t *testing.T) {
 	dir, err := provenanceSite(t, func(o *export.Options) {
 		o.SourceBrowseURL = "https://example.invalid/tree/main/"
@@ -2053,16 +1873,9 @@ func TestRecordsBaseStaysSiteRelativeUnderSourceBrowseURL(t *testing.T) {
 	}
 }
 
-// TestWriteRefusesARecordsBaseTheEntriesContradict covers the MIS-WIRED CALLER
-// and is claimed as no more than that.
-//
-// A base and the entries' Data both come from the same producer, so this
-// cannot witness a wrong path RULE -- what it catches is a caller filling
-// RecordsBase from a different source than PageIndex, which is how the config
-// would come to carry a URL for a file nobody wrote. That failure is
-// otherwise completely silent: every shard is present, every byte count
-// matches, the provenance page's own links work, and only the chart's records
-// links 404.
+// TestWriteRefusesARecordsBaseTheEntriesContradict catches a caller filling
+// RecordsBase from a different source than PageIndex, whose only symptom is
+// the chart's records links 404ing.
 func TestWriteRefusesARecordsBaseTheEntriesContradict(t *testing.T) {
 	_, err := provenanceSite(t, func(o *export.Options) {
 		o.RecordsBase = map[string]string{budgetDocID: "facts/somewhere-else/pages/"}
@@ -2075,19 +1888,9 @@ func TestWriteRefusesARecordsBaseTheEntriesContradict(t *testing.T) {
 	}
 }
 
-// TestWriteRefusesARecordsBaseWithNoTrailingSeparator is the string-prefix
-// trap, and it is the likeliest way a caller gets this wrong.
-//
-// Now covered by the exact-directory rule rather than by a separator arm of
-// its own, and kept as its own case because the CAUSE is distinct: this one is
-// path.Join dropping the separator, and TestWriteRefusesAnAncestorRecordsBase
-// is a caller naming the wrong directory entirely.
-//
-// "facts/d/pages" is a clean STRING prefix of "facts/d/pages/p0066.jsonl", so
-// a prefix test alone accepts it -- and the client, which appends a filename,
-// composes "facts/d/pagesp0066.jsonl". Every records anchor 404s from a base
-// that validated. Options.Build is a public seam and path.Join drops the
-// trailing separator, so this is one reach for the wrong helper away.
+// TestWriteRefusesARecordsBaseWithNoTrailingSeparator: "facts/d/pages" is a
+// string prefix of its entries, but the client would compose
+// "facts/d/pagesp0066.jsonl" -- path.Join drops the separator.
 func TestWriteRefusesARecordsBaseWithNoTrailingSeparator(t *testing.T) {
 	_, err := provenanceSite(t, func(o *export.Options) {
 		o.RecordsBase = map[string]string{budgetDocID: "facts/d/pages"}
@@ -2100,14 +1903,9 @@ func TestWriteRefusesARecordsBaseWithNoTrailingSeparator(t *testing.T) {
 	}
 }
 
-// TestWriteRefusesAnAncestorRecordsBase is the hole a prefix test leaves open
-// even WITH a trailing separator.
-//
-// "facts/" ends in "/" and is a clean prefix of "facts/d/pages/p0066.jsonl",
-// so both earlier forms of this guard accepted it -- and the client, which
-// appends only a filename, composes "facts/p0066.jsonl". The base has to BE
-// the entry's directory, which is the relationship the client actually relies
-// on, so that is what is asserted rather than a containment approximation.
+// TestWriteRefusesAnAncestorRecordsBase: "facts/" is a prefix ending in a
+// separator, but the client would compose "facts/p0066.jsonl"; the base must
+// be the entry's directory.
 func TestWriteRefusesAnAncestorRecordsBase(t *testing.T) {
 	_, err := provenanceSite(t, func(o *export.Options) {
 		o.RecordsBase = map[string]string{budgetDocID: "facts/"}
@@ -2163,14 +1961,9 @@ func TestAnAbsentRecordsBaseIsNotAnError(t *testing.T) {
 	}
 }
 
-// TestTheProvenancePageShipsThePageTextOfEveryLocatorItPublishes is the p76 case
-// in miniature, and the reason cited is seeded from PageIndex rather than from
-// a second mechanism.
-//
-// The fact store covers a page the charts do not, so the index's pages are
-// routed through the same cited set as the charts': withPageText's refusal
-// covers them, and a published locator whose page text is not in the
-// extraction tree is an error, not a dangling link.
+// TestTheProvenancePageShipsThePageTextOfEveryLocatorItPublishes: the index's
+// pages join the charts' cited set, so a locator whose page text is missing is
+// an error, not a dangling link.
 func TestTheProvenancePageShipsThePageTextOfEveryLocatorItPublishes(t *testing.T) {
 	// The page text carries 66 and 67 only; the index publishes 127 too.
 	_, err := provenanceSite(t, func(o *export.Options) { o.PageText = twoViewPageText(66, 67) })
@@ -2195,11 +1988,8 @@ func TestTheProvenancePageShipsThePageTextOfEveryLocatorItPublishes(t *testing.T
 	}
 }
 
-// TestTheProvenancePageLinksBothHalvesOfEveryCitation. The page exists to be
-// followed, so every link it draws for a row has to land on something the site
-// wrote or on the city's own document -- and the PDF link must be the city's
-// canonical URL, never a forge's raw host, which serves LFS pointer text rather
-// than a PDF.
+// TestTheProvenancePageLinksBothHalvesOfEveryCitation: every row's links land
+// on a written file or the city's canonical PDF URL, never a forge's raw host.
 func TestTheProvenancePageLinksBothHalvesOfEveryCitation(t *testing.T) {
 	dir, err := provenanceSite(t, nil)
 	if err != nil {
@@ -2243,15 +2033,8 @@ func TestTheProvenancePageLinksBothHalvesOfEveryCitation(t *testing.T) {
 }
 
 // TestTheChartsAccessibleNameIsTheYearViewsOwnString pins the server-rendered
-// <title id="chart-title"> on both chart-bearing templates to the string the
-// client repaints on a year switch: the config blob's years[0].chart_title.
-//
-// THE ELEMENT IS AN ACCESSIBILITY LABEL, so drift here is the one wording
-// defect no sighted reader can see: a template composing its own copy of the
-// sentence renders one wording, and the first year switch repaints the other,
-// announced only through a screen reader (fisc-rn0; this element is
-// fisc-m1uu). Comparing the markup against the blob fails whichever side
-// moves, including a template that regrows a hand-composed literal.
+// <title id="chart-title"> on both chart templates to the config blob's
+// years[0].chart_title, the string the client repaints on a year switch.
 func TestTheChartsAccessibleNameIsTheYearViewsOwnString(t *testing.T) {
 	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
 	if err != nil {
@@ -2321,14 +2104,8 @@ func chartAndSpine(t *testing.T) string {
 	return dir
 }
 
-// TestTheApparatusShipsClosedOnEveryChartPage. A <details> and a <details open>
-// render identically to whoever wrote them -- the difference only shows on a
-// reader's first visit -- so the attribute needs an assertion rather than an
-// eye.
-//
-// IT IS A RULE OVER EVERY DISCLOSURE ON THE PAGE, not a list of three ids. A
-// list would say nothing about the next panel somebody folds, which is the one
-// likely to ship open by accident.
+// TestTheApparatusShipsClosedOnEveryChartPage: every <details> on a chart
+// page ships closed, a rule over all disclosures rather than a list of ids.
 func TestTheApparatusShipsClosedOnEveryChartPage(t *testing.T) {
 	dir := chartAndSpine(t)
 	// `open`, `open>` and `open=""` are one boolean attribute.
@@ -2403,11 +2180,8 @@ func TestTheFooterSourcesFoldWithoutTakingTheDocumentOnScreenWithThem(t *testing
 		if open.MatchString(foot) {
 			t.Errorf("%s ships its source list open", page)
 		}
-		// BOTH BOUNDS. Asserting only that the heading comes AFTER <summary>
-		// leaves it free to sit anywhere below, including inside the collapsed
-		// panel -- which takes it out of the heading outline a screen reader
-		// navigates by, the one thing keeping the folded list findable.
-		// Measured: moved past </summary>, this test stayed green.
+		// Both bounds: a heading inside the collapsed panel leaves the outline.
+		// Measured: moved past </summary>, a lower-bound-only check stayed green.
 		if summary > heading || heading > summaryEnd {
 			t.Errorf("%s's Sources heading is at %d, not between <summary> at %d and "+
 				"</summary> at %d", page, heading, summary, summaryEnd)
@@ -2418,15 +2192,9 @@ func TestTheFooterSourcesFoldWithoutTakingTheDocumentOnScreenWithThem(t *testing
 	}
 }
 
-// TestEveryFooterDisclosureKeepsItsHeadingInTheOutline asserts the rule on the
-// TEMPLATES rather than on rendered pages: every page executes the one
-// "footer", which alone executes the sources partial, so one file holds every
-// footer disclosure the site renders. A page that grows its own footer again
-// is refused here.
-//
-// A <summary> stays in the accessibility tree when the panel is closed and its
-// content does not, so a heading inside the summary is the only thing that
-// keeps a folded list findable by heading navigation without opening it.
+// TestEveryFooterDisclosureKeepsItsHeadingInTheOutline: on the templates,
+// every footer disclosure's heading sits in its <summary>, the only part a
+// closed panel keeps in the accessibility tree. A page's own footer is refused.
 func TestEveryFooterDisclosureKeepsItsHeadingInTheOutline(t *testing.T) {
 	entries, err := fs.ReadDir(site.FS(), ".")
 	if err != nil {
@@ -2608,13 +2376,11 @@ func TestEveryFileOpensToWhatItIsBeforeItDownloads(t *testing.T) {
 	}
 }
 
-// TestTheTablePagesFoldTheirApparatusAndNotTheirWarnings holds balances.html
-// and provenance.html to fisc-yj4w.16's line: each page's
-// apparatus ships in a CLOSED disclosure whose heading stays in the <summary>
-// and whose content is inside it, the caveats line sits below the table it
-// qualifies, and the text a reader needs before the first mark -- the Shape
-// paragraph, the locator rule, the downloads' names -- is inside no <details>
-// at all or in a <summary>, which a closed one shows.
+// TestTheTablePagesFoldTheirApparatusAndNotTheirWarnings: on balances.html
+// and provenance.html the apparatus ships in a closed disclosure with its
+// heading in the <summary>, caveats sit below the table, and the Shape
+// paragraph, locator rule and downloads' names are in no <details> or in a
+// <summary>.
 func TestTheTablePagesFoldTheirApparatusAndNotTheirWarnings(t *testing.T) {
 	var hdoc map[string]any
 	if err := json.Unmarshal(historyDoc(balancesFixture()...), &hdoc); err != nil {

@@ -16,13 +16,10 @@ func inferredRefs() map[Citation]pageRef {
 	}
 }
 
-// TestInferredColumnsListsEachCellOnce: two derived flows between printed
-// nodes with the same labels and different cells are two entries, and a
-// ribbon citing a cell another ribbon already draws -- in another schedule or
-// the same one, between other ends -- adds none.
-// Mutation: key the listing by a flow's ends and its fact ids -- the repeated
-// cell is listed twice and the test goes red; key it by the flow's labels --
-// the second cell is dropped.
+// TestInferredColumnsListsEachCellOnce: two cells under one pair of labels
+// are two entries; a cell another ribbon already draws adds none.
+// Mutation: key the listing by ends and fact ids and the repeated cell is
+// listed twice. Mutation: key it by labels and the second cell is dropped.
 func TestInferredColumnsListsEachCellOnce(t *testing.T) {
 	doc := []byte(`{"schema_version":1,"projection":"p","metadata":{"fiscal_year_label":"FY 2025-26","basis":"adopted"},` +
 		`"nodes":[{"id":"fund/100","label":"General Fund"},{"id":"fund/101","label":"General Fund"},` +
@@ -47,16 +44,12 @@ func TestInferredColumnsListsEachCellOnce(t *testing.T) {
 	}
 }
 
-// TestInferredColumnsFilesAHubLegUnderItsDerivedNode: a hub leg and a
-// re-pointed leaf repeating one cell, and a coarser schedule drawing the same
-// cell between other ends, are listed once, named at the ends the Repeats
-// spells in the labels of the schedule naming it, under the derived node and
-// not among the flows between printed nodes, whichever schedule's stem sorts
-// first. A contra flow prints at its printed sign.
-// Mutation: drop the preference for a ribbon naming its Repeats -- with the
-// coarser stem first the cell reads "General Fund group"; label every row
-// from the first stem to name a node -- with the coarser stem first the leaf
-// reads "General Fund (spine)". Both go red on the coarse-first arm.
+// TestInferredColumnsFilesAHubLegUnderItsDerivedNode: one cell drawn by a hub
+// leg, a re-pointed leaf and a coarser schedule is listed once under the
+// derived node, at the Repeats' ends, whichever stem sorts first.
+// Mutation: drop the preference for a ribbon naming its Repeats and the
+// coarse-first cell reads "General Fund group". Mutation: label every row
+// from the first stem and the leaf reads "General Fund (spine)".
 func TestInferredColumnsFilesAHubLegUnderItsDerivedNode(t *testing.T) {
 	const meta = `{"schema_version":1,"projection":"p","metadata":{"fiscal_year_label":"FY 2026-27","basis":"adopted"},`
 	const draw = `{"id":"draw","label":"Fund Balance Draw","derived":true,"rationale":"why","source_note":"note"},`
@@ -96,13 +89,11 @@ func TestInferredColumnsFilesAHubLegUnderItsDerivedNode(t *testing.T) {
 	}
 }
 
-// TestInferredColumnsListsAFlowIntoADerivedNodeUnderIt: a derived flow into
-// or out of a derived node is listed under that node, with the cents its link
-// carries and the pages its locators cite; two flows sharing ends and citing
-// other facts are two; a flow citing a page the sources page does not list,
-// or one schedule restating a flow at another value, is refused.
-// Mutation: skip a derived flow with a derived end -- the node arm goes red;
-// drop the value check -- the restated arm does.
+// TestInferredColumnsListsAFlowIntoADerivedNodeUnderIt: a flow touching a
+// derived node is listed under it; an unlisted page or a restated value is
+// refused.
+// Mutation: skip a derived flow with a derived end and the node arm goes red.
+// Mutation: drop the value check and the restated arm goes red.
 func TestInferredColumnsListsAFlowIntoADerivedNodeUnderIt(t *testing.T) {
 	const head = `{"schema_version":1,"projection":"p","metadata":{"fiscal_year_label":"FY 2026-27","basis":"adopted"},` +
 		`"nodes":[{"id":"draw","label":"Fund balance drawn","derived":true,"rationale":"why","source_note":"note"},` +
@@ -148,12 +139,9 @@ func TestInferredColumnsListsAFlowIntoADerivedNodeUnderIt(t *testing.T) {
 	}
 }
 
-// TestBuildCellsCitesThroughSourcesFor: a trend cell's links are the ones
-// sourcesFor composes for its page, and a point citing a document the
-// registry does not describe refuses rather than publishing a cell with no
-// PDF link.
-// Mutation: drop citedPage's registry check -- the missing document's cell
-// exports with an empty PDF link and the refusal arm goes red.
+// TestBuildCellsCitesThroughSourcesFor: a trend cell links through
+// sourcesFor; a point citing an undescribed document refuses.
+// Mutation: drop citedPage's registry check and the refusal arm goes red.
 func TestBuildCellsCitesThroughSourcesFor(t *testing.T) {
 	base := func(id string) string { return "extracted/" + id + "/pages/" }
 	byID := map[string]Doc{"d": {ID: "d", PDFURL: "d.pdf"}}
@@ -176,15 +164,11 @@ func TestBuildCellsCitesThroughSourcesFor(t *testing.T) {
 	}
 }
 
-// TestInferredColumnsDropsARowOnlyWhereCompletesSaysSo: a derived cell the
-// column's derived ribbons declare they complete is not listed where each of
-// its facts is cited by a listed completing row citing all its pages; one
-// they complete without citing its page stays listed, and so does one whose
-// cents other flows merely sum to.
-// Mutation: drop a completed row without holding its pages to the completing
-// row's -- k's row and its p66 go; drop a row whose cents the flows under its
-// ends' members sum to -- h's row goes, folded into h1's; ignore Completes --
-// g's row is listed beside its legs.
+// TestInferredColumnsDropsARowOnlyWhereCompletesSaysSo: a completed cell is
+// dropped only where completing rows cite all its facts and pages.
+// Mutation: skip the page check and k's row and its p66 go. Mutation: drop a
+// row its members merely sum to and h's row goes. Mutation: ignore Completes
+// and g's row is listed beside its legs.
 func TestInferredColumnsDropsARowOnlyWhereCompletesSaysSo(t *testing.T) {
 	const meta = `{"schema_version":1,"projection":"p","metadata":{"fiscal_year_label":"FY 2026-27","basis":"adopted"},`
 	link := func(src, dst string, cents int, completes string, pages string, facts ...string) string {

@@ -16,9 +16,8 @@ import (
 	"github.com/jcrussell/livermore-budget/schema"
 )
 
-// TestFundGroupsAreOrderedAndOpenEnded holds [fundGroupsOf] to its order and
-// to sorting a fund type the order does not name after those it does, rather
-// than to the top of the column (fisc-zojk).
+// TestFundGroupsAreOrderedAndOpenEnded: [fundGroupsOf] sorts a fund type the
+// order does not name after those it does.
 func TestFundGroupsAreOrderedAndOpenEnded(t *testing.T) {
 	nodes := []ColumnNode{
 		{ID: "revenue/taxes", Role: "revenue_source"},
@@ -90,11 +89,10 @@ func TestTheSchemaStatesWhatAColumnCarries(t *testing.T) {
 	}
 }
 
-// TestAReductionsSentenceSurvivesTheFoldIntoAColumn: the packager decodes into
-// an anonymous struct, so a key it does not name is dropped with no error and
-// no schema failure.
+// TestAReductionsSentenceSurvivesTheFoldIntoAColumn: the packager's decode
+// drops any key it does not name, silently.
 //
-// Drop Contra from decoded.Links and this goes red.
+// Mutation: drop Contra from decoded.Links and this goes red.
 func TestAReductionsSentenceSurvivesTheFoldIntoAColumn(t *testing.T) {
 	const note = "printed as a reduction of Property Taxes"
 	doc := []byte(`{
@@ -164,17 +162,11 @@ func keysOf(m map[string]ColumnDoc) []string {
 }
 
 // TestReachedStemsIsTheYearsAndWhatTheirExpansionIsStitchedFrom: a view
-// drawing the expansion reaches each year the view lists, and in each year's
-// column the expansion schedule and every document it is stitched from; a
-// view whose column carries no expansion reaches its years alone, the second
-// only through the year control; a Sankey view drawing its own document
-// reaches no expansion though another year's column carries one; and a
-// projection outside the year stems is refused rather than read as reaching
-// nothing.
+// drawing the expansion reaches each year's expansion and its sources; one
+// drawing its own document reaches no expansion.
 //
-// Mutation: gate the expansion on the Sankey or ledger form rather than on
-// Draws and the Sankey drawing its own document reaches expansion and
-// fund-flows.
+// Mutation: gate the expansion on the form rather than on Draws and the
+// Sankey drawing its own document reaches expansion and fund-flows.
 func TestReachedStemsIsTheYearsAndWhatTheirExpansionIsStitchedFrom(t *testing.T) {
 	doc := func(schedule string, year int) []byte {
 		return []byte(fmt.Sprintf(`{"projection":%q,"nodes":[{"id":"n","label":"N","tier":0}],"links":[],`+
@@ -223,9 +215,7 @@ func TestReachedStemsIsTheYearsAndWhatTheirExpansionIsStitchedFrom(t *testing.T)
 	if diff := cmp.Diff([]string{"year", "expansion", "fund-flows", "year-2027"}, got); diff != "" {
 		t.Errorf("ReachedStems of a ledger (-want +got):\n%s", diff)
 	}
-	// A Sankey whose opening column's expansion was not built draws its own
-	// document in every year, so a later column's expansion is no document
-	// its page states.
+	// A Sankey with no opening expansion draws its own document every year.
 	got, err = View{Path: "flows.html", Template: SankeyTemplate, Projection: "year",
 		YearStems: years, Overview: chart}.ReachedStems(ix)
 	if err != nil {
@@ -254,10 +244,8 @@ func TestReachedStemsIsTheYearsAndWhatTheirExpansionIsStitchedFrom(t *testing.T)
 	}
 }
 
-// TestAProjectionOutsideItsYearStemsIsRefusedByEveryReader holds the rule's
-// one owner, projectionAmongYears, to every caller that reads a view's
-// documents: View.validate, and ReachedStems, which runs on views validate
-// has not seen.
+// TestAProjectionOutsideItsYearStemsIsRefusedByEveryReader: View.validate and
+// ReachedStems both refuse through projectionAmongYears.
 func TestAProjectionOutsideItsYearStemsIsRefusedByEveryReader(t *testing.T) {
 	doc := []byte(`{"projection":"year","nodes":[{"id":"n","label":"N","tier":0}],"links":[],` +
 		`"metadata":{"fiscal_year":2026,"basis":"adopted"}}`)
@@ -432,9 +420,7 @@ func TestColumnsOfRefusesADocumentNamingNoProjection(t *testing.T) {
 }
 
 // TestAChartPageStatesTheCaveatsOfWhatItDrawsAndNotWhatThatIsStitchedFrom:
-// a view drawing the expansion states the expansion's caveats and the
-// spine's, and not those of the schedules the expansion is stitched from,
-// which site/app.js's caveatsFor chips on no mark.
+// the expansion's and spine's caveats, not its sources'.
 //
 // Mutation: have caveatsOfView return ReachedStems unfiltered and fund-flows
 // is among the stems.
