@@ -61,6 +61,16 @@ func TestFundGroupSourcesEqualUsesIsFailable(t *testing.T) {
 		{"only the reserve increase printed", only(func(f fact.Fact) bool { return f.Category == project.CategoryFundBalanceReserveIncrease }), noChange},
 		{"one cent moved into a revenue row", nudge(1), "(off by $0.01)"},
 		{"one cent moved out of a revenue row", nudge(-1), "(off by -$0.01)"},
+		// The identity cannot see this: both legs move together, so only
+		// p66's printed TOTAL SOURCES and TOTAL USES hold it.
+		{"a dollar moved into both transfer legs", func() []fact.Fact {
+			facts := slices.Clone(orig)
+			for _, k := range []vocab.Kind{vocab.KindTransferIn, vocab.KindTransferOut} {
+				i := slices.IndexFunc(facts, func(f fact.Fact) bool { return general2027(f) && f.Kind == k })
+				facts[i].AmountCents += 100
+			}
+			return facts
+		}, `"TOTAL SOURCES" prints $164,844,882.00 at p66`},
 		{"a category that is no term", func() []fact.Fact {
 			facts := slices.Clone(orig)
 			i := slices.IndexFunc(facts, func(f fact.Fact) bool { return general2027(f) && isChange(f) })

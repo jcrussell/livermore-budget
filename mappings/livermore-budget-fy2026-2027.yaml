@@ -35,8 +35,8 @@
 #
 # WHAT TIES. The two rules with a `total_row` reconcile exactly in all 24
 # columns; the "$" on a totals row is the `stop_at` for the label-less p67 parts.
-# The rules without one are checked by the balance identity in
-# internal/mapping/mappings_test.go against TOTAL SOURCES and TOTAL USES.
+# The rules without one are held to TOTAL SOURCES and TOTAL USES, read from
+# their padded cells, by fund-group-sources-equal-uses.
 schema_version: 1
 doc_id: livermore-budget-fy2026-2027
 

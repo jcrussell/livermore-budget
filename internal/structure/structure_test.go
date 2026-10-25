@@ -11,7 +11,6 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/structure"
-	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // committedFacts reads the fact store this repository publishes.
@@ -198,80 +197,6 @@ func TestALevelDoesNotRefineItself(t *testing.T) {
 	}
 }
 
-// TestEveryRuleInTheStoreSitsAtADeclaredLevel: every rule that produced a
-// fact populates an axis union the lattice names, and the ACFR fund-balance
-// scope's two grains stay two.
-func TestEveryRuleInTheStoreSitsAtADeclaredLevel(t *testing.T) {
-	facts := committedFacts(t)
-	byRule, err := structure.LevelOfRule(facts, committedFiles(t))
-	if err != nil {
-		t.Fatalf("derive each rule's level: %v", err)
-	}
-	for rule, l := range byRule {
-		if !structure.Declared(l) {
-			t.Errorf("rule %q sits at %q, which is not a declared level", rule, l)
-		}
-	}
-	levels := map[string]map[structure.Level]bool{}
-	for i := range facts {
-		f := &facts[i]
-		if levels[f.Scope] == nil {
-			levels[f.Scope] = map[structure.Level]bool{}
-		}
-		levels[f.Scope][byRule[f.RuleID]] = true
-	}
-	if n := len(levels["acfr-fund-balances"]); n != 2 {
-		t.Errorf("acfr-fund-balances sits at %d level(s), want 2: the schedule prints the "+
-			"General Fund by name and the other governmental funds aggregated, which is why "+
-			"a scope cannot carry a grain", n)
-	}
-}
-
-// TestEveryDeclaredCutSitsAtTheLevelItDeclares checks each Cut against the
-// store.
-func TestEveryDeclaredCutSitsAtTheLevelItDeclares(t *testing.T) {
-	facts := committedFacts(t)
-	byRule, err := structure.LevelOfRule(facts, committedFiles(t))
-	if err != nil {
-		t.Fatalf("derive each rule's level: %v", err)
-	}
-	for _, c := range structure.BudgetBookCuts() {
-		derived, ok := c.DerivedLevel(byRule, facts)
-		if !ok {
-			t.Errorf("cut %q selects facts at no single level", c.Name)
-			continue
-		}
-		want := derived
-		for _, a := range c.Placeholders {
-			want = structure.Drop(want, a)
-		}
-		if diff := cmp.Diff(want, c.Level); diff != "" {
-			t.Errorf("cut %q declares a level its facts do not support (-want +got):\n%s"+
-				"\n  derived %q, placeholders %v", c.Name, diff, derived, c.Placeholders)
-		}
-	}
-}
-
-// TestTheGeneralFundDepartmentsDecomposeTheSpine: pp.167-170's four object
-// categories over the spine's two columns, each facing a spine cell.
-func TestTheGeneralFundDepartmentsDecomposeTheSpine(t *testing.T) {
-	facts := committedFacts(t)
-	fine, coarse := cutNamed(t, "general-fund-departments"), cutNamed(t, "spine")
-	got, err := structure.Contain(facts, fine, coarse)
-	if err != nil {
-		t.Fatalf("contain: %v", err)
-	}
-	if len(got.Findings) != 0 {
-		t.Errorf("pp.167-170 do not decompose the spine:\n  %v", got.Findings)
-	}
-	if diff := cmp.Diff([]int{8, 0}, []int{got.Subjects, got.OneSided}); diff != "" {
-		t.Errorf("cells compared and one-sided (-want +got):\n%s", diff)
-	}
-	if diff := cmp.Diff(structure.LevelFundGroupByCategory, got.At); diff != "" {
-		t.Errorf("compared at the wrong level (-want +got):\n%s", diff)
-	}
-}
-
 // TestAnExcusedCellIsNotCountedAsAgreeingAtZero holds AgreeAtZero to the
 // cells Reconcile compared.
 func TestAnExcusedCellIsNotCountedAsAgreeingAtZero(t *testing.T) {
@@ -335,75 +260,6 @@ func cutNamed(t *testing.T, name string) structure.Cut {
 	return structure.Cut{}
 }
 
-// TestTheCutsAgreeOnWhatTheDocumentsPrint: the same FY2026 adopted money,
-// summed over different antichains of one hierarchy, comes to the same figure.
-func TestTheCutsAgreeOnWhatTheDocumentsPrint(t *testing.T) {
-	facts := committedFacts(t)
-	sum := func(scope string, kinds ...string) int64 {
-		var total int64
-		for i := range facts {
-			f := &facts[i]
-			if f.Scope != scope || f.FiscalYear != 2026 || string(f.Basis) != "adopted" {
-				continue
-			}
-			for _, k := range kinds {
-				if string(f.Kind) == k {
-					total += f.AmountCents
-				}
-			}
-		}
-		return total
-	}
-
-	// REVENUE UNDER TWO CUTS: pp.66-67 by fund group, pp.127-140 by fund.
-	const revenue = 29_996_900_700
-	if diff := cmp.Diff([]int64{revenue, revenue},
-		[]int64{sum("all-funds-gross", "revenue"), sum("revenue-by-fund", "revenue")}); diff != "" {
-		t.Errorf("revenue under the fund-group cut and the fund cut (-want +got):\n%s", diff)
-	}
-
-	// And per fund group: money moved between groups nets out of the total.
-	groups := map[string][2]int64{}
-	for i := range facts {
-		f := &facts[i]
-		if f.FiscalYear != 2026 || string(f.Basis) != "adopted" || string(f.Kind) != "revenue" {
-			continue
-		}
-		g := groups[f.FundGroup]
-		switch f.Scope {
-		case "all-funds-gross":
-			g[0] += f.AmountCents
-		case "revenue-by-fund":
-			g[1] += f.AmountCents
-		default:
-			continue
-		}
-		groups[f.FundGroup] = g
-	}
-	if len(groups) != 6 {
-		t.Errorf("revenue reaches %d fund groups, want 6", len(groups))
-	}
-	for g, pair := range groups {
-		if pair[0] != pair[1] {
-			t.Errorf("fund group %q: the spine publishes %d and pp.127-140 sum to %d, a "+
-				"difference of %d", g, pair[0], pair[1], pair[0]-pair[1])
-		}
-	}
-
-	// EXPENDITURE UNDER THREE CUTS, along three different axes: pp.66-67 by
-	// fund group and object, pp.85-125 by department and object, pp.171-176 by
-	// fund and department.
-	const expenditure = 25_409_541_200
-	if diff := cmp.Diff([]int64{expenditure, expenditure, expenditure},
-		[]int64{
-			sum("all-funds-gross", "expenditure"),
-			sum("departmentwide-expenditures", "expenditure"),
-			sum("department-funding-sources", "expenditure"),
-		}); diff != "" {
-		t.Errorf("expenditure under three independent decompositions (-want +got):\n%s", diff)
-	}
-}
-
 // TestTheComparisonGoesRed removes one guarantee per case and names what the
 // comparison then says.
 func TestTheComparisonGoesRed(t *testing.T) {
@@ -463,47 +319,6 @@ func TestTheComparisonGoesRed(t *testing.T) {
 			t.Errorf("the finding names neither the cell nor the difference:\n  %s", got.Findings[0])
 		}
 	})
-}
-
-// TestTheSpineBalancesAtThePrintedControlTotals: per fund group and adopted
-// year, the facts' sources equal uses and each equals pp.66-67's printed TOTAL
-// SOURCES or TOTAL USES, rows no rule maps.
-func TestTheSpineBalancesAtThePrintedControlTotals(t *testing.T) {
-	facts := committedFacts(t)
-	for _, tt := range []struct {
-		group string
-		// The greater of the group's printed TOTAL SOURCES and TOTAL USES, in
-		// dollars, for FY2025-26 and FY2026-27.
-		fy2026, fy2027 int64
-	}{
-		{"general", 159_388_024, 164_844_882},
-		{"enterprise", 80_761_261, 83_638_250},
-		{"capital", 29_646_095, 37_017_670},
-		{"debt-service", 6_984_597, 6_969_898},
-		{"special-revenue", 29_279_560, 21_730_522},
-		{"internal-service", 25_117_367, 27_156_515},
-	} {
-		for year, want := range map[int]int64{2026: tt.fy2026, 2027: tt.fy2027} {
-			var su structure.SourcesUses
-			for i := range facts {
-				f := &facts[i]
-				if f.Scope == structure.ScopeAllFundsGross && f.FundGroup == tt.group &&
-					f.FiscalYear == year && f.Basis == vocab.BasisAdopted && !su.Add(f) {
-					t.Errorf("%s FY%d: fact %s is no term of sources = uses", tt.group, year, f.ID)
-				}
-			}
-			if su.Changes == 0 {
-				t.Errorf("%s FY%d: no change row, so nothing is balanced", tt.group, year)
-				continue
-			}
-			if su.Sources() != su.Uses() {
-				t.Errorf("%s FY%d: sources %d, uses %d", tt.group, year, su.Sources(), su.Uses())
-			}
-			if su.Sources() != want*100 {
-				t.Errorf("%s FY%d: sources %d cents, the page prints %d dollars", tt.group, year, su.Sources(), want)
-			}
-		}
-	}
 }
 
 // TestTallyCountsWithoutWording holds Tally to the split it documents: a

@@ -51,6 +51,10 @@ type Balance struct {
 	// SourcesUses says the scope's flows net to its change: revenue +
 	// transfers in - expenditure - transfers out - reserve increase.
 	SourcesUses bool
+	// TotalSources and TotalUses label the rows the scope prints as its
+	// control totals, revenue + transfers in and expenditure + transfers out
+	// + reserve increase, which no rule maps; empty where it prints none.
+	TotalSources, TotalUses string
 }
 
 // PrintsChange says whether the scope prints a change line.
@@ -95,7 +99,9 @@ func (b Balance) BlankExemptsSourcesUses(l Line) bool {
 func FundBalances() []Balance {
 	identity := []Line{LineBeginning, LineChange, LineEnding}
 	return []Balance{
-		{Scope: ScopeAllFundsGross, Lines: identity, SourcesUses: true},
+		// p66 prints "TOTAL SOURCES" without the colon "TOTAL USES:" carries.
+		{Scope: ScopeAllFundsGross, Lines: identity, SourcesUses: true,
+			TotalSources: "TOTAL SOURCES", TotalUses: "TOTAL USES:"},
 		// p41 prints its Transfers (out) negative, so its flows are not
 		// SourcesUses' terms as signed.
 		{Scope: ScopeACFRGeneralFundSummary, Lines: identity},
