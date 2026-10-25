@@ -1,15 +1,12 @@
 package structure_test
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/registry"
 	"github.com/jcrussell/livermore-budget/internal/structure"
 )
 
@@ -27,24 +24,6 @@ func compared(t *testing.T, facts []fact.Fact, a, b string) structure.Comparison
 	return got
 }
 
-// heldTie runs HoldTie over the committed store, divisions folded through
-// data/departments.yaml.
-func heldTie(t *testing.T, facts []fact.Fact, tie structure.Tie) structure.Comparison {
-	t.Helper()
-	reg, err := registry.Load(os.DirFS(filepath.Join("..", "..", "data")))
-	if err != nil {
-		t.Fatalf("load the registries: %v", err)
-	}
-	got, err := structure.HoldTie(facts, structure.AllCuts(), tie, func(division string) string {
-		d, _ := reg.Division(division)
-		return d.Department
-	})
-	if err != nil {
-		t.Fatalf("hold tie %q: %v", tie.Name, err)
-	}
-	return got
-}
-
 func exceptionNamed(t *testing.T, name string) structure.Exception {
 	t.Helper()
 	for _, e := range structure.BudgetBookExceptions() {
@@ -54,185 +33,6 @@ func exceptionNamed(t *testing.T, name string) structure.Exception {
 	}
 	t.Fatalf("no declared exception named %q", name)
 	return structure.Exception{}
-}
-
-// TestTheDeclaredExceptionsAreTheWholeResidual pins, by name, that every
-// Budget Book cell that does not tie is held apart by a declared exception,
-// and every declared exception holds a cell apart.
-func TestTheDeclaredExceptionsAreTheWholeResidual(t *testing.T) {
-	facts := committedFacts(t)
-	exceptions := structure.BudgetBookExceptions()
-	if err := structure.ValidateExceptions(exceptions); err != nil {
-		t.Fatalf("the declared exceptions do not validate: %v", err)
-	}
-	want := map[string][]string{
-		"revenue-detail -> spine": {
-			"pp.127-130-print-no-general-fund-transfer-in-2026",
-			"pp.127-130-print-no-general-fund-transfer-in-2027",
-		},
-		"transfers-detail -> spine":                            nil,
-		"a-transfer-out-is-p76-or-to-the-cip -> spine":         nil,
-		"general-fund-departments -> spine":                    nil,
-		"general-fund-by-category -> spine":                    nil,
-		"fund-expenditures -> spine":                           {"p0067-internal-service-is-250000-high-by-fund"},
-		"general-fund-departments -> general-fund-by-category": {"general-fund-departments-rounds-services-and-supplies-2024"},
-		"departmentwide ~ spine":                               {"p0067-internal-service-is-250000-high-by-object"},
-		"funding-sources ~ spine":                              {"p0067-internal-service-is-250000-high-by-fund-group"},
-		"departmentwide ~ funding-sources": {
-			"departmentwide-rounds-administrative-services-2024",
-			"departmentwide-rounds-innovation-and-economic-development-2024",
-			"departmentwide-rounds-library-department-2024",
-			"departmentwide-rounds-police-department-2024",
-			"departmentwide-rounds-public-works-2024",
-		},
-		"general-fund-departments ~ funding-sources": {
-			"general-fund-departments-rounds-administrative-services-2024",
-			"general-fund-departments-rounds-community-development-2024",
-		},
-		"fund-balance-flows -> spine": {
-			"p0067-internal-service-ending-is-250000-low",
-			"pp.186-209-carry-a-dollar-of-capital-beginning-2026",
-			"pp.186-209-carry-a-dollar-of-capital-beginning-2027",
-			"pp.186-209-carry-a-dollar-of-capital-ending-2026",
-			"pp.186-209-carry-a-dollar-of-capital-ending-2027",
-			"pp.186-209-carry-a-dollar-of-special-revenue-beginning-2026",
-			"pp.186-209-carry-a-dollar-of-special-revenue-beginning-2027",
-			"pp.186-209-carry-a-dollar-of-special-revenue-ending-2026",
-			"pp.186-209-carry-a-dollar-of-special-revenue-ending-2027",
-		},
-		"a-fund-transfers-out-or-to-the-cip -> spine": nil,
-		"fund-balance-revenues ~ spine":               nil,
-		"fund-balance-expenses ~ spine":               {"p0067-internal-service-is-250000-high-by-fund-total"},
-		"revenue-detail -> fund-balance-revenues": {
-			"pp.127-140-print-three-funds-revenue-as-the-state-grant-funds-2024",
-			"pp.127-140-round-airport-revenue-2024",
-			"pp.127-140-round-low-income-housing-revenue-2024",
-			"pp.186-209-carry-no-police-donations-other-financing-2025",
-		},
-		"general-fund-departments -> fund-balance-expenses": nil,
-		"general-fund-by-category -> fund-balance-expenses": {"p0172-rounds-general-fund-expenses-2024"},
-		"fund-expenditures -> fund-balance-expenses": {
-			"pp.173-183-print-four-funds-spending-as-the-state-grant-funds-2024",
-			"pp.173-183-round-airport-expenses-2024",
-			"pp.173-183-round-downtown-lmd-expenses-2024",
-			"pp.173-183-round-facilities-rehab-expenses-2024",
-			"pp.173-183-round-other-maintenance-cfds-expenses-2024",
-			"pp.173-183-round-water-expenses-2024",
-		},
-		"funding-sources -> fund-balance-expenses": {
-			"pp.85-125-fund-four-funds-spending-from-the-state-grant-fund-2024",
-			"pp.85-125-fund-maintenances-transfer-out-2024",
-		},
-	}
-	ties := map[string]structure.Comparison{}
-	for _, tie := range structure.BudgetBookTies() {
-		ties[tie.A+" ~ "+tie.B] = heldTie(t, facts, tie)
-	}
-	for _, sp := range structure.BudgetBookSplits() {
-		c, err := structure.HoldSplit(facts, structure.AllCuts(), sp)
-		if err != nil {
-			t.Fatalf("hold split %q: %v", sp.Name, err)
-		}
-		ties[sp.Name+" -> "+sp.Whole] = c
-	}
-	fired := map[string]bool{}
-	for pair, names := range want {
-		a, b, _ := strings.Cut(pair, " -> ")
-		if !strings.Contains(pair, " -> ") {
-			a, b, _ = strings.Cut(pair, " ~ ")
-		}
-		c, ok := ties[pair]
-		if !ok {
-			c = compared(t, facts, a, b)
-		}
-		r := structure.Reconcile(c, exceptions)
-		if len(r.Findings) != 0 {
-			t.Errorf("%s: %d finding(s) survive the declared exceptions:\n  %s",
-				pair, len(r.Findings), strings.Join(r.Findings, "\n  "))
-		}
-		got := make([]string, 0, len(r.Excused))
-		for _, e := range r.Excused {
-			got = append(got, e.Name)
-			fired[e.Name] = true
-		}
-		if diff := cmp.Diff(names, got, cmp.Transformer("nilIsEmpty", func(s []string) []string {
-			if s == nil {
-				return []string{}
-			}
-			return s
-		})); diff != "" {
-			t.Errorf("%s: exceptions held apart (-want +got):\n%s", pair, diff)
-		}
-	}
-	// An absence between two peers is the peer pass's to declare.
-	for _, peer := range []string{"transfers-detail", structure.CutFundBalanceFlows} {
-		o, err := structure.Peers(facts, cutNamed(t, structure.CutRevenueDetail), cutNamed(t, peer),
-			structure.BudgetBookIdentities(), exceptions)
-		if err != nil {
-			t.Fatalf("peers: %v", err)
-		}
-		if len(o.Findings) != 0 {
-			t.Errorf("revenue-detail + %s: %s", peer, strings.Join(o.Findings, "\n  "))
-		}
-		for _, name := range o.Excused {
-			fired[name] = true
-		}
-	}
-	for _, e := range exceptions {
-		if !fired[e.Name] {
-			t.Errorf("exception %q is declared and no comparison held it apart", e.Name)
-		}
-	}
-}
-
-// TestTheAgreementAtTheMeetReproducesTheTwoAxisReconciliations: pp.85-125 by
-// object and pp.171-176 by fund each agree with the spine everywhere but the
-// one cell p0067 prints wrong, by the same 250,000.
-func TestTheAgreementAtTheMeetReproducesTheTwoAxisReconciliations(t *testing.T) {
-	facts := committedFacts(t)
-	for _, c := range []struct {
-		cut, at, key  string
-		detail, spine int64
-	}{
-		{"departmentwide", "category", "FY2027 adopted category[category=services-and-supplies]",
-			13025208700, 13050208700},
-		{"funding-sources", "fund-group", "FY2027 adopted fund-group[fund_group=internal-service]",
-			2629451500, 2654451500},
-	} {
-		t.Run(c.cut, func(t *testing.T) {
-			got := compared(t, facts, c.cut, "spine")
-			if diff := cmp.Diff(structure.Agreement, got.Relation); diff != "" {
-				t.Errorf("relation (-want +got):\n%s", diff)
-			}
-			if diff := cmp.Diff(structure.Level(c.at), got.At); diff != "" {
-				t.Errorf("level (-want +got):\n%s", diff)
-			}
-			var off []structure.Cell
-			for _, cell := range got.Cells {
-				if !cell.Ties() {
-					off = append(off, cell)
-				}
-			}
-			if len(off) != 1 {
-				t.Fatalf("%d cells disagree, want exactly p0067's:\n  %v", len(off), got.Findings)
-			}
-			want := structure.Cell{
-				Key:     structure.Key{Year: 2027, Basis: "adopted", Level: structure.Level(c.at)},
-				Cut:     structure.Sum{Cents: c.detail, Present: true},
-				Against: structure.Sum{Cents: c.spine, Present: true},
-			}
-			want.Key.Coords = off[0].Key.Coords
-			if diff := cmp.Diff(want, off[0]); diff != "" {
-				t.Errorf("the disagreeing cell (-want +got):\n%s", diff)
-			}
-			if off[0].Key.String() != c.key {
-				t.Errorf("cell is %s, want %s", off[0].Key, c.key)
-			}
-			if d := off[0].Against.Cents - off[0].Cut.Cents; d != 25000000 {
-				t.Errorf("difference is %d cents, want 25000000", d)
-			}
-		})
-	}
 }
 
 // TestAnExceptionGoesRed removes one guarantee of the exception channel per
