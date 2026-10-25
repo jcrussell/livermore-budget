@@ -1,18 +1,15 @@
-// screen.test.mjs -- the chart's card full screen: the button the page shows
-// only where the browser offers it, and the chart laid out at its own width
-// in and out of it; and the zoom. jsdom has no Fullscreen API, so each test
-// stubs the one the page calls.
+// screen.test.mjs -- the card full screen, the chart laid out at its width
+// in and out of it, and the zoom. jsdom has no Fullscreen API, so each test
+// stubs it.
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { loadApp, bootedApp, split, settle, fire, drawnBody, cssPx, stylesheet, pageFixture, refusals, listenerErrors } from "./testlib.mjs";
 
 /**
- * Stubs the Fullscreen API on a loaded page, as a browser offering it does:
- * requestFullscreen makes the element the document's fullscreenElement and
- * fires fullscreenchange, and exitFullscreen undoes both. `width` is the
- * window's innerWidth once full screen; `media`, when given, is the page's
- * matchMedia stub, moved to the same width as a browser's viewport is.
+ * requestFullscreen sets fullscreenElement and fires fullscreenchange;
+ * exitFullscreen undoes both. `width` is innerWidth full screen; `media`
+ * moves the matchMedia stub with it.
  */
 function stubFullscreen(window, document, width, media) {
   let shown = null;
@@ -110,12 +107,9 @@ describe("full screen on the chart's card", () => {
 });
 
 /**
- * Lays the chart out where jsdom lays nothing out: the window `height` px
- * tall, and the svg `width` px wide times app.js's --chart-stretch, as
- * style.css draws it, with its top `top` px down the document,
- * or `full` px down the card while the card is full screen (the card at the
- * screen's top, unscrolled). Each is read when roomHeight asks, so a test
- * moves the window by reassigning `at`.
+ * Plants the layout jsdom lacks: window `height`, svg `width` times
+ * --chart-stretch, the top `top` px down (or `full` while full screen).
+ * Read when roomHeight asks, so reassigning `at` moves the window.
  */
 function stubRoom(window, document, at) {
   Object.defineProperty(window, "innerHeight", { get: () => at.height, configurable: true });
@@ -147,12 +141,11 @@ async function frame(window) {
 }
 
 describe("the chart laid out to the window's height", () => {
-  // Mutations: drop ctx.room from sankey.js's layOut, and the viewBox is the
-  // room while the nodes stop at the floor; drop the `* laid / r.width` from
-  // roomHeight, and the room is in screen px, half the units it should be;
-  // drop ctx.room from its render, and the viewBox stays on the floor while
-  // the nodes run past it. Drop testlib.mjs's close of the last page, and a
-  // frame the full-screen tests above asked for draws their chart here.
+  // Mutations: drop ctx.room from sankey.js's layOut and the nodes stop at
+  // the floor under a room-sized viewBox; drop roomHeight's `* laid /
+  // r.width` and the room is half; drop ctx.room from render and the nodes
+  // run past a floor viewBox. Drop testlib.mjs's close of the last page and
+  // an earlier test's frame draws here.
   test("a window taller than the floor lays the chart out to the room, in the chart's own units; a shorter one leaves it on the floor", async (t) => {
     const grow = () => app.CONFIG.overview.sankey.grow;
     const at = { height: 1080, top: 100, full: 0, width: 660 };
@@ -178,10 +171,9 @@ describe("the chart laid out to the window's height", () => {
     assert.deepEqual(short, { room: at.height - at.top - app.ROOM_CUSHION, viewBox: grow().floor, bottom: grow().floor - 12 });
   });
 
-  // Mutations: drop wireRoom's resize listener, and the window's growing
-  // leaves the canvas where it was; reset heldHeight on every render rather
-  // than at a new room, and Collapse all shortens the canvas under the
-  // reader; drop that reset, and a shorter window keeps the taller canvas.
+  // Mutations: drop wireRoom's resize listener and growth leaves the canvas;
+  // reset heldHeight every render and Collapse all shortens it; never reset
+  // it and a shorter window keeps the taller canvas.
   test("a resize draws the chart again at the new room, a fold within one room never shortens the canvas, and a shorter window does", async (t) => {
     const grow = () => app.CONFIG.overview.sankey.grow;
     const at = { height: 1080, top: 100, full: 0, width: 1320 };
@@ -214,13 +206,10 @@ describe("the chart laid out to the window's height", () => {
     });
   });
 
-  // Mutations: drop the canvas comparison from fitRoom, so any new room draws
-  // the chart again, and both arms go red: the menu the reader opened is
-  // closed by a room under the floor, and by every room on a chart that
-  // declares no grow. Leave heldRoom where it was when fitRoom draws nothing,
-  // and the next fold, laid out at the new room, lets the held canvas go and
-  // Collapse all shortens it under the reader. Every move here is past
-  // CHROME_SLACK, so none is left alone for being small.
+  // Mutations: drop fitRoom's canvas comparison and the open menu closes
+  // under the floor and on every room without grow; leave heldRoom unmoved
+  // when fitRoom draws nothing and the next fold lets the held canvas go.
+  // Every move here exceeds CHROME_SLACK.
   for (const declared of [true, false]) {
     test(`a new room that moves no canvas draws nothing again, and the menu a reader opened stays open (${declared ? "grow declared" : "no grow"})`, async (t) => {
       const config = structuredClone(pageFixture().config);
@@ -268,10 +257,8 @@ describe("the chart laid out to the window's height", () => {
     });
   }
 
-  // Mutation: compare the canvas at the new room with the viewBox on screen
-  // rather than with the canvas the nodes were laid on, and the held canvas
-  // (the viewBox) never equals a collapsed chart's: the resize draws the chart
-  // again, the viewBox goes to the floor and the menu closes.
+  // Mutation: compare against the viewBox rather than the laid canvas and a
+  // collapsed chart never matches: the resize redraws and the menu closes.
   test("after Expand all and Collapse all hold the canvas, a room that moves no canvas keeps it and the open menu", async (t) => {
     const at = { height: 900, top: 100, full: 0, width: 1320 };
     const loaded = await loadApp();
@@ -331,10 +318,9 @@ describe("the chart laid out to the window's height", () => {
     assert.deepEqual(resized, { order: seated, redrawn: true });
   });
 
-  // Mutation: drop the CHROME_SLACK arm from fitRoom, and the phone's address
-  // bar hiding draws the chart again: the viewBox moves and the menu closes.
-  // Make the arm ignore the width, and the turned phone's arm goes red; make
-  // it ignore the chart's top, and the pushed arm does.
+  // Mutation: drop fitRoom's CHROME_SLACK arm and the address bar redraws
+  // and closes the menu; ignore width and the turned-phone arm goes red;
+  // ignore the chart's top and the pushed arm does.
   test("on a phone the address bar showing or hiding leaves the chart as drawn; a taller move, or a new width, draws it again", async (t) => {
     const at = { height: 800, top: 100, full: 0, width: 360 };
     const loaded = await loadApp();
@@ -403,12 +389,10 @@ describe("the chart laid out to the window's height", () => {
       { jitter: { drawn: false, menu: true }, line: { drawn: false, menu: true }, pushed: { drawn: true, menu: false } });
   });
 
-  // Mutation: move heldRoom to the room now in fitRoom's CHROME_SLACK arm
-  // and lay redraw out at roomHeight in place of layRoom, and the split with
-  // the bar hidden is laid out at the taller room: the bar shown again, the
-  // next split keeps that taller canvas over nodes laid at the shorter one,
-  // a blank band under them. Default layOut's room to roomHeight, and a
-  // layOut handed no room with the bar hidden lays out at the taller one.
+  // Mutation: move heldRoom to the room now in the CHROME_SLACK arm and lay
+  // redraw at roomHeight not layRoom, and the next split keeps a taller
+  // canvas over nodes laid shorter, a blank band under them. Default layOut's
+  // room to roomHeight and a room-less layOut lays out taller.
   test("on a phone, splits as the address bar hides and shows lay out at the room the chart was drawn at, the nodes filling the canvas", async (t) => {
     const at = { height: 800, top: 100, full: 0, width: 360 };
     const loaded = await loadApp();
@@ -535,10 +519,7 @@ describe("the chart laid out to the window's height", () => {
   });
 });
 
-/**
- * How many screen px one viewBox unit of the chart draws at, as style.css
- * sizes the svg from what app.js hands it (drawnBody).
- */
+/** Screen px per viewBox unit, as style.css sizes the svg (drawnBody). */
 function drawnScale(document, window) {
   const body = drawnBody(document, window);
   if (body.refused) return body;
@@ -745,11 +726,7 @@ describe("zoom and pan on the chart", () => {
     assert.deepEqual({ root, opened }, { root: { scale: 1 }, opened: { scale: 1 } }, detail);
   });
 
-  /**
-   * The chart split to its finest grain in a 1000px scroller, with jsdom's
-   * missing layout planted: the svg drawn at its laid width, the scroller's
-   * scrollLeft a plain number.
-   */
+  /** Finest grain in a 1000px scroller, with the svg width and scrollLeft planted. */
   async function scrolling() {
     const loaded = await bootedApp();
     loaded.app.expandAll();
@@ -826,10 +803,7 @@ describe("zoom and pan on the chart", () => {
     assert.deepEqual({ split: app.expansions.slice(), left: left() }, { split: [id], left: 0 });
   });
 
-  /**
-   * A press on `on` as a browser delivers it: pointerdown, then mousedown,
-   * whose default, uncancelled, focuses the mark pressed.
-   */
+  /** pointerdown, then mousedown, whose uncancelled default focuses the mark. */
   function press(on) {
     fire(on, "pointerdown", { button: 0, clientX: 500, clientY: 300 });
     if (!fire(on, "mousedown", { button: 0, clientX: 500, clientY: 300 }).defaultPrevented) on.focus();

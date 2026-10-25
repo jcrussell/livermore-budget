@@ -1,9 +1,6 @@
-// What render() put in the SVG, read back off the DOM after a state is
-// driven, held against the chart the client laid. What a mark should read is
-// asked of the shipped nodeClass and nodeFlags.
-//
-// The first block draws the root and the widest fund split per published
-// column; the second is the expansion's own rendering claims.
+// What render() put in the SVG, read off the DOM against the laid chart; what
+// a mark should read is asked of nodeClass and nodeFlags. First block: root
+// and widest fund split per column; second: the expansion's claims.
 
 import { describe, test, before } from "node:test";
 import assert from "node:assert/strict";
@@ -26,8 +23,7 @@ const YEARS = CONFIG.years.map((y) => ({
 const keyOf = (entries) => (entries.length ? entries.join(" > ") : "(the root)");
 
 /**
- * A failure list as a detail line: the count whole and the list cut, so one
- * arm wrong on every mark does not bury the others.
+ * Count whole, list cut, so one arm wrong everywhere buries no other.
  * @param {string[]} found
  */
 const firstOf = (found) =>
@@ -35,8 +31,7 @@ const firstOf = (found) =>
   (found.length > 3 ? `\n      ... and ${found.length - 3} more` : "");
 
 /**
- * The marks the client drew. THE ONE DOM READER: blinding it takes the whole
- * file red on its counters.
+ * The one DOM reader: blinding it turns the whole file red on its counters.
  * @param {Element} chart
  */
 const marksIn = (chart) => [...chart.querySelectorAll("g.node")];
@@ -61,8 +56,7 @@ const flagOf = (m) => {
 };
 
 /**
- * The fund group that splits into the most funds in the expansion of the
- * column on screen: the split the fund cap is for.
+ * The fund group splitting into most funds: what the fund cap is for.
  * @param {any} app
  */
 function worstOf(app) {
@@ -70,11 +64,7 @@ function worstOf(app) {
   return groups.reduce((a, b) => (app.splitsHere({ id: b })[0].members.length > app.splitsHere({ id: a })[0].members.length ? b : a));
 }
 
-/**
- * What render() put in the SVG on the root, on the widest fund split and
- * after Expand all of one column, held against the chart the client laid: the ids of the marks
- * and ribbons drawn, and the refusal banners drawn instead.
- */
+/** Root, widest fund split, Expand all: ids of marks and ribbons drawn, or the refusals. */
 async function drive(year) {
   const { app, document } = await bootedApp({ checkedStem: year.stem });
   const chart = document.getElementById("chart");
@@ -131,11 +121,9 @@ for (const year of YEARS) {
       for (const s of states) assert.deepEqual(s.banners, [], s.where);
     });
 
-    // A label's words are drawn whole, or cut with the full words in a
-    // title, and every mark is a button. Mutation: draw d.label in place of
-    // the fitted words, and no drawn label is cut; drop the cut label's
-    // title, and a cut one has none; drop role="button" from the marks, and
-    // the last arm goes red.
+    // Mutation: draw d.label not the fitted words and no label is cut; drop
+    // the cut label's title and it has none; drop role="button" and the last
+    // arm goes red.
     test(`${year.label}: a label is drawn whole, or cut with its words in a title, on a mark that is a button`, (t) => {
       const labels = states.flatMap((s) => s.labels.map((l) => ({ ...l, where: s.where })));
       const titled = labels.filter((l) => l.title);
@@ -151,13 +139,9 @@ for (const year of YEARS) {
 
 describe("the expansion's drawing", () => {
   /**
-   * Every drawn mark of the root and of Expand all, both columns: the two
-   * charts between them draw a mark of every kind these tests ask about
-   * (one that splits, a hub, a tail, a node only derived), which the last
-   * assertion of the first test holds. Which node is which is the
-   * predicates' (splittable, foldable, expandable); what is tested here is
-   * that the drawing agrees with them, which needs a mark of each kind, not
-   * every chart.
+   * Root and Expand all, both columns: between them a mark of every kind
+   * asked about, which the first test's last assertion holds. The drawing
+   * must agree with splittable, foldable, expandable.
    */
   const records = [];
   let charts = 0;
@@ -321,13 +305,9 @@ describe("the expansion's drawing", () => {
     assert.equal(lit(marks).length, marks.length);
   });
 
-  // THE RULE, each arm of linkGroup on marks of the pinned chart: a group
-  // node's own id wins at either end; two ends of one group are that
-  // group's; one group-less end takes the other's; two groups, neither a
-  // group node, are muted, since picking one would be a guess. Then one
-  // chart: every ribbon's stroke is linkColor's, which holds the paint to
-  // the rule. Mutation: return "" for a group-less target and the arm table
-  // goes red; paint every ribbon --muted and the drawn chart does.
+  // Each linkGroup arm on pinned marks, then every stroke is linkColor's.
+  // Mutation: return "" for a group-less target and the arm table goes red;
+  // paint every ribbon --muted and the drawn chart does.
   test("a ribbon with one group-less end wears the other end's hue, and one between two groups stays muted", async (t) => {
     const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem });
     const chart = document.getElementById("chart");
@@ -375,11 +355,8 @@ describe("the expansion's drawing", () => {
       const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem });
       const chart = document.getElementById("chart");
       await split(app, ...entries);
-      // A mark one of whose caveats more than one year carries: the caveats
-      // page lists an id once, so every year links it to one anchor, and the
-      // drawer links what Go emitted. At the root a fund group carries the
-      // caveat its own remainder node is named in: the remainder is folded
-      // inside it, as a tail's members are inside the tail.
+      // A caveat several years carry links to one anchor; a fund group carries
+      // its folded remainder's caveat, as a tail its members'.
       //
       // Mutation: give each document's entry its own anchor in Go's
       // buildCaveatIndex and oneAnchor fails.
@@ -556,11 +533,7 @@ describe("the expansion's drawing", () => {
 // a pinned column with one stated change, or a bare call.
 describe("arms no committed column reaches", () => {
   const newest = YEARS[YEARS.length - 1];
-  /**
-   * A clone of the newest column with every leaf of one printed root cell
-   * marked derived, so the ribbon the root draws for it is derived and both
-   * its ends are printed; and a second printed cell left as it is.
-   */
+  /** The newest column with one root cell's leaves derived (its ribbon derived, ends printed), another left printed. */
   const derivedCell = () => {
     const col = structuredClone(columnFixture(newest.fixture));
     const sched = col.schedules.expansion;
@@ -746,12 +719,8 @@ describe("the classes the client sets and the rules the stylesheet carries", () 
     const snap = () => {
       for (const el of document.querySelectorAll("*")) for (const c of classesIn(el.getAttribute("class"))) worn.add(c);
     };
-    // The root, the tooltip on a mark and on a ribbon, the panel on a
-    // ribbon, a pin, an isolation, a node menu refusing a filter, a zoom,
-    // one split of each kind the page offers (a key, as primary or as an
-    // alternative), Expand all, every tail drawn out, and a refusal. A styled
-    // class only some other chart wears fails the "styled and worn" arm
-    // below; an unstyled one set only on an unvisited chart is not seen.
+    // One snapshot per state the page offers. A class styled but worn only
+    // on an unvisited chart is missed here.
     snap();
     const mark = marksIn(chart)[0];
     const ribbon = ribbonsIn(chart)[0];
@@ -948,11 +917,9 @@ describe("a count the client takes is marked as its own", () => {
   });
 });
 
-// TWO EXTEND SPLITS DRAWN TOGETHER: each opens its members
-// a slot beside its parent's, so two open together can declare a slot further
-// out than any drawn ribbon reaches. Every node is still drawn in its slot.
-// Every pair the schedules declare is walked in site/layout.test.mjs, at the
-// layout and with no DOM; this renders one sequence of three, end to end.
+// Two extend splits open together can declare a slot no ribbon reaches;
+// every node still draws in its slot. site/layout.test.mjs walks every pair
+// without DOM; this renders one sequence end to end.
 describe("two extend splits open together", () => {
   /** Each laid node whose d3 layer is not its slot's rank, by id. */
   const misplaced = (app) => {
@@ -1017,12 +984,9 @@ describe("a member printed in its parent's words", () => {
 });
 
 describe("a link repeating a leaf through a split is not called printed", () => {
-  // A leaf drawn twice is one key in two drawn ribbons' cells: once
-  // re-pointed onto the hub, once as the hub's leg. Counted here off the
-  // cells, not asked of leafDraws.
-  // Mutation: label by derived ends only, dropping drawsAgain from the
-  // tooltip, the drawer and provenanceOf, and this goes red: the re-pointed
-  // leaves and their hub legs read "printed".
+  // A leaf drawn twice, counted off the cells, not asked of leafDraws.
+  // Mutation: drop drawsAgain from the tooltip, the drawer and provenanceOf
+  // and the re-pointed leaves and hub legs read "printed".
   for (const year of YEARS) {
     test(`${year.label}: with the General Fund group open, no tooltip, drawer or description of a repeating link says printed`, async (t) => {
       const { app, document } = await bootedApp({ checkedStem: year.stem });
@@ -1054,13 +1018,9 @@ describe("a link repeating a leaf through a split is not called printed", () => 
   }
 });
 
-// On a narrow screen the chart gives way to a note pointing to the bars of
-// the same money: the template ships the note's button hidden, app.js shows
-// it, and a press marks the root data-chart-anyway, which unfolds the card
-// under style.css's narrow query. The note's link carries the year on
-// screen as the top bar's do. Mutation: drop wireNarrow from boot and the
-// button stays hidden; narrow carryYear back to the nav and the link keeps
-// no year.
+// Narrow screen: app.js shows the note's button; a press sets
+// data-chart-anyway. Mutation: drop wireNarrow from boot and the button stays
+// hidden; narrow carryYear back to the nav and the link keeps no year.
 test("the narrow screen's note shows its button, which puts the chart back, and its link carries the year", async () => {
   const { app, document } = await bootedApp();
   const button = document.getElementById("narrow-show");

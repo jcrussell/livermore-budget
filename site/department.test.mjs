@@ -1,7 +1,5 @@
-// What site/department.js does for department.html, over the page Go pins
-// (testdata/department.golden.html) and the columns it fetches
-// (testdata/<stem>.column.json). The module is imported with nothing on the
-// global, so one that read a global or held state at import would fail first.
+// site/department.js over testdata/department.golden.html and its columns,
+// imported with no globals, so reading one at import fails first.
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -54,12 +52,10 @@ function drawnOf(document, side) {
   }));
 }
 
-// The client's arithmetic is sums: every link of a department's two sides
-// lands in exactly one row of one department, and every sum is its rows'.
+// Every link lands in exactly one row of one department.
 //
-// Mutation: keep only `expenditure/` links on the spending side in
-// departmentFigures, and FY2023-24 public works' Transfers Out lands in no
-// department.
+// Mutation: keep only `expenditure/` links on the spending side and
+// FY2023-24 public works' Transfers Out lands nowhere.
 describe("a department's two sides are sums of the links the column draws into it", () => {
   const { config } = departmentPage();
   for (const stem of PINNED) {
@@ -92,12 +88,10 @@ describe("a department's two sides are sums of the links the column draws into i
   }
 });
 
-// Whether a spending row is an expenditure is the kind Go declares on its
-// links, never its id: each case is a pinned column less or altering `kind`.
+// A transfer by the kind Go declares, never the id.
 //
-// Mutation: restore `transfer: !r.id.startsWith("expenditure/")` in
-// departmentFigures and the first two go red; drop the refusal with it and
-// all five do.
+// Mutation: restore `transfer: !r.id.startsWith("expenditure/")` and the
+// first two go red; drop the refusal too and all five do.
 describe("a spending row is a transfer because its links say so", () => {
   const { config } = departmentPage();
   const works = "department/public-works";
@@ -318,12 +312,9 @@ describe("the page over the pinned columns", () => {
     assert.match(document.getElementById("tooltip").textContent, /Fund group: /);
   });
 
-  // A click on a bar pins its tip, whose page numbers link the page text
-  // and the PDF page the config's docs name for the row's locators.
-  // Mutation: drop pageLinks from sides.js's fillTip, and every bar's links
-  // are missing; drop the PDF link from format.js's pageLinks and the PDF
-  // arm goes red; drop fillTip's call from department.js's fill, and the
-  // tip is empty.
+  // Mutation: drop fillTip's pageLinks and every bar's links go; drop
+  // pageLinks' PDF link and the PDF arm goes red; drop department.js fill's
+  // fillTip call and the tip is empty.
   test("a click pins a bar's tip, linking the page text and the PDF page of every page its row cites", async () => {
     const { tipState, pageTextExists, pdfFaults, fire } = await import("./testlib.mjs");
     const { document, config } = await booted("#y=fy2026-adopted&d=department/administrative-services");
@@ -399,12 +390,10 @@ describe("the page over the pinned columns", () => {
   });
 });
 
-// A row carries what its links say of themselves: inferred where any link is
-// derived, a printed reduction where every link is one, and one kind. Each
-// case is a pinned column with one stated change to its links.
+// Each case is a pinned column with one stated link change.
 //
-// Mutation: hard-code `derived: false, contra: ""` in tileOf and the first two
-// go red; drop rowsBy's contra refusal and the third does; drop the fund
+// Mutation: hard-code `derived: false, contra: ""` in tileOf and the first
+// two go red; drop rowsBy's contra refusal and the third does; drop the fund
 // row's kind refusal and the fourth does.
 describe("a department row carries its links' inference, reduction and kind", () => {
   const { config } = departmentPage();
@@ -488,11 +477,8 @@ describe("a department row carries its links' inference, reduction and kind", ()
   });
 });
 
-// A fund bar wears the tail's grey only where the legend's tail holds its
-// group's id: a group no entry holds wears no hue, and neither does a group
-// sharing a label with one the tail holds.
-// Mutation: fall back to rank 0 for a bar no entry holds
-// -- the unheld arm goes red; match the tail by label -- the namesake arm does.
+// Mutation: fall back to rank 0 for an unheld bar and the unheld arm goes
+// red; match the tail by label and the namesake arm does.
 test("a fund bar wears the tail's grey only where the tail holds its group", async () => {
   const { document, config } = await booted("#y=fy2026-adopted&d=department/administrative-services");
   const column = columnFixture("fy2026-adopted");
@@ -524,14 +510,10 @@ function barsOf(document) {
   }));
 }
 
-// A department's bar is its funding side: one segment per legend entry it
-// draws, their cents its sum, the bars longest first, each segment in the
-// legend's order and wearing its rank.
-//
-// Mutation: drop the bars' sort in departmentBars and the descending arm
-// goes red; reverse the segments' sort and the legend-order arm does; file a
-// fund under whatever its parent names, fund group or not, and the refusal
-// goes red; drop the ◇ from a drawn share and the drawn-bars test does.
+// Mutation: drop departmentBars' sort and the descending arm goes red;
+// reverse the segments' sort and the legend-order arm does; file a fund
+// under any parent and the refusal does; drop a drawn share's ◇ and the
+// drawn-bars test does.
 describe("every department is a bar of the funds that pay for it", () => {
   const { config } = departmentPage();
   for (const stem of PINNED) {
@@ -675,14 +657,11 @@ describe("every department is a bar of the funds that pay for it", () => {
   });
 });
 
-// One view: the hash's department is the open bar and the sides' department.
-//
-// Mutation: drop openBar's call from show in boot and every test here goes
-// red; drop the toggle branch from activate and a second click selects
-// rather than closes; drop the keydown listener and the keyboard arm does;
-// redraw the bars only on the first column and the year switch does; open
-// the config's first department where the hash names none and the opening
-// arm does.
+// Mutation: drop show's openBar call and every test here goes red; drop
+// activate's toggle branch and a second click selects not closes; drop the
+// keydown listener and the keyboard arm does; redraw bars only on the first
+// column and the year switch does; open the first department when the hash
+// names none and the opening arm does.
 describe("opening a bar chooses its department for the sides and the hash", () => {
   const rowOf = (document, id) => document.querySelector(`#department-list > li[data-department="${id}"] .department-row`);
   const openIds = (document) => barsOf(document).filter((b) => b.expanded === "true").map((b) => b.id);

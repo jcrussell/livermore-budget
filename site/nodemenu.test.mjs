@@ -1,10 +1,7 @@
-// nodemenu.test.mjs -- a node's context menu: a right-click, Shift+F10 or
-// the ContextMenu key on a node (the contextmenu event the browser fires on
-// the focused mark for either key), M on a focused node, or the drawer's
-// More for the node it shows opens it, and its three choices follow the
-// node's money, filter the node out, and show only its money. What the two
-// filters remove is said on the filter line by name, Reset puts it back, and
-// the hash carries it. Every assertion is over ids, strings and booleans.
+// nodemenu.test.mjs -- a node's context menu (right-click, Shift+F10, the
+// ContextMenu key, M, or the drawer's More): Follow, Filter out, Show only,
+// the filter line, Reset and the hash. Assertions are over ids, strings and
+// booleans.
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -19,11 +16,7 @@ function markOf(document, id) {
   return m;
 }
 
-/**
- * A drawn node that is neither a fund group nor a mark of ours, with
- * ribbons both in and out where one has them: what the menu's choices are
- * tried on. The first such by id, so the choice is stable.
- */
+/** The first drawn node by id that is no fund group or mark, with ribbons in and out where any has. */
 function plainNode(app) {
   const plain = app.laidNodes.filter((n) => !app.isGroupID(n.id) && !app.isSmaller(n.id) &&
     (n.sourceLinks.length + n.targetLinks.length) > 0).sort((a, b) => (a.id < b.id ? -1 : 1));
@@ -50,10 +43,9 @@ function drawnRibbons(document) {
 }
 
 /**
- * The drawn node, not a fund group, with the most ribbons to nodes that are
- * none, and the first such neighbour by id: a fund group filtered out is the
- * panel's, so a node filter's neighbour is tried on a node that is not one.
- * The overview draws no such ribbon: every one has a fund group at an end.
+ * The non-group node with most ribbons to non-group nodes, and its first such
+ * neighbour by id (a fund group filtered out is the panel's). The overview
+ * draws no such ribbon.
  */
 function plainPair(app) {
   const end = (l, id) => (l.source.id === id ? l.target : l.source);
@@ -68,10 +60,9 @@ function plainPair(app) {
 const pinnedID = (app) => (app.pinned && typeof app.pinned.id === "string" ? app.pinned.id : "");
 
 describe("a node's context menu", () => {
-  // Mutation: drop the contextmenu binding on g.node in sankey.js and the
-  // right-click and the keys open nothing; open the menu from a keydown arm
-  // for ContextMenu or Shift+F10 too, and the key's own keydown opens it,
-  // so on Windows the contextmenu its keyup fires opens the browser's over it.
+  // Mutation: drop g.node's contextmenu binding and neither click nor keys
+  // open it; open it from a ContextMenu/Shift+F10 keydown too and on Windows
+  // the keyup's contextmenu opens the browser's menu over it.
   test("opens on a right-click and on the keys' contextmenu with three choices, focus on the first; Escape closes it onto the node, pinning nothing; a keydown opens nothing", async (t) => {
     const { app, document } = await bootedApp();
     const id = plainNode(app);
@@ -108,11 +99,9 @@ describe("a node's context menu", () => {
     assert.deepEqual(byKey, ["follow", "out", "only"]);
   });
 
-  // Mutation: tell a key's contextmenu by 0, 0 alone (no keyedMenu) and
-  // this goes red: the keyed menu opens at the coordinates Chromium gives
-  // the event, where the pointer would have been. Tell it by 0, 0 as well
-  // as keyedMenu and a right-click at the viewport's corner opens beside
-  // the mark.
+  // Mutation: tell a key's contextmenu by 0, 0 alone (no keyedMenu) and the
+  // menu opens at Chromium's coordinates; by 0, 0 as well and a corner
+  // right-click opens beside the mark.
   test("a menu key's contextmenu at the mark's coordinates opens the menu beside the mark; a right-click opens it at the pointer, at 0, 0 too", async (t) => {
     const { app, document } = await bootedApp();
     const m = markOf(document, plainNode(app));
@@ -140,9 +129,8 @@ describe("a node's context menu", () => {
     assert.ok(shiftF10 !== "" && shiftF10 !== pointer, shiftF10);
   });
 
-  // Mutation: drop the M arm of the node's keydown in sankey.js and this
-  // goes red: on macOS Safari, which fires no contextmenu for Shift+F10 or
-  // the ContextMenu key, no key opens the menu.
+  // Mutation: drop M from the node's keydown and on macOS Safari (no
+  // contextmenu for either key) no key opens the menu.
   test("M on a focused node opens its menu beside the mark, focus on the first choice; M with a modifier opens nothing", async () => {
     const { app, document } = await bootedApp();
     const id = plainNode(app);
@@ -162,9 +150,8 @@ describe("a node's context menu", () => {
     assert.ok(mark.getAttribute("aria-keyshortcuts").split(" ").includes("M"), mark.getAttribute("aria-keyshortcuts"));
   });
 
-  // Mutation: leave the drawer's More hidden (syncPinButton) or drop its
-  // click handler (wireDrawer) and this goes red: a phone, with no right
-  // button and no keyboard, cannot filter a node out or show it alone.
+  // Mutation: hide More (syncPinButton) or drop its handler (wireDrawer) and
+  // a phone cannot filter a node or show it alone.
   test("the drawer's More opens the menu of the node it shows, and its choices act on that node; it is hidden for a ribbon and for nothing", async () => {
     const { app, document } = await bootedApp();
     const more = document.getElementById("detail-menu");
@@ -188,9 +175,8 @@ describe("a node's context menu", () => {
     assert.equal(refusals(document).length, 0);
   });
 
-  // Mutation: open the menu from More with back "g.node" (no `from` in
-  // wireDrawer's openNodeMenu) and this goes red: Escape puts focus on the
-  // chart mark, away from the drawer, and More never says it is expanded.
+  // Mutation: no `from` in wireDrawer's openNodeMenu and Escape lands on the
+  // chart mark, and More never says it is expanded.
   test("the drawer's More says the menu is expanded while it is open, and Escape puts focus back on More", async () => {
     const { app, document } = await bootedApp();
     const more = document.getElementById("detail-menu");
@@ -211,9 +197,8 @@ describe("a node's context menu", () => {
     });
   });
 
-  // Mutation: drop wireDrawer's pressedOpen (read the menu as open at the
-  // click alone) and this goes red: the press's focus on More closes the
-  // menu and the click opens it again.
+  // Mutation: drop wireDrawer's pressedOpen and the press closes the menu
+  // and the click reopens it.
   test("More pressed while its menu is open closes it, focus on More, where the press focuses More and where it does not", async () => {
     const { app, document } = await bootedApp();
     const more = document.getElementById("detail-menu");
@@ -239,9 +224,8 @@ describe("a node's context menu", () => {
     assert.equal(refusals(document).length, 0);
   });
 
-  // Mutation: drop the restoreFocus after a choice in openMenu and this goes
-  // red: the filter's redraw drops the pin, hides More, and focus falls to
-  // the body.
+  // Mutation: drop openMenu's restoreFocus after a choice and focus falls to
+  // the body once the redraw hides More.
   test("a filter chosen from the drawer's More puts focus on the chart, on the node where it is still drawn", async () => {
     const { app, document } = await bootedApp();
     const more = document.getElementById("detail-menu");
@@ -388,11 +372,9 @@ describe("the node filters beside the others", () => {
     assert.ok(said.includes(app.say("filter_only", { label: app.nameOf(node) })), said);
   });
 
-  // Mutation: drop filterFor's throw where the other removals leave none of
-  // the node's ribbons, and this goes red: each state is drawn with `only`
-  // naming nothing drawn;
-  // refuse setFilter's throw through fail() and the followed node's pin and
-  // isolation go.
+  // Mutation: drop filterFor's throw where nothing of the node survives and
+  // each state draws with `only` naming nothing drawn; refuse through fail()
+  // and the followed node's pin and isolation go.
   test("a node shown alone whose ribbons the other removals all remove is refused, the chart, the state and the pin as they were", async (t) => {
     const { app, document } = await bootedApp();
     const id = plainNode(app);
@@ -431,9 +413,8 @@ describe("the node filters beside the others", () => {
     assert.equal(app.filter.only, lone.id);
   });
 
-  // Mutation: drop filterFor's throw where the other removals leave none of
-  // the node's ribbons and this goes red: the link draws, `only` and `out`
-  // both in the state, and no banner.
+  // Mutation: drop filterFor's throw where nothing of the node survives and
+  // the link draws with `only` and `out` both set, no banner.
   test("a link showing a node alone and filtering it out falls back to the opening view, saying why", async () => {
     const { app, document } = await bootedApp();
     const id = plainNode(app);
@@ -444,9 +425,8 @@ describe("the node filters beside the others", () => {
     assert.ok(banners[0].includes("the chart could not be filtered as it names"), banners[0]);
   });
 
-  // Mutation: drop setFilter's isolate after the redraw and this goes red:
-  // the isolation passed with a removal goes with the pin the redraw drops,
-  // and setFilter still says the state on screen is the one asked for.
+  // Mutation: drop setFilter's isolate after the redraw and the isolation
+  // goes with the dropped pin while setFilter still claims success.
   test("an isolation passed with a removal follows the node and pins it", async () => {
     const { app, document } = await bootedApp();
     const id = plainNode(app);
@@ -479,9 +459,8 @@ describe("the node filters beside the others", () => {
 });
 
 describe("the menu and the pin", () => {
-  // Mutation: offer Filter out and Show only on every mark (openNodeMenu's
-  // concat unconditional) and this goes red: a smaller-flows mark offers two
-  // choices that change the hash and draw nothing new.
+  // Mutation: make openNodeMenu's concat unconditional and a smaller-flows
+  // mark offers two choices that only change the hash.
   test("a smaller-flows mark offers Follow alone: the filters remove ribbons of the shaped chart's nodes", async (t) => {
     const { app, document } = await bootedApp();
     app.setFilter({ smallest: app.SMALLEST_STOPS[3] });
@@ -495,9 +474,8 @@ describe("the menu and the pin", () => {
     assert.deepEqual(acts, ["follow"]);
   });
 
-  // Mutation: make redraw or setFilter null the pin alone (no dropPin) and
-  // this goes red: a split and a filter each leave the chart following a
-  // node the drawer no longer shows.
+  // Mutation: null the pin alone in redraw or setFilter (no dropPin) and the
+  // chart follows a node the drawer no longer shows.
   test("a split or a filter that drops the pin lets a followed node go with it, and a fund group's isolation stays", async () => {
     const { app } = await bootedApp();
     const id = plainNode(app);
@@ -514,9 +492,8 @@ describe("the menu and the pin", () => {
       { split_: { isolated: "", pinned: "" }, filtered: { isolated: "", pinned: "" }, group: OPENS });
   });
 
-  // Mutation: set `pointing` on a primary press alone (wireZoom's
-  // pointerdown) and this goes red: the right press's focus pins the node,
-  // and pin's rule lets the node followed go before the menu opens.
+  // Mutation: set `pointing` on a primary press alone and the right press's
+  // focus pins the node, dropping the follow before the menu opens.
   test("a right press focuses a node without pinning it, so the node followed stays followed under its menu", async () => {
     const { app, document } = await bootedApp();
     const id = plainNode(app);
@@ -557,9 +534,8 @@ describe("the menu and the pin", () => {
 });
 
 describe("the filter line's names", () => {
-  // Mutation: drop keepOutNames from setFilter and this goes red: the tail
-  // the link filters out again is named with the qualifier the earlier
-  // chart, split at property taxes too, drew it with.
+  // Mutation: drop keepOutNames from setFilter and the tail is named by the
+  // earlier chart's qualifier.
   test("a name kept for a node filtered out from the menu goes with Reset, so a link filtering it out of another chart names it as that chart does", async (t) => {
     const { app, document } = await bootedApp();
     await split(app, "revenue/licenses-and-permits", "revenue/taxes/property");
@@ -581,9 +557,8 @@ describe("the filter line's names", () => {
     assert.ok(said.startsWith(app.say("filter_out", { names: fresh })), said);
   });
 
-  // Mutation: drop showYear's outNames.clear() and this goes red: the tail
-  // the link keeps filtered out in another year is named with the qualifier
-  // the first year's chart drew it with.
+  // Mutation: drop showYear's outNames.clear() and the tail is named by the
+  // first year's qualifier.
   test("a name kept for a node filtered out from the menu goes with a year switch, so a link keeping it filtered out names it as the new chart does", async (t) => {
     const { app, document } = await bootedApp();
     await split(app, "revenue/licenses-and-permits", "revenue/taxes/property");
@@ -605,9 +580,8 @@ describe("the filter line's names", () => {
     assert.ok(said.startsWith(app.say("filter_out", { names: app.nameOf(node) })), said);
   });
 
-  // Mutation: paint the filter line before setFilter's render, as it was,
-  // and this goes red: the line names the tail by the qualifier the chart
-  // before the filter drew it with.
+  // Mutation: paint the filter line before setFilter's render and it names
+  // the tail by the pre-filter chart's qualifier.
   test("a node shown alone is named on the filter line as the filtered chart draws it, when what is drawn changes its qualifier", async (t) => {
     const { app, document } = await bootedApp();
     await split(app, "revenue/licenses-and-permits", "revenue/taxes/property");
@@ -627,11 +601,9 @@ describe("the filter line's names", () => {
 });
 
 describe("a node shown alone under the smallest-flow filter", () => {
-  // Mutation: drop the `keep` arm of core.foldSmaller's folds (or pass no
-  // keeps to it from filterDocument) and this goes red: a ribbon of the
-  // node shown alone is merged into a smaller-flows ribbon, one ribbon
-  // fewer drawn at the node. Where every one of them merged, keeps() would
-  // match none and every draw would be refused until Reset.
+  // Mutation: drop foldSmaller's `keep` arm (or filterDocument's keeps) and
+  // a ribbon of the node shown alone merges into a smaller-flows ribbon; if
+  // all merged, every draw is refused until Reset.
   test("raising the smallest flow above every ribbon of the node shown alone draws them as themselves, by the slider and by the link", async (t) => {
     const { app, document } = await bootedApp();
     const at = (n) => n.sourceLinks.concat(n.targetLinks);
@@ -710,9 +682,8 @@ describe("the node filters in the URL", () => {
     });
   });
 
-  // Mutation: drop moveTo's catch around showYear and this goes red: the
-  // link to another year rejects restoreView with the throw, the hash's `out`
-  // and `only` left in the state and no opening view.
+  // Mutation: drop moveTo's catch around showYear and restoreView rejects,
+  // leaving `out` and `only` in the state.
   test("a link to another year whose node shown alone the other filters empty falls back to the opening view, at boot and on Back", async (t) => {
     const { app, document, window } = await bootedApp();
     const id = plainNode(app);
@@ -743,10 +714,8 @@ describe("the node filters in the URL", () => {
     assert.ok(window.location.hash === app.hashOf(app.viewState()), window.location.hash);
   });
 
-  // Mutation: keep the year on screen's drawnNames through showYear's draw
-  // (no clear) and this goes red: the refusal names the node shown alone by
-  // the name the year on screen drew it by, not the label of the year
-  // refused.
+  // Mutation: keep drawnNames through showYear's draw (no clear) and the
+  // refusal names the node in the year on screen's words.
   test("a link to another year refused for its node shown alone names the node in that year's words", async (t) => {
     const other = columnFixture("fy2027-adopted");
     const { app, document } = await bootedApp({ checkedStem: "sankey", plan: { "fy2027-adopted.json": { doc: other } } });
@@ -763,10 +732,8 @@ describe("the node filters in the URL", () => {
     assert.ok(said.includes("none of Renamed in the other year's money"), said);
   });
 
-  // Mutation: make the link's removals the page's filter before moveTo's
-  // showYear (filter = removals; showYear(year)) and this goes red: the
-  // reader's year switch overtaking the link draws the year they picked
-  // with the link's node filtered out, and the filter keeps it.
+  // Mutation: set filter = removals before moveTo's showYear and a year
+  // switch overtaking the link keeps the link's node filtered out.
   test("a link to another year that the reader's year switch overtakes leaves none of its removals on the year they picked", async (t) => {
     const { app } = await bootedApp();
     const id = plainNode(app);
@@ -782,9 +749,8 @@ describe("the node filters in the URL", () => {
       after: { year: app.yearKey(opening), out: [], hidden: 0 } });
   });
 
-  // Mutation: drop `out` and `only` from restoreView's fallback and this
-  // goes red: the refused link on the year on screen leaves the node shown
-  // alone under a banner saying the opening view is shown.
+  // Mutation: drop `out` and `only` from restoreView's fallback and the node
+  // stays shown alone under an "opening view" banner.
   test("a refused link on the year on screen shows the opening view, no node filtered out or shown alone", async () => {
     const { app, document } = await bootedApp();
     const id = plainNode(app);
@@ -816,10 +782,9 @@ describe("the node filters and an open hub", () => {
   const memberOf = (app) => app.shown.doc.links.filter((l) => l.source === HUB && !app.isMark(l.target))
     .sort((a, b) => b.value_cents - a.value_cents)[0].target;
 
-  // Mutation: pass no leafCut to core.filterDocument from filterFor and this
-  // goes red: filtering out the member leaves its leaves on the ribbons
-  // arriving at the hub, which takes in more than it gives out, and showing
-  // it alone draws nothing arriving at the hub.
+  // Mutation: pass no leafCut from filterFor and filtering the member leaves
+  // its leaves arriving at the hub (unbalanced); showing it alone draws
+  // nothing into the hub.
   test("filtering out a member draws the hub balanced with none of its leaves; showing it alone draws its legs and the leaves feeding it, balanced", async (t) => {
     const { app, document } = await bootedApp();
     await split(app, HUB);
@@ -848,11 +813,9 @@ describe("the node filters and an open hub", () => {
     assert.equal(refusals(document).length, 0);
   });
 
-  // Mutation: drop state.groups from leafCut (groupIDs empty) and this goes
-  // red: the legend's group filter hides the ribbons from the before hub to
-  // the group's funds by their ends, and draws whole the lines' legs into
-  // the hub that carry the group's cells, so the hub takes in more than it
-  // gives out; the menu's route still cuts them.
+  // Mutation: drop state.groups from leafCut and the legend's group filter
+  // draws whole the legs carrying the group's cells into the hub, which then
+  // takes in more than it gives; the menu's route still cuts them.
   test("a fund group hidden from the legend cuts its leaves from a before hub, drawing the hub balanced as the menu's route does", async (t) => {
     const { app, document } = await bootedApp();
     const BEFORE = "revenue/charges-for-services";
@@ -886,11 +849,9 @@ describe("the node filters and an open hub", () => {
     assert.equal(refusals(document).length, 0);
   });
 
-  // Mutation: pass state as it came to core.filterDocument from filterFor
-  // (no `st` dropping the nodes the shaped chart does not draw) and this
-  // goes red: the fund folded away under Collapse all still cuts its leaves
-  // from the ribbons into its group, hiding money the filter line names no
-  // node for.
+  // Mutation: pass filterDocument the state unfiltered by drawn nodes (no
+  // `st`) and a fund folded under Collapse all still cuts its leaves, hiding
+  // money the line names no node for.
   test("a node filtered out that a collapse folds away is inert: nothing hidden, nothing said", async (t) => {
     const { app, document } = await bootedApp();
     await split(app, HUB);
@@ -906,11 +867,9 @@ describe("the node filters and an open hub", () => {
     assert.deepEqual(after, { kept: [member], drawn: false, hidden: 0, line: true });
   });
 
-  // Mutation: drop the fund group arm of core.filterDocument's inHidden
-  // (nodes.has(g)) and this goes red: filtering the open group out removes
-  // its leaves and its own ribbons, and leaves drawn its funds' fund balance
-  // ribbons, which repeat no leaf, that the legend's group filter removes by
-  // their ends' group.
+  // Mutation: drop filterDocument's inHidden group arm (nodes.has(g)) and
+  // the open group's funds' balance ribbons, which repeat no leaf, stay drawn
+  // though the legend's filter removes them.
   test("filtering out an open fund group is the legend's group filter: the same money removed, and the same state", async (t) => {
     const { app, document } = await bootedApp();
     await split(app, OPENS);
@@ -928,9 +887,8 @@ describe("the node filters and an open hub", () => {
     assert.ok(!said.includes(name), said);
   });
 
-  // Mutation: put a fund group filtered out from the menu in filter.nodes
-  // (filterOutNode's group arm dropped) and this goes red: its box stays
-  // checked, rechecking it brings nothing back, and search offers its funds.
+  // Mutation: drop filterOutNode's group arm and the box stays checked,
+  // rechecking restores nothing, and search offers its funds.
   test("a fund group filtered out from the menu is the panel's: its box unchecks, search offers none of its funds, and rechecking the box brings it back", async (t) => {
     const { app, document } = await bootedApp();
     const g = "fund-group/enterprise";
@@ -956,13 +914,10 @@ describe("the node filters and an open hub", () => {
     assert.equal(refusals(document).length, 0);
   });
 
-  // Mutation: offer both filters whatever filterRefusal answers (no
-  // `refused` on the node menu's choices) and this goes red: Services &
-  // Supplies' choices are enabled with the General Fund open by divisions,
-  // and choosing one is refused with a banner. Say the refusal's message
-  // under the choice and it goes red too: the message names ids. So does
-  // refused_part handed the ends of another ribbon the chart draws: the
-  // sentence names a ribbon other than the one that blocks the cut.
+  // Mutation: ignore filterRefusal (no `refused` on the choices) and
+  // Services & Supplies' choices are enabled then refused with a banner.
+  // Saying the message instead fails too (it names ids), as does
+  // refused_part given another drawn ribbon's ends.
   test("with the General Fund open by divisions a filter the redraw would refuse is offered disabled, saying why in names; one it draws is offered", async (t) => {
     const { app, document } = await bootedApp();
     await split(app, OPENS);
@@ -1027,11 +982,9 @@ describe("the node filters and an open hub", () => {
     assert.equal(refusals(document).length, 0);
   });
 
-  // Mutation: exclude only the node filtered out's own id from the search's
-  // pool (no core.withinNode arm in searchMatches) and the first arm goes
-  // red: Police, a division of the General Fund filtered out, is offered;
-  // drop the `only` arm and the second does: an enterprise fund outside the
-  // General Fund's money is offered, and Enter refuses it.
+  // Mutation: drop searchMatches' core.withinNode arm and Police (inside the
+  // filtered General Fund) is offered; drop the `only` arm and an outside
+  // enterprise fund is offered and Enter refuses it.
   test("search offers no node within a node filtered out, nor one outside the money of the node shown alone", async (t) => {
     const { app, document } = await bootedApp();
     await split(app, OPENS);
@@ -1061,10 +1014,8 @@ describe("the node filters and an open hub", () => {
     }
   });
 
-  // Mutation: read a node filtered out through core.withinNode alone in
-  // filteredOutWithin, which knows no tail, and this goes red: a member of
-  // the tail filtered out is offered, and Enter draws the tail out, so the
-  // filter on it is inert and its money is drawn again.
+  // Mutation: use core.withinNode alone in filteredOutWithin (no tails) and
+  // the tail's member is offered and Enter redraws its money.
   test("search offers no member of a tail filtered out, and Enter on one draws nothing", async (t) => {
     const { app, document } = await bootedApp();
     await split(app, "fund-group/special-revenue");
@@ -1084,10 +1035,8 @@ describe("the node filters and an open hub", () => {
     { offered: false, drew: false, expansions: before, out: [tail.id], drawn: false });
   });
 
-  // Mutation: filteredOutWithin reading only the nodes filtered out the
-  // shaped chart draws and this goes red: Police Administration, within the
-  // General Fund filtered out and then folded, is offered, and Enter
-  // refuses it, since its reveal draws the General Fund again as a hub.
+  // Mutation: read only drawn filtered nodes in filteredOutWithin and Police
+  // Administration is offered, then refused, its reveal redrawing the hub.
   test("search offers no node within a node filtered out the chart folds away", async (t) => {
     const { app } = await bootedApp();
     await split(app, OPENS);
@@ -1102,9 +1051,8 @@ describe("the node filters and an open hub", () => {
     assert.deepEqual({ inert, offered: offered.includes(id) }, { inert: true, offered: false });
   });
 
-  // Mutation: liveFilters' "only:" arm dropped and this goes red: the
-  // member is offered, and Enter draws the tail out, so `only` finds no
-  // ribbon of it, goes inert and the whole chart is drawn.
+  // Mutation: drop liveFilters' "only:" arm and the member is offered; Enter
+  // makes `only` inert and draws the whole chart.
   test("search offers no member of the tail shown alone, and Enter on one draws nothing", async (t) => {
     const { app, document } = await bootedApp();
     await split(app, "fund-group/special-revenue");
@@ -1124,9 +1072,8 @@ describe("the node filters and an open hub", () => {
     { offered: false, drew: false, expansions: before, only: tail.id, drawn: true });
   });
 
-  // Mutation: liveFilters' "out:" arm dropped and this goes red: the
-  // member of the alternative is offered, and Enter opens its parent that
-  // way, folding the node filtered out, whose money is drawn again.
+  // Mutation: drop liveFilters' "out:" arm and Enter opens the parent the
+  // other way, folding the filtered node and redrawing its money.
   test("search offers no node whose reveal folds a node filtered out, and Enter on one draws nothing", async (t) => {
     const { app, document } = await bootedApp();
     const alt = app.fetched.splits.find((sp) => sp.alternative);
@@ -1153,9 +1100,8 @@ describe("the node filters and an open hub", () => {
     { offered: false, drew: false, expansions: before, out: [out], drawn: false });
   });
 
-  // Mutation: drop the catch around a match's reveal in searchMatches and
-  // this goes red: the reveal's shape throws, so typing paints no list and
-  // the input's guard says so in a banner.
+  // Mutation: drop searchMatches' catch around a reveal and typing paints no
+  // list, with a banner.
   test("a match whose reveal throws while a node is shown alone is offered, and the search still lists every other", async (t) => {
     const { app, document } = await bootedApp();
     await split(app, OPENS);
@@ -1185,10 +1131,9 @@ describe("the node filters and an open hub", () => {
       { missing: [], banners: 0 });
   });
 
-  // Mutations: the input's guard back to fail, and the pin, the node
-  // followed and the drawer go with the banner; the arrows' or Escape's
-  // guard dropped, and that key's throw reaches the window, raising no
-  // banner.
+  // Mutations: the input's guard back to fail and pin, follow and drawer go
+  // with the banner; drop the arrows' or Escape's guard and its throw
+  // reaches the window with no banner.
   test("a search that throws says so for typing, the arrows and Escape, and leaves the pin, the node followed and the drawer", async (t) => {
     const { app, document, window } = await bootedApp();
     const errors = listenerErrors(window);
@@ -1219,10 +1164,8 @@ describe("the node filters and an open hub", () => {
   });
 
   // Mutations: chooseSearch's "The filters leave" refusal back to fail, and
-  // Enter and a click on the hit the smallest filter folds lose the pin, the
-  // node followed and the drawer with the banner; Enter's or the option's
-  // guard back to fail, and a choice whose closing of the list throws loses
-  // them too.
+  // Enter or a click loses pin, follow and drawer; Enter's or the option's
+  // guard back to fail, and a throwing list close loses them too.
   test("a search choice refused or throwing says so once and leaves the pin, the node followed and the drawer", async (t) => {
     const { app, document, window } = await bootedApp();
     const errors = listenerErrors(window);
@@ -1304,9 +1247,8 @@ describe("the node filters and an open hub", () => {
     assert.ok(!app.fetched.nodes.some((n) => banners[0].includes(n.id)), banners[0]);
   });
 
-  // Mutation: drop moveTo's routing of a listed fund group out of `out` and
-  // this goes red: the link puts the group in filter.nodes, its box stays
-  // checked while the chart hides it, and the hash rewritten says out=.
+  // Mutation: drop moveTo's routing of a listed group out of `out` and the
+  // group lands in filter.nodes, its box checked, the hash saying out=.
   test("a link naming a fund group the panel lists among out= hides it as its box does", async (t) => {
     const { app, document } = await bootedApp();
     const g = "fund-group/enterprise";

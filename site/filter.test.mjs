@@ -1,8 +1,6 @@
-// The filter panel and the filter state behind it: what the reader hides is
-// removed before layout and said beside the chart as a client sum over cited
-// cents, and what the smallest-flow filter merges keeps every cent, fact and
-// page it merged. Every check runs over the pinned columns, through the
-// shipped app.js.
+// The filter panel and state: hidden ribbons are removed before layout and
+// stated as a client sum over cited cents; smallest-flow merges keep every
+// cent, fact and page. Over the pinned columns, through the shipped app.js.
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -23,13 +21,7 @@ const factsOf = (links) => {
   return out;
 };
 
-/**
- * The filter states sampled on one chart: none; each group present alone,
- * every one but the first, and all; each kind present; each smallest-flow
- * stop; one of each together; a group the chart does not draw; and a node
- * that is no fund group filtered out, shown alone, and shown alone beside a
- * smallest flow.
- */
+/** None; each group alone, all but the first, all; each kind; each stop; one of each; an undrawn group; a node out, alone, and alone with a smallest flow. */
 function samples(app, doc) {
   const groups = [...new Set(doc.nodes.map((n) => app.fundGroupOf(n)).filter(Boolean))];
   const kinds = [...new Set(doc.links.map((l) => l.kind))].filter((k) => k !== "");
@@ -60,10 +52,7 @@ function plainOf(app, doc) {
   return ids.length ? ids[0] : "";
 }
 
-/**
- * Every way one filtered chart can lose, duplicate or invent a ribbon or a
- * cent, as fault lines; none for a chart that holds.
- */
+/** Fault lines for each way a filtered chart loses, doubles or invents a ribbon or cent. */
 function faultsOf(app, doc, state, where) {
   const faults = [];
   const r = app.filterFor(doc, state);
@@ -210,19 +199,11 @@ describe("drawn plus hidden is the chart", () => {
   }
 });
 
-// A HUB DRAWS A LEAF TWICE -- arriving at the node and again from it to the
-// member -- and a total of its own states leaves again (a General Fund
-// division's total, its own rows; an object category's divisions, what the
-// category takes in), and the tally states what the filters hid, each leaf
-// once. At the root no split is open, so every leaf is one ribbon and the
-// tally is the hidden ribbons' sum. With every primary split open, and again
-// with every alternative open in place of its node's primary split, the
-// chart draws the root's leaves and figures restating them, so hiding the
-// same group or kind states the same cents. An object category's divisions
-// are all of one kind and restate leaves of others (its internal service
-// charges), so hiding one kind hides part of what they restate and the
-// tally states those leaves too; that chart is held under a group, or every
-// kind at once, where no root state hides other figures.
+// A hub draws a leaf twice, and totals restate leaves; the tally states
+// each leaf once. With every primary split open, or every alternative,
+// hiding the same group or kind states the root's cents. An object
+// category's divisions restate other kinds' leaves, so that chart is held
+// under a group or every kind at once.
 describe("the tally states a leaf once, however many ribbons draw it", () => {
   for (const year of YEARS) {
     test(`${year.label}: hiding a group or a kind with every split open tallies what it tallies at the root`, async (t) => {
@@ -277,14 +258,9 @@ describe("the tally states a leaf once, however many ribbons draw it", () => {
   }
 });
 
-// AN OBJECT CATEGORY'S DIVISIONS each restate every leaf arriving at the
-// category, and which leaves one division's total carries is not printed. So
-// totals carrying part of that list beside a leaf of it state no money once,
-// and the tally refuses them rather than add the same money twice. No kind or
-// group filter hides part of the list with the alternatives open (each
-// filter hides all of the category's divisions or none); a hidden set
-// planted at one division's total and the leaves arriving at its category is
-// what reaches the refusal.
+// Which leaves one division's total carries is unprinted, so part of the
+// list beside one of its leaves states no money once: refused. No real
+// filter reaches it; a planted hidden set does.
 describe("the tally refuses totals restating leaves in part beside those leaves", () => {
   for (const year of YEARS) {
     test(`${year.label}: with every alternative open no kind or group filter is refused, and one division's total beside its category's leaves is`, async (t) => {
@@ -530,14 +506,9 @@ describe("the filter panel", () => {
 });
 
 describe("a chart that draws no ribbon into an extend split's slot", () => {
-  // THE SCAFFOLD (layOutAt): a division an object category is split into
-  // stands in a slot after the category's, and a chart drawing no ribbon
-  // into the category leaves no drawn path reaching that far. d3-sankey
-  // alone would draw the divisions a column early; the scaffold keeps each
-  // node in its slot's column. No filter draws it on this fixture, since
-  // hiding the groups that pay for the category cuts their leaves from the
-  // divisions too, so the chart is the split's shaped chart minus every
-  // ribbon arriving at the category.
+  // A division stands a slot after its category; with no ribbon into the
+  // category d3 alone would draw it a column early. The chart is the split
+  // minus every ribbon into the category, as no filter reaches it here.
   test("lays out, each node in its slot's column", async (t) => {
     const { app } = await bootedApp({ checkedStem: YEARS[0].stem });
     const C = "expenditure/capital-outlay";
@@ -653,12 +624,9 @@ describe("a node filter hiding a contra cell of a ribbon", () => {
   });
 });
 
-// WHICH RIBBONS GO, on a chart small enough to name every ribbon: hiding a
-// fund group removes exactly the ribbons with an end in it, and hiding a kind
-// exactly the ribbons of that kind. The walks above hold that nothing is lost
-// or invented, which a filter hiding the wrong ribbons also satisfies.
-// Mutation: test only a ribbon's source against the hidden groups in
-// core.filterDocument, or its kind against the group set, and an arm goes red.
+// On a chart small enough to name every ribbon; the walks above would pass
+// a filter hiding the wrong ones. Mutation: test only a ribbon's source
+// against hidden groups, or its kind against the group set, and an arm goes red.
 describe("a group or kind filter on a planted chart", () => {
   test("hides exactly the ribbons it names", async () => {
     const { app } = await bootedApp();

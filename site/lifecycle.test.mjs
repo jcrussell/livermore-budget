@@ -17,11 +17,7 @@ const marks = (document) => document.querySelectorAll("#chart g.node").length;
 const counts = (document) => document.getElementById("counts-line").textContent;
 const said = (document) => refusals(document).map((b) => b.textContent);
 
-/**
- * Whether `stem` is the year on screen: shownYear names it and marks are
- * drawn. The lede alone cannot say so, because the served page already reads
- * the newest year's words before anything has drawn.
- */
+/** shownYear and drawn marks: the served lede already reads the newest year's words. */
 const drawn = (app, document, stem) =>
   Boolean(app.shownYear) && app.shownYear.stem === stem && marks(document) > 0;
 
@@ -71,10 +67,8 @@ describe("the version handshake", () => {
     assert.match(older.banners[0], /older than this script/);
   });
 
-  // The page's own version unchanged and the projection's moved: a script
-  // cached across a projection change alone. Mutation: drop the
-  // projection_version check from main() and the stale script fetches and
-  // draws.
+  // A script cached across a projection change alone. Mutation: drop main()'s
+  // projection_version check and the stale script fetches and draws.
   test("a page whose columns assemble to another projection_version is refused before anything is fetched", async (t) => {
     const asked = async (v) => {
       const config = structuredClone(pageFixture().config);
@@ -389,10 +383,8 @@ describe("a copy from another build", () => {
 
 describe("a gesture that throws", () => {
   test("a gesture that throws leaves a refusal a reader can read, not a half-built panel", async (t) => {
-    // The shape is served rather than simulated: a schedule whose every node
-    // prints a balance on a page the export built no links for draws, since
-    // only the drawer cites a balance, and the first mark a reader pins
-    // throws out of citations().
+    // Served, not simulated: balances cited on unbuilt pages draw, and the
+    // first pin throws out of citations().
     const broken = structuredClone(columnFixture("fy2026-adopted"));
     const doc = broken.schedules.expansion.sources[0].doc_id;
     for (const n of broken.schedules.expansion.nodes) {

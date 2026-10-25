@@ -1,10 +1,7 @@
-// The client's layout over the columns Go pins: ribbon crossings under each
-// node ordering, restackLinks, label anchoring and room at every split the
-// page offers, the expansion's slots, and the stylesheet rules jsdom cannot
-// evaluate.
-//
-// Every number is measured post-restack, which is the chart a reader sees.
-// Every test diagnoses what it measured, pass or fail.
+// The client's layout over the columns Go pins: crossings, restackLinks,
+// label anchoring and room at every split, the expansion's slots, and the
+// stylesheet rules jsdom cannot evaluate. Measured post-restack; every test
+// diagnoses what it measured.
 
 import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -16,12 +13,7 @@ import { bootedApp, pageFixture, stylesheet, shapedAt, expansionStates, layOutSt
 import * as core from "./core.js";
 import * as sankey from "./sankey.js";
 
-/**
- * The links of each band: a band is one pair of adjacent columns.
- *
- * FAILS CLOSED ON A LINK SPANNING MORE THAN ONE COLUMN: it would pass over
- * ribbons nothing compares it against, and tangle() would undercount.
- */
+/** Links per adjacent column pair. Fails closed on a link spanning more: tangle() would undercount. */
 function bands(graph) {
   const out = new Map();
   for (const l of graph.links) {
@@ -38,11 +30,7 @@ function bands(graph) {
   return out;
 }
 
-/**
- * Crossings and the ribbon value they overlap: two same-band ribbons cross when
- * their left-end and right-end orders disagree. Overlap is charged at the
- * narrower of the two.
- */
+/** Two same-band ribbons cross when their end orders disagree; overlap is charged at the narrower. */
 function tangle(graph) {
   let crossings = 0;
   let cents = 0;
@@ -60,11 +48,7 @@ function tangle(graph) {
   return { crossings, dollars: cents / 100 };
 }
 
-/**
- * The worst distance any ribbon end falls outside the node face it meets, at
- * the width the ribbon is drawn at that face (sankey.endWidth): narrower at a
- * mark clampFunds cut.
- */
+/** Worst ribbon end outside its node face, at sankey.endWidth (narrower at a clamped mark). */
 function extentOverflow(graph) {
   let worst = 0;
   for (const node of graph.nodes) {
@@ -88,12 +72,9 @@ const DRAWN = {
 const usd = (n) => "$" + Math.round(n).toLocaleString();
 
 /**
- * The words one node's label draws and how wide they draw, at sankey.js's
- * ADVANCE_EM, fitted by the page's labelWords at that bound.
- *
- * THE WORDS COME OFF THE PAGE: markCents, fmtShortSigned and nodeFlags are what
- * render() draws. A copy of nodeFlags' markers here would under-measure every
- * label the day a marker is added.
+ * A label's words and width at ADVANCE_EM, fitted by labelWords. The words
+ * come off the page (markCents, fmtShortSigned, nodeFlags): a copied marker
+ * list would under-measure when one is added.
  */
 function labelWidth(app, d, place, room, qualifier, noun = "") {
   const value = "  " + app.fmtShortSigned(app.markCents(d));
@@ -132,13 +113,7 @@ function columnsOf(app, graph) {
   return out;
 }
 
-/**
- * The x-range a column's labels may claim: half the band on either side, and
- * the gutter out to the edge for the outermost two.
- *
- * NOT READ OFF labelPlacement: this says what room exists, so the two can
- * disagree.
- */
+/** Half a band either side, the gutter for the end columns. Not read off labelPlacement, so the two can disagree. */
 function roomFor(app, columns, col) {
   const last = Math.max(...columns.keys());
   const me = columns.get(col);
@@ -152,11 +127,7 @@ function roomFor(app, columns, col) {
   };
 }
 
-/**
- * Every label of a laid graph, boxed where app.js puts it, against its room.
- * MEASURED WITH THE VIEW ON SCREEN: the flags nodeFlags reads, and the
- * qualifiers, are the chart's on screen.
- */
+/** Every label against its room, measured with the view on screen (flags and qualifiers are its). */
 function labelFit(app, graph) {
   const columns = columnsOf(app, graph);
   const last = Math.max(...columns.keys());
@@ -180,11 +151,7 @@ function labelFit(app, graph) {
   });
 }
 
-/**
- * Every glyph drawn beside a node that overlaps a label, as "glyph's node on
- * label's node": the glyph's box (glyphPlacement, GLYPH_R) against each
- * label's line and block.
- */
+/** Glyphs overlapping a label, as "glyph's node on label's node". */
 function glyphsOnLabels(app, fits, glyph = (d) => app.glyphOf(d)) {
   const slots = app.slotsOf(fits.map((f) => f.node), app.RENDER_TIERS);
   const last = fits.length ? fits[0].last : 0;
@@ -231,16 +198,10 @@ function tightestStack(fits) {
 }
 
 /**
- * The widest the stylesheet lets the chart figure draw, in px.
- *
- * Nothing here parses CSS: this reads which PROPERTY the chart card's cap comes
- * through, and the px is the value app.js hands that property. It pins the
- * declaration's shape, so an equivalent clamp() goes red -- the safe direction.
- *
- * ONLY A RULE WHOSE WHOLE SELECTOR IS #chart-card (or .chart-wrap) COUNTS,
- * and two of them declaring the room is a refusal: a second rule under
- * @media is a cap this cannot place.
- *
+ * The px cap on the chart figure: which property the card's cap comes
+ * through, valued at what app.js hands it. Pins the declaration's shape, so
+ * an equivalent clamp() goes red, the safe direction. Only a rule whose
+ * whole selector is #chart-card or .chart-wrap counts; two is a refusal.
  * @param {string} css
  * @param {number | null} handed the px app.js set --chart-max to, or null
  */
@@ -277,10 +238,7 @@ function chartAllowance(css, handed) {
   };
 }
 
-/**
- * The gap app.js leaves between a rect and a label anchored outward from it,
- * read off a label that IS anchored that way rather than copied as a literal.
- */
+/** Read off an outward label, not copied as a literal. */
 function outwardGap(fits) {
   const outer = fits.find((f) => f.col >= f.last);
   return outer.place.x - outer.node.x1;
@@ -298,11 +256,7 @@ function tightest(fits) {
   return fits.slice().sort((a, b) => a.clearance - b.clearance)[0];
 }
 
-/**
- * The page as shipped, booted on its first published column and drawn before
- * anything is measured: until the column is fetched there is no fund order,
- * so nodeRank would tie everywhere and fall back to size.
- */
+/** Booted and drawn first: before the column, nodeRank has no fund order and ties to size. */
 function spineApp() {
   return bootedApp({ checkedStem: "sankey" });
 }
@@ -328,14 +282,10 @@ describe("the spine's layout", () => {
       { crossings: DRAWN.crossings, dollars: DRAWN.overlapDollars }, detail);
   });
 
-  // restackLinks orders each node's ribbons by where their other ends sit
-  // and places them down the node's face, whatever order they arrive in. On
-  // a layout of its own, every node's stack is turned upside down, its
-  // ribbons listed in reverse and each end in its mirror's place, and
-  // restacking puts the chart back, each end where the page placed it and
-  // no ribbon resized. Mutation: return early from restackLinks and the
-  // inverted stacks keep their crossings; drop its sorts and the reversed
-  // lists stack the ends upside down.
+  // Every stack is reversed and mirrored; restacking restores each end
+  // where the page placed it, no ribbon resized. Mutation: return early from
+  // restackLinks and the crossings stay; drop its sorts and the ends stack
+  // upside down.
   test("restackLinks stacks scrambled ribbons back to the chart's", (t) => {
     const own = laidSpine(app);
     const placed = own.links.map((l) => [l.y0, l.y1, l.width]);
@@ -390,13 +340,11 @@ function bandWidth(laid) {
 const NARROW_DESIGN_WIDTH = 1320;
 
 /**
- * Where a drawn label actually sits, read off the mark render() appended, so
- * this measures labelPlacement's USE. `class` is read as an attribute because
- * an SVG className is not a string; a null dy must be ABSENT, not "null".
- *
- * @param {any} app a page with a chart already drawn
- * @param {Document} document the page it drew on
- * @param {any} laid the same chart's nodes, as laid out
+ * Read off render()'s marks, so this measures labelPlacement's use. `class`
+ * as an attribute (SVG className is no string); a null dy must be absent.
+ * @param {any} app a page with a chart drawn
+ * @param {Document} document
+ * @param {any} laid the same chart's laid nodes
  */
 function drawnPlacement(app, document, laid) {
   const slots = app.slotsOf(laid.nodes, app.RENDER_TIERS);
@@ -431,11 +379,7 @@ function drawnPlacement(app, document, laid) {
   return { read, marks: marks.length, wrong, last };
 }
 
-/**
- * Where every label lands: the spine's middle column, and every label of the
- * expansion split to its finest grain, which has interior columns where the
- * placement rules disagree.
- */
+/** The spine's middle column, and the expansion at its finest grain, whose interior columns test the rules. */
 describe("where a label is anchored", () => {
   let app, middle, crowded, drawn, allowance, columns;
   before(async () => {
@@ -482,11 +426,8 @@ describe("where a label is anchored", () => {
       { drewNothing: false, read: drawn.marks * 4, wrong: [], interior: true }, detail);
   });
 
-  // THE CONTAINER AGAINST THE DRAWING: the card is capped at the opening
-  // chart's width, which the svg is stretched from, so a chart draws at its
-  // laid width wherever the viewport has room for the opening one. AN
-  // EQUALITY, NOT A FLOOR: both are derived from the same declarations, so
-  // slack is the defect.
+  // An equality, not a floor: card cap and svg stretch derive from the same
+  // declarations, so slack is the defect.
   test("the stylesheet caps the chart's card at the opening chart's width every chart is scaled from", (t) => {
     const detail = allowance.px === null
       ? allowance.why
@@ -519,39 +460,24 @@ describe("the chart's width as columns open", () => {
 });
 
 /**
- * The chart at every split the page offers, in each of the page's years,
- * measured for what a label does to its neighbours. Two marks of one column
- * drawn in the same words are pinned by the chart they are drawn on: the
- * expansion hangs every owner's row of one category under that category, and
- * a qualifier naming the category cannot tell them apart.
+ * Same-word marks in one column, pinned per chart: the expansion hangs each
+ * owner's row of a category under it, and a qualifier cannot tell them apart.
  */
 const ALIKE = {
   "FY 2025-26": {},
   "FY 2026-27": {},
 };
 
-/**
- * The labels a chart stacks on one another, at this file's line height, by
- * the chart that draws them. PINNED AND NOT BOUNDED: they are a measurement of
- * the canvas sankey.grow sizes, which counts marks and not lines.
- */
+/** Stacked labels per chart, pinned not bounded: sankey.grow counts marks, not lines. */
 const OVERLAPPED = {
   "FY 2025-26": {},
   "FY 2026-27": {},
 };
 
-/**
- * The fewest characters of its name a cut interior label keeps at
- * BAND_FLOOR: a word either side of the ellipsis. A member printed in its
- * parent's words counts its noun's, which is what names it there.
- */
+/** Fewest name characters a cut interior label keeps at BAND_FLOOR (a member's noun counts). */
 const FLOOR_KEEPS = 10;
 
-/**
- * Every interior label of a chart fitted to the room BAND_FLOOR leaves it,
- * in the words and flags the page draws it with: how many are cut, and the
- * cut label that keeps fewest of its name's characters.
- */
+/** Interior labels at BAND_FLOOR: how many cut, and the worst kept. */
 function atFloor(app, fits) {
   const room = app.BAND_FLOOR + app.NODE_WIDTH;
   let cut = 0;
@@ -608,11 +534,8 @@ for (const label of Object.keys(ALIKE)) {
         }
       };
       visit("the root", { nodes: app.laidNodes });
-      // Each split opened alone, Expand all, and Expand all drawn out, each
-      // laid the two ways the page lays it: cold, as a deep link does, and
-      // against the root's boxes, as a click from the root does. A state
-      // reached through another split lays against that split's boxes,
-      // which these two bracket and do not cover.
+      // Each split alone, Expand all, and drawn out, laid cold (a deep link)
+      // and against the root's boxes (a click); other routes lie between.
       const fromRoot = app.boxesOf(app.laidNodes);
       for (const st of expansionStates(app, app.fetched)) {
         if (!st.whole.size || st.where.startsWith("everything")) {
@@ -621,10 +544,8 @@ for (const label of Object.keys(ALIKE)) {
           visit(st.where + ", from the root", layOutState(app, st, fromRoot), glyph);
         }
       }
-      // The words render() draws are the words measured above: Expand all
-      // drawn from the root on a page of its own, since layOutState leaves
-      // the walked page holding the last chart it laid, where labels are
-      // cut, each mark's tspans against labelFit's.
+      // render()'s tspans against labelFit's words, on a fresh page, since
+      // layOutState leaves this one holding its last chart.
       const { app: fresh, document } = await bootedApp({ checkedStem: year.stem });
       if (!fresh.expandAll()) throw new Error("Expand all split nothing");
       await settle();
@@ -760,25 +681,15 @@ describe("the focus indicator is painted as focus and not as text", () => {
   });
 });
 
-// THE EXPANSION, LAID OUT: each pinned column's expansion
-// schedule folded to a frontier by core.foldDocument, capped per split and
-// stamped with its slots by sankey.js's expansionOf, and laid out by the
-// form's own layOutAt on the canvas the index overview's sankey.grow sizes.
-// Measured off the schedule rather than the booted page, so every frontier
-// is reached without a gesture: the hints are the pinned index page's, the
-// order of fund groups is the column's.
-//
-// EVERY ASSERT IS OVER KEYS AND NUMBERS. A failing assert over a laid d3
-// graph formats the whole of it, which this host cannot hold.
+// The expansion laid out from the schedule, so every frontier is reached
+// without a gesture: foldDocument, expansionOf, then layOutAt at the index
+// overview's sankey.grow. Every assert is over keys and numbers: a failing
+// assert over a laid d3 graph formats all of it, which this host cannot hold.
 
 /**
- * Per year and frontier: the nodes in each slot, left to right; nodes and
- * ribbons; the canvas and the ribbons under a pixel on it; the labels wider
- * than their room (half the band either side, or the gutter at either end)
- * in the words labelWords fits them to at sankey.js's ADVANCE_EM, value
- * included and flags not (the expansion's flags are the interaction's); and
- * the worst of them.
- * PINNED, not bounded: data/views.yaml's grow is read off these.
+ * Per year and frontier: slots, nodes and ribbons, the canvas and its
+ * sub-pixel ribbons, and labels wider than their room (value in, flags
+ * out). Pinned, not bounded: data/views.yaml's grow is read off these.
  */
 const EXPANSION_CLAIMED = {
   "FY 2025-26": {
@@ -821,12 +732,7 @@ function expansionFrontiers(doc) {
   ];
 }
 
-/**
- * Each label of a laid expansion against its room, as labelFit measures the
- * page's: placed by labelPlacement over the same slots, anchored as drawn,
- * qualified by labelQualifiers and labelNouns over the unfolded `doc` and
- * fitted by labelWords.
- */
+/** As labelFit, over the unfolded `doc`'s qualifiers and nouns. */
 function expansionLabels(doc, laid, slots, columns) {
   const xs = new Map();
   for (const n of laid.nodes) if (!xs.has(slots.get(n.id))) xs.set(slots.get(n.id), { x0: n.x0, x1: n.x1 });
@@ -905,10 +811,8 @@ describe("the expansion schedule laid out in slots, at the root, one group open 
           unplaced: drawn.nodes.filter((n) => !slots.has(n.id)).map((n) => n.id),
           general: ["fund-group/general", "fund/100"].map((id) => `${id} ${slots.has(id) ? "in " + slots.get(id) : "not drawn"}`).join(", "),
         };
-        // THE GENERAL FUND'S DIVISION-BY-OBJECT CELLS: every
-        // link from one of fund/100's divisions to an object category, which
-        // its row's hub leg repeats, each a ribbon of its own at its cents
-        // and facts.
+        // The General Fund's division-by-object cells: each a ribbon of its
+        // own at its cents and facts, repeated by its row's hub leg.
         if (f.whole.size || f.name === "everything by primary splits") {
           const divisions = new Set(core.splitsOf(doc, "fund/100").find((sp) => sp.key === "divisions").members);
           const cells = doc.links.filter((l) => divisions.has(l.source) && !index.get(l.target).alternative &&
@@ -995,10 +899,8 @@ describe("the expansion schedule laid out in slots, at the root, one group open 
     assert.deepEqual(got, want);
   });
 
-  // A capped split's tail folds no remainder, so no ribbon into or out of a
-  // tail is drawn inferred. FY 2026-27's services and supplies ranks one
-  // remainder past the cap in each of its two splits, so this goes red where
-  // a tail folds one. Over every split opened alone from the root and capped.
+  // FY 2026-27's services and supplies ranks a remainder past the cap in
+  // both its splits, so this goes red where a tail folds one.
   test("no ribbon into or out of a tail is drawn inferred, since a tail folds no remainder", (t) => {
     const want = { "FY 2025-26": [], "FY 2026-27": [] };
     const got = {};
@@ -1032,10 +934,8 @@ describe("the expansion schedule laid out in slots, at the root, one group open 
   });
 });
 
-// THE SCAFFOLD (layOutAt): d3-sankey draws one column per step of the longest
-// drawn path, plus one, and a slot two extend splits open can stand further
-// right than any drawn path reaches. Here no path runs A > B > C > D > E: the
-// longest is two steps, so d3 alone draws three columns for five slots.
+// d3-sankey draws a column per step of the longest path; here the longest
+// is two steps, so d3 alone draws three columns for five slots.
 describe("a slot no drawn path reaches is laid out in its own column", () => {
   before(() => loadD3());
   const node = (id, slot) => ({ id, label: id, tier: 0, slot, role: "", source_note: "" });
@@ -1060,9 +960,8 @@ describe("a slot no drawn path reaches is laid out in its own column", () => {
     assert.ok(laid.links.every((l) => l.width > 0), "a drawn ribbon has no width");
   });
 
-  // A ribbon running backward against the slots leaves no forward path for a
-  // scaffold to complete: C's only way into the third column is through B,
-  // and B > C closes a cycle with C > B. The clamp check refuses it.
+  // B > C closes a cycle with C > B: no forward path to scaffold, so the
+  // clamp check refuses.
   test("a ribbon running backward against the slots is still refused, by the clamp check", (t) => {
     const drawn = {
       projection: "hand-built",
@@ -1146,20 +1045,12 @@ describe("an outward label fitted to its gutter", () => {
   });
 });
 
-// EVERY PAIR OF EXTEND SPLITS, LAID OUT. An extend split draws its members a
-// slot after their parent's, so two open together can declare a slot no
-// drawn ribbon reaches; layOutAt's scaffold carries a path into it, and its
-// clamp check still refuses a ribbon running backward against the slots.
-// Each pair of two nodes' splits the pinned schedules declare is opened as
-// a reader opens it (core.reveal, then both split, and both still open),
-// shaped, filtered and laid out by the page's own calls, and held to a
-// layout d3 accepts with every laid node in its slot's column. Nothing is
-// rendered, so what redraw does after the layout (the affordances, the
-// paint) is the rendered sequence's in render.test.mjs.
+// Every pair of two nodes' extend splits, revealed and opened as a reader
+// would, shaped, filtered and laid out by the page's calls, each laid node
+// in its slot's column. Nothing is rendered (that is render.test.mjs's).
 //
-// Mutation: hand d3 the drawn links alone in layOutAt (drop scaffoldOf's
-// result) and pairs refuse with "belongs in column N and no ribbon drawn
-// reaches that far".
+// Mutation: drop scaffoldOf's result in layOutAt and pairs refuse with
+// "belongs in column N and no ribbon drawn reaches that far".
 describe("every pair of extend splits the schedule declares, laid out", () => {
   for (const year of pageFixture().config.years) {
     test(`${year.label}: every pair lays out, each node in its slot's column`, async (t) => {
@@ -1185,9 +1076,8 @@ describe("every pair of extend splits the schedule declares, laid out", () => {
             faults.push(`${where}: cannot be opened: ${e.message}`);
             continue;
           }
-          // Revealing b can split an ancestor of a's node another way, which
-          // takes a's node off the chart: those two are never on screen
-          // together. One still drawn and split another way is a fault.
+          // Revealing b can split a's ancestor another way and take a's node
+          // off; one still drawn but split another way is a fault.
           if (!frontier.has(a.node)) {
             apart++;
             continue;
@@ -1215,9 +1105,8 @@ describe("every pair of extend splits the schedule declares, laid out", () => {
       t.diagnostic(`${year.label}: ${extend.length} extend splits, ${pairs} pair(s), ${apart} never drawn together, ` +
         `${faults.length} fault(s)`);
       assert.ok(pairs > 0, "the schedule declares no pair of extend splits, so nothing here is tested");
-      // PINNED: no pair of the pinned schedules takes the other's node off
-      // the chart. A reveal that starts to is either a new schedule, to pin
-      // here, or reveal folding what it should not.
+      // Pinned: no pair takes the other's node off. One that does is a new
+      // schedule to pin, or reveal folding what it should not.
       assert.equal(apart, 0, "pairs skipped as never drawn together");
       assert.deepEqual(faults.slice(0, 5), [], `${faults.length} fault(s)`);
     });

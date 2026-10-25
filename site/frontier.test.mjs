@@ -1,9 +1,7 @@
-// frontier.test.mjs — the one fold, read over the expansion schedule: a
-// frontier of node ids, opened and shut by the pure helpers core.js exports,
-// held to the spine Go printed beside it in the same column.
-//
-// EVERY ASSERT IS OVER KEYS AND NUMBERS. A failing assert over a folded
-// document formats the whole graph, which this host cannot hold.
+// frontier.test.mjs — the fold over the expansion schedule, opened and shut
+// by core.js's helpers, held to the spine Go printed in the same column.
+// Every assert is over keys and numbers: a failing assert over a folded
+// document formats the whole graph.
 
 import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -13,12 +11,9 @@ import assert from "node:assert/strict";
 import * as core from "./core.js";
 import { columnFixture } from "./testlib.mjs";
 
-// `inferred`: the spine's printed cells the root frontier draws inferred.
-// None: where a remainder leg Go derives folds back into a printed cell, Go
-// names the cell in `completes` on every leg of it, and the whole set is
-// drawn printed. `completing`: the cells Go declares so, each drawn whole at
-// the root and, once its fund group opens, its remainder a derived ribbon of
-// its own at the cents named.
+// `inferred`: printed cells the root draws inferred (none: Go's `completes`
+// keeps a remainder's set printed). `completing`: cells drawn whole at the
+// root, their remainder its own derived ribbon once the group opens.
 const COLUMNS = [
   { label: "FY 2025-26", stem: "fy2026-adopted", inferred: [], completing: [] },
   { label: "FY 2026-27", stem: "fy2027-adopted", inferred: [],
@@ -37,11 +32,7 @@ const cell = (s, t, kind) => `${s} > ${t} (${kind})`;
 /** A frontier as one comparable string list. */
 const ids = (f) => [...f].sort();
 
-/**
- * Expand all (core.expandAllFrom) with no `alt`; with one, every node opened
- * by that alternative where it offers it and by its primary split elsewhere,
- * a frontier the page offers no single gesture for.
- */
+/** core.expandAllFrom, or with `alt` that alternative wherever offered: no single gesture reaches it. */
 function expandAll(doc, alt) {
   if (!alt) return core.expandAllFrom(doc, core.rootFrontier(doc)).frontier;
   let f = core.rootFrontier(doc);
@@ -58,10 +49,7 @@ function expandAll(doc, alt) {
   return f;
 }
 
-/**
- * What a folded document must keep of the document it folds, as lists of
- * strings: empty lists when it keeps everything.
- */
+/** Empty lists when the fold keeps everything. */
 function audit(doc, spine, frontier) {
   const byID = new Map(doc.nodes.map((n) => [n.id, n]));
   const rootOf = (id) => {
@@ -90,10 +78,8 @@ function audit(doc, spine, frontier) {
     if (want.get(k) !== got.get(k)) sums.push(`${k}: spine ${want.get(k)}, drawn ${got.get(k)}`);
   }
 
-  // EVERY DRAWN NODE'S SUMS: what a node draws in and out is the links that
-  // cross into and out of the part of the schedule it holds -- its subtree,
-  // less the subtrees of the drawn nodes inside it -- under the alternatives
-  // the frontier opens.
+  // A node's sums are the links crossing its subtree less drawn subtrees
+  // inside it, under the open alternatives.
   const within = new Map([...frontier].map((id) => [id, core.withinNode(doc, id)]));
   const owner = new Map();
   for (const [id, inside] of within) {
@@ -282,11 +268,9 @@ describe("the expansion schedule, folded to a frontier", () => {
   }
 });
 
-// PLANTED: no pinned column has a lone member that splits by an alternative
-// of one member. P opens straight through to M by M's primary split; the
-// reader switches M to its alternative, whose one member Y opens straight
-// through. Mutation: let straightFrom climb through an alternative member and
-// this goes red: folding Y climbs to P and folds everything.
+// Planted: P opens straight through to M; M is switched to an alternative
+// whose one member Y opens straight through. Mutation: let straightFrom
+// climb through an alternative member and folding Y folds everything.
 describe("a fold climbs only through what expand opened straight through", () => {
   const node = (id, parent = "", alternative = "") => Object.assign({ id, tier: 0, parent, label: id, role: "r" }, alternative ? { alternative } : {});
   const split = (n, key, alternative = false) => ({ node: n, key, form: "extend", alternative });
@@ -307,11 +291,8 @@ describe("a fold climbs only through what expand opened straight through", () =>
   });
 });
 
-// PLANTED: no pinned column declares an alternative before its node's
-// primary split. M lists "alt" first; A is a member of M's primary split
-// "rows", so revealing A's member opens M by "rows", the split A belongs to,
-// and not the first M declares. revealChain is the chain app.js
-// revealEntries walks too, so this is the page's reveal.
+// Planted: M declares "alt" before its primary "rows", which A is in;
+// revealChain is app.js revealEntries' chain too.
 // Mutation: key a member with no alternative by its parent's first split
 // and the chain names "alt", and reveal throws that M's alt does not draw A.
 describe("revealing a node opens each ancestor by the split the node below belongs to", () => {
@@ -340,11 +321,8 @@ describe("revealing a node opens each ancestor by the split the node below belon
   });
 });
 
-// PLANTED: on the pinned columns one pass of Expand all opens everything,
-// since each root's split exposes no node with a split of its own, and no
-// node declares an alternative first. Here P's split exposes M and N, M
-// splits again, and M declares its alternative before its primary split,
-// so Expand all opens M as a click on it does, by "alt".
+// Planted: P's split exposes M, which splits again and declares "alt" first,
+// so Expand all opens it by "alt" as a click does.
 // Mutation: stop expandAllFrom after one pass and M stays shut; open each
 // node by its primary split and M opens by "rows".
 describe("Expand all opens what a split exposes, until nothing is left shut", () => {

@@ -1,7 +1,5 @@
-// fold.test.mjs — the client's fold: capColumn and foldDocument, the claim
-// that the drill-down could not be drawn without them, and the expansion as
-// the page caps it at every split it offers. The fold is the client's alone;
-// the unfolded schedule is what every figure is held to.
+// fold.test.mjs — capColumn and foldDocument, and the expansion as the page
+// caps it at every split. Every figure is held to the unfolded schedule.
 
 import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -29,23 +27,14 @@ function fundFlows(app, stem) {
   return doc;
 }
 
-/**
- * The tier set the fold's own clauses are exercised at, which is not a view:
- * the only three-tier fold over the WHOLE document, placing every node without
- * a filter, which a link whose ends fold together, a drawn tier no folded
- * link touches, and a re-pointed parent all need to be visible.
- */
+/** Not a view: the one three-tier fold over the whole document that shows every clause (self-loop, drop, re-pointed parent). */
 const DRAWN = [0, 2, 4];
 
 /**
- * A drill-down in miniature: nine nodes carrying every shape the fold has a
- * rule for. Each node is here because a clause of foldDocument is about it:
- * fund/100 and fund/101 are two funds of one group (two links MERGE);
- * fund/640 a second group (the merge is keyed); dept/fire a drawn tier reached
- * through a fund; expenditure/fire/* a tier not drawn, folding onto its own
- * parent (the SELF-LOOP); fund-group/capital a drawn tier no folded link
- * touches (the DROP); dept/parks retained while its own group is dropped (the
- * re-pointed parent must WALK PAST it).
+ * Nine nodes, one per foldDocument clause: fund/100 and fund/101 merge;
+ * fund/640 keys the merge; dept/fire is reached through a fund;
+ * expenditure/fire/* self-loops; fund-group/capital drops; dept/parks is a
+ * parent the re-pointing must walk past.
  */
 function miniature() {
   const roleOf = (id) => (id.startsWith("fund-group/") ? "fund_group" : "");
@@ -104,11 +93,9 @@ function smallest(graph) {
 }
 
 describe("the tail's note carries the figure the tail is drawn at", () => {
-  // LAID OUT AS shapeFor LAYS IT OUT, markContra after the fold: a reduction
-  // is drawn at its magnitude, and layOut alone would size it signed.
-  // FIVE LINES INTO ONE CATEGORY, ONE OF THEM A REDUCTION, capped at two: the
-  // tail is $60, -$30 and $10, which merge into one ribbon of $40 -- not the
-  // $100 their magnitudes come to, which is what the ranking sorts by.
+  // Laid out as shapeFor does, markContra after the fold. Five lines into
+  // one category capped at two: the tail $60, -$30, $10 nets $40, not the
+  // $100 of magnitudes the ranking sorts by.
   function lines() {
     const node = (id, tier, parent) => ({
       id, label: id, tier, parent, constraint_tier: "", role: "",
@@ -356,10 +343,7 @@ describe("the spine's fund groups", () => {
     }
   });
 
-  /**
-   * The spine drawn for real over a column, and the legend the draw built.
-   * `alter` edits a clone of the pinned FY2026 column before it is served.
-   */
+  /** `alter` edits a clone of the FY2026 column before it is served. */
   async function spineLegend(alter) {
     const col = columnFixture("fy2026-adopted");
     if (alter) alter(col);
@@ -373,11 +357,7 @@ describe("the spine's fund groups", () => {
       drawn: app.projection.nodes.filter(app.isFundGroup).map((n) => n.id),
     };
   }
-  /**
-   * Adds a fund-group node modelled on debt-service, with one inflow, under
-   * `id`, to the schedule the page draws: a root of the expansion, as the
-   * spine's groups are.
-   */
+  /** A debt-service-like fund group root with one inflow. */
   function withGroup(col, id, label, listed) {
     const model = col.nodes.findIndex((n) => n.id === "fund-group/debt-service");
     col.nodes.push(Object.assign({}, col.nodes[model], { id, label }));
@@ -518,10 +498,8 @@ function totals(links) {
   return { cents, cited: [...ids].sort() };
 }
 
-// THE CAP'S OWN PROPERTIES, over every chart of the expansion the page
-// offers on the pinned columns: each is capped by expansionOf and held to the
-// same frontier folded whole, the unfolded schedule's one fold. Nothing here
-// compares a figure to anything Go computed.
+// Every chart the page offers, capped by expansionOf, held to the same
+// frontier folded whole. No figure is compared to Go's.
 describe("the expansion's caps preserve what they fold, at every split the page offers", () => {
   const CONFIG = pageFixture().config;
   const STEMS = publishedColumns();
@@ -559,10 +537,8 @@ describe("the expansion's caps preserve what they fold, at every split the page 
           wrong.push(`${st.where}: ${lost.length} fact(s) cited away, ${invented.length} cited from nowhere`);
         }
         merged += raw.links.length - drawn.links.length;
-        // (c) CAPS: each open split a cap names draws at most cap members,
-        // its derived remainder among them, and a tail, and where it folded,
-        // its tail's members and the kept are the split, the tail holding no
-        // derived node.
+        // (c) Caps: at most cap members (remainder included) and a tail,
+        // whose members plus the kept are the split; no derived node folded.
         const ids = new Set(drawn.nodes.map((n) => n.id));
         for (const sp of doc.splits) {
           const cap = caps.find((c) => c.split === sp.key);
@@ -626,21 +602,14 @@ describe("the expansion's caps preserve what they fold, at every split the page 
   }
 });
 
-// A TAIL FOLDING A LINE PRINTED AS A REDUCTION is drawn as the lines()
-// fixture above pins it: netted where the merge takes the reduction, at its
-// size and disclosed by contraNote where it does not. No pinned column
-// reaches either case. This walk holds that, and goes red the year a
-// reduction ranks below a cap, so whoever reads that red reads the tail's
-// note against the laid mark rather than trusting the fixture.
+// No pinned column folds a reduction into a tail (the lines() fixture pins
+// how it would draw). This goes red the year one does, so the reader checks
+// the tail's note against the laid mark.
 describe("no capped tail of the expansion folds a line printed as a reduction", () => {
   const CONFIG = pageFixture().config;
   const STEMS = publishedColumns();
 
-  /**
-   * Every tail the page's caps fold at every split it offers, each with the
-   * ribbons its members draw folded whole, at their printed signs, and
-   * whether the split it folds held a reduction at all, folded or kept.
-   */
+  /** Every capped tail at every split, its members' ribbons folded whole at printed signs, and whether its split held a reduction. */
   function tailsOf(app, doc) {
     const out = [];
     const reduces = (l) => Boolean(l.contra) || l.value_cents < 0;
@@ -701,14 +670,9 @@ describe("no capped tail of the expansion folds a line printed as a reduction", 
   });
 });
 
-// A HUB IS DRAWN BY REPEATING LEAVES, and the fold is what adds them: over
-// every chart of the expansion the page offers on the pinned columns, each
-// open split whose links to its members repeat leaves is drawn with ribbons
-// between its node and its members (or their tail) that sum, in cents and in
-// facts, to the leaves those links repeat -- each re-pointed to end at the
-// node, or for a node that takes nothing in, to start at it, its legs then
-// running from its members. A leg lost reads short, a leg drawn twice reads
-// long, and a shut split draws no ribbon to or from a member.
+// A hub's ribbons to its members (or tail) sum, in cents and facts, to the
+// leaves its links repeat. A lost leg reads short, a doubled one long, and a
+// shut split draws no member ribbon.
 describe("an open hub's ribbons are the leaves it repeats", () => {
   const CONFIG = pageFixture().config;
 

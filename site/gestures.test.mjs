@@ -1,15 +1,9 @@
-// gestures.test.mjs -- the SEQUENCES a reader's gestures make on the drawn
-// chart: one activation -- a click, Enter or Space -- opening a node that
-// splits, folding an open hub back and pinning one that does neither, the ⊕
-// menu choosing between a node's two splits, ⊖ folding a split back, Escape
-// letting the pin and the isolation go and folding nothing, the trace a
-// hover draws, Expand all and Collapse all, a tail drawn out, and where
-// focus lands after a split has replaced the element it was on.
-//
-// Every gesture is a dispatched event with a planted timeStamp, because the
-// node's and the glyph's activation guard compares a click's stamp against
-// the key that may have synthesised it. Every assertion is over ids, counts and booleans: a
-// failing assertion over a laid mark formats the whole graph.
+// gestures.test.mjs -- gesture sequences on the drawn chart: activation
+// (click, Enter, Space) opening, folding or pinning, the ⊕ menu, ⊖, Escape,
+// the trace, Expand/Collapse all, tails, and where focus lands after a split.
+// Events carry a planted timeStamp, since the activation guard compares it.
+// Assertions are over ids, counts and booleans: a failing assertion over a
+// laid mark formats the whole graph.
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -24,10 +18,7 @@ const OPENS = "fund-group/general";
 const TWO_WAYS = "expenditure/capital-outlay";
 const WORST = "fund-group/special-revenue";
 
-/**
- * A page booted and switched to `stem`. The page opens on the newest year, so
- * every other year is reached the way a reader reaches it, through the control.
- */
+/** Reached through the year control, as a reader does; the page opens on the newest. */
 async function onYear(stem, o = {}) {
   const loaded = await bootedApp(o);
   if (loaded.app.shownYear.stem !== stem) {
@@ -320,10 +311,8 @@ describe("one activation", () => {
     });
   });
 
-  // Mutation: fold on ⊖ by collapseNode alone (glyphNode not through
-  // foldPinned) and the glyph arm goes red: the fold drops the pin and the
-  // node's Follow with it, where the second click keeps both. A node and
-  // not a fund group, whose isolation a redraw keeps without its pin.
+  // Mutation: fold on ⊖ by collapseNode alone (not foldPinned) and the glyph
+  // arm goes red: the pin and Follow go, where a second click keeps both.
   test("folding the node followed keeps it pinned and followed, by a second click and by its ⊖ alike", async (t) => {
     const seen = {};
     for (const gesture of ["click", "glyph"]) {

@@ -27,12 +27,10 @@ export function cssPx(name) {
 }
 
 /**
- * How style.css lays the chart's body out at the window's innerWidth, from
- * what app.js hands it: whether the rail sits beside the chart, the px it
- * takes, the chart's room, the width the opening chart is drawn at, and the
- * body's whole width, in or out of the chart's card full screen. Nothing
- * here renders CSS, so each declaration is read by selector and held to its
- * shape; any other shape is a refusal, which no measured answer equals.
+ * How style.css lays out the chart's body at innerWidth from what app.js
+ * hands it: rail beside or not, its px, the room, the drawn width, the
+ * whole width, in or out of full screen. Nothing renders CSS, so each
+ * declaration is held to its shape; any other shape is a refusal.
  */
 export function drawnBody(document, window) {
   const css = stylesheet().replace(/\/\*[\s\S]*?\*\//g, "");
@@ -84,10 +82,8 @@ export function drawnBody(document, window) {
 let d3Loaded = false;
 
 /**
- * Loads the vendored d3 bundles into THIS realm, once per process.
- *
- * runInThisContext AND NOT require: under require the UMD bundles take the
- * CommonJS branch and ask for d3-array, which is not installed.
+ * Once per process, by runInThisContext not require: under require the UMD
+ * bundles ask for d3-array, which is not installed.
  */
 export function loadD3() {
   if (d3Loaded) return;
@@ -100,18 +96,12 @@ export function loadD3() {
   d3Loaded = true;
 }
 
-/**
- * The served page and the config cut out of it, from
- * testdata/flows.golden.html, the Sankey page, so there is one copy of the config.
- */
+/** testdata/flows.golden.html and its config: the one copy of the config. */
 export function pageFixture() {
   return servedPage("flows.golden.html");
 }
 
-/**
- * One pinned page under testdata/ and the config cut out of it.
- * @param {string} name
- */
+/** @param {string} name */
 function servedPage(name) {
   const html = readFileSync(join(repoRoot, "testdata", name), "utf8");
   const open = "window.FISC_CONFIG = ";
@@ -124,8 +114,7 @@ function servedPage(name) {
 }
 
 /**
- * Every column the pinned page publishes, by the fixture stem each is pinned
- * under: a year's served path with .json dropped.
+ * Fixture stems: each year's served path less .json.
  * @returns {string[]}
  */
 export function publishedColumns() {
@@ -142,11 +131,7 @@ export function goldenGraph() {
   return JSON.parse(readFileSync(join(repoRoot, "testdata", "sankey.golden.json"), "utf8"));
 }
 
-/**
- * A matchMedia answering from a viewport width and an OS theme, firing its
- * change listeners when an answer crosses. It THROWS on a query it was never
- * taught: answering false would silently stop testing.
- */
+/** Throws on an untaught query: answering false would silently stop testing. */
 function mediaStub(width, osDark, motion) {
   const OS_DARK = "(prefers-color-scheme: dark)";
   const REDUCED = "(prefers-reduced-motion: reduce)";
@@ -190,14 +175,10 @@ function mediaStub(width, osDark, motion) {
 let lastWindow = null;
 
 /**
- * Installs jsdom over one page as the globals app.js reads, with the shipped
- * stylesheet injected so custom properties resolve.
- *
- * THE URL MATTERS: an opaque origin makes localStorage throw.
- *
- * The reader asks for reduced motion unless `motion` is true, so a redraw is
- * at its end when it returns: jsdom runs no d3 transition to its end on its
- * own, and a test of the motion itself opts in.
+ * jsdom over one page as app.js's globals, with the stylesheet injected so
+ * custom properties resolve. The URL matters: an opaque origin makes
+ * localStorage throw. Reduced motion unless `motion`, since jsdom runs no
+ * d3 transition to its end.
  */
 export function installBrowser({ html, storage, viewport = 1000, osDark = false, motion = false } = {}) {
   // A frame the last page asked for (app.js's askRoom) would otherwise run
@@ -222,13 +203,9 @@ export function installBrowser({ html, storage, viewport = 1000, osDark = false,
 }
 
 /**
- * A fetch whose answers a test plans, one entry per path: `{doc}`; `null` for
- * a 404; `{status, ok: false}`; `{hang: true}`; `{reject}`; `{settle}` to be
- * handed resolve/reject; `{doc, badBody: true}` for an unparseable 200. The
- * pinned columns are planned by default.
- *
- * A body without generated_by gets the page's stamp; one a test planted is
- * never overwritten.
+ * Planned answers per path: `{doc}`, `null` (404), `{status, ok: false}`,
+ * `{hang: true}`, `{reject}`, `{settle}`, `{doc, badBody: true}`. Pinned
+ * columns by default; a planted generated_by is never overwritten.
  */
 export function plannedFetch(plan, stamp) {
   const asked = [];
@@ -277,12 +254,8 @@ export async function settle() {
 let loads = 0;
 
 /**
- * A fresh page with the shipped app.js imported anew.
- *
- * A NEW MODULE INSTANCE PER CALL, by a cache-busting query, because app.js
- * reads FISC_CONFIG and d3 at import and keeps module-level state.
- * `checkedStem` moves the year select as a restored form would; `config: null`
- * hands the module no config.
+ * A new module instance per call (cache-busting query): app.js reads its
+ * globals at import and keeps state. `config: null` hands it none.
  */
 export async function loadApp(o = {}) {
   loadD3();
@@ -314,12 +287,9 @@ export async function bootedApp(o = {}) {
 }
 
 /**
- * Splits nodes in turn, each by its first declared split or by the key given
- * as "id~key", through the page's own expandNode, throwing by name where one
- * does not split.
- *
- * THE RETURN VALUE IS CHECKED AS WELL AS THE LIST: expandNode swallows its
- * throw into a banner and leaves the chart as it was.
+ * Splits through expandNode, "id~key" for a non-first split. The return
+ * value is checked as well as the list: expandNode swallows its throw into
+ * a banner.
  */
 export async function split(app, ...entries) {
   for (const entry of entries) {
@@ -337,10 +307,7 @@ export async function split(app, ...entries) {
   }
 }
 
-/**
- * Splits every node above `id` so `id` is drawn: the app's revealChain,
- * walked through the page's gestures, skipping a split already open.
- */
+/** revealChain walked through the page's gestures, skipping open splits. */
 export async function revealed(app, id) {
   for (const { node, key } of app.revealChain(app.fetched, id)) {
     if (app.frontier && app.openSplitOf(app.fetched, app.frontier, node) === key) continue;
@@ -348,26 +315,15 @@ export async function revealed(app, id) {
   }
 }
 
-/**
- * One chart of the expansion as the page shapes it, with no DOM: the
- * form's shape over the fetched document at a frontier and the splits
- * drawn whole, which is what app.projection holds after a redraw there.
- */
+/** The form's shape at a frontier, no DOM: what app.projection holds after a redraw there. */
 export function shapedAt(app, frontier, whole = new Set()) {
   return app.formOnScreen().shape(app.fetched, { chart: app.chartOnScreen(), frontier, whole });
 }
 
 /**
- * Draws out every folded tail until none is left and returns how many it
- * drew out. A tail drawn out is an entry on the list like a split, so the
- * tails are found by shaping the list with no DOM (expansionState, then the
- * form's shape) until a shape folds none, and the page is redrawn once with
- * all of them; drawing one out can expose another, which is why it is a
- * fixed point. The entries are checked by the app's own expansionState as
- * they are shaped. A tail the page still offers after that, which a
- * filter's fold alone would show, is drawn out by its gesture; the gesture
- * itself is the drawing's in render.test.mjs. The bounds turn a
- * re-engaging fold into a failure, not a hang.
+ * Draws out every tail to a fixed point (drawing one can expose another),
+ * found by shaping with no DOM and redrawn once; any a filter's fold still
+ * offers goes by its gesture. Bounded, so a re-engaging fold fails, not hangs.
  */
 export function expandAll(app) {
   if (!app.expanding()) return 0;
@@ -392,12 +348,7 @@ export function expandAll(app) {
   throw new Error(`a chart still offers a tail to draw out after ${batched} at once and 64 more by gesture`);
 }
 
-/**
- * Every chart of the expansion the page offers, one split at a time from the
- * root and everything split by its first split, each capped as the page caps
- * it and drawn out whole: each a frontier and the splits drawn whole, which
- * the Sankey form's shape takes with no DOM.
- */
+/** Each split alone from the root, and everything by first splits, capped and drawn out whole. */
 export function expansionStates(app, doc) {
   const root = app.rootFrontier(doc);
   const out = [];
@@ -411,16 +362,11 @@ export function expansionStates(app, doc) {
 }
 
 /**
- * One state of expansionStates shaped, filtered and laid out as the booted
- * page does, at the room the page was laid out at, with nothing rendered:
- * the filters' chart of it laid out. `prior` is the boxes of the chart the
- * page lays it against: null where the page lays it cold, as a deep link or
- * a year switch carrying the expansions does, or app.boxesOf of the chart a
- * reader opens it from. layOut sets the page's laidNodes and groupIndex to
- * the chart it lays.
+ * A state shaped, filtered and laid out as the page does, nothing rendered.
+ * layOut sets the page's laidNodes and groupIndex.
  * @param {any} app a booted app
  * @param {{frontier: Set<string>, whole: Set<string>}} st
- * @param {any} prior null, or app.boxesOf of the chart it is opened from
+ * @param {any} prior null to lay cold (deep link, year switch), or app.boxesOf of the chart opened from
  */
 export function layOutState(app, st, prior) {
   if (prior === undefined) throw new Error("layOutState: say which chart the state is laid against, or null for none");
@@ -432,11 +378,7 @@ export function refusals(document) {
   return [...document.querySelectorAll("main .refusal")];
 }
 
-/**
- * The top bar's key for a year the Sankey config names by its stem: the
- * select is keyed on the column, which every page shares, and these tests
- * name years as the config does.
- */
+/** The select is keyed on the column; these tests name years by stem. */
 export function keyOfStem(stem, config = globalThis.FISC_CONFIG || pageFixture().config) {
   const year = (config.years || []).find((y) => y.stem === stem);
   return year ? year.path.replace(/\.json$/, "") : stem;
@@ -452,10 +394,7 @@ export function clickYear(document, stem) {
   select.dispatchEvent(new globalThis.Event("change", { bubbles: true }));
 }
 
-/**
- * Fires one event on a drawn element. `timeStamp` is plantable because the
- * activation guard compares it and jsdom stamps events with the clock.
- */
+/** `timeStamp` is plantable: the activation guard compares it. */
 export function fire(element, type, extra = {}) {
   const { timeStamp, ...init } = extra;
   const Ctor = type.startsWith("key") ? globalThis.KeyboardEvent : globalThis.MouseEvent;
@@ -465,10 +404,7 @@ export function fire(element, type, extra = {}) {
   return e;
 }
 
-/**
- * Collects what a DOM listener throws: jsdom reports it to window's error
- * event, not the dispatcher, so without this "did not throw" is vacuous.
- */
+/** jsdom reports a listener's throw to window's error event, so without this "did not throw" is vacuous. */
 export function listenerErrors(window) {
   const errors = [];
   window.addEventListener("error", (ev) => {
@@ -504,10 +440,7 @@ export function shortDollars(cents) {
   return (cents < 0 ? "−" : "") + compactDollars.format(Math.abs(cents) / 100);
 }
 
-/**
- * The tooltip as plain values: shown, pinned, its label, the hrefs of its
- * page links, and whether the focus is inside it.
- */
+/** Shown, pinned, label, page hrefs, and whether focus is inside. */
 export function tipState(document) {
   const tip = document.getElementById("tooltip");
   const label = tip.querySelector(".tip-label");
@@ -523,9 +456,7 @@ export function tipState(document) {
 }
 
 /**
- * A tip's PDF links held to its page-text links: one PDF per page-text link,
- * in order, each the city's document at the page the text is of. Returns the
- * faults, empty when every page links both.
+ * One PDF per page-text link, in order, each at that page; the faults.
  * @param {{hrefs: string[], pdfs: string[]}} tip a tipState
  * @returns {string[]}
  */
@@ -545,12 +476,9 @@ export function pageTextExists(href) {
 }
 
 /**
- * The pinned tip's gestures over two marks of one page, asserted in order:
- * a click on `a` pins its tip with the focus in it; hovering `b` and leaving
- * `a` keep it; Escape unpins it and hands the focus back to `a`; Enter on
- * `a` pins it again; a click outside every mark unpins it; Space pins it.
- * Every mark on the page that pins (`[data-pins]`) is named a button.
- * Returns `a`'s pinned label.
+ * In order: click `a` pins with focus in it; hovering `b`, leaving `a` keep
+ * it; Escape unpins to `a`; Enter pins; an outside click unpins; Space
+ * pins. Every `[data-pins]` is a button. Returns `a`'s pinned label.
  */
 export function pinGestures(window, a, b) {
   const { document } = window;
@@ -584,11 +512,7 @@ export function pinGestures(window, a, b) {
   return pinned.label;
 }
 
-/**
- * The chart as its documents print it, markContra undone: a link carrying a
- * contra sentence was printed negative, so it goes back to its own sign and
- * the chart as drawn can be summed at the signs printed.
- */
+/** markContra undone, so the drawn chart sums at the signs printed. */
 export function unmarkContra(drawn) {
   if (!drawn.links.some((l) => l.contra && l.value_cents > 0)) return drawn;
   return Object.assign({}, drawn, {

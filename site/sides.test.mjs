@@ -1,9 +1,7 @@
-// What site/sides.js and site/ledger.js do for ledger.html, over the page Go
-// pins (testdata/ledger.golden.html) and the columns it fetches
-// (testdata/<stem>.column.json). Every figure is core.sideTree's, a sum of
-// cited cents at a membership Go declared; what is tested is that the fold
-// keeps every sum, that the form draws every tile of it once, and that the
-// page's state, gestures and tooltips say what is drawn.
+// site/sides.js and site/ledger.js over testdata/ledger.golden.html and its
+// columns. Figures are core.sideTree's; tested: the fold keeps every sum,
+// the form draws every tile once, and state, gestures and tips say what is
+// drawn.
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -79,11 +77,9 @@ test("the ledger reads its sides off its own hints and refuses a chart without t
   }
 });
 
-// The fold keeps every sum: at any frontier, a side's roots sum to the same
-// cents, and an opened node's members sum to it, signed, with the printed
-// reductions counting against their parent. Mutation: drop the `source ===
-// n.id || target === n.id` filter in core.sideTree's member join and a member
-// is credited with every ribbon at it.
+// At any frontier the roots, and an opened node's members, sum to the same
+// signed cents. Mutation: drop core.sideTree's `source === n.id || target ===
+// n.id` member filter and a member is credited every ribbon at it.
 describe("core.sideTree keeps every sum through every split", () => {
   const { config } = sidesPage("ledger");
   for (const stem of PINNED) {
@@ -168,10 +164,8 @@ describe("core.sideTree keeps every sum through every split", () => {
   });
 });
 
-// Each form draws every tile of every side once, with the tree's cents on it,
-// and each tile's tooltip names the pages it cites. Mutation: skip members in
-// LEDGER's row, and the roots' marks go missing; drop the pageLinks line in
-// fillTip, and the pages arm goes red.
+// Mutation: skip members in LEDGER's row and roots' marks go missing; drop
+// fillTip's pageLinks line and the pages arm goes red.
 describe("each form draws every tile once and its tip names its pages", () => {
   for (const form of Object.keys(forms)) {
     test(form, async (t) => {
@@ -216,10 +210,8 @@ describe("each form draws every tile once and its tip names its pages", () => {
   }
 });
 
-// A click opens a tile in place and its members are drawn under it, each at
-// its share of the one scale; a second click closes it; the hash carries the
-// opened entries; Back restores. Mutation: drop `tile.id` from the opened
-// filter in sides.js's toggle and a second click opens the node again.
+// Mutation: drop `tile.id` from toggle's opened filter and a second click
+// reopens the node.
 describe("a click opens a tile, a click closes it, and the hash says which", () => {
   for (const form of Object.keys(forms)) {
     test(form, async (t) => {
@@ -263,12 +255,9 @@ describe("a click opens a tile, a click closes it, and the hash says which", () 
   }
 });
 
-// Closing a tile drops every entry inside it, from the node whose opening
-// opened it: an entry left behind is replayed on a frontier that no longer
-// draws it and refused, so an ordinary close would say the address could not
-// be drawn. Over the pinned schedule, which nests no opener under a drawn
-// root; the shapes are the schedule's own. Mutation: filter `opened` by the
-// tile's own id and `id~` prefix instead of closing() and both cases fail.
+// A left-behind entry would be replayed on a frontier not drawing it and
+// refused. Mutation: filter `opened` by the tile's id and `id~` prefix
+// instead of closing() and both cases fail.
 test("closing a tile drops the entries inside it, and a member opened straight through closes with its parent", () => {
   const { config } = sidesPage("ledger");
   const doc = expansionOf("fy2027-adopted", config);
@@ -293,10 +282,8 @@ test("closing a tile drops the entries inside it, and a member opened straight t
   assert.deepEqual(sides.closing(doc, [other, wide.node, wideMembers[0]], wideMembers[0]), [other, wide.node]);
 });
 
-// The hash is a view: a column and opened entries, replayed through
-// core.expand, with what the schedule refuses named and dropped from the
-// address. Mutation: keep refused entries in `kept` in frontierOf and the
-// address keeps naming a node that is not drawn.
+// Mutation: keep refused entries in frontierOf's `kept` and the address
+// names an undrawn node.
 test("a hash naming the other year and an opened node is restored, and a bad entry is refused by name", async () => {
   const browser = await booted("ledger", "#y=fy2026-adopted&o=revenue/taxes/property,no/such/node");
   const { document, window } = browser;
@@ -342,10 +329,8 @@ test("a hash naming the other year and an opened node is restored, and a bad ent
   assert.equal(sides.hashOf({ year: "fy2026-adopted.json", opened: ["a", "b~k"] }), "#y=fy2026-adopted&o=a,b~k");
 });
 
-// A year switch keeps what is open and redraws it over the other column's
-// figures, and carries the year onto the top bar. Mutation: pass `opened: []`
-// on the year change in boot and the opened node shuts on a switch; drop
-// carryYear's call in format.js selectYear and the links keep the newest.
+// Mutation: pass `opened: []` on boot's year change and the node shuts; drop
+// selectYear's carryYear call and the links keep the newest year.
 test("a year switch keeps the opened node and redraws the other year's figures", async () => {
   const browser = await booted("ledger", "#o=revenue/taxes/sales");
   const { document, window, config } = browser;
@@ -398,10 +383,8 @@ test("shift-click opens the alternative split, and the hash names it", async () 
   const members = [...document.querySelectorAll('li.bar-row[data-depth="1"]')];
   assert.equal(members.length, alt.members.length);
   assert.equal(members.reduce((a, m) => a + Number(m.dataset.cents), 0), two.cents);
-  // A plain click on a tile open its other way closes it, as the key says,
-  // rather than reopening it the primary way; Shift-click on a tile open
-  // the primary way switches it. Mutation: compare tile.open to the primary
-  // key on a plain click in toggle and the first click below reopens.
+  // Mutation: compare tile.open to the primary key on a plain click and the
+  // first click below reopens instead of closing.
   const rows = () => document.querySelectorAll("li.bar-row").length;
   const before = rows();
   await click(browser, document.querySelector(`li.bar-row[data-id="${two.id}"]`));
@@ -440,10 +423,6 @@ test("the tooltip stands under a focused mark", async () => {
   assert.equal(tip.style.top, "34px");
 });
 
-// The tooltip says the tile's figure, its share of its side and how many
-// members it opens to, both marked ours, and the pages it cites; it hides on
-// leave.
-//
 // Mutation: drop the ◇ and "by our count" from opensAs and the meta arm goes
 // red.
 test("hover shows a tile's figure, share and pages, and leaving hides it", async () => {
@@ -493,13 +472,9 @@ function textsOf(config, tile) {
   return [...new Set(tile.locators.flatMap((l) => l.pages.map((p) => config.docs[l.doc_id].pages[String(p)].text)))];
 }
 
-// A click on a tile that does not open pins its tip, whose page numbers link
-// the page text the config's docs name for the tile's locators, each page
-// beside its PDF page; a tile that opens is opened by the click and pins
-// nothing. Mutation: drop pageLinks from sides.js's fillTip, and every tip's
-// links are missing; drop the PDF link from format.js's pageLinks and the PDF
-// arm goes red; pin the toggled tile's tip once it is drawn again, and the
-// opener arm goes red.
+// Mutation: drop fillTip's pageLinks and every tip's links go; drop
+// pageLinks' PDF link and the PDF arm goes red; pin the toggled tile's tip
+// after redraw and the opener arm goes red.
 test("a click pins a tile's tip, linking the page text and the PDF page of every page it cites", async (t) => {
   const { pinGestures, tipState, pageTextExists, pdfFaults, fire } = await import("./testlib.mjs");
   const browser = await booted("ledger");
@@ -536,14 +511,9 @@ test("a click pins a tile's tip, linking the page text and the PDF page of every
   t.diagnostic(`${id} opened with no tip pinned; ${leaves.length} tiles that do not open`);
 });
 
-// Enter on a row that opens opens it, and Enter again closes it: neither
-// pins or shows a tip over the members, and the focus stays on the row,
-// drawn again each time.
-// Mutation: pin the toggled tile's tip once it is drawn again, as a click on
-// a leaf does -- the first Enter pins a tip and the test goes red; drop the
-// focusDrawn call in show -- the focus falls off the row; focus the row in
-// focusDrawn with a bare focus() rather than tips.focus -- its focus
-// listener shows a tip and the shown arm goes red.
+// Mutation: pin the toggled tile's tip after redraw and the first Enter pins;
+// drop show's focusDrawn and focus falls off the row; use a bare focus() not
+// tips.focus and its listener shows a tip.
 test("Enter opens a row and Enter again closes it, the focus kept on the row", async () => {
   const { tipState, fire } = await import("./testlib.mjs");
   const browser = await booted("ledger");
@@ -562,12 +532,9 @@ test("Enter opens a row and Enter again closes it, the focus kept on the row", a
   }
 });
 
-// A row, whether it opens or not, reaches a pinned tip linking the
-// pages it cites: P pins any row's tip, and a click on a row's figure pins
-// the tip of a row that opens, which neither opens nor closes it.
-// Mutation: drop the P arm of ledger.js's keydown -- no row that opens pins
-// a tip from the keyboard and the test goes red; drop the figure's click
-// listener -- the click opens the row and pins nothing.
+// Mutation: drop ledger.js's P keydown arm and an opening row cannot pin from
+// the keyboard; drop the figure's click listener and the click opens the
+// row, pinning nothing.
 test("a row on Bars pins a tip linking its pages, by P or, where it opens, by a click on its figure", async () => {
   const { tipState, fire } = await import("./testlib.mjs");
   const browser = await booted("ledger");
