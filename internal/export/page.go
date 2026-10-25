@@ -121,6 +121,19 @@ func decodeDocument(stem string, raw []byte) (projectionDoc, error) {
 	return doc, nil
 }
 
+// decodeWhole reads a projection document's envelope (decodeDocument) and
+// then the whole of it into T.
+func decodeWhole[T any](stem string, raw []byte) (T, error) {
+	var d T
+	if _, err := decodeDocument(stem, raw); err != nil {
+		return d, err
+	}
+	if err := json.Unmarshal(raw, &d); err != nil {
+		return d, fmt.Errorf("decode %s: %w", stem, err)
+	}
+	return d, nil
+}
+
 // sitePage is one rendered view: where it goes and what it says.
 type sitePage struct {
 	Path string

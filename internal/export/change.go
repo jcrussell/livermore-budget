@@ -42,31 +42,34 @@ type changePageData struct {
 	Figures []changeFigure
 }
 
-// changeDocument is one series document as the change page reads it.
-type changeDocument struct {
+// seriesDocument is one series document as a page reads it: its metadata,
+// its series decoded into B, and a column header per published column.
+type seriesDocument[B any] struct {
 	stem string
 	meta trendsMetadata
-	body trendsBody
+	body B
 	cols []columnRef
 }
 
-// decodeChangeDocument reads a series document the page draws, refusing one
+// changeDocument is one series document as the change page reads it.
+type changeDocument = seriesDocument[trendsBody]
+
+// decodeSeriesDocument reads a series document a page draws, refusing one
 // with no columns.
-func decodeChangeDocument(stem string, raw []byte) (changeDocument, error) {
+func decodeSeriesDocument[B any](stem string, raw []byte) (seriesDocument[B], error) {
 	doc, err := decodeDocument(stem, raw)
 	if err != nil {
-		return changeDocument{}, err
+		return seriesDocument[B]{}, err
 	}
-	var d changeDocument
-	d.stem = stem
+	d := seriesDocument[B]{stem: stem}
 	if err := json.Unmarshal(doc.Metadata, &d.meta); err != nil {
-		return changeDocument{}, fmt.Errorf("decode %s metadata: %w", stem, err)
+		return seriesDocument[B]{}, fmt.Errorf("decode %s metadata: %w", stem, err)
 	}
 	if len(d.meta.Columns) == 0 {
-		return changeDocument{}, fmt.Errorf("%s metadata publishes no columns", stem)
+		return seriesDocument[B]{}, fmt.Errorf("%s metadata publishes no columns", stem)
 	}
 	if err := json.Unmarshal(raw, &d.body); err != nil {
-		return changeDocument{}, fmt.Errorf("decode %s series: %w", stem, err)
+		return seriesDocument[B]{}, fmt.Errorf("decode %s series: %w", stem, err)
 	}
 	for i, c := range d.meta.Columns {
 		d.cols = append(d.cols, columnRef{
@@ -130,11 +133,11 @@ func buildChangePage(p pageCtx) (changePageData, error) {
 		return changePageData{}, fmt.Errorf("view %q draws the budget's columns from %s, which was not built",
 			v.Path, project.TrendsProjection)
 	}
-	audited, err := decodeChangeDocument(v.Projection, o.Projections[v.Projection])
+	audited, err := decodeSeriesDocument[trendsBody](v.Projection, o.Projections[v.Projection])
 	if err != nil {
 		return changePageData{}, err
 	}
-	budget, err := decodeChangeDocument(project.TrendsProjection, trendsRaw)
+	budget, err := decodeSeriesDocument[trendsBody](project.TrendsProjection, trendsRaw)
 	if err != nil {
 		return changePageData{}, err
 	}

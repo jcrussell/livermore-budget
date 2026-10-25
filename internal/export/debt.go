@@ -2,7 +2,6 @@ package export
 
 import (
 	"cmp"
-	"encoding/json"
 	"fmt"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
@@ -122,13 +121,9 @@ type debtFigure struct {
 // from the page in silence.
 func buildDebtPage(p pageCtx) (debtPageData, error) {
 	o, v, ix := p.o, p.v, p.ix
-	raw := o.Projections[v.Projection]
-	if _, err := decodeDocument(v.Projection, raw); err != nil {
+	d, err := decodeWhole[debtDoc](v.Projection, o.Projections[v.Projection])
+	if err != nil {
 		return debtPageData{}, err
-	}
-	var d debtDoc
-	if err := json.Unmarshal(raw, &d); err != nil {
-		return debtPageData{}, fmt.Errorf("decode %s: %w", v.Projection, err)
 	}
 
 	shown := 0

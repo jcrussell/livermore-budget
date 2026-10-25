@@ -2,7 +2,6 @@ package export
 
 import (
 	"cmp"
-	"encoding/json"
 	"fmt"
 	"maps"
 	"slices"
@@ -44,32 +43,11 @@ type historySection struct {
 func buildHistoryPage(p pageCtx) (historyPageData, error) {
 	o, v, ix := p.o, p.v, p.ix
 	cite := newCellCites(p.byID, p.pageTextBase)
-	raw := o.Projections[v.Projection]
-	doc, err := decodeDocument(v.Projection, raw)
+	d, err := decodeSeriesDocument[trendsBody](v.Projection, o.Projections[v.Projection])
 	if err != nil {
 		return historyPageData{}, err
 	}
-	var meta trendsMetadata
-	if err := json.Unmarshal(doc.Metadata, &meta); err != nil {
-		return historyPageData{}, fmt.Errorf("decode %s metadata: %w", v.Projection, err)
-	}
-	if len(meta.Columns) == 0 {
-		return historyPageData{}, fmt.Errorf("%s metadata publishes no columns", v.Projection)
-	}
-	var body trendsBody
-	if err := json.Unmarshal(raw, &body); err != nil {
-		return historyPageData{}, fmt.Errorf("decode %s series: %w", v.Projection, err)
-	}
-
-	columns := make([]columnRef, 0, len(meta.Columns))
-	for i, c := range meta.Columns {
-		columns = append(columns, columnRef{
-			Label: c.FiscalYearLabel,
-			Basis: basisLabelFor(meta.Caveats, c.Basis),
-			Group: c.ComparableGroup,
-			New:   i > 0 && c.ComparableGroup != meta.Columns[i-1].ComparableGroup,
-		})
-	}
+	meta, body, columns := d.meta, d.body, d.cols
 
 	// sectionKey is the (kind, fund_group) a series is claimed by. It is not
 	// [Section] itself because Rows makes that struct uncomparable, and the

@@ -2,7 +2,6 @@ package export
 
 import (
 	"cmp"
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -63,36 +62,16 @@ type capitalBody struct {
 func buildCapitalPage(p pageCtx) (capitalPageData, error) {
 	o, v, ix := p.o, p.v, p.ix
 	cite := newCellCites(p.byID, p.pageTextBase)
-	raw := o.Projections[v.Projection]
-	doc, err := decodeDocument(v.Projection, raw)
+	d, err := decodeSeriesDocument[capitalBody](v.Projection, o.Projections[v.Projection])
 	if err != nil {
 		return capitalPageData{}, err
 	}
-	var meta trendsMetadata
-	if err := json.Unmarshal(doc.Metadata, &meta); err != nil {
-		return capitalPageData{}, fmt.Errorf("decode %s metadata: %w", v.Projection, err)
-	}
-	if len(meta.Columns) == 0 {
-		return capitalPageData{}, fmt.Errorf("%s metadata publishes no columns", v.Projection)
-	}
-	var body capitalBody
-	if err := json.Unmarshal(raw, &body); err != nil {
-		return capitalPageData{}, fmt.Errorf("decode %s series: %w", v.Projection, err)
-	}
-
-	columns := make([]columnRef, 0, len(meta.Columns))
+	meta, body, columns := d.meta, d.body, d.cols
 	// The top bar opens on every year, which is the table whole; a year
 	// narrows it to the column whose header carries the year's key.
 	sel := yearSelect{Options: []yearOption{{Label: "Every year", Selected: true}}}
 	for i, c := range meta.Columns {
-		basis := basisLabelFor(meta.Caveats, c.Basis)
-		columns = append(columns, columnRef{
-			Label: c.FiscalYearLabel,
-			Basis: basis,
-			Group: c.ComparableGroup,
-			New:   i > 0 && c.ComparableGroup != meta.Columns[i-1].ComparableGroup,
-			Key:   YearKey(c.FiscalYear, c.Basis),
-		})
+		columns[i].Key = YearKey(c.FiscalYear, c.Basis)
 		sel.Options = append(sel.Options, yearOptionOf(c.FiscalYear, c.FiscalYearLabel, c.Basis))
 	}
 

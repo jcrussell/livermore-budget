@@ -2,7 +2,6 @@ package export
 
 import (
 	"cmp"
-	"encoding/json"
 	"fmt"
 	"slices"
 	"strings"
@@ -114,12 +113,9 @@ type glanceDocument struct {
 // decodeGlanceDocument reads one schedule the glance page draws, refusing one
 // that is another projection's.
 func decodeGlanceDocument(stem, want string, raw []byte) (glanceDocument, error) {
-	var d glanceDocument
-	if _, err := decodeDocument(stem, raw); err != nil {
+	d, err := decodeWhole[glanceDocument](stem, raw)
+	if err != nil {
 		return d, err
-	}
-	if err := json.Unmarshal(raw, &d); err != nil {
-		return d, fmt.Errorf("decode %s: %w", stem, err)
 	}
 	if d.Projection != want {
 		return d, fmt.Errorf("the glance page reads %s as %s and it is %q", stem, want, d.Projection)

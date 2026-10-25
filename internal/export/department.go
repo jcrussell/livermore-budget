@@ -126,12 +126,9 @@ type departmentDocument struct {
 // decodeDepartmentDocument reads one of the page's two schedules, refusing one
 // another projection built.
 func decodeDepartmentDocument(stem, want string, raw []byte) (departmentDocument, error) {
-	var d departmentDocument
-	if _, err := decodeDocument(stem, raw); err != nil {
+	d, err := decodeWhole[departmentDocument](stem, raw)
+	if err != nil {
 		return d, err
-	}
-	if err := json.Unmarshal(raw, &d); err != nil {
-		return d, fmt.Errorf("decode %s: %w", stem, err)
 	}
 	if d.Projection != want {
 		return d, fmt.Errorf("the department page reads %s as %s and it is %q", stem, want, d.Projection)
