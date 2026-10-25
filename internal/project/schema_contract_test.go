@@ -12,12 +12,9 @@ import (
 	"github.com/jcrussell/livermore-budget/schema"
 )
 
-// TestTheSchemasStateWhatTheProjectionsCarry holds schema/projection.schema.json
-// and schema/series.schema.json to the structs [encode] marshals: every JSON
-// name a document can carry is a property there, and nothing is a property there
-// a document cannot carry.
-//
-// Equality, not containment: these structs ARE the document.
+// TestTheSchemasStateWhatTheProjectionsCarry: schema/projection.schema.json and
+// schema/series.schema.json's properties equal the JSON names [encode]'s
+// structs can carry.
 func TestTheSchemasStateWhatTheProjectionsCarry(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
@@ -66,11 +63,8 @@ func TestTheSchemasStateWhatTheProjectionsCarry(t *testing.T) {
 	}
 }
 
-// TestTheSchemaHoldsASignToItsSentence poses all four quadrants of the
-// biconditional the projection schema states about a reduction.
-//
-// Both accepting cases are posed, so a schema refusing every link fails, and
-// each refusal is read for its reason rather than only its exit.
+// TestTheSchemaHoldsASignToItsSentence poses all four quadrants of the schema's
+// reduction biconditional, reading each refusal for its reason.
 func TestTheSchemaHoldsASignToItsSentence(t *testing.T) {
 	loc := []any{map[string]any{"doc_id": "livermore-budget-fy2026-2027", "pages": []int{127}}}
 	link := func(cents int64, contra string) map[string]any {

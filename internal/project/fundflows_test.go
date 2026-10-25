@@ -132,10 +132,8 @@ func buildFundFlows(t *testing.T, facts []fact.Fact, l labels) *Document {
 	return doc
 }
 
-// TestTheFundParentComesFromTheRegistryAndNotTheFact makes data/funds.yaml's
-// type and the fact's fund_group disagree and asserts the fund node follows
-// the registry (fisc-gkv). It is the only guard: over the committed corpus the
-// two are equal.
+// TestTheFundParentComesFromTheRegistryAndNotTheFact: with data/funds.yaml's
+// type and the fact's fund_group disagreeing, the fund node follows the registry.
 func TestTheFundParentComesFromTheRegistryAndNotTheFact(t *testing.T) {
 	labels := fundFlowsLabels()
 	labels.types[500] = "capital" // the registry says capital...
@@ -154,11 +152,8 @@ func TestTheFundParentComesFromTheRegistryAndNotTheFact(t *testing.T) {
 	}
 }
 
-// TestTheSpendingFundsParentComesFromTheRegistryToo is the same claim on the
-// pp.173-183 side: a fund drawn into its object categories hangs from the
-// registry's type, whatever group the fact files it under. Both sides leave the
-// two records' agreement to fact-funds-resolve, which holds it over the store.
-// Mutation: parent a fund node by the fact's fund_group, and it goes red.
+// TestTheSpendingFundsParentComesFromTheRegistryToo: the same on the pp.173-183
+// side. Mutation: parent a fund node by the fact's fund_group, and it goes red.
 func TestTheSpendingFundsParentComesFromTheRegistryToo(t *testing.T) {
 	facts := append(fundFlowsFacts(), fundFlowsFact(scopeExpenditureByFund,
 		vocab.KindExpenditure, "wages-and-benefits", "", "capital", fact.FundNumber(500), 300, "s"))
@@ -175,7 +170,7 @@ func TestTheSpendingFundsParentComesFromTheRegistryToo(t *testing.T) {
 	}
 }
 
-// TestEveryFundNodeDisclosesItsConstraintTier is fisc-yor's requirement, checked
+// TestEveryFundNodeDisclosesItsConstraintTier checks the tier disclosure
 // at the producer as well as by the check that reads the document.
 func TestEveryFundNodeDisclosesItsConstraintTier(t *testing.T) {
 	doc := buildFundFlows(t, fundFlowsFacts(), fundFlowsLabels())
@@ -199,10 +194,8 @@ func TestEveryFundNodeDisclosesItsConstraintTier(t *testing.T) {
 	if seen == 0 {
 		t.Fatal("no node carries a constraint tier, so this test asserts nothing")
 	}
-	// THE ID AND THE TEXT ARE BOTH ASSERTED, matching internal/check's arm.
-	// Finding the id and stopping would pass over a document whose disclosure
-	// had been reworded into something weaker while the anchor still resolved,
-	// which is the quieter of the two failures.
+	// The id and the text are both asserted, so a reworded, weaker disclosure under
+	// the same anchor goes red.
 	want := ConstraintTierCaveat()
 	i := slices.IndexFunc(doc.Metadata.Caveats, func(c Caveat) bool { return c.ID == want.ID })
 	switch {
@@ -369,9 +362,7 @@ func TestTheCountsIdentityHolds(t *testing.T) {
 }
 
 // TestALineRollsUpIntoItsCategoryOncePerKind: one printed row can reach the
-// Internal Service Funds as an internal service charge and the rest of the
-// city as external revenue, so the (1,0) rollup is per kind. No other check
-// holds this.
+// Internal Service Funds and the rest of the city, so the (1,0) rollup is per kind.
 func TestALineRollsUpIntoItsCategoryOncePerKind(t *testing.T) {
 	labels := fundFlowsLabels()
 	labels.names[700] = "Fleet Maintenance"
@@ -682,16 +673,9 @@ func TestFundFlowsSlicesDeclareOnlyColumnsBothSchedulesCarry(t *testing.T) {
 	}
 }
 
-// TestATransferInLinkIsNotExternal is the regression this document shipped and
-// nothing caught.
-//
-// The tier-0 flows were classified by fund group alone -- boundaryKind, which
-// asks "does this cross the city's boundary" and answers it correctly for
-// REVENUE. A transfer is money moving between two city funds and crosses no
-// boundary whatever group receives it, so 8 links carrying $21,045,597 went out
-// as "external" while sankey.json published the same money as internal_transfer.
-// Every check was green: values tied to facts, counts reconciled, the graph was
-// acyclic. link-kinds-match-their-facts is the check side of this.
+// TestATransferInLinkIsNotExternal: a transfer moves between city funds and
+// crosses no boundary, whatever group receives it; link-kinds-match-their-facts
+// is the check side.
 func TestATransferInLinkIsNotExternal(t *testing.T) {
 	facts := fundFlowsFacts()
 	for i := range facts {
@@ -741,10 +725,8 @@ func TestTheExpenditureSideRefusesAFundlessFact(t *testing.T) {
 	}
 }
 
-// TestATierFiveParentIsCutAtTheFirstSlash: a division slug cannot contain one,
-// but a taxonomy category routinely can (taxes/property, transfers/in), and a
-// last-index cut would land inside the category and yield a parent that resolves
-// to nothing.
+// TestATierFiveParentIsCutAtTheFirstSlash: a category may hold a slash
+// (taxes/property), so a last-index cut would yield a parent resolving to nothing.
 func TestATierFiveParentIsCutAtTheFirstSlash(t *testing.T) {
 	labels := fundFlowsLabels()
 	labels.stubLabels["fund-balance/ending"] = "Ending Balance"
@@ -809,11 +791,8 @@ func TestAReductionNamesTheCategoryTheSchedulePrintsItUnder(t *testing.T) {
 	}
 }
 
-// TestAFundsObjectCellIsNamedForItsFund: the expansion hangs every owner's
-// object cell of one category under that category, so a label that is the
-// category alone reads the same on every box. Two funds spending on one
-// category must be told apart by label, each naming its fund, and a
-// division's cell names its division.
+// TestAFundsObjectCellIsNamedForItsFund: two funds' cells of one category are
+// told apart by label, each naming its fund; a division's names its division.
 func TestAFundsObjectCellIsNamedForItsFund(t *testing.T) {
 	labels := fundFlowsLabels()
 	labels.names[501] = "Water Replacement"
@@ -840,10 +819,8 @@ func TestAFundsObjectCellIsNamedForItsFund(t *testing.T) {
 	}
 }
 
-// TestNoRevenueLineReadsAsItsCategory: pp.131-140 print a fund's whole
-// category as one row named for it, so a line labelled with the printed row
-// lists the category inside itself, and p130's General Fund row "Miscellaneous
-// Revenue" sits beside the funds' "Miscellaneous Rev" under one category.
+// TestNoRevenueLineReadsAsItsCategory: a line printed as its whole category, as
+// pp.131-140 print one, does not ship reading as the category inside itself.
 // Mutation: dropping the labelCategoryNamedLines call fails every column.
 func TestNoRevenueLineReadsAsItsCategory(t *testing.T) {
 	store, err := committedStore()
@@ -901,11 +878,8 @@ func TestNoRevenueLineReadsAsItsCategory(t *testing.T) {
 	}
 }
 
-// TestARevenueLineReadingAsItsCategoryIsRefused: a line whose printed label
-// is its category's, in another case and with a stray space, and whose terms
-// share none with the category's, is not relabelled, and must not ship
-// reading as the category inside itself.
-//
+// TestARevenueLineReadingAsItsCategoryIsRefused: a line labelled as its category
+// in another case and spacing, sharing no term with it, is refused.
 // Mutation: drop the refusal of a line reading as its parent, and the node is
 // returned reading "charges for services ".
 func TestARevenueLineReadingAsItsCategoryIsRefused(t *testing.T) {
@@ -932,13 +906,10 @@ func TestARevenueLineReadingAsItsCategoryIsRefused(t *testing.T) {
 	}
 }
 
-// TestARevenueLineSpelledAsItsCategoryInAnotherCaseIsRelabelled: a line
-// whose term is its category's in another case shares that term, so it is
-// relabelled as the category's one row rather than refused for reading as
-// its category.
-//
-// Mutation: compare terms byte for byte in sharesTerm, and the line is
-// refused for reading "Charges For Services" under "Charges for Services".
+// TestARevenueLineSpelledAsItsCategoryInAnotherCaseIsRelabelled: it shares the
+// category's term, so it is relabelled as the category's one row.
+// Mutation: compare terms byte for byte in sharesTerm, and the line is refused
+// for reading "Charges For Services" under "Charges for Services".
 func TestARevenueLineSpelledAsItsCategoryInAnotherCaseIsRelabelled(t *testing.T) {
 	f := &fundFlows{Labels: termsLabels{
 		stubFundFlows: stubFundFlows{stubLabels: stubLabels{"charges": "Charges for Services"}},
@@ -964,12 +935,10 @@ func TestARevenueLineSpelledAsItsCategoryInAnotherCaseIsRelabelled(t *testing.T)
 	}
 }
 
-// TestTwoRevenueLinesReadingAlikeInAnotherCaseAreRefused: two lines under
-// one category whose labels differ only in case and trailing space read
-// alike to a reader, as a line reading as its category in another case does.
-//
-// Mutation: key the collision refusal on the exact label again, and the two
-// lines are returned reading "Grant State" and "grant state ".
+// TestTwoRevenueLinesReadingAlikeInAnotherCaseAreRefused: labels differing only
+// in case and trailing space read alike.
+// Mutation: key the collision refusal on the exact label, and the two lines are
+// returned reading "Grant State" and "grant state ".
 func TestTwoRevenueLinesReadingAlikeInAnotherCaseAreRefused(t *testing.T) {
 	f := &fundFlows{Labels: termsLabels{stubFundFlows: stubFundFlows{stubLabels: stubLabels{"intergov": "Intergovernmental"}}}}
 	parent := PrefixRevenue + "intergov"
@@ -1000,12 +969,10 @@ type termsLabels struct {
 
 func (s termsLabels) Terms(slug string) []string { return s.terms[slug] }
 
-// TestTwoRevenueLinesReadingAlikeAreRefused: two lines under one category,
-// each the only line of it its fund prints and each sharing a term with the
-// category, would both read "<category>, one row".
-//
-// Mutation: drop the collision refusal from labelCategoryNamedLines and the
-// two nodes are returned reading alike.
+// TestTwoRevenueLinesReadingAlikeAreRefused: two lines that would both read
+// "<category>, one row" are refused.
+// Mutation: drop the collision refusal from labelCategoryNamedLines and the two
+// nodes are returned reading alike.
 func TestTwoRevenueLinesReadingAlikeAreRefused(t *testing.T) {
 	f := &fundFlows{Labels: termsLabels{
 		stubFundFlows: stubFundFlows{stubLabels: stubLabels{"charges": "Charges for Services"}},
@@ -1047,14 +1014,12 @@ func TestTwoRevenueLinesReadingAlikeAreRefused(t *testing.T) {
 	}
 }
 
-// TestOneRowCaveatIsAboutEveryLineSoLabelled: each label's caveat names
-// the revenue lines carrying that label and no other node, so a line one row
-// of several is never told it is its category's only row; a document with
-// one label carries only its caveat, and one with neither carries none.
-//
+// TestOneRowCaveatIsAboutEveryLineSoLabelled: each label's caveat names exactly
+// the revenue lines carrying that label, and a document carries only the
+// caveats of the labels it uses.
 // Mutation: put the SoNamed lines in the OneRow caveat's applies_to and
-// revenue-line/b is told it is its whole category. Restore the summary's "the city
-// prints no finer breakdown" and the pages arm goes red.
+// revenue-line/b is told it is its whole category; restore the summary's "the
+// city prints no finer breakdown" and the pages arm goes red.
 func TestOneRowCaveatIsAboutEveryLineSoLabelled(t *testing.T) {
 	nodes := []Node{
 		{ID: PrefixRevenueLine + "b", Label: "Miscellaneous Revenue" + SoNamed},
@@ -1097,10 +1062,9 @@ func TestOneRowCaveatIsAboutEveryLineSoLabelled(t *testing.T) {
 	}
 }
 
-// TestACellsFactIDsAscendWhateverOrderItsFactsArrive: add publishes a cell's
-// ids as its link's fact_ids, which the contract states ascending, and the
-// store is not sorted by id. Mutation: append in add instead of inserting in
-// order and this goes red.
+// TestACellsFactIDsAscendWhateverOrderItsFactsArrive: a link's fact_ids ascend
+// though the store is not sorted by id. Mutation: append in add instead of
+// inserting in order and this goes red.
 func TestACellsFactIDsAscendWhateverOrderItsFactsArrive(t *testing.T) {
 	m := map[int]*cellSum{}
 	for _, id := range []string{"fisc-f-c", "fisc-f-a", "fisc-f-b"} {

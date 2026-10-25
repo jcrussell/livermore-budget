@@ -104,10 +104,8 @@ func TestTheGeneralFundReadsAsPrinted(t *testing.T) {
 	}
 }
 
-// TestTheCIPBlockIsNotSelected: pp.190, 196, 202 and 208's Capital
-// Improvement Program block carries enterprise fund groups, so a selection
-// admitting it publishes FY2026 enterprise revenues of 71,573,173 where p198
-// prints 67,514,261.
+// TestTheCIPBlockIsNotSelected: selecting pp.190-208's CIP block publishes
+// FY2026 enterprise revenues of 71,573,173 where p198 prints 67,514,261.
 func TestTheCIPBlockIsNotSelected(t *testing.T) {
 	store, err := committedStore()
 	if err != nil {
@@ -165,10 +163,8 @@ func TestEveryFundsSourcesEqualItsUses(t *testing.T) {
 	}
 }
 
-// TestABlankBalanceDrawsNoChange: p187 leaves the Community Benefit Fund's
-// FY2024 ending balance blank, so its change is not drawn and its printed
-// beginning still rides on its node. FY2024's other funds miss the page
-// identity by the city's rounding, which the document names fund by fund.
+// TestABlankBalanceDrawsNoChange: p187's blank Community Benefit Fund FY2024
+// ending balance draws no change; its printed beginning still rides on its node.
 func TestABlankBalanceDrawsNoChange(t *testing.T) {
 	doc := fundSourcesUsesOf(t, 2024, vocab.BasisActual)
 	var blank []string
@@ -263,10 +259,8 @@ func TestChangeCentsSubtractsTheBeginning(t *testing.T) {
 	}
 }
 
-// TestTheGrossChangeCaveatSaysMoreOnlyWhereAGroupNets: a group with one fund
-// drawing and one contributing sums to more than it nets; groups whose funds
-// all move one way are their net change, and the text must not say more. The
-// summary is one for every document, so the text is where this is said.
+// TestTheGrossChangeCaveatSaysMoreOnlyWhereAGroupNets: the caveat says a group
+// sums to more than it nets only where its funds move both ways.
 func TestTheGrossChangeCaveatSaysMoreOnlyWhereAGroupNets(t *testing.T) {
 	nodes := []Node{
 		{ID: "fund/200", Parent: PrefixFundGroup + "special-revenue"},

@@ -12,10 +12,9 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/amount"
 )
 
-// The figures the caveats below quote as literals, each re-measured here from
-// the store, the registry, the mapping or the committed p76 page, so a caveat
-// cannot go on stating a figure the corpus has stopped printing. Mutation:
-// change any quoted figure in its caveat and its subtest goes red.
+// The figures the caveats below quote as literals, each re-measured from the
+// store, the registry, the mapping or the p76 page.
+// Mutation: change any quoted figure in its caveat and its subtest goes red.
 
 func caveatNamed(t *testing.T, cs []Caveat, id string) string {
 	t.Helper()

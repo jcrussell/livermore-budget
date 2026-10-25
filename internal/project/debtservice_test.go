@@ -128,11 +128,8 @@ func TestTheDebtServiceDocumentCitesEveryFigureOnce(t *testing.T) {
 	}
 }
 
-// TestTheDebtCaveatsSayWhatTheStoreSays re-measures every figure the caveats
-// print off the committed store: the by-issue shortfall against the funds'
-// Debt Services, and every requirements cell of 2026 and 2027 that differs
-// from its fund type's issues.
-//
+// TestTheDebtCaveatsSayWhatTheStoreSays re-measures every figure the debt
+// caveats print off the committed store.
 // Mutation: change debtShortfall's 2026 to 11957700 and the first arm goes
 // red; delete a debtRequirementDrift entry and the second does.
 func TestTheDebtCaveatsSayWhatTheStoreSays(t *testing.T) {
@@ -193,10 +190,9 @@ func TestTheDebtCaveatsSayWhatTheStoreSays(t *testing.T) {
 
 // TestTheDebtDocumentRefusesARowItCannotPlace holds the issue and fund-type
 // tables to the facts in both directions.
-//
-// Mutation: drop the unknown-label refusal in debtIssueRows and the first
-// case builds a row under no activity; spell yearLabel's band with an en dash
-// and every band row is refused, so the year-label case's message changes.
+// Mutation: drop debtIssueRows' unknown-label refusal and the first case builds
+// a row under no activity; spell yearLabel's band with an en dash and the
+// year-label case's message changes.
 func TestTheDebtDocumentRefusesARowItCannotPlace(t *testing.T) {
 	facts, o := debtStore(t)
 	edit := func(match func(*fact.Fact) bool, change func(*fact.Fact)) []fact.Fact {

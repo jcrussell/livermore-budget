@@ -36,10 +36,8 @@ func historyFacts(t *testing.T, scope, rule, label string, kind vocab.Kind,
 	return out
 }
 
-// balancesFixture is p167's shape in miniature: the two blocks print the same
-// row label, and only the rule and the column path tell them apart -- neither
-// carries a fund, unlike the trends schedule, whose same-label rows sit in
-// different funds.
+// balancesFixture is p167's shape in miniature: two blocks with the same row
+// label, told apart only by rule and column path.
 func balancesFixture(t *testing.T) []fact.Fact {
 	t.Helper()
 	var out []fact.Fact
@@ -54,10 +52,8 @@ func historyOptions(scope string) Options {
 	return Options{Columns: HistoryColumns(), Scopes: []string{scope}, Version: "test"}
 }
 
-// TestFundBalancesKeepsTheTwoBlocksApart is this document's identity claim:
-// p167 prints "Committed" in both its blocks, and both rows carry fund 0, so
-// neither the label nor a fund number can tell them apart. The series id --
-// which hashes the rule and the column path -- must.
+// TestFundBalancesKeepsTheTwoBlocksApart: p167 prints "Committed" in both blocks
+// under fund 0, so the series id (rule and column path) must tell them apart.
 func TestFundBalancesKeepsTheTwoBlocksApart(t *testing.T) {
 	d, err := (&FundBalances{}).Document(balancesFixture(t), historyOptions(FundBalancesScope))
 	if err != nil {
@@ -82,7 +78,7 @@ func TestFundBalancesKeepsTheTwoBlocksApart(t *testing.T) {
 	}
 }
 
-// TestHistorySlicesTakeTheWholeScope is fisc-rmw's constraint on both ACFR
+// TestHistorySlicesTakeTheWholeScope holds both ACFR
 // projections: one slice, every column the store carries, or the document
 // draws part of a scope and says nothing about the part it left.
 func TestHistorySlicesTakeTheWholeScope(t *testing.T) {
@@ -146,10 +142,8 @@ func TestChangesKeepsANegativeExcessSigned(t *testing.T) {
 	}
 }
 
-// TestHistoryDocumentsShareTheTrendsShape pins what lets `fisc verify` cover
-// these documents without new checks: both Document methods return a
-// *TrendsDocument, which is the shape trend-points-tie-to-facts and
-// trend-series-are-complete read.
+// TestHistoryDocumentsShareTheTrendsShape: both Document methods return a
+// *TrendsDocument, the shape the trend checks read.
 func TestHistoryDocumentsShareTheTrendsShape(t *testing.T) {
 	d, err := (&FundBalances{}).Document(balancesFixture(t), historyOptions(FundBalancesScope))
 	if err != nil {
@@ -185,10 +179,8 @@ func TestHistoryDocumentsShareTheTrendsShape(t *testing.T) {
 	}
 }
 
-// TestHistoryDocumentsShipTheUnauditedCaveat pins that both ten-year pages
-// disclose their section's own label -- p161 reads "Statistical Section
-// (Unaudited)" -- rather than each list carrying it by accident of the other.
-// Dropping the caveat from either list goes red here.
+// TestHistoryDocumentsShipTheUnauditedCaveat: both ten-year pages disclose p161's
+// "Statistical Section (Unaudited)". Dropping it from either list goes red.
 func TestHistoryDocumentsShipTheUnauditedCaveat(t *testing.T) {
 	for name, caveats := range map[string][]Caveat{
 		"fundBalancesCaveats": fundBalancesCaveats(),
@@ -215,11 +207,8 @@ func TestHistoryPublishesOneNullPerSeries(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
-	// THE ONE NULL THIS DOCUMENT PUBLISHES IS fund, AND ON EVERY SERIES. These
-	// schedules print a fund's components and an aggregate across funds, never
-	// a numbered fund, so fact.Fact.Fund is nil on each of their facts and the
-	// series carries it through as null -- not 0, which would be a fund.
-	// Absent strings are still "" and absent slices still [].
+	// fund is null on every series (fact.Fact.Fund is nil), not 0; absent strings
+	// are "" and absent slices [].
 	var doc map[string]any
 	if err := json.Unmarshal(first, &doc); err != nil {
 		t.Fatalf("decode: %v", err)
@@ -326,12 +315,9 @@ func millionsCell(c amount.Cents) string {
 	return fmt.Sprintf("%d.%02d", h/100, h%100)
 }
 
-// lastAmountBelowLabel finds the first fixture line containing label, then the
-// first line at or below it carrying any token amount.Parse accepts, and
-// returns that line's last such token. Below, not on: pp.168-169 wrap a total's
-// label onto lines of its own, so the amounts can sit a line or two under the
-// words. The last token, because on every statement read here the wanted
-// column prints last -- 2025 on pp.168-169, Total Governmental Funds on p54.
+// lastAmountBelowLabel returns the last amount.Parse token on the first line at
+// or below label's line that carries one: pp.168-169 wrap labels above their
+// amounts, and the wanted column prints last.
 func lastAmountBelowLabel(t *testing.T, name, label string, u amount.Units) amount.Cents {
 	t.Helper()
 	lines := fixturePage(t, name)
@@ -357,14 +343,8 @@ func lastAmountBelowLabel(t *testing.T, name, label string, u amount.Units) amou
 	return 0
 }
 
-// TestP167ComponentsTieToP54NotP41 re-derives the arithmetic behind the
-// p167-does-not-tie-to-p41 caveat from fixture pages through amount.Parse,
-// the parser every fact goes through. Three legs: p167's five 2025 General
-// Fund components sum to one figure, p54's audited statement prints that
-// figure to the dollar, and p41's in-millions condensation prints $87.10,
-// which is not where the sum rounds. The caveat must quote that sum and name p54: a caveat
-// citing only p41 by the statement's bare name tells readers the audited ACFR
-// disagrees with the schedule it agrees with exactly.
+// TestP167ComponentsTieToP54NotP41: p167's five 2025 General Fund components sum
+// to what p54 prints, not to p41's $87.10; the caveat quotes the sum and names p54.
 func TestP167ComponentsTieToP54NotP41(t *testing.T) {
 	components := []string{"Nonspendable", "Restricted", "Committed", "Assigned", "Unassigned"}
 	var sum amount.Cents
@@ -436,16 +416,9 @@ func TestP167ComponentsTieToP54NotP41(t *testing.T) {
 	}
 }
 
-// TestChanges2025ColumnTiesToP54 re-derives the pp168-169-tie-to-p54 caveat
-// from fixture pages through amount.Parse: on five printed lines the
-// schedule's 2025 column equals p54's Total Governmental Funds column, and
-// the caveat quotes each figure as the pages print it -- parenthesised
-// negative included, so a sign flip on either page goes red here. The caveat
-// ships on the changes document alone, because balances.html publishes p167
-// and this is a claim about a table that page does not show; and the shared
-// unaudited caveat may name neither schedule's corroboration, which is the
-// split this test guards: a corroboration in it would ship p167 arithmetic on
-// change.html, whose pages nowhere print it.
+// TestChanges2025ColumnTiesToP54: on five lines pp.168-169's 2025 column equals
+// p54's Total Governmental Funds, quoted as printed, signs included; it ships on
+// the changes document alone, never in the shared unaudited caveat.
 func TestChanges2025ColumnTiesToP54(t *testing.T) {
 	c := caveatChangesTieToP54
 	ties := []struct{ row, page, label, p54Label string }{

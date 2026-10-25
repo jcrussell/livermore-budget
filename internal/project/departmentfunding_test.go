@@ -11,12 +11,8 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
-// fundingCell is one printed row of Budget Book pp.85-125's lower block: the
-// department the schedule is printed for, the fund that pays it, and the figure.
-//
-// It carries a department paid by one fund and one paid by three, a fund
-// paying two departments, a printed dash, an internal service fund and a
-// department slug that is also a division slug.
+// fundingCell is one printed row of pp.85-125's lower block: department, the
+// fund that pays it, and the figure.
 var fundingCells = []struct {
 	department string
 	label      string
@@ -146,10 +142,8 @@ func TestADepartmentIsNotADivision(t *testing.T) {
 	}
 }
 
-// TestAFundFoldsIntoTheGroupTheRegistrySays pins the parent edge and the
-// disclosure that rides with a constraint tier.
-//
-// The group comes from data/funds.yaml, never from the fact.
+// TestAFundFoldsIntoTheGroupTheRegistrySays pins the parent edge from
+// data/funds.yaml and the disclosure that rides with a constraint tier.
 func TestAFundFoldsIntoTheGroupTheRegistrySays(t *testing.T) {
 	doc := buildFunding(t, fundingFacts(t, func(f *fact.Fact) {
 		if *f.Fund == 640 {

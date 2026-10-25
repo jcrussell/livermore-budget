@@ -8,17 +8,9 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
-// The fixture is the citywide spine, Budget Book pp.66-67, because a
-// projection can only be checked against numbers somebody has added up by
-// hand. testdata/sankey.golden.json is that hand derivation; the table below
-// is the same schedule as facts, and the two are compared in
-// TestSankeyReproducesGoldenFile.
-//
-// The facts are constructed here rather than read from a build of the real
-// corpus so this package's tests do not depend on the mapping rules landing
-// first. Their ids are not invented: they come from fact.MakeID over the same
-// tuple the builder hashes, which is what lets the golden file's fact ids be
-// asserted rather than trusted.
+// The fixture is the citywide spine, pp.66-67, as facts; testdata/sankey.golden.json
+// is its hand derivation (TestSankeyReproducesGoldenFile). Ids come from
+// fact.MakeID over the builder's tuple.
 const (
 	testDoc   = "livermore-budget-fy2026-2027"
 	testScope = "all-funds-gross"
@@ -54,14 +46,8 @@ func spinePage(group string) int {
 	return 67
 }
 
-// spineRow is one printed row of the schedule across all six columns.
-//
-// Every cell is a fact, including the zeros: pp.66-67 print a dash in each of
-// them, and a dash in this corpus means "exists and is zero" rather than "not
-// applicable". So the fixture yields 20 rows x 6 groups = 120 facts against
-// only 58 links — a zero-valued cell earns no link, and neither do the two
-// stock rows. That gap is the whole reason counts.facts and counts.facts_cited
-// are both published.
+// spineRow is one printed row of the schedule across all six columns. Every
+// cell is a fact, including the printed dashes, which earn no link.
 type spineRow struct {
 	kind     vocab.Kind
 	rule     string
@@ -220,13 +206,8 @@ func facts(t *testing.T, specs ...cellSpec) []fact.Fact {
 	return out
 }
 
-// stubLabels stands in for internal/registry, keyed the way registry.Label is
-// keyed: by data/taxonomy.yaml category slug.
-//
-// Fund names live in a second map because the two vocabularies must not share a
-// key space -- the Labels doc comment says why, and a fund number and a category
-// slug could not collide anyway, which is exactly the property worth keeping
-// visible rather than relying on.
+// stubLabels stands in for internal/registry, keyed by data/taxonomy.yaml
+// category slug; fund names live in a second map.
 type stubLabels map[string]string
 
 func (s stubLabels) Label(slug string) (string, bool) {
@@ -238,12 +219,8 @@ func (s stubLabels) Label(slug string) (string, bool) {
 // miss unless a test supplies stubFunds instead.
 func (stubLabels) FundName(int) (string, bool) { return "", false }
 
-// The four methods a fund- or department-keyed document needs. The spine keys on
-// neither, so these are misses here and stubFundFlows supplies them where a test
-// needs a real answer.
-//
-// FundType returning false is the honest stub: it is the PARENT EDGE, and a stub
-// that invented a type would let a test pass over a hierarchy nothing built.
+// The four methods a fund- or department-keyed document needs; the spine keys
+// on neither, so they miss. FundType invents no parent edge.
 func (stubLabels) FundType(int) (string, bool)         { return "", false }
 func (stubLabels) FundGroup(string) bool               { return false }
 func (stubLabels) ConstraintTier(int) string           { return "" }
@@ -274,9 +251,7 @@ func (s stubFunds) FundName(number int) (string, bool) {
 }
 
 // goldenLabels is every category label data/taxonomy.yaml carries for the
-// spine, transcribed, so the golden comparison exercises the same path a build
-// with a real registry attached will. The fund groups, the inferred nodes and
-// fund-balance/reserve-increase are absent: builtinLabels answers for them.
+// spine, transcribed; builtinLabels answers for the rest.
 var goldenLabels = stubLabels{
 	"taxes/property":            "Property Taxes",
 	"taxes/sales":               "Sales Taxes",

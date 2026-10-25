@@ -21,12 +21,8 @@ const (
 	generalFundWagesDoubled = 16_360_202_200
 )
 
-// departmentWages is the pp.167-170 decomposition of that one cell: the 23
-// divisions' Wages & Benefits rows, summing to exactly what the spine publishes.
-//
-// Only the divisions with a wages line are here — Fire Administration prints
-// none, because the fire service is contracted — and the figures are the
-// document's, so the sum is the document's too.
+// departmentWages is the pp.167-170 decomposition of that cell: the divisions'
+// Wages & Benefits rows, summing to what the spine publishes.
 var departmentWages = []struct {
 	division string
 	cents    int64
@@ -80,14 +76,8 @@ func detailFacts(t *testing.T, scope string, withDepartment bool) []fact.Fact {
 	return out
 }
 
-// TestDepartmentDetailDoesNotEnterTheSpine is the strongest form of the claim
-// the scope exists to make: 196 facts join the store and the published document
-// does not move by one byte.
-//
-// The byte-identity clause is what makes it strong. Asserting the one link would
-// catch the one link; asserting the whole graph says that nothing anywhere in
-// the chart noticed, and it fails on ten links rather than on one if the scope
-// guard breaks.
+// TestDepartmentDetailDoesNotEnterTheSpine: department detail joins the store
+// and the published spine document does not move by one byte.
 func TestDepartmentDetailDoesNotEnterTheSpine(t *testing.T) {
 	want, err := os.ReadFile(goldenPath)
 	if err != nil {
@@ -118,14 +108,8 @@ func TestDepartmentDetailDoesNotEnterTheSpine(t *testing.T) {
 	}
 }
 
-// TestDetailAtSpineScopeErrorsOutOfNetCells covers the second guard, and it is
-// the loud one.
-//
-// A rule author who writes `scope: all-funds-gross` on a department-bearing rule
-// does NOT get a doubled General Fund with every check green: netCells refuses
-// the fact and the build stops. fisc-brx measured this and decided the refusal
-// stays; the only thing that changed is that verify reports it instead of
-// exiting 1 with no report.
+// TestDetailAtSpineScopeErrorsOutOfNetCells: a department-bearing rule at
+// `scope: all-funds-gross` is refused by netCells and verify reports it.
 func TestDetailAtSpineScopeErrorsOutOfNetCells(t *testing.T) {
 	all := append(spineFacts(t, testYear), detailFacts(t, testScope, true)...)
 
@@ -139,18 +123,9 @@ func TestDetailAtSpineScopeErrorsOutOfNetCells(t *testing.T) {
 	}
 }
 
-// TestTheDepartmentlessVariantDoublesTheGeneralFund is why the scope is required
-// even though netCells refuses a department.
-//
-// internal/mapping requires a row to carry a category OR a department, not both,
-// so an author may write the object rows with `category:` alone and put the
-// division in the row LABEL. Those facts carry no department, netCells never
-// sees one, and the graph builds — doubled, silently. The department field is a
-// guard only for authors who use it; the scope is the guard that does not depend
-// on that choice.
-//
-// The wrong number is pinned by name, this repository's house style for a figure
-// a mistake would produce.
+// TestTheDepartmentlessVariantDoublesTheGeneralFund: object rows written with
+// `category:` alone carry no department, so only the scope stops a doubled
+// General Fund; the wrong number is pinned by name.
 func TestTheDepartmentlessVariantDoublesTheGeneralFund(t *testing.T) {
 	all := append(spineFacts(t, testYear), detailFacts(t, testScope, false)...)
 

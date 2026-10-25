@@ -21,12 +21,8 @@ import (
 // of the committed pp.66-67 artifacts, with real content-addressed fact ids.
 const goldenPath = "../../testdata/sankey.golden.json"
 
-// TestSankeyReproducesGoldenFile is the test this package exists to pass.
-//
-// It compares the decoded graph first, because a field-level diff says what is
-// wrong, and the bytes second, because only the bytes catch key order, indent
-// and HTML escaping — the parts of the contract a decoded comparison cannot
-// see.
+// TestSankeyReproducesGoldenFile compares the decoded graph, then the bytes,
+// which alone catch key order, indent and HTML escaping.
 func TestSankeyReproducesGoldenFile(t *testing.T) {
 	wantBytes, err := os.ReadFile(goldenPath)
 	if err != nil {
@@ -67,10 +63,8 @@ func TestSankeyReproducesGoldenFile(t *testing.T) {
 	}
 }
 
-// withCIPLeg adds one p222 transfer to the CIP carrying FY2025-26's whole
-// 38,086,737, which is what the committed store's p222 legs sum to in that
-// column: the pipeline test holds testdata/sankey.golden.json to the committed
-// store, and the spine's caveat reads that sum.
+// withCIPLeg adds one p222 transfer to the CIP carrying FY2025-26's 38,086,737,
+// what the committed store's p222 legs sum to, which the spine's caveat reads.
 func withCIPLeg(t *testing.T, facts []fact.Fact) []fact.Fact {
 	t.Helper()
 	leg := facts[0]
@@ -269,10 +263,8 @@ func TestZeroValuedCellKeepsFactAndDropsLink(t *testing.T) {
 	}
 }
 
-// TestInternalServiceClassification is the 6.3% version of the error this
-// projection exists to prevent. Internal Service Fund charges are real money
-// in a real fund, and counting them as revenue and as the paying department's
-// expenditure double-counts them.
+// TestInternalServiceClassification: Internal Service Fund charges are not
+// counted as revenue and as the paying department's expenditure both.
 func TestInternalServiceClassification(t *testing.T) {
 	g := buildGraph(t, facts(t,
 		cellSpec{kind: vocab.KindRevenue, category: "intergovernmental", label: "Intergovernmental",
@@ -491,10 +483,7 @@ func TestLabelFallback(t *testing.T) {
 		"transfers/in":   "Transfers In (p76)",
 		"general":        "General (from the wrong vocabulary)",
 	}}
-	// transfers/in has a built-in label, and a built-in wins: the words on a
-	// node must be the words on the page this projection read, while a
-	// taxonomy label names a category that may span several schedules. See
-	// (*Sankey).label.
+	// transfers/in has a built-in label, and a built-in wins over the taxonomy's.
 	graph, err = withLabels.Document(spine(t), testOptions())
 	if err != nil {
 		t.Fatalf("Graph: %v", err)
@@ -514,10 +503,8 @@ func TestLabelFallback(t *testing.T) {
 	}
 }
 
-// TestRegistrySatisfiesLabels is the compile-time check that the interface
-// this package declares is the one internal/registry implements. It is a test
-// rather than a package-scope assertion so that internal/project does not
-// import the registry it was deliberately decoupled from.
+// TestRegistrySatisfiesLabels: internal/registry implements Labels, checked in
+// a test so internal/project does not import the registry.
 func TestRegistrySatisfiesLabels(t *testing.T) {
 	var _ labels = (*registry.Registry)(nil)
 }
@@ -580,17 +567,9 @@ func TestGraphRejectsBadOptions(t *testing.T) {
 	}
 }
 
-// TestGraphRefusesAForeignSchedule calls Graph directly with another
-// schedule's scope, which is the only way to reach the refusal: Slices pins
-// PublishedScope, so nothing in the tree asks for this today.
-//
-// It is worth a test anyway, and the reason is what the facts below do without
-// it. pp.127-140's revenue-by-fund rows net perfectly well on
-// (kind, category, fund_group) -- they carry all three -- so before this
-// refusal Graph returned a FULLY FORMED graph over them, with
-// metadata.scope "revenue-by-fund" and a headline that is a different total
-// from the spine's. A wrong document rather than an error, which is the shape
-// Options.Scope exists to prevent.
+// TestGraphRefusesAForeignSchedule calls Graph with another schedule's scope:
+// pp.127-140's rows net on (kind, category, fund_group) and would otherwise
+// build a fully formed, wrong graph.
 func TestGraphRefusesAForeignSchedule(t *testing.T) {
 	o := testOptions()
 	o.Scopes = []string{TrendsScope}
@@ -672,10 +651,9 @@ func TestTransferCaveatWhenLegsMatch(t *testing.T) {
 	}
 }
 
-// TestTransferCaveatNamesThePrintedColumn asserts the caveat promises no
-// future work, points at transfers-by-fund, and names p222's
-// transfers to the CIP, which it does only when the store carries p222's legs
-// in this column and they sum to this document's residual.
+// TestTransferCaveatNamesThePrintedColumn: the caveat promises no future work,
+// points at transfers-by-fund, and names p222's CIP transfers only when the
+// store's p222 legs in this column sum to this document's residual.
 func TestTransferCaveatNamesThePrintedColumn(t *testing.T) {
 	g := buildGraph(t, withCIPLeg(t, spineFacts(t, testYear)), testOptions())
 	text := caveatText(g)
@@ -738,19 +716,9 @@ func TestTransferCaveatNamesTheCIPOnlyWhenP222IsTheResidual(t *testing.T) {
 	}
 }
 
-// TestTheTransferCaveatMarksTheLegsTheGraphDRAWS is the arm that stops
-// AppliesTo being a guess.
-//
-// TWO WRONG VERSIONS PRECEDED THE ONE THIS PINS. Naming both legs
-// unconditionally pointed at a node a transfers-in-only document does not
-// carry; gating each on its own headline total fixed that and was still a
-// PROXY, because a non-zero total says a transfer_out fact was summed, not that
-// the node it produced is spelled "transfers/out". This asserts the endpoints
-// come off the LINKS, which is the thing itself.
-//
-// The third case is the one no headline can answer: same totals, different
-// node id. It is not a shape the corpus produces today -- which is exactly why
-// it needs a test rather than a reader's confidence.
+// TestTheTransferCaveatMarksTheLegsTheGraphDRAWS: AppliesTo comes off the
+// links' endpoints, not the headline totals; the third case is same totals,
+// different node id.
 func TestTheTransferCaveatMarksTheLegsTheGraphDRAWS(t *testing.T) {
 	h := Headline{InternalTransferInCents: 100, InternalTransferOutCents: 500}
 
@@ -811,19 +779,9 @@ func caveatText(g *Document) string {
 	return strings.Join(texts, "\n")
 }
 
-// The contested-total caveat.
-//
-// WHAT IT IS FOR. Budget Book p0067 prints an Internal Service Funds Services &
-// Supplies figure $250,000 higher than six other schedules of the same document,
-// so the FY2027 spine draws a total the city's own book contradicts. The chart
-// publishes p0067's figure, because every figure here is one the city printed on
-// the page it is cited from and substituting one from elsewhere would make this
-// an exception to that. What the reader is owed is the disclosure.
-//
-// EVERY TEST HERE MUTATES THE CONDITION rather than asserting the happy path.
-// The caveat is emitted only when the graph actually draws the declared figure,
-// which is what makes it retire itself; a test that only checked it appears
-// would pass against a version that always appended it.
+// The contested-total caveat: p0067 prints Internal Service Funds Services &
+// Supplies $250,000 above six other schedules; the chart draws p0067's figure
+// and discloses. Every test mutates the condition the caveat is emitted on.
 
 // contestedFY2027 is the one declared entry, fetched rather than respelled so a
 // change to the declaration reaches these tests.
@@ -851,10 +809,8 @@ func TestContestedCaveatIsEmittedOnlyForTheColumnThatDrawsIt(t *testing.T) {
 	if !ok {
 		t.Fatal("no caveat for the column and figure the entry declares")
 	}
-	// The sentence must carry BOTH figures and why the drawn one is kept. A
-	// caveat naming only the drawn figure tells a reader nothing they could
-	// act on. An empty Kept is contained in every string, so it is asserted
-	// non-empty first.
+	// The sentence carries both figures and why the drawn one is kept; Kept is
+	// asserted non-empty first, as an empty one is contained in every string.
 	if strings.TrimSpace(c.Kept) == "" {
 		t.Fatal("the entry declares no Kept, so the caveat cannot say why the drawn figure is kept")
 	}
@@ -864,10 +820,8 @@ func TestContestedCaveatIsEmittedOnlyForTheColumnThatDrawsIt(t *testing.T) {
 			t.Errorf("caveat does not mention %q:\n%s", want, got.Text)
 		}
 	}
-	// THE ID CARRIES THE FUND GROUP, because contestedTotals is a list and two
-	// entries in one column would otherwise share an anchor -- which
-	// ValidateCaveats refuses, so the failure would arrive as a build error a
-	// long way from its cause.
+	// The id carries the fund group, so two entries in one column get distinct
+	// anchors.
 	if want := "contested-total-" + c.FundGroup; got.ID != want {
 		t.Errorf("caveat id is %q, want %q", got.ID, want)
 	}
@@ -897,12 +851,8 @@ func TestContestedCaveatIsEmittedOnlyForTheColumnThatDrawsIt(t *testing.T) {
 	}
 }
 
-// TestContestedCaveatRetiresItselfWhenTheFigureIsCorrected is the property that
-// makes this a declaration rather than a note.
-//
-// The day the corpus stops publishing p0067's figure -- whichever way fisc-av0w
-// is decided -- the graph stops drawing Published, the condition stops matching,
-// and the sentence stops being printed. Nobody has to remember to delete it.
+// TestContestedCaveatRetiresItselfWhenTheFigureIsCorrected: once the graph stops
+// drawing Published, the sentence stops being printed.
 func TestContestedCaveatRetiresItselfWhenTheFigureIsCorrected(t *testing.T) {
 	c := contestedFY2027(t)
 	corrected := []Link{
@@ -913,10 +863,8 @@ func TestContestedCaveatRetiresItselfWhenTheFigureIsCorrected(t *testing.T) {
 		t.Errorf("the caveat survived the figure being corrected to %s:\n%s",
 			amount.Cents(c.Elsewhere).Dollars(), cav.Text)
 	}
-	// And a third value -- neither the spine's nor the other schedules' -- also
-	// silences it. That is correct and is why the corpus-level assertion in
-	// internal/check exists: silence here must not be the only signal, or an
-	// entry could go dead unnoticed.
+	// A third value also silences it; internal/check's corpus-level assertion keeps
+	// a dead entry from going unnoticed.
 	third := []Link{
 		{Source: PrefixFundGroup + c.FundGroup, Target: PrefixExpenditure + "services-and-supplies",
 			ValueCents: c.Published + 1},
@@ -947,7 +895,7 @@ func TestGroupExpenditureSumsOnlyThatGroupsObjectLinks(t *testing.T) {
 	}
 }
 
-// TestTheHeadlineIsANamedCut is fisc-w11l's acceptance arithmetic: the four
+// TestTheHeadlineIsANamedCut: the four
 // published figures, summed over the view the document names.
 func TestTheHeadlineIsANamedCut(t *testing.T) {
 	g := buildGraph(t, spineFacts(t, testYear), testOptions())

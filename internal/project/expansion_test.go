@@ -87,11 +87,9 @@ func leavesOf(d *Document) []Link {
 	return out
 }
 
-// TestTheContestedRemainderIsTheExceptions: the 250,000 FY2026-27's internal
-// service Services & Supplies carries over its funds' rows is a remainder in
-// FY2026-27 alone, worth what the exception declaring the cell holds apart,
-// drawn from the group's remainder to a row of the group's own, and the
-// divisions alternative carries the same exception's sibling.
+// TestTheContestedRemainderIsTheExceptions: FY2026-27's 250,000 internal
+// service Services & Supplies remainder is the declaring exception's, drawn to
+// a row of the group's own, and the divisions alternative carries its sibling.
 func TestTheContestedRemainderIsTheExceptions(t *testing.T) {
 	byName := map[string]structure.Exception{}
 	for _, e := range structure.BudgetBookExceptions() {
@@ -130,11 +128,9 @@ func TestTheContestedRemainderIsTheExceptions(t *testing.T) {
 	}
 }
 
-// TestAFundDrawnApartFromItsChangeIsToldSo holds the expansion's funds of a
-// group whose change is drawn whole on the group's remainder: each is a
-// target of the caveat saying so, its in less its out is its own change, and
-// it carries fund-sources-uses' balances and their derived change, the one
-// figure the pin states that no page prints.
+// TestAFundDrawnApartFromItsChangeIsToldSo: each fund of a group whose change
+// is drawn whole is a caveat target, nets to its own change, and carries
+// fund-sources-uses' balances and derived change.
 func TestAFundDrawnApartFromItsChangeIsToldSo(t *testing.T) {
 	for _, year := range []int{2026, 2027} {
 		docs := committedDocs(t, year)
@@ -259,10 +255,8 @@ func TestAFundDrawnApartFromItsChangeIsToldSo(t *testing.T) {
 	}
 }
 
-// TestAFundGroupsLegsCarryEachFundsInflow holds a fund group's hub legs to
-// what each fund takes in: a fund nothing arrives at is reached by no leg,
-// and one that only takes in -- 211, 280 and 300 in both years -- is reached,
-// where legs repeating each fund's outflow would leave it out.
+// TestAFundGroupsLegsCarryEachFundsInflow: a group's hub legs follow each fund's
+// inflow, so a fund that only takes in (211, 280, 300) is reached.
 func TestAFundGroupsLegsCarryEachFundsInflow(t *testing.T) {
 	for _, year := range []int{2026, 2027} {
 		x := committedDocs(t, year)[ExpansionProjection]
@@ -304,18 +298,12 @@ func TestAFundGroupsLegsCarryEachFundsInflow(t *testing.T) {
 	}
 }
 
-// TestASourcesLegsRunFromItsMembers holds a hub split whose node takes
-// nothing in on the spine -- each revenue category and transfers/in, a hub
-// being declared only on a root -- to
-// legs running from its members into it, and to declaring its members
-// before it, which the client stands them by: every leg is member -> node
-// repeating a leaf that leaves that member, every primary leaf leaving a
-// member is re-pointed to start at the node, and every other split stands
-// its members after its node.
-//
-// MUTATION: draw a source's legs node -> member and leave the leaf on its
-// member, as extendHubs does for no node, and this names every leg; declare
-// every split after its node in sideOf and this names every source.
+// TestASourcesLegsRunFromItsMembers: a hub split whose node takes nothing in
+// draws legs member -> node, re-points each leaf leaving a member to start at
+// the node, and declares its members before it; other splits stand after.
+// Mutation: draw a source's legs node -> member and leave the leaf on its
+// member, and this names every leg; declare every split after its node in
+// sideOf and this names every source.
 func TestASourcesLegsRunFromItsMembers(t *testing.T) {
 	for _, year := range []int{2026, 2027} {
 		docs := committedDocs(t, year)
@@ -375,10 +363,8 @@ func TestASourcesLegsRunFromItsMembers(t *testing.T) {
 	}
 }
 
-// TestASplitInAnyFormButExtendIsRefusedAtTheWrite holds the expansion
-// schedule's write to its one split form: the committed schedule encodes, and
-// the same schedule with one split declared in another form is refused by
-// schema/enums.schema.json's split_form, naming the form.
+// TestASplitInAnyFormButExtendIsRefusedAtTheWrite: a split in another form is
+// refused by schema/enums.schema.json's split_form, naming the form.
 func TestASplitInAnyFormButExtendIsRefusedAtTheWrite(t *testing.T) {
 	d := committedDocs(t, 2026)[ExpansionProjection]
 	if d == nil || len(d.Splits) == 0 {
@@ -401,10 +387,8 @@ func TestASplitInAnyFormButExtendIsRefusedAtTheWrite(t *testing.T) {
 	}
 }
 
-// TestASplitOnNoSideIsRefusedAtTheWrite holds the expansion schedule's write
-// to its two split sides, which the client stands members by: the same
-// schedule with one split declaring another side, or none, is refused by
-// schema/enums.schema.json's split_side, naming the side.
+// TestASplitOnNoSideIsRefusedAtTheWrite: a split with another side, or none, is
+// refused by schema/enums.schema.json's split_side, naming the side.
 func TestASplitOnNoSideIsRefusedAtTheWrite(t *testing.T) {
 	d := committedDocs(t, 2026)[ExpansionProjection]
 	if d == nil || len(d.Splits) == 0 {
@@ -424,12 +408,9 @@ func TestASplitOnNoSideIsRefusedAtTheWrite(t *testing.T) {
 	}
 }
 
-// TestAFlowBetweenAHubsMembersIsRefused: no page prints a flow from one
-// enterprise fund to another today, and the stitch refuses to draw one,
-// since re-pointed onto the group it would run from a member back into its
-// own node, which the client lays out as a circular link.
-//
-// MUTATION: drop extendHubs' refusal and the stitch draws fund/610 ->
+// TestAFlowBetweenAHubsMembersIsRefused: re-pointed onto the group, a flow
+// between two members would be a circular link, so the stitch refuses it.
+// Mutation: drop extendHubs' refusal and the stitch draws fund/610 ->
 // fund-group/enterprise beside the group's leg to fund/610.
 func TestAFlowBetweenAHubsMembersIsRefused(t *testing.T) {
 	const group = "fund-group/enterprise"
@@ -444,14 +425,10 @@ func TestAFlowBetweenAHubsMembersIsRefused(t *testing.T) {
 	}
 }
 
-// TestALeafBetweenAHubAndItsOwnMemberIsRefused: no page prints a flow
-// between a fund group and one of its own funds, and the stitch refuses to
-// draw one on either side of the hub, since re-pointed onto the hub it would
-// run from the hub into itself.
-//
-// MUTATION: drop extendHubs' refusal of a leaf between a hub's node and its
-// member and the stitch draws fund-group/enterprise -> fund-group/enterprise,
-// after the hub and before it.
+// TestALeafBetweenAHubAndItsOwnMemberIsRefused: a flow between a hub and its own
+// member, on either side, would run from the hub into itself.
+// Mutation: drop extendHubs' refusal of it and the stitch draws
+// fund-group/enterprise -> fund-group/enterprise, after the hub and before it.
 func TestALeafBetweenAHubAndItsOwnMemberIsRefused(t *testing.T) {
 	const group = "fund-group/enterprise"
 	for _, c := range []struct {
@@ -473,13 +450,9 @@ func TestALeafBetweenAHubAndItsOwnMemberIsRefused(t *testing.T) {
 	}
 }
 
-// TestAGroupDrawnWholeIsHeldToItsFundsNet: where a group's funds change both
-// ways, the group's change is drawn whole on the caveat's word that it is the
-// net of its funds' changes, so changeOf holds it to that, and refuses a
-// group with no fund changing at all. Both refusals come before the stitch
-// is touched, which is why nil serves for it here; the committed store
-// builds the case that ties. Mutation: drop either arm and its row reaches the
-// stitch instead of refusing.
+// TestAGroupDrawnWholeIsHeldToItsFundsNet: changeOf holds a group drawn whole to
+// its funds' net change and refuses one with no fund changing, before the stitch.
+// Mutation: drop either arm and its row reaches the stitch instead of refusing.
 func TestAGroupDrawnWholeIsHeldToItsFundsNet(t *testing.T) {
 	col := Column{FiscalYear: 2026, Basis: vocab.BasisAdopted}
 	group := PrefixFundGroup + "capital"
@@ -503,10 +476,9 @@ func TestAGroupDrawnWholeIsHeldToItsFundsNet(t *testing.T) {
 	}
 }
 
-// TestAFundChangingInAGroupWithNoPrintedChangeIsRefused: such a fund would be
-// drawn with in and out differing by its own change and no caveat saying so,
-// even where its group's funds net to nothing. Mutation: hold only the
-// group's net to zero, as before, and the netting pair below draws.
+// TestAFundChangingInAGroupWithNoPrintedChangeIsRefused, even where the group's
+// funds net to nothing. Mutation: hold only the group's net to zero and the
+// netting pair below draws.
 func TestAFundChangingInAGroupWithNoPrintedChangeIsRefused(t *testing.T) {
 	col := Column{FiscalYear: 2026, Basis: vocab.BasisAdopted}
 	group := PrefixFundGroup + "capital"
@@ -522,10 +494,8 @@ func TestAFundChangingInAGroupWithNoPrintedChangeIsRefused(t *testing.T) {
 	}
 }
 
-// TestTheExpansionSaysItsLinksDoubleCount: an opened node repeats its
-// members' links, so the committed expansion states how many printed figures
-// sit behind more than one link, the document's own count.
-//
+// TestTheExpansionSaysItsLinksDoubleCount: the expansion states how many printed
+// figures sit behind more than one link.
 // Mutation: drop an-opened-box-repeats-its-members from expansionCaveats and
 // both years go red.
 func TestTheExpansionSaysItsLinksDoubleCount(t *testing.T) {

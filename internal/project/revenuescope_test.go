@@ -19,14 +19,8 @@ const revenueScope = "revenue-by-fund"
 const generalFundPropertyTaxes = 6_414_376_200
 
 // p127PropertyTaxes is the thirteen printed detail lines under Property Taxes on
-// Budget Book p127, FY2025-26, in the order the page prints them. The figures
-// are the document's, so their sum is the document's too — 64,143,762, which is
-// p0066.txt:13 to the cent.
-//
-// ERAF and RPTTF Reduction are the contra rows, ~26% of gross property tax
-// booked as deductions. They are here rather than dropped because a Sankey
-// cannot draw a negative link and it is exactly the netting of them into the
-// category that makes the detail sum to the spine's one figure.
+// p127, FY2025-26, summing to 64,143,762, p0066.txt:13 to the cent. ERAF and
+// RPTTF Reduction are the contra rows, netted into the category.
 var p127PropertyTaxes = []struct {
 	label string
 	cents int64
@@ -46,12 +40,8 @@ var p127PropertyTaxes = []struct {
 	{"Pen & Int On Delinq Tax", 6_631_500},
 }
 
-// revenueDetailFacts renders p127's property-tax block at a chosen scope.
-//
-// Every fact carries a FUND, which is what the schedule's columns are, and it is
-// the reason there is no second guard: netCells refuses a fact carrying a
-// DEPARTMENT and has no such refusal for a fund, so these flow straight into the
-// spine's own cells if the scope lets them.
+// revenueDetailFacts renders p127's property-tax block at a chosen scope. Each
+// fact carries a fund, which netCells does not refuse, so only scope guards it.
 func revenueDetailFacts(t *testing.T, scope string) []fact.Fact {
 	t.Helper()
 	out := make([]fact.Fact, 0, len(p127PropertyTaxes))
@@ -68,14 +58,8 @@ func revenueDetailFacts(t *testing.T, scope string) []fact.Fact {
 	return out
 }
 
-// TestRevenueDetailDoesNotEnterTheSpine is the strongest form of the claim the
-// scope makes: 924 facts join the store and the published document does not move
-// by one byte.
-//
-// Byte-identity rather than one link, for the reason the department lane gives:
-// asserting the one link catches the one link, while asserting the whole graph
-// says nothing anywhere in the chart noticed, and fails on ten links rather than
-// one if the guard breaks.
+// TestRevenueDetailDoesNotEnterTheSpine: revenue detail joins the store and the
+// published spine document does not move by one byte.
 func TestRevenueDetailDoesNotEnterTheSpine(t *testing.T) {
 	want, err := os.ReadFile(goldenPath)
 	if err != nil {
@@ -105,10 +89,9 @@ func TestRevenueDetailDoesNotEnterTheSpine(t *testing.T) {
 	}
 }
 
-// TestRevenueDetailAtSpineScopeIsRefusedByTheKey: with the fund in the cell
-// key, a mis-scoped revenue rule's detail lines become a second link on the
-// spine's pair, which checkDistinctLinks refuses, rather than a doubled figure.
-// A fundless rule at the spine's scope is cuts-tie-along-the-lattice's case.
+// TestRevenueDetailAtSpineScopeIsRefusedByTheKey: with the fund in the cell key,
+// mis-scoped detail is a second link checkDistinctLinks refuses, not a doubled
+// figure.
 func TestRevenueDetailAtSpineScopeIsRefusedByTheKey(t *testing.T) {
 	all := append(spineFacts(t, testYear), revenueDetailFacts(t, testScope)...)
 

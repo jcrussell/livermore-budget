@@ -53,11 +53,8 @@ func TestValidateCaveatsRefusesEveryShapeThatWouldRender(t *testing.T) {
 		// with "ValidateCaveats = nil".
 		{"no theme", []Caveat{{ID: "a", Summary: "s", Text: "t"}}, nodes, "which is none of CaveatThemes"},
 		{"a theme of no set", []Caveat{{ID: "a", Theme: "caveats", Summary: "s", Text: "t"}}, nodes, "which is none of CaveatThemes"},
-		// A data-files caveat is stated on no page, so a chart marking one
-		// would chip a mark with a caveat its page never lists.
-		//
-		// Mutation: drop the data-files arm and the first goes red with
-		// "ValidateCaveats = nil".
+		// A data-files caveat is stated on no page, so no chart may mark one.
+		// Mutation: drop the data-files arm -- "ValidateCaveats = nil".
 		{
 			"a data-files caveat naming a node",
 			[]Caveat{{ID: "a", Theme: ThemeDataFiles, Summary: "s", Text: "t", AppliesTo: []string{"fund-group/general"}}},
@@ -97,9 +94,7 @@ func TestValidateCaveatsRefusesEveryShapeThatWouldRender(t *testing.T) {
 			[]Caveat{{ID: "a", Theme: ThemeLeftOut, Summary: "s", Text: "That is settled (fisc-yj4w.35.10).", AppliesTo: []string{}}},
 			nodes, `prints the tracker id "fisc-yj4w.35.10"`,
 		},
-		// A byob decision is a row of the same tracker, and a reader can no
-		// more open it.
-		//
+		// A byob decision is a tracker row a reader cannot open either.
 		// Mutation: drop beadid.Cited's byob arm and both go red with
 		// "ValidateCaveats = nil".
 		{
@@ -112,13 +107,11 @@ func TestValidateCaveatsRefusesEveryShapeThatWouldRender(t *testing.T) {
 			[]Caveat{{ID: "a", Theme: ThemeLeftOut, Summary: "Shaped by byob-command-shape.1, as decided.", Text: "t", AppliesTo: []string{}}},
 			nodes, `prints the tracker id "byob-command-shape.1"`,
 		},
-		// A fact id, a series id and the export marker begin with what a bead
-		// id could be, and are not one: a caveat may cite the fact it is about.
-		//
-		// Mutations: drop beadid.Cited's following-byte check on the fisc arm
-		// and the fact and series cases go red naming the id's head as a
-		// tracker id; drop its preceding-byte check and the marker case goes
-		// red naming the marker without its dot.
+		// A fact id, a series id and the export marker look like a bead id's head and
+		// are not one.
+		// Mutations: drop beadid.Cited's following-byte check on the fisc arm and the
+		// fact and series cases go red; drop its preceding-byte check and the marker
+		// case goes red naming the marker without its dot.
 		{
 			"a fact id",
 			[]Caveat{{ID: "a", Theme: ThemeLeftOut, Summary: "s", Text: "Printed as fisc-f-0ba7b00dfaf7.", AppliesTo: []string{}}},
@@ -144,12 +137,8 @@ func TestValidateCaveatsRefusesEveryShapeThatWouldRender(t *testing.T) {
 			[]Caveat{{ID: "a", Theme: ThemeLeftOut, Summary: "s", Text: "t", AppliesTo: []string{"fund-group/general"}}},
 			nodes, "",
 		},
-		// nil NODES IS THE not-a-graph CALLER, and the arm has to be skipped
-		// rather than made to fail against an empty set: internal/project's
-		// trends document publishes series and has no node for an AppliesTo to
-		// name. Passing an EMPTY map instead is the other case, and it must
-		// still refuse -- a graph that drew nothing is not a document exempt
-		// from the rule.
+		// nil nodes is the not-a-graph caller (the trends document), so the arm is
+		// skipped; an empty map still refuses.
 		{
 			"a document with no nodes to check against",
 			[]Caveat{{ID: "a", Theme: ThemeLeftOut, Summary: "s", Text: "t", AppliesTo: []string{"anything"}}},
@@ -175,12 +164,9 @@ func TestValidateCaveatsRefusesEveryShapeThatWouldRender(t *testing.T) {
 	}
 }
 
-// TestTheEnvelopeAndTheGraphMetadataSpellTheirSharedKeysOnce couples the
-// series documents' [Envelope] to the graphs' [Metadata]: the two share four
-// keys without sharing a declaration, so a key renamed on one side would
-// publish two names for one concept across two documents on one site. The one
-// intended difference is scope, singular on a series document and a list on a
-// graph.
+// TestTheEnvelopeAndTheGraphMetadataSpellTheirSharedKeysOnce: [Envelope] and
+// [Metadata] spell their four shared keys alike; scope alone differs, singular
+// against a list.
 func TestTheEnvelopeAndTheGraphMetadataSpellTheirSharedKeysOnce(t *testing.T) {
 	graph := jsonTags(t, Metadata{})
 	for _, tag := range jsonTags(t, Envelope{}) {
@@ -231,10 +217,8 @@ func TestTheTrendsMetadataKeyOrderMatchesTheContract(t *testing.T) {
 	}
 }
 
-// TestEncodeLeavesHTMLAlone is the one extraction the byte test genuinely earns:
-// a second projection that built its own encoder would ship with
-// escaping ON, because that is json.Marshal's default, and nothing would say so
-// until a reader saw an ampersand entity on the page.
+// TestEncodeLeavesHTMLAlone: the shared encoder ships with HTML escaping off,
+// unlike json.Marshal's default.
 func TestEncodeLeavesHTMLAlone(t *testing.T) {
 	got, err := marshal(map[string]string{"label": "Fines & Forfeitures"}, "test")
 	if err != nil {
@@ -249,10 +233,8 @@ func TestEncodeLeavesHTMLAlone(t *testing.T) {
 	}
 }
 
-// TestRefuseUncitedAdmitsOnlyPrintedZeros holds the one rule every builder
-// applies to the facts it draws no link for: a printed zero passes, anything
-// else is refused unless the builder's allow names it, as the spine's does for
-// its two stock rows.
+// TestRefuseUncitedAdmitsOnlyPrintedZeros: an uncited fact passes only as a
+// printed zero or where the builder's allow names it.
 func TestRefuseUncitedAdmitsOnlyPrintedZeros(t *testing.T) {
 	zero := &fact.Fact{ID: "z", Kind: vocab.KindRevenue, Category: "taxes/property"}
 	money := &fact.Fact{ID: "m", Kind: vocab.KindRevenue, Category: "taxes/property", AmountCents: 100}
@@ -276,10 +258,8 @@ func TestRefuseUncitedAdmitsOnlyPrintedZeros(t *testing.T) {
 	}
 }
 
-// TestEveryThemeHasItsWordsAndNoWordsAreOfNoTheme: membership is read off the
-// words and order off CaveatThemes, so the two must name one set; a theme with
-// words and no place in the order would validate and be listed nowhere.
-//
+// TestEveryThemeHasItsWordsAndNoWordsAreOfNoTheme: caveatThemeWords and
+// CaveatThemes name one set.
 // Mutation: add a theme to caveatThemeWords alone and this goes red.
 func TestEveryThemeHasItsWordsAndNoWordsAreOfNoTheme(t *testing.T) {
 	var words []CaveatTheme

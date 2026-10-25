@@ -11,12 +11,8 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
-// trendColumnsFixture are the four columns Budget Book pp.127-140 print, with
-// the real year-to-basis pairing: one actual, one revised, two adopted.
-//
-// The pairing is the reason Column carries both components. Two of these four
-// share a basis and no two share a year, so neither field alone identifies a
-// column.
+// trendColumnsFixture are pp.127-140's four columns with the real year-to-basis
+// pairing (one actual, one revised, two adopted): neither field alone identifies one.
 var trendColumnsFixture = []Column{
 	{FiscalYear: 2024, Basis: vocab.BasisActual},
 	{FiscalYear: 2025, Basis: vocab.BasisRevised},
@@ -66,14 +62,8 @@ func buildTrends(t *testing.T, facts []fact.Fact) *TrendsDocument {
 	return d
 }
 
-// TestTrendsGroupsPrintedRowsAcrossColumns is the document's central claim: four
-// printed cells of one row become one series with four points, and two funds
-// printing the same words stay two series.
-//
-// THE SECOND HALF IS WHY THE SERIES ID IS NOT THE ROW LABEL. "Property Taxes" is
-// printed by four funds in the real schedule and "Use of Money & Prop" by
-// thirty-eight; a document keyed on the label alone would fold them into one
-// series and publish a sum the city never printed.
+// TestTrendsGroupsPrintedRowsAcrossColumns: four cells of one row become one
+// series of four points, and two funds printing the same words stay two series.
 func TestTrendsGroupsPrintedRowsAcrossColumns(t *testing.T) {
 	d := buildTrends(t, trendsFixture(t))
 
@@ -117,10 +107,8 @@ func TestTrendsPointsFollowTheDocumentsColumnOrder(t *testing.T) {
 	}
 }
 
-// TestTrendsSeriesIDIsTheFactIDWithoutRuleOrColumn is the contract's identity
-// claim checked against the code rather than quoted: a series id is
-// fact.MakeID's tuple minus the rule id, the fiscal year and the basis, so every point of a series
-// recomputes to the same one and no fact id can be mistaken for it.
+// TestTrendsSeriesIDIsTheFactIDWithoutRuleOrColumn: a series id is
+// fact.MakeID's tuple minus rule id, fiscal year and basis.
 func TestTrendsSeriesIDIsTheFactIDWithoutRuleOrColumn(t *testing.T) {
 	facts := trendsFixture(t)
 	d := buildTrends(t, facts)
@@ -195,10 +183,8 @@ func TestTrendsPublishesEveryKey(t *testing.T) {
 	}
 }
 
-// TestTrendsKeepsContraRowsSigned is the difference from the Sankey, stated as a
-// test because it is a deliberate divergence rather than an oversight: the spine
-// nets a contra row into its parent category before drawing a link, and this
-// document does not, because a series is a printed ROW and ERAF is printed.
+// TestTrendsKeepsContraRowsSigned: unlike the spine, a series is a printed row,
+// so ERAF stays signed rather than netted.
 func TestTrendsKeepsContraRowsSigned(t *testing.T) {
 	facts := trendFacts(t, "gf-rev", "ERAF", 100, "general",
 		[4]int64{-1_408_643_800, -1_466_183_600, -1_517_500_000, -1_585_787_500})
@@ -214,10 +200,8 @@ func TestTrendsKeepsContraRowsSigned(t *testing.T) {
 	}
 }
 
-// TestTrendsSlicesTakeTheWholeScope is the constraint fisc-rmw imposes on this
-// projection, checked rather than trusted.
-//
-// It must return ONE slice carrying EVERY column the store has.
+// TestTrendsSlicesTakeTheWholeScope: one slice carrying every column the store
+// has.
 func TestTrendsSlicesTakeTheWholeScope(t *testing.T) {
 	facts := trendsFixture(t)
 	got := (&Trends{}).Slices(facts, "test")
@@ -251,11 +235,8 @@ func TestTrendsRefusesAnotherSchedulesScope(t *testing.T) {
 	}
 }
 
-// TestTrendsRefusesASeriesThatIsTwoRows is the fail-closed arm on the identity.
-//
-// If two different printed rows ever hashed to one series id, the document would
-// publish a series whose label described half of it and whose points summed
-// across two rows. That must be an error, not a document.
+// TestTrendsRefusesASeriesThatIsTwoRows: two printed rows hashing to one series
+// id is an error, not a document.
 func TestTrendsRefusesASeriesThatIsTwoRows(t *testing.T) {
 	facts := trendsFixture(t)
 	// Same series tuple, different fund: only reachable by corrupting the store,

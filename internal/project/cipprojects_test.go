@@ -39,15 +39,11 @@ func cipProjectsOf(t *testing.T) *TrendsDocument {
 	return doc
 }
 
-// TestCIPProjectsTieToTheListingsPrintedTotals holds the document's rows to
-// what pp.224-235 print, through cipListingColumns, the one declaration the
-// caveats are written from: in every column the rows sum to the printed
-// grand total less fund 611's two blocks, plus what the total prints under
-// its rows.
-//
-// Mutation: change FederalStorm for FY2025-26 to 2_246_251 and this test goes
-// red, here and in the page-text arm below, while the caveat reads the
-// altered figure.
+// TestCIPProjectsTieToTheListingsPrintedTotals: in every column the rows sum to
+// pp.224-235's grand total less fund 611's two blocks, plus what the total
+// prints under its rows, through cipListingColumns.
+// Mutation: change FederalStorm for FY2025-26 to 2_246_251 and this and the
+// page-text arm go red.
 func TestCIPProjectsTieToTheListingsPrintedTotals(t *testing.T) {
 	doc := cipProjectsOf(t)
 	sums := map[Column]int64{}
@@ -73,14 +69,10 @@ func TestCIPProjectsTieToTheListingsPrintedTotals(t *testing.T) {
 	}
 }
 
-// TestCIPListingColumnsArePrinted holds each figure cipListingColumns
-// declares to the page text it is read from: the grand totals on p235's last
-// figure line, fund 611's blocks on p231's lines below 4,070,000's fund
-// total, and p222's Totals line. p222's are also the sum of the facts p222
-// publishes, its transfers in, grants and balance draw.
-//
-// Mutation: change GrandTotal for FY2027-28 to 69_034_501 and this test goes
-// red, as does TestCIPProjectsTieToTheListingsPrintedTotals.
+// TestCIPListingColumnsArePrinted holds each cipListingColumns figure to its
+// page text (p235, p231, p222); p222's also sum p222's facts.
+// Mutation: change GrandTotal for FY2027-28 to 69_034_501 and this and
+// TestCIPProjectsTieToTheListingsPrintedTotals go red.
 func TestCIPListingColumnsArePrinted(t *testing.T) {
 	page := func(n int) string {
 		b, err := os.ReadFile(filepath.Join("..", "..", "data", "extracted",
@@ -169,12 +161,10 @@ func lastFigures(t *testing.T, text string, figures *regexp.Regexp) []string {
 	return nil
 }
 
-// TestCIPProjectsCaveatsStateTheListingsFigures holds the caveats to
-// cipListingColumns: each printed figure appears in the text, so a caveat
-// cannot drift from the declaration the tie test reads.
-//
-// Mutation: drop the fund-611 caveat's clause naming the state block's
-// figure and this test goes red for FY2025-26 to FY2027-28.
+// TestCIPProjectsCaveatsStateTheListingsFigures: each cipListingColumns figure
+// appears in the caveats' text.
+// Mutation: drop the fund-611 caveat's clause naming the state block's figure
+// and FY2025-26 to FY2027-28 go red.
 func TestCIPProjectsCaveatsStateTheListingsFigures(t *testing.T) {
 	var text string
 	for _, c := range cipProjectsCaveats() {

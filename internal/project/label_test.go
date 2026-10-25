@@ -21,12 +21,9 @@ func (w wordsFor) DepartmentLabel(d string) (string, bool) {
 }
 func (w wordsFor) Label(slug string) (string, bool) { s, ok := w.categories[slug]; return s, ok }
 
-// TestEveryDocumentNamesANodeByOneCascade holds nodeLabel, the one cascade
-// every projection's label reads: a built-in before the registry, a fund's
-// name under each id form a fund takes, a division's and a department's words
-// under their own prefixes, the registry's words for the slug, and the id
-// otherwise. Mutation: drop the department arm, and the department/ case goes
-// red.
+// TestEveryDocumentNamesANodeByOneCascade holds nodeLabel's cascade: built-in,
+// fund, division, department, registry slug, then the id.
+// Mutation: drop the department arm, and the department/ case goes red.
 func TestEveryDocumentNamesANodeByOneCascade(t *testing.T) {
 	w := wordsFor{
 		funds:       map[int]string{100: "General Fund"},

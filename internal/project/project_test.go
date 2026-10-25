@@ -40,10 +40,8 @@ func TestOptionsValidate(t *testing.T) {
 			o.Columns = []Column{{FiscalYear: 2026, Basis: vocab.BasisAdopted}, {FiscalYear: 2026, Basis: vocab.BasisAdopted}}
 			return o
 		}(), "column FY2026 adopted is listed twice"},
-		// Several DISTINCT columns are valid at this level. Options is the type
-		// a trends document shares with a Sankey; refusing more than one here
-		// would make the multi-column document unrepresentable, and it is
-		// Sankey.Graph that refuses to be of two.
+		// Several distinct columns are valid here: a trends document has them, and
+		// Sankey.Graph is what refuses two.
 		{"several columns", func() Options {
 			o := ok
 			o.Columns = []Column{{FiscalYear: 2026, Basis: vocab.BasisAdopted}, {FiscalYear: 2027, Basis: vocab.BasisAdopted}}
@@ -107,17 +105,8 @@ func TestRegistry(t *testing.T) {
 	}
 }
 
-// TestTheOpeningPublishedYearOpensTheYearList pins a coherence property of this
-// package's own constants, and it is the last edge of fisc-rmx.
-//
-// Stem gives the bare name to the slice at PublishedFiscalYear, while
-// PublishedDocuments walks PublishedFiscalYears(). Nothing made the constant the
-// first entry of the list, and editing one without the other is a source change
-// no corpus can cause and no test then noticed: with the list at {2027} and the
-// constant still 2026, the declaration names a document "sankey" over FY2027
-// while every derivation gives that stem to FY2026. `fisc export` does refuse
-// it, clearly -- but at the far end of the pipeline, about a file, rather than
-// here, about the two lines that disagree.
+// TestTheOpeningPublishedYearOpensTheYearList: PublishedFiscalYear, which Stem
+// gives the bare name, is the first entry of PublishedFiscalYears().
 func TestTheOpeningPublishedYearOpensTheYearList(t *testing.T) {
 	years := PublishedFiscalYears()
 	if len(years) == 0 {
@@ -168,18 +157,8 @@ func TestSlugLabel(t *testing.T) {
 	}
 }
 
-// TestOnlyScopeRefusesASetItCannotDescribe is the guard that replaced a field
-// read.
-//
-// WHILE Options.Scopes WAS A STRING, "this document is of one schedule" was true
-// by construction and nobody had to assert it. A set can hold two, so the three
-// places that need a single scope -- Sankey.Graph, Trends.Document and
-// envelope() -- each had to grow the same refusal, and the one that forgot would
-// publish Scopes[0] into a singular metadata.scope: one schedule named as the
-// whole of a document built over two. That is a false claim in a published file,
-// and no check reads the JSON closely enough to catch it.
-//
-// The refusal is written once, here, and the three call it.
+// TestOnlyScopeRefusesASetItCannotDescribe: the one refusal Sankey.Graph,
+// Trends.Document and envelope() call before writing a singular metadata.scope.
 func TestOnlyScopeRefusesASetItCannotDescribe(t *testing.T) {
 	one := Options{
 		Columns: []Column{{FiscalYear: 2026, Basis: vocab.BasisAdopted}},
@@ -213,11 +192,9 @@ func TestOnlyScopeRefusesASetItCannotDescribe(t *testing.T) {
 	}
 }
 
-// TestASingleGrainDocumentRefusesTwoScopes is the same guard reached through the
-// two projections that publish a singular metadata.scope.
-//
-// The lattice refuses the spine beside pp.127-140 first, with both cuts named;
-// two summable schedules pass it and reach the sankey's own refusal.
+// TestASingleGrainDocumentRefusesTwoScopes: the same guard through the two
+// projections with a singular metadata.scope; the lattice refuses the spine
+// beside pp.127-140 first, and two summable schedules reach the sankey's refusal.
 func TestASingleGrainDocumentRefusesTwoScopes(t *testing.T) {
 	both := []string{PublishedScope, TrendsScope}
 
@@ -268,9 +245,7 @@ func TestTierOfRefusesACoinedForm(t *testing.T) {
 }
 
 // TestSelectFactsRefusesAViewThatCannotBuild: a ThroughCuts selection over a
-// scope no cut reads is an error, not an empty slice a caller that skipped
-// validate would draw as an empty chart or pass a check over. The fact is in
-// every other selector, so an empty answer is the swallow and not the filter.
+// scope no cut reads is an error, not an empty slice.
 func TestSelectFactsRefusesAViewThatCannotBuild(t *testing.T) {
 	col := Column{FiscalYear: 2026, Basis: vocab.BasisAdopted}
 	facts := []fact.Fact{{ID: "in", Scope: "no-such-scope", Kind: vocab.KindRevenue,
@@ -286,10 +261,8 @@ func TestSelectFactsRefusesAViewThatCannotBuild(t *testing.T) {
 	}
 }
 
-// TestSelectFactsAppliesEverySelector holds the one fact selection the
-// builders and the checks share to its three selectors: a fact outside the
-// scopes, the kinds or the columns is not selected, and one inside all three
-// is.
+// TestSelectFactsAppliesEverySelector: a fact outside the scopes, kinds or
+// columns is not selected, and one inside all three is.
 func TestSelectFactsAppliesEverySelector(t *testing.T) {
 	col := Column{FiscalYear: 2026, Basis: vocab.BasisAdopted}
 	mk := func(id, scope string, kind vocab.Kind, year int) fact.Fact {

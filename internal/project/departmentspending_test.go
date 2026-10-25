@@ -12,11 +12,8 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
-// spendingCell is one printed cell of Budget Book pp.85-125's upper block: a
-// division, the object heading its row sits under, and what the page prints.
-//
-// It carries a division with two object rows, a printed dash, and p124's
-// Transfers Out row, the one row that is not an expenditure.
+// spendingCell is one printed cell of pp.85-125's upper block, including
+// p124's Transfers Out row, the one row that is not an expenditure.
 var spendingCells = []struct {
 	division string
 	category string

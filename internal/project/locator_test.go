@@ -11,10 +11,8 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/fact"
 )
 
-// TestLocatorSetGroupsSortsAndDeduplicates pins the one grouping rule this
-// package has, because two readers depend on it agreeing with itself: a
-// document's metadata.sources and every link's locators go through it, and the
-// client composes a URL from both with the same function.
+// TestLocatorSetGroupsSortsAndDeduplicates pins the grouping both
+// metadata.sources and every link's locators go through.
 func TestLocatorSetGroupsSortsAndDeduplicates(t *testing.T) {
 	facts := []fact.Fact{
 		{DocID: "budget", Page: 67},
@@ -82,12 +80,8 @@ func TestLocatorSetMergeUnions(t *testing.T) {
 	}
 }
 
-// TestEveryLinkLocatorIsAPageItsFactsWereReadFrom is the end-to-end claim, over
-// the real spine fixture: a published link's locators are exactly the distinct
-// (doc_id, page) of the facts it names, and nothing else.
-//
-// It re-derives the grouping from the facts rather than calling sourcesOf,
-// because a check that asks the producer for the answer is not a check.
+// TestEveryLinkLocatorIsAPageItsFactsWereReadFrom: a link's locators are exactly
+// the distinct (doc_id, page) of its facts, re-derived rather than via sourcesOf.
 func TestEveryLinkLocatorIsAPageItsFactsWereReadFrom(t *testing.T) {
 	facts := spineFacts(t, testYear)
 	byID := make(map[string]fact.Fact, len(facts))
@@ -132,11 +126,8 @@ func TestEveryLinkLocatorIsAPageItsFactsWereReadFrom(t *testing.T) {
 	}
 }
 
-// TestTheSpineFixtureExercisesBothPages stops the test above passing over a
-// graph where every link happens to cite one page. pp.66-67 put general and
-// enterprise on 66 and the other four groups on 67, so the fixture really does
-// span two pages -- and if it ever stops doing so, the locator assertion has
-// become much weaker than it reads.
+// TestTheSpineFixtureExercisesBothPages: the fixture cites both p66 and p67, so
+// the locator test above is not passing over one page.
 func TestTheSpineFixtureExercisesBothPages(t *testing.T) {
 	g := buildGraph(t, spineFacts(t, testYear), testOptions())
 	seen := map[int]int{}

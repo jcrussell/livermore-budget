@@ -81,10 +81,8 @@ func TestContestedTotalsReadTheirFiguresOffTheException(t *testing.T) {
 	}
 }
 
-// TestAContestedTotalWithAnEmptyClauseIsAnError: every prose field is a
-// clause the caveat prints, so an empty one is refused where the entries are
-// resolved rather than published as a sentence with a hole in it.
-//
+// TestAContestedTotalWithAnEmptyClauseIsAnError: an empty prose clause is
+// refused where the entries are resolved.
 // Mutation: drop the empty-clause loop from resolveContestedTotals and every
 // case goes red with "got nil error".
 func TestAContestedTotalWithAnEmptyClauseIsAnError(t *testing.T) {
@@ -111,12 +109,10 @@ func TestAContestedTotalWithAnEmptyClauseIsAnError(t *testing.T) {
 	}
 }
 
-// Of two blank clauses the refusal names the one declared first, every run:
-// a refusal that named whichever a map yielded would read differently from
-// one run to the next. Row is declared before Kept.
-//
-// Mutation: iterate the clauses as a map again and this goes red with
-// "want it to name Row" on some of its twenty runs.
+// Of two blank clauses the refusal names the one declared first (Row before
+// Kept), every run.
+// Mutation: iterate the clauses as a map and this goes red with "want it to
+// name Row" on some of its twenty runs.
 func TestAContestedTotalWithTwoEmptyClausesNamesTheFirst(t *testing.T) {
 	was := contestedTotals
 	t.Cleanup(func() { contestedTotals = was })
