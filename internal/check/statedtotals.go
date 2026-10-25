@@ -11,56 +11,25 @@ import (
 )
 
 // factOffsetIsNotAStatedTotal asserts that no fact cites a figure the document
-// prints as a total -- on a rule's stated-total line or on a rollup's.
+// prints as a total -- on a rule's stated-total line or on a rollup's -- so a
+// block's sum is never published beside the block.
 //
-// A TOTAL IS THE DOCUMENT CHECKING OUR WORK, AND A ROW IS OUR WORK. Conflating
-// them publishes the sum of a block alongside the block, so the city's own money
-// is counted twice and the arithmetic that was supposed to catch it is the very
-// figure that got republished. CheckTotals corroborates a part against its
-// printed total; nothing until now said that total may not ALSO be sold to a
-// reader as one of the rows it totals.
+// fact-citations-are-declared cannot catch this: a republished total collides
+// with no other fact. Un-skipping ACFR p41's "Total Other Financing Sources
+// (Uses)" is the case only this check fails.
 //
-// WHAT IT CATCHES, and why fact-citations-are-declared cannot. That check keys on
-// a shared (doc_id, page, offset): two facts at one address are a row and its
-// declared counterpart or they are a defect. A republished total collides with
-// NOTHING, because a total's figure is consumed as a total and cited by no fact,
-// so there is no second fact at the address and nothing to compare.
+// The position is resolved, not searched for: [mapping.Resolver.TotalRowSpan]
+// narrows to after the rule's block. The lines resolved are the build's own
+// selection:
 //
-// MEASURED on ACFR p41. acfr-p0041-gf-fund-balances declares three
-// rows skip: true. Two of them -- "Transfers in" and "Transfers (out)" -- are
-// rows the sibling rule PUBLISHES, so un-skipping one puts two facts at one
-// address and fact-citations-are-declared refuses it. The third, "Total Other
-// Financing Sources (Uses)", is that sibling's total_row. Un-skipped with sign:
-// netted, which is CORRECT for that figure, the build publishes the block's own
-// printed total as a third transfer_out fact, and this is the only check that
-// fails.
+//   - a rule with no total_row is not asked (pkg/cmd/build.reasonNoTotalRow).
+//   - a total_spans_parts rule's only span is on the page
+//     [mapping.Resolver.TotalBearingPart] finds.
+//   - every part of any other total_row rule resolves its own line, a
+//     label-less one through its stop_at terminator ([mapping.AnchorOf]).
 //
-// THE POSITION IS RESOLVED, NOT SEARCHED FOR. A rule's total_row is anchored
-// AFTER that rule's block, so the same printed string earlier on the page is a
-// different line, and many parts print theirs more than once.
-// [mapping.Resolver.TotalRowSpan] applies the block narrowing.
-//
-// WHICH LINES IT MUST RESOLVE is the build's own selection, read off the same
-// declarations the build reads, so that every line the build ties rows to is a
-// line this check guards and nothing stands in for a verdict:
-//
-//   - A rule with no total_row declares no stated total, and no part of it is
-//     asked -- the build's pkg/cmd/build.reasonNoTotalRow. A label-less part of
-//     such a rule still has a stop_at, but its block terminator is a header, a
-//     footer or a blank run, never a totals line; the test that scans those
-//     terminators holds that against the pages.
-//   - A total_spans_parts rule prints its total on the one page
-//     [mapping.Resolver.TotalBearingPart] finds, and that page's line is the
-//     rule's only span. The rule's other parts print no total.
-//   - Every part of any other total_row rule resolves its own line: a labelled
-//     part through total_row after its block, a label-less one through the
-//     stop_at terminator, which is where [mapping.AnchorOf] says its total is.
-//
-// A line in that selection which does not resolve is a FINDING, per part,
-// because every span this check loses is a printed total it can no longer
-// refuse a fact on. The one failure that is not a finding is
-// [mapping.ErrNoStatedTotals], a label-less part with no stop_at, which the
-// build reports unchecked for the same reason.
+// A line in that selection that does not resolve is a finding, per part,
+// except [mapping.ErrNoStatedTotals], which the build reports unchecked.
 type factOffsetIsNotAStatedTotal struct{}
 
 func (*factOffsetIsNotAStatedTotal) meta() meta {

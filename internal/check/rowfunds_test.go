@@ -636,26 +636,10 @@ func TestTheHeldLineNeverReportsAnEmptyArm(t *testing.T) {
 	}
 }
 
-// TestAVerbPhrasedLabelUnderTheDeclarationIsRefused is the third answer to a
-// question two earlier commits got wrong, and both wrong answers are worth
-// keeping because each read as correct.
-//
-// The declaration says a rule's row labels are the printed names of funds.
-// "Transfer From General Fund  to Horizons" is not one: it names a movement.
-//
-// ATTEMPT ONE resolved it whole -- FundByLabel finds nothing, so the check went
-// FAIL over 121 subjects with three spurious findings and every such row counted
-// twice, because the prefix arm read it as well.
-//
-// ATTEMPT TWO deferred to the prefix arm, and turned a noisy defect into a
-// silent one. The parser forbids a counterpart on a declaring rule, so far == 0;
-// a row labelled "Transfer From X" resolves as the FAR end, want == far == 0,
-// and the arm compares nothing. Measured then: subjects 118 -> 117, PASS, and
-// the row reported under "no printed anchor on their own line" -- false, the
-// label is printed.
-//
-// ATTEMPT THREE is this: refuse. The author has said something untrue about
-// their own page, and saying so is what the declaration is for.
+// TestAVerbPhrasedLabelUnderTheDeclarationIsRefused: under
+// row_labels_name_funds, "Transfer From General Fund  to Horizons" names a
+// movement, not a fund, and is refused. Deferring it to the prefix arm would
+// resolve it as the far end, want == far == 0, and compare nothing.
 func TestAVerbPhrasedLabelUnderTheDeclarationIsRefused(t *testing.T) {
 	t.Parallel()
 	base := isolated(t)

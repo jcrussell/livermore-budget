@@ -18,40 +18,19 @@ const categoryExcessOfRevenues = "fund-balance/excess-of-revenues"
 
 // excessOfRevenuesIdentity asserts that in each of excessScopes, total revenues
 // minus total expenditures equals the printed Excess of Revenues over (under)
-// expenditures, per column, at zero tolerance.
+// expenditures, per column, at zero tolerance. All three terms are printed.
 //
-// This is the schedule's corroboration tie, and it is a check rather than a
-// build-time total because all three terms are published facts: the city prints
-// the excess independently of the detail rows it summarises, so the store is
-// checked against a figure the document states rather than against our own sum.
-// Measured off p168 before the check was written: the identity holds in all ten
-// columns, 2016's 149,526,096 - 114,652,048 = 34,874,048 through 2025's
-// 221,212,743 - 186,516,649 = 34,696,094. ACFR p121 holds it in all three
-// columns, the original budget's 146,975,502 - 144,228,303 = 2,747,199 among
-// them.
+// It witnesses cross-block column agreement, which each block's own total_row
+// cannot: a whole column read into the wrong year ties its own block. On
+// pp.168-169 it cannot witness all three shifting together (fisc-wiyg).
 //
-// WHAT IT WITNESSES that the two per-block printed totals cannot: cross-block
-// column agreement. Each block's total_row ties a column against its own rows,
-// so a whole column read into the wrong year ties anyway; this identity fails
-// unless the revenue, expenditure and excess reads agree about which column is
-// which. On pp.168-169 it cannot witness all three shifting TOGETHER — no
-// geometry guard exists on a bare-year-headed page (fisc-wiyg); p121 declares
-// column_headers, so its guard does. It cannot witness an
-// amount that is wrong against the page, which is fact-offset-points-at-token's
-// claim, not this one's.
+// Where a column also prints its net change (p121), the excess plus the
+// transfers, each as printed, must equal it — the flows, which SourcesUses
+// does not tie for a scope printing Transfers (out) negative.
 //
-// WHERE A COLUMN ALSO PRINTS ITS NET CHANGE, the excess plus the transfers,
-// each as printed, must equal it: p121's 2,747,199 + 1,555,206 - 17,179,000 =
-// -12,876,595 in the original budget, and likewise in the other two columns.
-// fund-balance-identity holds the change to the stocks; this holds it to the
-// flows, which SourcesUses does not for a scope printing Transfers (out)
-// negative. pp.168-169 publish no change line, so the arm is p121's alone.
-//
-// A YEAR CARRYING ANY OF THE THREE SIDES MUST CARRY ALL THREE, the same
-// fail-closed arm as fundBalanceIdentity: a rule that stopped publishing the
-// excess row would otherwise leave the identity nothing to violate, and the
-// check would go quietly to fewer subjects. An excess line at a scope not in
-// excessScopes is a finding for the same reason.
+// A year carrying any of the three sides must carry all three, and an excess
+// line at a scope not in excessScopes is a finding: either would otherwise
+// shrink the subjects quietly.
 type excessOfRevenuesIdentity struct{}
 
 func (*excessOfRevenuesIdentity) meta() meta {

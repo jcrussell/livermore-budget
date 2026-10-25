@@ -12,22 +12,11 @@ import (
 )
 
 // projectionsBuild asserts every slice of the fact store that a projection was
-// asked for actually produced a graph.
-//
-// THIS CHECK EXISTS BECAUSE ITS ABSENCE IS SILENT. check.Load records a
-// projection that refuses to build rather than aborting -- an abort would exit
-// `fisc verify` 1 having printed no report, every other finding in the run
-// lost -- and recording opens the opposite hole: a slice missing from
-// Subject.Projections is not a failure anywhere, it is silence, and ten checks
-// below read nothing but the graph. So this one must FAIL on a recorded refusal and must never be
-// vacuous while one is recorded.
-//
-// The refusal it exists for today is internal/project's: netCells rejects a fact
-// carrying a department, because the citywide spine crosses category against
-// fund group and has no department tier. A correctly scoped
-// pp.167-170 fact never reaches it — selectFacts filters on scope first — so on
-// a healthy corpus this is vacuous, and what makes it reachable is a rule whose
-// `scope:` says all-funds-gross when it means expenditure-by-department.
+// asked for actually produced a graph. [Load] records a refusal rather than
+// aborting, and a missing slice is silence to every graph check, so this fails
+// on a recorded refusal and is never vacuous while one is recorded. It is
+// reachable through a rule mis-scoped onto the spine (netCells refuses a
+// department).
 type projectionsBuild struct{}
 
 func (*projectionsBuild) meta() meta {
@@ -36,13 +25,8 @@ func (*projectionsBuild) meta() meta {
 			"refusing and taking the whole report down with it"}
 }
 
-// Run counts one subject per SLICE a projection was asked for — the built ones
-// and the failed ones together — because the claim is about all of them and a
-// count of only the failures would read as "1 of 1" on a corpus where nine
-// slices built and one did not.
-//
-// THE UNIT IS SLICES AND SO IS THE COUNT: one projection may build several
-// slices, so the count iterates keysOf rather than counting projections.
+// Run counts one subject per slice asked for, built and refused together,
+// iterating keysOf since one projection may build several slices.
 func (*projectionsBuild) Run(_ context.Context, s *Subject) (Result, error) {
 	findings := make([]Finding, 0, len(s.ProjectionFailures))
 	for _, f := range s.ProjectionFailures {
@@ -79,18 +63,9 @@ type sliceKey struct {
 	scope string
 }
 
-// keysOf is every slice one Options covers: one per column PER SCOPE.
-//
-// IT RETURNS A LIST BECAUSE ONE DOCUMENT NEED NOT BE ONE SLICE: a trends
-// document is of four columns of one schedule, so an Options that maps to a
-// single key cannot be assumed. Anything keying a
-// map on a projection has to iterate this rather than call it once.
-//
-// THE PRODUCT OVER SCOPES IS LOAD-BEARING AND NOT TIDINESS. A sliceKey is the
-// address a FACT has -- (year, basis, scope) -- so a document of two schedules
-// occupies two addresses per column and must say so. projectionsBuild counts
-// what was asked for from these keys, and emitting one key per column with a
-// single scope would count a two-schedule document as half of what it draws.
+// keysOf is every slice one Options covers: one per column per scope, since a
+// sliceKey is a fact's address and a two-schedule document occupies two per
+// column.
 func keysOf(o project.Options) []sliceKey {
 	out := make([]sliceKey, 0, len(o.Columns)*len(o.Scopes))
 	for _, c := range o.Columns {
@@ -120,22 +95,9 @@ func (*publishedProjectionBuilt) meta() meta {
 // Run has one subject per published document; a repository publishing nothing
 // has nothing here to look at.
 func (*publishedProjectionBuilt) Run(_ context.Context, s *Subject) (Result, error) {
-	// Every SLICE built, grouped by the projection and scope that built it. A
-	// published document must be covered by ONE of them, not their union: a
-	// four-column document is otherwise satisfied by four single-column
-	// slices while the file at its stem covers a quarter of it.
-	//
-	// It is keyed on the projection NAME, and that is not belt-and-braces.
-	// Since each projection is built over the slices it declares
-	// (Projection.Slices), "some projection was built at the published triple"
-	// does not imply the published DOCUMENT was: a second projection whose
-	// slices happen to include that triple would satisfy this check while the
-	// site's chart was of nothing.
-	// Keyed on (name, scope) and not on the name alone, so that a projection
-	// which one day builds two schedules cannot have the columns of one satisfy
-	// a published document of the other. Nothing does that today; the key costs
-	// nothing and the alternative is a silent wrong answer rather than a
-	// refusal.
+	// Every slice built, keyed on (projection name, scope). A published
+	// document must be covered by one of them, not their union, and by its own
+	// projection, not another whose slices happen to include its columns.
 	type source struct{ name, scopes string }
 	built := map[source][]project.Options{}
 	names := make([]string, 0, len(s.Projections))
@@ -150,18 +112,9 @@ func (*publishedProjectionBuilt) Run(_ context.Context, s *Subject) (Result, err
 	// the ones none does.
 	claimed := map[string]bool{}
 	for _, d := range s.Published {
-		// project.MissingColumns rather than a comparison written here: `fisc
-		// export` asks the same question of the documents it wrote, and two
-		// spellings of "does this cover what we said" is the divergence the
-		// shared declaration exists to remove. It compares the scope too, so a
-		// projection of the right name built over a different SCHEDULE does not
-		// satisfy a published document by accident.
-		// The BEST-covering slice, not the first, and it is marked claimed even
-		// when it covers the document only partly. A slice short a column is
-		// already reported here, by name and by which column; letting the sweep
-		// below report it a second time as "no document covers this" would give
-		// one defect two findings that read as two, and send a reader looking
-		// for a stray document that is really the declared one gone short.
+		// project.MissingColumns is the one spelling `fisc export` shares. The
+		// best-covering slice is marked claimed even when partial, so a short
+		// slice is one finding, not two.
 		absent := d.Columns
 		for _, o := range built[source{d.Projection, scopeKey(d.Scopes)}] {
 			missing := project.MissingColumns(d, o)

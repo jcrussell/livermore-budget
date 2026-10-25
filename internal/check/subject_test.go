@@ -988,26 +988,10 @@ func TestAPublishedDocumentShortAColumnIsReported(t *testing.T) {
 }
 
 // TestContestedTotalsAreStillContested is the arm that stops a contested-total
-// declaration going dead unnoticed.
-//
-// internal/project's caveat is conditional: it is printed only when the graph
-// actually draws the figure the entry declares, which is what makes it retire
-// itself the day that figure is corrected. THE COST OF THAT DESIGN IS THAT
-// SILENCE IS AMBIGUOUS -- a corrected corpus and a dead entry look identical
-// from the document, because both simply lack the sentence. This is the other
-// half: over the COMMITTED corpus, every declared entry must still describe a
-// column that is published and a figure that is drawn.
-//
-// The corpus publishes p0067's figure for the contested total, so
-// the entry stands: the book prints two figures for this total, and the
-// caveat and its exception apply. This holds that every entry still says so of the
-// committed corpus -- its column is published, the graph draws the figure it
-// declares, and that figure differs from the one printed elsewhere -- and the
-// day the corpus stops drawing an entry's figure, this goes red and names the
-// entry to re-derive. It lives here rather than in internal/project because
-// this package is where the committed corpus is loadable, and it compares against
-// project.ContestedTotals() rather than a second copy of the figures -- two
-// copies agreeing is not the claim worth making.
+// declaration going dead unnoticed. The caveat prints only when the graph
+// draws the declared figure, so its silence is ambiguous; over the committed
+// corpus every entry's column must be published, its figure drawn, and that
+// figure differ from the one printed elsewhere.
 func TestContestedTotalsAreStillContested(t *testing.T) {
 	t.Parallel()
 	entries, err := project.ContestedTotals()

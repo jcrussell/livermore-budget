@@ -12,19 +12,8 @@ import (
 )
 
 // factVocabulary asserts every category and fund group a fact carries resolves in
-// the curated registries.
-//
-// This is the check data/taxonomy.yaml and data/funds.yaml exist for. Until
-// something reads them a rule's `category:` and a column's `fund_group:` are free
-// strings, and a rule that writes `tax/property` where the taxonomy says
-// `taxes/property` produces a fact that is confidently wrong and joins to nothing.
-//
-// Departments and fund numbers are two more axes a fact can carry and they are
-// NOT here: each has its own check, because each is answered by a different file —
-// or, for departments, by no file yet — and one check reporting a single verdict
-// over all four would mean a real category typo and an unbuilt registry sharing an
-// id. Each is separately greppable in the report, and separately declarable in
-// vacuity.go, which is what having its own id buys.
+// the curated registries. Departments and fund numbers have checks of their
+// own, so each axis is separately greppable and declarable.
 type factVocabulary struct{}
 
 func (*factVocabulary) meta() meta {
@@ -33,12 +22,8 @@ func (*factVocabulary) meta() meta {
 			"group is a type data/funds.yaml uses"}
 }
 
-// Run counts one subject per classification it resolves rather than one per fact,
-// because the two axes are two claims and a fact carries one or both.
-//
-// An empty category is not a finding. A fact with no classification at all cannot
-// be projected — internal/project refuses one — but this check is about the values
-// that ARE asserted resolving, and an absent value is the mapping's business.
+// Run counts one subject per classification, not per fact. An empty category
+// is not a finding here; internal/project refuses an unclassified fact.
 func (*factVocabulary) Run(_ context.Context, s *Subject) (Result, error) {
 	var findings []Finding
 	categories, groups := 0, 0
@@ -72,11 +57,8 @@ func (*factVocabulary) Run(_ context.Context, s *Subject) (Result, error) {
 	}.result(), nil
 }
 
-// unassignable says why a category may not be written, which is two different
-// problems with two different fixes. Registry.Assignable's doc comment draws the
-// distinction and this is the caller it draws it for: a rollup exists so a view
-// can name the group, and a rule may never assign one; a slug the taxonomy does
-// not define at all is a typo or a category nobody has curated yet.
+// unassignable says why a category may not be written: a rollup, or a slug the
+// taxonomy does not define.
 func unassignable(v Vocabulary, slug string) string {
 	if c, ok := v.Category(slug); ok {
 		return fmt.Sprintf("category %q is the rollup %q, which data/taxonomy.yaml declares "+
@@ -87,56 +69,12 @@ func unassignable(v Vocabulary, slug string) string {
 }
 
 // factKindMatchesCategory asserts every fact's kind is one its category declares.
+// `category: transfers/in` + `kind: revenue` passes factVocabulary; this fails
+// it at the fact (fisc-u2v, failure route 3). Direction is caught by the same
+// literal comparison: transfers/in declares transfer_in (fisc-ttq).
 //
-// data/taxonomy.yaml carries a `kinds:` list on every category and registry.Load
-// requires it to be non-empty, and until this check nothing read it. So the two
-// halves of a fact's classification were each valid alone and never valid
-// TOGETHER:
-//
-//	category: transfers/in  +  kind: revenue
-//
-// resolves clean against factVocabulary, which asks only whether the slug is
-// assignable.
-//
-// That pair is not hypothetical. Budget Book pp.131-140 print eleven funds whose
-// single `Total <fund>` covers revenue rows AND a Transfers In row — p131's
-// Stormwater is Charges for Services 1,169,000 + Transfers In 3,247,000 =
-// 4,416,000, and the taxonomy's `transfers` entry records the trap in as many
-// words. A rule author reaching for that printed total as a total_row, without a
-// per-row kind, makes the Transfers In row revenue to make the fund tie. Enterprise
-// revenue then reads 80,761,261 against the 67,514,261 pp.66-67 print (fisc-u2v,
-// failure route 3).
-//
-// A fund-group reconciliation would catch that too, and later. This one fails at
-// the fact, naming the row and the two strings that disagree, which is the
-// difference between a finding an author can act on and an aggregate they have to
-// bisect.
-//
-// DIRECTION is caught here too, by the same literal comparison and not by a second
-// check: transfers/in declares transfer_in and transfers/out declares
-// transfer_out, so a transfer filed under the wrong one carries a kind its
-// category does not declare. That was fisc-ttq, and it was open only for as long
-// as all four transfer categories declared a `transfer` family — a string that is
-// not one of the five vocab.Kind values and never was, which is why correcting
-// the file closed the hole rather than widening the check.
-//
-// A category factVocabulary ALREADY NAMES is not counted here, and that is two
-// cases rather than one. A category the taxonomy does not define has no kinds
-// to be among; a category it defines as `assignable: false` is a rollup no rule
-// may write, which factVocabulary reports precisely, with the fix. Both are
-// skipped so one typo does not redden two checks of this family with two
-// different fixes.
-//
-// SCOPED TO THIS FAMILY DELIBERATELY. It is not a claim that a typo reddens
-// exactly one check overall -- `category: taxes` on an expenditure fact also
-// reddens cuts-tie-along-the-lattice, because money really has left the
-// category the spine expects. That is a different fact about the corpus, not a
-// duplicate report of this one.
-//
-// The unassignable arm was tested for `!ok` alone until 2026-08-29, so
-// `category: taxes` + `kind: expenditure` reddened BOTH vocabulary checks --
-// the exact case this comment said it avoided (fisc-9nw part 3). The condition
-// was wrong, not the comment.
+// A category factVocabulary already names, undefined or a rollup, is skipped,
+// so one typo does not redden two vocabulary checks (fisc-9nw).
 type factKindMatchesCategory struct{}
 
 func (*factKindMatchesCategory) meta() meta {
@@ -172,51 +110,30 @@ func (*factKindMatchesCategory) Run(_ context.Context, s *Subject) (Result, erro
 		unit:     "facts",
 		held: fmt.Sprintf("%d facts over %d kind/category pairs, each kind one its category "+
 			"declares in data/taxonomy.yaml", subjects, len(pairs)),
-		// "assignable" and not merely "defines": the skip above now also
-		// passes over a rollup, so a store of nothing but `taxes` facts would
-		// otherwise be told the taxonomy defines no such category when it
-		// defines it precisely and forbids writing it.
+		// "assignable", since the skip above also passes over a rollup.
 		nothing: "no fact carries both a kind and an assignable category " +
 			"data/taxonomy.yaml defines",
 		findings: findings,
 	}.result(), nil
 }
 
-// declaresKind reports whether c permits a fact of kind k.
-//
-// The comparison is literal: the `kinds:` list holds vocab.Kind values and a
-// fact's kind is one, so nothing here resolves a family or widens a match. A
-// category that means to admit two kinds says both — the `transfers` rollup
-// declares transfer_in and transfer_out — because a list that had to be
-// interpreted could not be read as the file's own answer.
+// declaresKind reports whether c permits a fact of kind k, literally: no
+// family is resolved and no match widened.
 func declaresKind(c registry.Category, k vocab.Kind) bool {
 	return slices.Contains(c.Kinds, string(k))
 }
 
-// factDepartmentsResolve asserts the department axis is a controlled vocabulary.
+// factDepartmentsResolve asserts the department axis is a controlled vocabulary,
+// against data/departments.yaml:
 //
-// It can now do that. data/taxonomy.yaml is explicit that departments are
-// deliberately absent from it — a fact is simultaneously "Police" and "Wages &
-// Benefits", two orthogonal axes, and folding one into the other would make
-// department rows and category rows sum into one total — and that they belong in
-// a registry of their own. data/departments.yaml is that registry, and this check
-// is what reads it. Four claims:
+//   - the slug names a division or a department it lists (which tier a
+//     schedule needs is its cut's DepartmentTier, held by
+//     cuts-tie-along-the-lattice);
+//   - the slug is well formed, reported as a shape problem;
+//   - the same department is spelled one way across the store;
+//   - no department collides with a data/taxonomy.yaml category slug.
 //
-//   - the slug names a division OR a department data/departments.yaml lists, so
-//     a fact whose `department` joins to nothing cannot be published;
-//   - the slug is well formed, so `Police` and `police_dept` are caught, and are
-//     reported as the shape problem they are rather than as a missing entry;
-//   - the same department is spelled one way across the whole store;
-//   - no department collides with a data/taxonomy.yaml category slug, which is
-//     the near miss the taxonomy warns about.
-//
-// THE FIRST CLAIM SPANS TWO TIERS, and this check cannot tell which a schedule
-// needs: that is its cut's DepartmentTier, held by cuts-tie-along-the-lattice.
-//
-// THE LAST TWO ARE BELT AND BRACES, and they stay. The registry refuses a slug
-// that is a category slug on both tiers, so a resolving department cannot
-// collide -- but this check is written against the [Vocabulary] interface
-// rather than against that one implementation.
+// The last two hold against the [Vocabulary] interface, not one registry.
 type factDepartmentsResolve struct{}
 
 func (*factDepartmentsResolve) meta() meta {

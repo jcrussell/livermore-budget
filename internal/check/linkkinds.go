@@ -13,40 +13,16 @@ import (
 )
 
 // linkKindsMatchTheirFacts asserts a link's kind does not contradict the facts
-// it cites.
+// it cites. A one-way constraint, not a second classifier:
 //
-// NOTHING READ Link.Kind UNTIL THIS EXISTED, and the gap published a false claim
-// in a shipped document. The drill-down classified every tier-0 flow with the
-// fund-group rule, which is the right question for revenue and the wrong one for
-// a transfer, so 8 links carrying $21,045,597 of transfers went out as
-// "external" -- money crossing the city's boundary -- while sankey.json
-// published the same money as internal_transfer. Every check was green: the
-// values tied to their facts, the counts reconciled, the graph was acyclic. A
-// client summing external to get external revenue over-counted by the transfers.
-//
-// IT IS A ONE-WAY CONSTRAINT AND NOT A SECOND CLASSIFIER, which is the whole
-// reason it is cheap enough to be worth having. Re-deriving each link's kind
-// would mean a second copy of every projection's rules -- the spine decomposes
-// fund balance by sign and singles out Internal Service Funds; a drill-down does
-// neither -- and two copies of a rule agree by construction rather than by
-// evidence. What this asserts instead is the thing no projection may do whatever
-// its rules:
-//
-//   - a link whose facts are ALL transfers may not be `external`. A transfer is
-//     money moving between two city funds and crosses no boundary, whatever
-//     group receives it.
-//   - a link whose facts are ALL fund-balance rows may not be `external` either,
-//     for the same reason: nothing moves between funds and nothing crosses the
-//     boundary.
+//   - a link whose facts are all transfers, or all fund-balance rows, may not
+//     be `external`: nothing crosses the city's boundary.
 //   - a link may not carry a kind outside the four the contract declares.
-//   - a link's facts must agree with each other about which of those two
-//     families they are in, because a link mixing a transfer with a revenue is a
-//     cell key that lost an axis.
+//   - a link's facts must agree about which family they are in; mixing a
+//     transfer with a revenue is a cell key that lost an axis.
 //
-// The converse -- an external link that should have been a transfer -- is NOT
-// asserted, and saying so is the point: a revenue fact carries no marker that
-// would distinguish it from one, so the honest claim is the one that can be
-// made from the facts alone.
+// The converse, an external link that should have been a transfer, is not
+// asserted: a revenue fact carries no marker that would show it.
 type linkKindsMatchTheirFacts struct{}
 
 func (*linkKindsMatchTheirFacts) meta() meta {

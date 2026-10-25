@@ -28,36 +28,18 @@ var balanceCategories = []string{
 
 // fundBalanceIdentity asserts that a fund balance's published lines agree:
 // beginning + change == ending at zero tolerance where the scope prints a
-// change line, and each year's ending is the next year's beginning.
+// change line, and each year's ending is the next year's beginning. All three
+// lines are printed.
 //
-// WHY IT IS A CHECK AND NOT A TEST. Both sides are in the fact store, and the
-// arithmetic is the DOCUMENT's rather than ours -- the city prints all three
-// lines and never asks a reader to add them. So this is the store checking
-// itself against a figure the city published independently of the other two,
-// which is the same species of claim as cuts-tie-along-the-lattice and a
-// different one from CheckTotals, which ties rows to a total on their own page
-// at build time.
+// It is not the residual identity structure.SourcesUses, which
+// fund-group-sources-equal-uses holds; the two are kept apart so a failure
+// says which broke (fisc-7m2). A scope printing no change line has its change
+// held there as ending - beginning, and here only its stocks and carry-forward.
 //
-// WHAT IT IS NOT. structure.SourcesUses is the RESIDUAL identity -- revenue +
-// transfers in - expenditure - transfers out - reserve increase == change --
-// which fund-group-sources-equal-uses holds, and
-// TestTheSpineBalancesAtThePrintedControlTotals pins both sides to pp.66-67's
-// printed TOTAL SOURCES and TOTAL USES. That says nothing about beginning and
-// ending, which are two more printed cells on the same rows. fisc-7m2 exists
-// because the two were being conflated, and the two claims are kept apart here so
-// a failure says which one broke. A scope printing no change line
-// (structure.FundBalances) has its change held there as ending - beginning, and
-// here only its stocks, the absence of a change line, and its carry-forward.
-//
-// A BALANCE CARRYING ANY OF ITS BEGINNING, CHANGE AND ENDING LINES MUST CARRY
-// EVERY ONE OF THEM structure.FundBalances declares for its scope, or its rule
-// must declare the cell blank, and that arm is the reason this check can see a
-// dropped row rather than only a wrong one. The scope's other declared lines,
-// its flows, are fund-group-sources-equal-uses' to require. Skipping an incomplete balance
-// would fail open in exactly the direction that matters: a rule that stopped
-// publishing its `change` line would leave the identity with nothing to violate.
-// A scope structure.FundBalances does not declare is a finding for the same
-// reason.
+// A balance carrying any of its lines must carry every one
+// structure.FundBalances declares for its scope, or declare the cell blank;
+// skipping it would fail open when a rule stops publishing `change`. An
+// undeclared scope is a finding for the same reason.
 type fundBalanceIdentity struct{}
 
 func (*fundBalanceIdentity) meta() meta {

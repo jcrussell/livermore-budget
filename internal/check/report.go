@@ -5,41 +5,22 @@ import (
 	"fmt"
 )
 
-// Report is a verify run's account of itself.
-//
-// Every key is present on every run, in declaration order, with no omitempty
-// and no nil slice — the discipline pkg/cmd/build's Report follows, for the same
-// reason: this document is read by diffing two releases of it, and a key that
-// disappears when its value is empty makes a data change read as a schema
-// change.
-//
-// Counts is a struct rather than four loose fields because the vacuous count has
-// to be as visible as the pass count. A summary that reads "11 of 12 passed"
-// while three checks looked at nothing is the failure mode this whole package
-// exists to prevent.
+// Report is a verify run's account of itself. Every key is present on every
+// run, with no omitempty and no nil slice, so a diff of two reports never
+// reads a data change as a schema change.
 type Report struct {
 	// GeneratedBy is the binary that ran the checks, as `fisc --version` prints
-	// it, so a report that is pasted into an issue says what produced it.
+	// it.
 	GeneratedBy string `json:"generated_by"`
-	// Full and Strict say how the run was configured, because the same report
-	// shape means different things under each: without Full some checks never
-	// ran, and without Strict a vacuous check did not fail the run.
-	//
-	// Full is read off the subject rather than off the flag, because what decides
-	// whether a check ran is what the loader supplied. Today Load carries the
-	// flag through unchanged, so the two agree; see LoadOptions.Full for the gap
-	// that leaves.
+	// Full and Strict say how the run was configured. Full is read off the
+	// subject, since what the loader supplied decides whether a check ran.
 	Full   bool   `json:"full"`
 	Strict bool   `json:"strict"`
 	Counts counts `json:"counts"`
-	// Results is one entry per check in [All]'s order, including the checks that
-	// were skipped. A check that produced no entry would be indistinguishable
-	// from a check that does not exist.
+	// Results is one entry per check in [All]'s order, skipped ones included.
 	Results []Result `json:"results"`
 	// Declared is every entry in Subject.Vacancies with what its check reported
-	// here, in check-id order. Published rather than merely consulted, so a
-	// reader of the report can see the whole exemption surface without reading
-	// the source.
+	// here, in check-id order, so the exemption surface is in the report.
 	Declared []declaration `json:"declared_vacuous"`
 	// Undeclared are the vacuous checks no declaration covers. They are what
 	// --strict fails on; see [Report.Failed].
@@ -61,26 +42,15 @@ type counts struct {
 type ReportOptions struct {
 	// GeneratedBy is the version line of the binary running the checks.
 	GeneratedBy string
-	// Strict makes a vacuous check fail the run. It is off by default because a
-	// check with nothing to look at is the expected state of a corpus that is
-	// 10% mapped, and a gate that is red until mapping finishes is a gate that
-	// gets commented out (fisc-1wr.4). It is on in the run that must not let a
-	// vacuous check quietly become permanent.
+	// Strict makes an undeclared vacuous check fail the run; off by default
+	// (fisc-1wr.4).
 	Strict bool
 }
 
 // Run evaluates checks over s, in the order given, and reports what each
-// concluded.
-//
-// It never returns an error. Every way a check can go wrong is a status in the
-// report: that is what keeps "one check could not run" from hiding the eleven
-// results that did, and what lets the caller decide the exit code from the
-// counts rather than from whichever failure happened to be returned first.
-//
-// Cancellation is tested between checks, not inside them: a cancelled run
-// reports every remaining check as an error rather than truncating Results,
-// because a report with checks missing from it would read as a shorter list of
-// checks rather than as an incomplete run.
+// concluded. It never returns an error: every way a check can go wrong is a
+// status. Cancellation is tested between checks, and a cancelled run reports
+// every remaining check as an error rather than truncating Results.
 func Run(ctx context.Context, s *Subject, checks []Check, o ReportOptions) *Report {
 	rep := &Report{
 		GeneratedBy: o.GeneratedBy,
@@ -122,12 +92,8 @@ func errored(err error) Result {
 }
 
 // add stamps a result with the identity of the check that produced it and
-// counts it.
-//
-// A status this package does not recognize — including the empty string a
-// zero-valued Result carries — is recorded as an error rather than ignored. A
-// check that returns nothing is broken, and of the ways to report a broken
-// check, the one that does not go into a green count is the safe one.
+// counts it. An unrecognized status, including a zero Result's empty one, is
+// recorded as an error.
 func (r *Report) add(c Check, res Result) {
 	res.CheckID = c.ID()
 	res.Tier = c.Tier()
@@ -156,21 +122,10 @@ func (r *Report) add(c Check, res Result) {
 	r.Results = append(r.Results, res)
 }
 
-// Failed reports whether this run should fail the command.
-//
-// A failure and an error both fail: one says the corpus is wrong, the other that
-// the checker could not tell, and neither is a green run. They are not told apart
-// here because both mean the same thing to a caller — read the report, which says
-// per check which happened. A skipped check never fails; it is the documented
-// consequence of not passing --full.
-//
-// A VACUOUS CHECK FAILS UNDER --strict UNLESS IT IS DECLARED, and a declaration
-// that has stopped being true fails EITHER WAY. The asymmetry is the point. An
-// undeclared vacancy is a coverage shortfall, which is what --strict is for and
-// what a default run deliberately tolerates (see ReportOptions.Strict). A stale
-// declaration is a false statement in this package's own source, which no run
-// should pass — it is the same standard staleDocumentDeclarations applies to
-// uncheckedDocuments.
+// Failed reports whether this run should fail the command: on a failure or an
+// error, never on a skip. An undeclared vacuous check fails only under
+// --strict; a stale declaration fails either way, being a false statement in
+// source rather than a coverage shortfall.
 func (r *Report) Failed() bool {
 	if r.Counts.Fail > 0 || r.Counts.Error > 0 {
 		return true

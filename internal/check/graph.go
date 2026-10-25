@@ -264,22 +264,9 @@ func strictlyAscending(ids []string) bool {
 }
 
 // linkLocatorsMatchTheirFacts asserts every link's locators are exactly the
-// pages its facts were read from.
-//
-// A link publishes its citation twice -- fact_ids, and the (doc_id, page) pairs
-// a client resolves the fact store by -- and the second is the one the site
-// actually turns into a URL. Nothing else compares them. A locator naming a
-// page the link's facts do not come from sends a reader to a shard that does
-// not hold the figure they clicked, and every other check would stay green:
-// link-values-tie-to-facts reads only fact_ids, and the shard itself is
-// well-formed either way.
-//
-// The grouping is project.SourcesOf, over the builders' locatorSet; what this
-// holds is that a link's locators are built from exactly the facts it cites.
-//
-// It resolves ids in the projection's OWN slice, as its neighbour does, so a
-// locator derived from another year's fact is caught here rather than accepted
-// because the page number happened to agree.
+// pages its facts were read from. The locators are what the site turns into a
+// URL, and link-values-tie-to-facts reads only fact_ids. Ids resolve in the
+// projection's own slice, so another year's fact on the same page is caught.
 type linkLocatorsMatchTheirFacts struct{}
 
 func (*linkLocatorsMatchTheirFacts) meta() meta {
@@ -611,18 +598,8 @@ func (*headlineTransferResidual) Run(_ context.Context, s *Subject) (Result, err
 }
 
 // headlineNaiveExpenditure asserts the deliberately wrong figure still differs
-// from the right one.
-//
-// naive_expenditure_cents is what summing the printed expenditure column gives:
-// $313,708,146 where the city spends $254,095,412, a 23% inflation from counting
-// every transfer twice. It ships so the page can show the error it is avoiding, and
-// it is worth shipping only while it differs from the external figure.
-//
-// This check establishes the inequality and nothing more. It does not establish
-// that either figure is right: driving external expenditure to $0.00 satisfies it,
-// because $0.00 is not $59.6M. headline-ties-to-facts is where a wrong external
-// figure fails, against the links it heads; the naive figure is derived in one
-// line by internal/project and pinned there by its own test.
+// from the right one. It establishes the inequality and nothing more:
+// headline-ties-to-facts is where a wrong external figure fails.
 type headlineNaiveExpenditure struct{}
 
 func (*headlineNaiveExpenditure) meta() meta {
@@ -631,21 +608,10 @@ func (*headlineNaiveExpenditure) meta() meta {
 			"double count the naive figure exists to illustrate is still being netted out"}
 }
 
-// Run counts a projection as a subject only where the two figures CAN differ, and
-// looks at nothing else: every projection it does not count is one it did not
-// examine, which is what Result.Subjects has to mean.
-//
-// The difference is exactly transfers out plus the internal service charges the
-// external figure excludes: naive is gross plus transfers out, and external is
-// gross minus internal service expenditure. So a graph with no transfers out and no
-// internal service expenditure makes "external is not naive" a claim about nothing,
-// and asserting it there would fail a projection that is perfectly correct.
-//
-// Both halves of that condition are read off the headline rather than out of the
-// links, and the second is stated as "gross is not external" rather than as "some
-// link is classified internal_service": a projection whose only internal service
-// flow is REVENUE has such a link and no expenditure difference at all, and testing
-// for the link would fail it.
+// Run counts a projection as a subject only where the two figures can differ:
+// it has transfers out, or gross is not external. The second is read off the
+// headline, not off an internal_service link, because a projection whose only
+// internal service flow is revenue has such a link and no difference.
 func (*headlineNaiveExpenditure) Run(_ context.Context, s *Subject) (Result, error) {
 	docs, findings := s.spine()
 	var summaries []string
@@ -812,44 +778,16 @@ var sameTierContainers = map[string]string{project.NodeTransfersOut: project.Pre
 
 // nodeHierarchyWellFormed asserts the tier hierarchy a document publishes can
 // actually be folded: every parent resolves, the hierarchy runs coarse to fine,
-// and no node is its own ancestor.
+// and no node is its own ancestor. Structural, not arithmetic: a fold
+// preserves sums whatever node.parent says. The cross-document fold is
+// cuts-tie-along-the-lattice's.
 //
-// IT IS STRUCTURAL, NOT ARITHMETIC. "The total at every tier depth equals the
-// total at every other depth" cannot fail within one document: a fold maps each
-// link to exactly one folded link, and the sum is invariant under relabelling
-// whatever node.parent says.
+// No node is parented to a flow endpoint that carries a flow in its document,
+// since its money would be both inside that box and beside it, unless the
+// endpoint is the node of a split declared extended. A container may hold
+// nodes at its own tier only as sameTierContainers names.
 //
-// THE INTER-DOCUMENT FOLD IS DISCHARGED ELSEWHERE. Folding this document's fund
-// totals to fund groups and comparing them against the SPINE's published
-// fund-group figures is a comparison between two schedules, and
-// cuts-tie-along-the-lattice makes exactly that comparison, per cell, at zero
-// tolerance, over Subject.Facts and without a graph. Rebuilding it here would
-// buy nothing.
-//
-// What it asserts:
-//
-//   - every node.parent RESOLVES to a node in this document. A dangling parent
-//     is a fold that loses money: the client aggregating to a coarser tier finds
-//     no box to put the child in.
-//   - the parent's tier is strictly COARSER than the child's. An inverted edge
-//     makes the fold run the wrong way, and a client walking it renders a
-//     hierarchy inside out.
-//   - no node is its own ancestor. Parent is one string so a cycle needs at
-//     least two nodes, and a client folding one would not terminate.
-//   - no node is parented to a FLOW ENDPOINT THAT CARRIES A FLOW in its
-//     document: the child's money would be both inside that box and beside it.
-//
-// An endpoint touching no link is a container, and folding into it is
-// ordinary: transfers-by-fund draws transfers/in that way. Give it one link and
-// every child is a finding, unless the endpoint is the node of a split the
-// document declares extended, which draws it beside its members by design.
-// One container may hold nodes at its own tier, the ones sameTierContainers
-// names: transfers-out parents every receiver's end to transfers/out, and
-// both are tier 5, where the spine draws the endpoint the reader opens.
-//
-// SUBJECTS ARE THE PARENTED NODES, so this stays honestly vacuous over a
-// document with no hierarchy — the spine — and goes live over the first one that
-// has a hierarchy to be well-formed.
+// Subjects are the parented nodes, so a document with no hierarchy is vacuous.
 type nodeHierarchyWellFormed struct{}
 
 func (*nodeHierarchyWellFormed) meta() meta {

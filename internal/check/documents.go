@@ -11,39 +11,15 @@ import (
 )
 
 // uncheckedDocuments are the projection shapes no structural check reads yet,
-// each with the reason and the bead that retires it.
-//
-// It is the same declaration this package already makes about checks in
-// declaredVacuous, for the same reason and with the same danger. A projection
-// that produces no graph is not checked by anything in graph.go, and a document
-// nobody checks is a document that can be wrong on the published site while
-// `fisc verify` prints all-green.
-//
-// AN ENTRY HERE IS A PROMISE THAT SOMEONE IS COMING BACK. Adding one is how a
-// new document shape lands before its checks do; leaving one is how a document
-// stays unchecked forever. staleDocumentDeclarations is the branch that refuses
-// the second, by failing an entry that no longer names a built projection.
-//
-// It is empty, and that is the state to keep it in. The check reads it off
-// Subject.UncheckedDocuments, which [Load] fills from here.
+// each with the reason and the bead that retires it, as declaredVacuous is for
+// checks. staleDocumentDeclarations fails an entry that no longer names a
+// built projection. Keep it empty. [Load] copies it to
+// Subject.UncheckedDocuments.
 var uncheckedDocuments = map[string]string{}
 
-// documentsAreChecked asserts every built projection is one some check reads.
-//
-// THE TEST IS "DOES THIS PROJECTION CARRY A DOCUMENT SOME CHECK READS", and it
-// is applied by asking which SHAPE the projection built, because a precise test
-// is not available: nothing in Go lets this ask "which checks read this
-// projection".
-//
-// What keeps the test sound is that each arm below names the checks that read
-// the shape, so adding a shape without adding checks does not silently widen
-// the exemption -- it fails here.
-//
-// The arm is NOT an uncheckedDocuments entry, and the difference matters. That
-// map is for a shape nothing checks YET, and its own doc comment calls an entry
-// "a promise that someone is coming back". A shape that IS checked needs the
-// opposite: a statement that it is covered, which expires by failing when the
-// coverage goes away rather than when someone remembers.
+// documentsAreChecked asserts every built projection is one some check reads,
+// tested by the shape it built: each arm of documentShape names the checks
+// that read its shape, so a new shape without checks fails here.
 type documentsAreChecked struct{}
 
 func (*documentsAreChecked) meta() meta {
@@ -76,20 +52,13 @@ func (*documentsAreChecked) Run(_ context.Context, s *Subject) (Result, error) {
 				"publish a document that verify has not looked at"))
 	}
 
-	// A REGISTERED PROJECTION THAT PRODUCED NOTHING IS NOT REPORTED HERE. The
-	// export command builds the slices each projection says it is of, so a
-	// projection declaring none writes no file and there is no document to be
-	// wrong; Projection.Slices calls that a statement about the corpus. A
-	// document the site PUBLISHES that stops being built is
+	// A registered projection that produced nothing writes no file and is not
+	// reported here; a published one that stops being built is
 	// publishedProjectionBuilt's finding.
 
-	// The other direction, and it is the one that expires an exemption rather
-	// than leaving it for whoever forgets: an entry naming a shape nothing
-	// builds is either a projection that was removed or a name that has drifted.
-	//
-	// The finding names the shape the projection actually carries, collected
-	// per NAME because two projections can share a name and build different
-	// documents.
+	// The other direction expires an exemption: an entry naming nothing built
+	// unchecked. Shapes are collected per name, since two projections can share
+	// one.
 	built := map[string]map[string]bool{}
 	for _, p := range s.Projections {
 		shape := documentShape(p)
@@ -116,18 +85,8 @@ func (*documentsAreChecked) Run(_ context.Context, s *Subject) (Result, error) {
 				"declaration must be removed", what))
 	}
 
-	// The summary names the SHAPES as well as the count. A number alone would
-	// read the same whether both document shapes were covered or one of them had
-	// quietly stopped being built, which is the state publishedProjectionBuilt
-	// exists for on the other axis.
-	// `held` is rendered on the PASS path only, and a pass means every built
-	// projection was either read or declared. So `checked > 0` whenever
-	// len(declared) > 0 here -- a run with declarations and nothing read has a
-	// zero denominator and takes the `nothing:` branch instead -- and the shape
-	// list below cannot come out empty. That was not true while the count was
-	// len(s.Projections): a fully-declared run passed, and printed "0
-	// projections structurally checked ()". The count is the fix; there is
-	// nothing left for a guard here to catch.
+	// The summary names the shapes as well as the count. `held` renders only
+	// on a pass with checked > 0, so the shape list cannot come out empty.
 	held := fmt.Sprintf("%d %s, each read by the structural checks: %s",
 		checked, english.Plural(checked, "projection", "projections"), describeShapes(shapes))
 	if len(declared) > 0 {
@@ -136,20 +95,9 @@ func (*documentsAreChecked) Run(_ context.Context, s *Subject) (Result, error) {
 			describeShapes(shapes), describeUnchecked(s.UncheckedDocuments, declared))
 	}
 	return conclusion{
-		// COUNTED OVER WHAT WAS EXAMINED, which is narrower than what was
-		// built: a projection declared in uncheckedDocuments is built and not
-		// examined, and counting it would pass a run in which every projection
-		// was declared.
-		//
-		// EXAMINED, NOT READ. `checked` is the projections that reached a shape
-		// some structural check reads; `unread` is the ones that reached none
-		// and were reported for it. Both were looked at, so both are in the
-		// denominator -- counting only `checked` would report "2 findings over 0
-		// projections", a numerator with no denominator under it.
-		//
-		// Only the DECLARED ones are excluded, because a declaration is the
-		// statement that nothing examined them. They are named in the summary
-		// instead, where a reader can watch the exemption grow.
+		// Counted over what was examined, read or reported unread; declared
+		// projections are excluded, else a fully-declared run would pass, and
+		// are named in the summary instead.
 		subjects: checked + unread,
 		unit:     "projections",
 		held:     held,

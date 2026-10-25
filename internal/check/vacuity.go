@@ -53,28 +53,12 @@ func (d declaration) Ran() bool { return d.Status != "" }
 
 // Stale says whether this declaration has stopped describing the run: the check
 // reached a verdict OTHER than vacuous, so the work it was waiting for has
-// landed and the entry should have gone with it.
+// landed and the entry should have gone with it. It fails with or without
+// --strict.
 //
-// This fails whether or not --strict was passed, because a declaration that has
-// stopped being true is a false statement in this package's source rather than
-// a shortfall in coverage -- the same standard staleDocumentDeclarations
-// applies to uncheckedDocuments.
-//
-// ONLY PASS AND FAIL ARE VERDICTS, and the other two statuses are why this is
-// a whitelist rather than "anything but vacuous". A run that reports SKIPPED or
-// ERROR did not find the check's subject; it did not look.
-//
-//   - ERROR IS REACHABLE AND WAS THE LIVE BUG. run1 turns ctx.Err() into
-//     errored(...), so a cancelled or timed-out `fisc verify` reported every
-//     declaration stale and exited 3 saying "<bead> landed, so remove the
-//     declaration" -- about work that had not landed, in answer to a Ctrl-C.
-//     A genuine error still fails the run, through Counts.Error in
-//     [Report.Failed], which says the checker could not tell rather than
-//     claiming a bead landed.
-//   - SKIPPED is not reachable today and is guarded anyway:
-//     sourcePDFsMatchBothRecords is the only Full() check in the tree and
-//     nobody would declare it vacuous, but the next --full check inherits the
-//     hole, and ci.yml's --strict step passes no --full.
+// Only pass and fail are verdicts, a whitelist: skipped or error did not
+// look. run1 turns ctx.Err() into an error, so a Ctrl-C must not report every
+// declaration stale; a genuine error still fails through [Report.Failed].
 func (d declaration) Stale() bool {
 	return d.Status == StatusPass || d.Status == StatusFail
 }

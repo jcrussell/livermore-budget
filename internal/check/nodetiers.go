@@ -12,19 +12,9 @@ import (
 // nodeTiersAreDeclared asserts every node is of an id form project.TierOf
 // declares, and every link runs from a coarser tier to a finer one.
 //
-// project.TierOf is the one tier table. A node of no declared form, or whose
-// published tier is not its form's -- a Node literal that names a tier rather
-// than taking it from the table -- is a finding here. It does not
-// witness that the tier table is the right model of the city's finances, and it
-// does not witness node.parent, which is the fold and belongs to
-// aggregation-invariance.
-//
-// THE ORDERING CLAIM IS NOT ABOUT THE HIERARCHY. "Source tier is strictly less
-// than target tier" holds for the flow endpoints too, which is why they are
-// given tiers at all, and it is what makes d3 draw the diagram left to right
-// with no backward ribbon. A link from a finer tier to a coarser one would
-// render as a flow running against every other flow on the page, which is a
-// picture that reads as a defect in the data rather than in the layout.
+// A node whose published tier is not its form's is a finding. It does not
+// witness node.parent. The ordering holds for flow endpoints too, so d3 draws
+// no backward ribbon.
 //
 // A descending link is refused unless it is not a flow: a `revenue-line/` node
 // rolled up into its own `revenue/` parent, or a [project.Link.Partition] --

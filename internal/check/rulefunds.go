@@ -10,66 +10,23 @@ import (
 )
 
 // ruleFundsMatchTheirHeadings asserts every hand-typed `fund:` agrees with the
-// fund name the page prints beside the figures it reads.
+// fund name the page prints beside the figures it reads. A fund mis-assigned
+// within its own fund type passes cuts-tie-along-the-lattice,
+// fact-funds-resolve and CheckTotals at once.
 //
-// THE HOLE IT CLOSES IS THE ONE fisc-u2v's DESIGN PASS COULD NOT. A rule author
-// writes `fund:` by hand and nothing derives it from the heading the rule
-// anchors on, so a fund mis-assigned WITHIN ITS OWN FUND TYPE survives every
-// other check at once:
+// Two clauses:
 //
-//   - cuts-tie-along-the-lattice passes, because both funds are in the same
-//     fund group and the column sums are unchanged;
-//   - fact-funds-resolve passes, because it asserts the fund EXISTS and that its
-//     type matches the fact's fund group, and both are true of the wrong fund;
-//   - CheckTotals passes, because the printed `Total <fund>` line never mentions
-//     a number.
+// (1) The number against the name: some printed total governing the rule, its
+// own or a covering rollup's, names the fund it declares, resolved exactly by
+// registry.FundByLabel. It reads printed totals, not section anchors, which
+// may be column-header fragments.
 //
-// Every check green and the fact filed under the wrong fund, which is the
-// plausible-wrong-value class this project exists to refuse. It is not
-// hypothetical: p134 prints `Doolan Canyon Preserve Endow` and p76 prints
-// `Doolan Canyon Open Space`, funds 470 and 471, both permanent, and pp.131-140
-// name about seventy funds of which several pairs differ only in a trailing word.
+// (2) The pages against the rules: every printed fund total on the pages those
+// rules touch is claimed, since a fund printing zero in both budget years can
+// go unmapped with every sum unchanged.
 //
-// TWO CLAUSES, AND THEY CATCH DIFFERENT MISTAKES.
-//
-// (1) THE NUMBER AGAINST THE NAME. registry.FundByLabel resolves the printed
-// name exactly — never a prefix, never case-folded, ambiguity refused when
-// data/funds.yaml loads — so a heading that resolves to no fund is an error
-// rather than a guess, and one that resolves to a different number than the rule
-// declares is the mis-assignment above.
-//
-// It reads PRINTED TOTALS and not section anchors, and that is not
-// interchangeable. Six parts of the revenue schedule anchor on a column-header
-// fragment because their rows begin at the top of a page — the leading gap may
-// not contain a digit, so the heading on the previous page cannot be the anchor
-// — and resolving `"FY 2026-27"` as a fund name would produce six findings whose
-// cheapest escape is inventing a fund alias for a column header.
-//
-// AND THE PRINTED TOTAL THAT NAMES THE FUND IS NOT ALWAYS THE RULE'S OWN. Two
-// schedules sit under this check and they are shaped differently. pp.131-140 are
-// one fund per rule and each prints `Total <fund>`, so the rule's own total names
-// its number. pp.127-130 are ONE fund decomposed by CATEGORY across ten rules,
-// whose printed totals are `Total Property Taxes` and the like — category names,
-// not fund names — and the fund is named exactly once, by the rollup
-// `Total General Fund` that covers all ten. So the check asks whether SOME
-// printed total that governs the rule names the fund it declares, its own or a
-// rollup's, and reports a rule that no printed line anchors at all.
-//
-// (2) THE PAGES AGAINST THE RULES. Clause 1 only inspects rules that exist, so
-// it cannot see a fund section nobody mapped. That gap is real and the
-// arithmetic does not close it: NINE of the schedule's 69 funds print zero in
-// BOTH budget years — 2022 COP Construction Fund, Transferable Development Cred,
-// Doolan Canyon Preserve Endow, four grant funds, Import Mitigation Fee, Human
-// Services Facility Fee — so dropping any one of them leaves every FY2026 and
-// FY2027 sum unchanged and cuts-tie-along-the-lattice green, while up to
-// $4.7M of FY2024 revenue vanishes. So the check reads the pages those rules
-// touch and requires every printed fund total on them to be claimed.
-//
-// WHAT IT STILL DOES NOT CATCH, stated rather than glossed: a total_row and a
-// fund number that are BOTH wrong in the same direction. That is narrower than
-// fisc-u54 feared, because the section anchor decides which rows are read — a
-// rule anchored on the wrong block maps different figures and its printed total
-// stops tying — but it is not nothing, and no check here sees it.
+// It does not catch a total_row and a fund number both wrong in the same
+// direction (fisc-u54).
 type ruleFundsMatchTheirHeadings struct{}
 
 func (*ruleFundsMatchTheirHeadings) meta() meta {
@@ -79,18 +36,8 @@ func (*ruleFundsMatchTheirHeadings) meta() meta {
 }
 
 // printedTotalLabel is the label half of a printed total line, and whether the
-// line prints one at all.
-//
-// THE SPLIT IS THE COLUMN GRID. A label is separated from its figures by a run
-// of two or more spaces, which is what `pdftotext -layout` encodes and what
-// makes a single space inside a fund name safe. A line with no such run, or with
-// nothing after it, is prose rather than a row.
-//
-// IT RETURNS THE WHOLE LABEL AND DOES NOT LOOK FOR THE FUND NAME. That is
-// fundNameIn's job, and keeping them apart is what let clause 2 learn the second
-// printed shape without a second regex: this answers "is this a total line",
-// fundNameIn answers "which fund does it name", and the shapes live in exactly
-// one of the two.
+// line prints one at all. The label ends at the first run of two spaces, the
+// `-layout` column grid. The fund name inside it is fundNameIn's.
 func printedTotalLabel(line string) (string, bool) {
 	label, figures, ok := strings.Cut(strings.TrimLeft(line, " \t"), "  ")
 	if !ok || strings.TrimSpace(figures) == "" {
@@ -111,14 +58,9 @@ func (*ruleFundsMatchTheirHeadings) Run(_ context.Context, s *Subject) (Result, 
 	// spoken for. Both are per document: two documents may print the same
 	// heading and mean different funds.
 	pages := map[string]map[int]bool{}
-	// CLAIMED IS KEYED ON THE PAGE AS WELL AS THE DOCUMENT: the
-	// claim this check makes is per page -- "on the pages a schedule maps, the
-	// schedule maps all of it" -- so a total mapped on one page must not
-	// silence an identically-worded total on another.
-	//
-	// p0166, p0130 and p0172 all print "Total General Fund". p0130's is claimed
-	// by the rollup gf-total-revenues and p0172's -- printed twice, the fund's
-	// total and its group's -- by fund-exp-general-fund; p0166 is not swept.
+	// claimed is keyed per page, so a total mapped on one page does not
+	// silence an identically-worded one on another ("Total General Fund" on
+	// p0130, p0166 and p0172).
 	claimed := map[string]map[claimKey]bool{}
 
 	for _, f := range s.Files {
@@ -131,23 +73,10 @@ func (*ruleFundsMatchTheirHeadings) Run(_ context.Context, s *Subject) (Result, 
 		for i := range f.Rules {
 			ru := &f.Rules[i]
 
-			// THE TOTAL IS CLAIMED BEFORE EITHER CONTINUE BELOW.
-			// Claiming a total is the statement that SOME rule reads that
-			// printed heading, which is true whether or not the rule declares
-			// one fund: a rule declaring its fund per ROW, as p76's do, still
-			// claims its printed total, so clause 2 does not report a mapped
-			// section as one no rule declares.
-			//
-			// THE CLAIM IS RECORDED ON EVERY PAGE OF THE RULE'S PARTS, which is an OVER-claim and is
-			// still strictly narrower than the document-wide claim it replaces.
-			// A rule's total is printed on ONE of its pages -- for a
-			// total_spans_parts rule, the one TotalBearingPart finds -- and
-			// establishing which needs the pages, i.e. a resolver this function
-			// does not have. Narrowing it to the bearing page is fisc-id8b; it
-			// is not folded in here because reaching for s.Resolvers to answer
-			// it would make a vocabulary check depend on the corpus being
-			// readable, so a mapping error would surface as a fund-registry
-			// finding.
+			// The total is claimed before either continue below: a rule
+			// declaring its fund per row still reads its printed heading.
+			// Claimed on every page of the rule's parts, an over-claim;
+			// narrowing it to the bearing page is fisc-id8b.
 			for j := range ru.Parts {
 				set(claimed, f.DocID, ru.Parts[j].Page, ru.WrappedTotalLabel())
 			}
@@ -180,14 +109,9 @@ func (*ruleFundsMatchTheirHeadings) Run(_ context.Context, s *Subject) (Result, 
 				}
 			}
 
-			// `named` and `reported` are two different facts and the check
-			// needs both. `named` is "a printed total governing this rule names
-			// the fund it declares"; `reported` is "this rule already has a
-			// finding". The mismatch arm below sets only the second, because
-			// setting `named` would make the variable lie -- and NOT setting
-			// something meant the !named arm fired too, producing a second
-			// finding that said the rule "is anchored to nothing on the page"
-			// while listing the total that anchors it.
+			// named: a governing total names the declared fund. reported: the
+			// rule already has a finding, so the !named arm does not add a
+			// second, false one.
 			named, reported := false, false
 			for _, a := range anchors {
 				label, ok := fundNameIn(a)
@@ -236,25 +160,12 @@ func (*ruleFundsMatchTheirHeadings) Run(_ context.Context, s *Subject) (Result, 
 }
 
 // fundNameIn is the fund name a printed total line carries, in either of the two
-// shapes this corpus prints, and whether it carries one at all.
+// shapes this corpus prints, and whether it carries one at all: `Total <fund>`
+// (pp.127-140) and `<fund> Total Expenses` (p0170).
 //
-// TWO SHAPES, BECAUSE THE CORPUS PRINTS TWO, and reading only the first was a
-// live gap rather than a tidiness point. pp.131-140 print `Total <fund>` and
-// pp.127-130's rollup prints `Total General Fund`, so a leading cut answered
-// every anchor that existed while the fund-bearing rules were the revenue
-// schedule's. pp.167-170 put the fund FIRST: p0170:23 is
-// `General Fund Total Expenses`, mapped as the rollup gf-total-expenses, which
-// covers all 23 division rules on those pages. That anchor names the fund, in
-// print, and governs every rule there -- and a leading cut alone rejects it, so
-// declaring `fund: 100` on those rules produced 23 findings against a heading
-// sitting right there in the mapping.
-//
-// BOTH SHAPES RESOLVE EXACTLY AND NEITHER IS A PREFIX MATCH. data/funds.yaml
-// spends twenty lines forbidding one, and the exactness is what keeps the five
-// operating/CIP twins apart -- Water 640 from Water Replacement 642. What is cut
-// here is the word `Total` and the schedule's own trailing noun, never a
-// fragment of the fund name: `General Fund Total Expenses` yields the whole of
-// `General Fund` and nothing shorter. FundByLabel then answers or it does not.
+// Neither is a prefix match: only `Total` and the schedule's trailing noun are
+// cut, never a fragment of the fund name, which keeps operating/CIP twins
+// (Water 640, Water Replacement 642) apart.
 func fundNameIn(total string) (string, bool) {
 	if label, ok := strings.CutPrefix(total, "Total "); ok {
 		return label, true

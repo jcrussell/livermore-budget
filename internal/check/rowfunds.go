@@ -11,21 +11,12 @@ import (
 )
 
 // rowAnchorPrefix is a verb phrase a printed row anchor carries in front of the
-// fund it names, and WHICH END OF THE MOVEMENT that fund is at.
+// fund it names, and which end of the movement that fund is at. Written out,
+// not inferred, so the check reads the same printed words the author did.
 //
-// The list is written out rather than inferred, for the reason
-// rule-funds-match-their-headings writes out "Total ": a check that guessed
-// where the fund name starts would resolve a different string than the author
-// read, and the whole value here is that both are reading the same printed
-// words. Budget Book p76 phrases its rows "Transfer From <payer>  to <payee>".
-//
-// far IS WHAT MAKES THIS A DIRECTION CHECK. A swap of a row's ends moves no
-// group sum when both ends are in one group: swapping "Transfer From Water  to
-// Water Replacement" (640/642, both enterprise) rebuilds with every other check
-// green.
-//
-// An anchor that resolves to nothing after stripping is NOT a defect. Most rows
-// in this corpus carry a category label, not a fund name.
+// far is what makes this a direction check: swapping a row's ends within one
+// group (Water to Water Replacement, 640/642) moves no group sum. An anchor
+// resolving to nothing after stripping is not a defect.
 type rowAnchorPrefix struct {
 	prefix string
 	// far is true when the fund this anchor names is the COUNTERPART's rather
@@ -39,59 +30,25 @@ var rowAnchorPrefixes = []rowAnchorPrefix{
 }
 
 // rowFundsMatchTheirAnchors is the guard on a fund the rule types out and the
-// page names in a ROW rather than in a heading.
+// page names in a row rather than in a heading, as Budget Book p76 does; such
+// a rule declares fund 0 and never enters rule-funds-match-their-headings.
 //
-// WHY IT IS A SEPARATE CHECK. rule-funds-match-their-headings covers a schedule
-// whose fund is a property of the whole rule, read off a printed
-// "Total <fund>" line -- declaredFund reads Parts[].Columns[].Fund and nothing
-// else. Budget Book p76 inverts that: a column is a YEAR, the section is the
-// receiving fund GROUP, and the fund is per ROW. Such a rule declares fund 0,
-// so it is not merely unchecked by that check, it never enters its sweep at all.
+// The page's own totals cannot check a counterpart's fund
+// (TestTheDocumentCannotCheckACounterpart), and a leg under an operating
+// fund's CIP twin moves inside the cell cuts-tie-along-the-lattice compares,
+// so this is the only guard on it.
 //
-// AND IT IS EXACTLY WHERE THE HAZARD LIVES. p76's payer side is hand-typed 44
-// times over, and THE DOCUMENT CANNOT CHECK IT: the counterpart fan-out is
-// downstream of StatedTotals, CheckTotals, stated_total_deltas, the rollups and
-// the gap guard, so redeclaring every payer as fund 999 leaves the page's own
-// totals byte for byte unchanged (mapping's TestTheDocumentCannotCheckACounterpart).
-// Five of p76's payer labels match an operating fund AND its CIP twin -- Low
-// Income Hsng 200/812, Traffic Imp Fee 510/823, Host Comm Impact 282/820,
-// Measure D 550/828, State Gas Tax 560/834 -- and every twin is type: capital,
-// so a leg under the wrong twin moves INSIDE the collapsed cell
-// cuts-tie-along-the-lattice compares and that check stays green. Three of
-// the five do not even change fund group, so factFundsResolve cannot see them.
-// This is the only thing that does.
+// The fund each printed anchor names is the fund the row declares at that
+// end: "Transfer From X" the counterpart's, "to Y" the row's own.
 //
-// WHAT IT ASSERTS. The fund each printed anchor names is the fund the row
-// declares AT THAT END: "Transfer From X" is the payer, so it must equal the
-// counterpart's fund, and "to Y" is the payee, so it must equal the row's own.
-// Both the identity and the direction, because neither is covered elsewhere --
-// see rowAnchorPrefix for the measurement that retired the argument that the
-// arithmetic covers direction.
+// Two kinds of row it cannot cover are counted and reported separately:
 //
-// TWO KINDS OF ROW IT CANNOT COVER, counted and named SEPARATELY rather than
-// skipped, because the two are different claims about the page and the summary
-// is printed on every run.
-//
-//   - NO ANCHOR ON THE LINE. p76 prints three continuation rows whose "Transfer
-//     From" carries over from the row above, so their declared payer has no
-//     printed anchor of its own to be checked against. The other end
-//     of the same row IS anchored, which is how these are told apart.
-//
-//   - NO VERB PHRASE, AND NO DECLARATION. A row labelled with a bare fund name
-//     -- "General Fund", "Cal Home Reuse" -- names a fund unambiguously and
-//     names no direction, so rowAnchorPrefixes matches nothing. Reporting it as
-//     "no printed anchor" would be false about the page: the label is right
-//     there. Such a row is read only where its rule declares
-//     row_labels_name_funds, which is what the bare-label arm of Run is for --
-//     it runs FIRST, ahead of the prefix arm, and the ordering matters because
-//     each reads the same string for a different purpose. Where the rule does
-//     not declare it, this check still makes no claim and the summary says so
-//     per rule. pp.85-125's 78 rows all declare it.
-//
-//     THE DIRECTION HALF IS NOT RECOVERED BY THAT DECLARATION and must not be.
-//     A bare fund name says which fund, never which end, so the bare-label arm
-//     asserts the row's own fund and never the counterpart's. What the verb
-//     phrase buys over the declaration is exactly the `side` field above.
+//   - a continuation row with no anchor on its own line, told apart because
+//     its other end is anchored.
+//   - a bare fund-name label with no verb phrase, read only where its rule
+//     declares row_labels_name_funds (the bare-label arm, which runs before
+//     the prefix arm). A bare name says which fund, never which end, so that
+//     arm asserts only the row's own fund.
 type rowFundsMatchTheirAnchors struct{}
 
 func (*rowFundsMatchTheirAnchors) meta() meta {
@@ -103,38 +60,25 @@ func (*rowFundsMatchTheirAnchors) meta() meta {
 func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, error) {
 	var findings []Finding
 	subjects, unanchored, unphrased := 0, 0, 0
-	// bare counts the subjects the bare-label arm resolved, so the summary can keep
-	// the two claims apart rather than averaging them into one false sentence.
+	// bare counts the subjects the bare-label arm resolved, kept apart in the
+	// summary.
 	bare := 0
 	// numbered counts the ends the fund-number arm resolved.
 	numbered := 0
 	var unanchoredRows []string
-	// The rules an unphrased declaration belongs to, deduplicated: 78 rows over
-	// eleven rules is a list of eleven, not of 78. See the note where it is
-	// formatted.
+	// The rules an unphrased declaration belongs to, deduplicated.
 	var unphrasedRules []string
 	seenRule := map[string]bool{}
 
 	for _, f := range s.Files {
 		for i := range f.Rules {
 			ru := &f.Rules[i]
-			// ONCE PER ROW, NOT ONCE PER PART. A rule's rows are shared by
-			// every part it declares -- that is what labels_from is for -- so
-			// iterating parts would report a multi-part schedule's every row
-			// twice and inflate the subject count with it. A row's page is
-			// still per part, so the union of what any part reads is the
-			// right set.
+			// Once per row, not per part: parts share rows, so iterating
+			// parts would count a multi-part schedule's rows twice.
 			for _, row := range activeInAnyPart(ru) {
-				// A SKIPPED ROW IS NOT READ FROM THE PAGE, so this check has
-				// nothing to say about it in ANY arm -- not as a subject, not as
-				// a fund the page prints no anchor for. ActiveRows filters
-				// rows other pages print and not skipped ones, so without this
-				// they arrive here.
-				//
-				// IT SITS AT THE TOP OF THE LOOP AND NOT INSIDE ONE ARM: on the
-				// bare-label arm alone a skipped row would stay in the omission
-				// counters, and the summary would say "no row_labels_name_funds
-				// declaration covers that end" about a rule that declares it.
+				// A skipped row is not read from the page, so no arm speaks
+				// of it; at the top of the loop so it stays out of the
+				// omission counters too.
 				if row.Skip {
 					continue
 				}
@@ -189,53 +133,15 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 					continue
 				}
 
-				// THE BARE-LABEL ARM, and it runs before the prefix arm
-				// because the two read the same string for different
-				// purposes. A rule that declares row_labels_name_funds says
-				// its labels ARE printed fund names, so the label is resolved
-				// whole rather than after stripping a verb phrase off it --
-				// "Cal Home Reuse" names a fund unambiguously and names no
-				// direction, so this asserts the row's OWN fund and never the
-				// counterpart's.
+				// The bare-label arm resolves the whole label and asserts
+				// only the row's own fund. Fail-closed: an unresolved label
+				// is a finding, not a skip, and namedNear is set on both
+				// paths so the row never lands in the omission counters.
 				//
-				// IT IS FAIL-CLOSED, and that is the whole reason it is worth
-				// writing rather than skipping the unresolvable case. If a
-				// label that resolves to nothing were a `continue`, a rule
-				// could declare this over labels the registry has never heard
-				// of and the check would report exactly nothing -- vacuously
-				// green, with a declaration standing over it that reads like a
-				// guarantee. So an unresolved label is a FINDING, and
-				// namedNear is set on both paths so the row never also lands
-				// in the omission counters below as a fund the page prints no
-				// anchor for. The page prints the anchor; that is what the
-				// declaration asserts.
-				// A VERB-PHRASED LABEL UNDER THIS DECLARATION IS REFUSED, not
-				// deferred and not resolved whole. Three attempts, and the two
-				// that failed are worth recording because each looked right.
-				//
-				// RESOLVING IT WHOLE was the original commit. "Transfer From
-				// General Fund  to Horizons" is not the printed name of a fund,
-				// so FundByLabel finds nothing: measured, flagging
-				// p76-transfers-in-special-revenue took the check to FAIL over
-				// 121 subjects with three spurious findings, each row also
-				// counted twice because the prefix arm read it as well.
-				//
-				// DEFERRING TO THE PREFIX ARM was the fix for that, and it left
-				// a hole. The parser forbids a counterpart on a declaring rule,
-				// so far == 0; a row labelled "Transfer From X" resolves as the
-				// FAR end, want == far == 0, and the arm skips it without
-				// comparing anything. Measured: injecting one drops subjects
-				// 118 -> 117, the check stays PASS, and the row is reported
-				// under "no printed anchor on their own line" -- false, the
-				// label is right there. So the deferral turned a noisy defect
-				// into a silent one.
-				//
-				// REFUSING IS WHAT BOTH OF THOSE WERE REACHING FOR. The
-				// declaration says the label IS a fund name; a label carrying a
-				// verb phrase is a different shape and the rule author has said
-				// something untrue about their own page. Failing closed here
-				// also means a declaration that asserts nothing cannot be
-				// written.
+				// A verb-phrased label under row_labels_name_funds is
+				// refused. Resolving it whole finds nothing; deferring to the
+				// prefix arm resolves it as the far end, want == far == 0,
+				// and skips it silently.
 				phrasedLabel := anchorHasVerbPhrase(row.Label) ||
 					anchorHasVerbPhrase(row.LabelTail)
 				if ru.RowLabelsNameFunds && phrasedLabel {
@@ -328,11 +234,9 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 					if d.fund == 0 || d.named {
 						continue
 					}
-					// WHICH LIST IT GOES IN IS DECIDED BY THE PAGE, not by the
-					// rule. A row whose OTHER end resolved is a continuation
-					// row: the page really does print nothing here. A row where
-					// no anchor carried a verb phrase at all has a printed
-					// label this check simply does not read.
+					// The page decides the list: a row whose other end
+					// resolved is a continuation row; one with no verb phrase
+					// has a label this check does not read.
 					where := fmt.Sprintf("%s %q (the fund that %s, %d)",
 						ru.ID, row.PrintedLabel(), d.end, d.fund)
 					if phrased {
@@ -350,34 +254,18 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 		}
 	}
 
-	// EACH CLAUSE HAS TO READ ON ITS OWN, because either arm can fire without
-	// the other. Seeding the note in the first arm and appending "a further" in
-	// the second left a corpus of nothing but bare-label rows announcing "a
-	// further 78" with no prior count -- and the test written for that corpus
-	// asserted Contains("78 declared fund(s)"), which the malformed string
-	// satisfies.
+	// Each clause reads on its own, because either arm can fire without the
+	// other.
 	var clauses []string
 	if unanchored > 0 {
 		clauses = append(clauses, fmt.Sprintf("%d declared fund(s) have no printed anchor "+
 			"on their own line and are checked by nothing here: %s", unanchored,
 			strings.Join(unanchoredRows, ", ")))
 	}
-	// COUNTED AND ATTRIBUTED TO ITS RULES, NOT LISTED ROW BY ROW, which is the
-	// opposite of the arm above and deliberately so. a count is the honest
-	// middle, loud without being a wall. The
-	// three rows above are three, are p76's own, and each needs naming because a
-	// reader cannot otherwise find which line the page leaves blank. These are
-	// a whole schedule at a time -- naming pp.85-125's 78 individually turned
-	// this check's PASS line into 11 KB on every run, which is a list nobody
-	// reads reported as a summary. The rules are what a reader acts on.
-	//
-	// THIS ARM IS EMPTY OVER THE COMMITTED CORPUS as of fisc-90fp, because the
-	// eleven rules it was written for now declare row_labels_name_funds and are
-	// read by the arm above. It is kept rather than deleted: declining the
-	// declaration is a legitimate state -- every schedule mapped before those
-	// eleven is in it -- and this is the sentence that says so out loud instead
-	// of letting a rule be silently unread. TestAVacuousRowFundsSummaryCannot-
-	// DenyTheRowsItSaw exercises it by clearing the flag.
+	// Counted and attributed to rules, not listed row by row: these come a
+	// whole schedule at a time. Empty over the committed corpus (fisc-90fp);
+	// it says out loud that a rule declining the declaration is unread.
+	// TestAVacuousRowFundsSummaryCannotDenyTheRowsItSaw exercises it.
 	if unphrased > 0 {
 		lead := ""
 		if unanchored > 0 {

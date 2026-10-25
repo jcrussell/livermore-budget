@@ -1,70 +1,27 @@
-// Package check is the engine behind `fisc verify`: the checks that turn this
-// project's central claim — every published figure traces to a cell of a
-// source document, and the arithmetic between them holds — into something a
-// reader can run rather than something the README asserts.
-//
-// # Nouns
+// Package check is the engine behind `fisc verify`.
 //
 // A [Check] is one claim. It concludes a [Result] carrying a [Status] over a
-// [Subject], which is everything the checks read, loaded once. [Run] collects
-// those results into a [Report]. Nothing here knows about exit codes or output
-// streams; pkg/cmd/verify owns both.
+// [Subject], loaded once. [Run] collects results into a [Report]; exit codes
+// and streams belong to pkg/cmd/verify.
 //
-// # Five statuses, because "it passed" and "there was nothing to check" are
-// different claims
+// A check that ran over nothing concludes [StatusVacuous], counted apart from
+// the passes and failing only under --strict (fisc-4rh, fisc-1wr.4).
+// [Result.Subjects] is what makes a vacuous result legible.
 //
-// The whole design turns on [StatusVacuous]. "Every transfer_id has two equal
-// legs" is true of a graph in which no link carries one, and reporting that as
-// a pass would tell a reader the pairing had been verified when nothing looked
-// at it (fisc-4rh, and internal/project's Link.TransferID doc comment). So a
-// check that ran over nothing says so, is counted apart from the passes, and
-// fails only under --strict — not by default, because a gate that is red until
-// the corpus is finished gets commented out (fisc-1wr.4).
+// # What these checks can witness
 //
-// [Result.Subjects] is what makes that legible. "0 subjects" is the whole
-// explanation of a vacuous result; a bare word is not.
+// [Load] builds the projection graphs from the same facts it hands the checks,
+// so a check comparing internal/project's figure with a re-derivation here
+// cannot witness a wrong amount; it catches output that contradicts a rule the
+// producer states. A wrong definition moves both sides together and is caught
+// only by internal/project's tests and goldens. The independent witnesses are
+// fact-token-reparses and fact-offset-points-at-token. The structural checks
+// (tier 0) witness no figure; they say whether the substrate is still the one
+// the rules were written against.
 //
-// # What these checks can witness, and what they cannot
-//
-// One distinction runs through the whole report and is stated on each check that
-// depends on it. [Load] builds the projection graphs from the same fact slice it
-// then hands the checks, so a check comparing a figure internal/project derived
-// against this package's re-derivation of it is comparing two functions over
-// identical input inside one process. Those two move together: they cannot witness
-// a wrong amount, and a run of 61 perturbed amounts once passed every one of them.
-// What they DO catch is output that contradicts a rule the producer states — a
-// link citing facts that are not the ones its value came from, a node at a tier
-// its id form does not have, a published count that no longer matches its own
-// graph, a headline that is not the sum of the links it heads. They read the
-// producer's own definitions (the fact selection, the id forms and tiers, the
-// link kinds), so a wrong definition moves
-// both sides together; what catches that is internal/project's own tests of
-// each definition (TestSelectFactsAppliesEverySelector,
-// TestTierOfRefusesACoinedForm) and its goldens, which every node's tier and
-// every document's counts are pinned in.
-//
-// The independent witnesses are the two that leave the derivation entirely:
-// fact-token-reparses re-parses the verbatim source text each amount was read
-// from, and fact-offset-points-at-token reads the committed page and checks that
-// the provenance pointer lands on that text. Those are what make a wrong figure
-// fail. Everything else is a ratchet on the code that shapes the figures, which is
-// worth having and is not the same claim.
-//
-// The structural checks (tier 0) are witnesses of a different kind again: they say
-// nothing about any figure, and they are the only thing here that can tell whether
-// the substrate every other check reads is still the substrate the rules were
-// written against. A page whose bytes changed produces facts whose offsets land on
-// whatever is there now, and every arithmetic check above passes over them.
-//
-// # No PDFs, no Python
-//
-// [Load] reads facts/facts.jsonl, mappings/, the three registries under data/, and
-// every artifact under data/extracted/ — all committed. Without Full it touches
-// data/pdf/ nowhere, which is what lets CI verify without an LFS checkout or a
-// venv (AGENTS.md, "The extraction boundary"). A check that needs
-// the source documents themselves says so with Full and is skipped, not failed,
-// when --full is absent; today that is one check, source-pdfs-match-both-records,
-// and Load is the one place allowed to open data/pdf/ for it.
+// [Load] reads only committed artifacts; without Full it never opens data/pdf/
+// (AGENTS.md, "The extraction boundary"). A check that needs the source PDFs
+// says so with Full and is skipped, not failed, without --full.
 package check
 
 import (
@@ -74,9 +31,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/english"
 )
 
-// Status is what a check concluded. There are five, because "it passed" and
-// "there was nothing to test" are different claims, and not letting the second
-// be reported as the first is most of the point of this command.
+// Status is what a check concluded.
 type Status string
 
 // The statuses a check can conclude.
@@ -95,74 +50,34 @@ const (
 	StatusError Status = "error"
 )
 
-// Check is one claim about the corpus.
-//
-// Implementations are values in this package and are registered by [All]. A
-// check does no I/O: everything it reads is on the [Subject] it is handed, so
-// the cost of loading the corpus is paid once for the whole run.
+// Check is one claim about the corpus. A check does no I/O: everything it
+// reads is on the [Subject].
 type Check interface {
-	// ID is the check's stable name, and it is a contract: it is what a report
-	// is greped for, what a declaration in vacuity.go names, and what a reader
-	// cites. Kebab-case, and it says what is claimed rather than what is done:
-	// "facts-sorted", not "check-sort".
+	// ID is the check's stable name and a contract: reports are grepped for
+	// it and vacuity.go declarations name it. Kebab-case, naming the claim.
 	ID() string
-	// Tier is the tier of the check: 1 exact and zero-tolerance, 2
-	// reconciliation against a document-derived tolerance, 3 cross-document, 4
-	// the coverage ratchet. Structural checks return 0, which is not a tier
-	// because they are not about arithmetic — an artifact that drifted or a
-	// manifest hash that no longer matches invalidates every figure below it.
+	// Tier: 1 exact, 2 reconciliation within a document-derived tolerance, 3
+	// cross-document, 4 the coverage ratchet; 0 is structural, not arithmetic.
 	Tier() int
-	// Description is what the check claims, in one sentence, for the reader of
-	// a report who has not read this package.
+	// Description is the claim in one sentence for a report reader.
 	Description() string
-	// Full reports whether the check needs an input only `--full` supplies:
-	// today that means the source PDFs under data/pdf/, which are large, are
-	// not in a plain clone, and are deliberately not required by anything CI
-	// runs. [Run] skips such a check rather than failing it.
+	// Full reports whether the check needs the source PDFs only `--full`
+	// supplies. [Run] skips such a check rather than failing it.
 	Full() bool
-	// Run evaluates the claim over s.
-	//
-	// It returns an error only when the harness itself failed — an input it
-	// could not parse, a state it cannot make sense of. A claim that does not
-	// hold is a Result with StatusFail, naming what did not hold. Returning an
-	// error for a failed claim would collapse "the corpus is wrong" into "the
-	// checker is broken", and those need different responses.
-	//
-	// ctx may be ignored by a check whose work is bounded and in memory, which
-	// is all of them today; [Run] tests for cancellation between checks.
+	// Run evaluates the claim over s. It returns an error only when the
+	// harness failed; a claim that does not hold is a Result with StatusFail.
 	Run(ctx context.Context, s *Subject) (Result, error)
 }
 
-// All returns every check, in report order.
+// All returns every check, in report order, as a fresh slice no caller can
+// append to the published set through.
 //
-// It is a function rather than a package variable so that no caller can append
-// to the published set, and so each call hands back a fresh slice —
-// project.Registry sets that precedent.
-//
-// The order is the order a reader should read them in, and it is not
-// alphabetical:
-//
-//   - Structural checks (tier 0) come first. A drifted artifact or a manifest hash
-//     that no longer matches invalidates every arithmetic result below it, so a
-//     reader must see it at the top rather than after nine passes. Within them:
-//     the artifacts against their manifest, then the two that ask whether the
-//     manifest is COMPLETE — every page emitted, and the extractor reporting no
-//     failure — then the manifests against the source registry and the toolchain
-//     against its pin, and last the one that needs the source documents themselves
-//     and is skipped without --full. The completeness pair comes second because a
-//     matching hash over an emptied extraction is the one way the sweep above can
-//     pass while saying nothing.
-//   - Then the fact store: its order and identity, then the two independent
-//     witnesses to its figures, then the vocabularies its classifications resolve
-//     in. A projection built from an unsorted store, or from amounts that do not
-//     match their own source text, is not worth checking.
-//   - Then whether the projections that matter were built over every fact at all,
-//     because a fact outside every slice is not failed by the graph checks below,
-//     it is invisible to them.
-//   - Then the graph the site publishes: its shape, then its arithmetic.
-//   - Then the checks that have nothing to check yet, grouped so that what this
-//     command does not yet know is visible in one place rather than scattered
-//     among the passes.
+// The order is not alphabetical: structural checks first, since a drifted
+// substrate invalidates everything below (the completeness pair right after
+// the manifest sweep, since a matching hash over an emptied extraction passes
+// it saying nothing); then the fact store and its two independent witnesses;
+// then projection coverage; then the published graph, shape before
+// arithmetic; then the checks with nothing to check yet, in one place.
 func All() []Check {
 	return publish(
 		&artifactsMatchManifest{},

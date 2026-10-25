@@ -18,67 +18,19 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/registry"
 )
 
-// The structural checks: tier 0, because they are not about arithmetic.
-//
-// Everything else in this package reasons about figures — that an amount matches
-// its token, that a link's value ties to the facts under it, that a total sums.
-// All of it reads the committed extraction, and none of it can tell whether that
-// extraction is still the one the rules were written against. A page whose bytes
-// changed under a mapping produces facts whose offsets land on whatever is there
-// now; a manifest edited to match a changed page makes the extraction agree with
-// itself; an extra file nobody vouches for is one a future rule can read. These
-// are the checks that make those events visible, and they come first in the
-// report because a drifted artifact invalidates every arithmetic result below it.
-//
-// Five of them need no PDF and no Python: they compare the artifacts against the
-// manifest that lists them, the manifest's size and error record against what it
-// should contain, and the manifest against the registry — all committed. The sixth
-// needs the source documents and is the reason --full exists.
-//
-// Read them as a set, because two of them exist to close the others' holes. The
-// artifact hashes are a bijection between the manifest's map and the directory, and
-// a bijection says nothing about SIZE: delete a page from both sides and the two
-// agree. page_count is the independent number that catches that, and it is itself
-// checked against data/sources.yaml, which was written by hand from the document.
+// The structural checks: tier 0, not about arithmetic. They say whether the
+// committed extraction is still the one the rules were written against.
+// Read them as a set: the artifact sweep is a bijection that says nothing
+// about size, and page_count, itself held to data/sources.yaml, is what does.
 
 // artifactsMatchManifest asserts the committed extraction is the one its manifest
-// describes, in both directions.
+// describes, in both directions: a changed or missing file, and a file present
+// that the manifest does not list.
 //
-// Forwards is the obvious half: a file whose bytes changed, or that is gone. The
-// other half is the one that matters and is easy to leave out — a file present
-// under data/extracted/ that the manifest does not list. Nothing vouches for such
-// a file, the extractor did not write it in the run the manifest records, and a
-// rule that reads it (or a reader who follows a provenance link to it) is reading
-// bytes with no recorded origin. tools/extract.py clears pages/ and geometry/
-// before a run precisely so a shorter re-extraction cannot leave one behind; this
-// is the check that notices when something does.
-//
-// # What a matching hash does and does not witness
-//
-// It witnesses drift SINCE EXTRACTION and nothing else. It does not say the
-// extraction was right, and it cannot: a one-byte edit to a page plus its manifest
-// entry passes here, and so does any change made consistently on both sides. That
-// is not a gap to be closed by hashing harder — the manifest is a record of what
-// the extractor wrote, so the only witness to whether it wrote the right thing is
-// the source document, and only for the pages something reads. Two facts about the
-// corpus follow, and are worth stating rather than implying: no check in this
-// project reads the bytes of a page no fact cites, or of any geometry artifact
-// other than those the mapped pages carry -- and those are read by `fisc build`
-// rather than by a check, so it is the rebuild-and-diff in CI, not this sweep,
-// that would notice a corruption in one. For every other file "unchanged since
-// extraction" is the whole of what is known. Re-extracting is what re-establishes
-// the rest, and reviewing the artifact diff by hand is the step that cannot be
-// automated away. `fisc reanchor`, which the workflow below names, is not built
-// (fisc-mq4.6).
-//
-// manifest.json itself is not swept: it is not one of its own artifacts, it records
-// a hash for everything the extractor emitted and cannot record its own. Nor is it
-// vouched for by a hash anywhere. What is checked about it is narrower and worth
-// being exact about: its source_* fields and its versions are compared against a
-// second, independent record (manifest-matches-source-registry,
-// extraction-toolchain-pinned), and its size claim against its own contents
-// (extraction-emitted-every-page). Its artifact MAP is compared only against the
-// directory, which is the limit described above.
+// It witnesses drift since extraction and nothing else; a consistent edit to a
+// page and its manifest entry passes. manifest.json itself is not swept; its
+// source fields, versions and size are held by the other structural checks.
+// `fisc reanchor` is not built (fisc-mq4.6).
 type artifactsMatchManifest struct{}
 
 func (*artifactsMatchManifest) meta() meta {
@@ -87,15 +39,9 @@ func (*artifactsMatchManifest) meta() meta {
 			"manifest records, and the manifest lists every file that is there"}
 }
 
-// Run hashes every artifact of every extraction: about 1,570 files and 15 MB
-// today, which is a fraction of a second and the only way this claim can be
-// made at all.
-//
-// A file it cannot read is a finding rather than an error, because that is a
-// state of the repository — a deleted page, a directory made unreadable — and
-// the report has to be able to say which files it was. An unreadable extraction
-// DIRECTORY is different: the walk itself failed, so this check cannot say what
-// is or is not there, and that is returned as an error.
+// Run hashes every artifact of every extraction. An unreadable file is a
+// finding; an unreadable extraction directory is an error, since the walk
+// cannot say what is there.
 func (*artifactsMatchManifest) Run(_ context.Context, s *Subject) (Result, error) {
 	var findings []Finding
 	subjects := 0
@@ -124,10 +70,8 @@ func (*artifactsMatchManifest) Run(_ context.Context, s *Subject) (Result, error
 						"artifact has changed since it was extracted",
 					short(gotSHA), gotBytes, short(want.SHA256), want.Bytes))
 			case gotBytes != want.Bytes:
-				// Unreachable in practice — two byte strings of different lengths
-				// do not share a sha256 — and reported rather than ignored anyway:
-				// a manifest whose two records of one file disagree is a manifest
-				// that was edited, and that is worth saying out loud.
+				// Unreachable unless the manifest was edited to disagree with
+				// itself.
 				findings = append(findings, finding(artifactPath(docID, rel),
 					"is %d bytes but the manifest records %d, though the sha256 %s matches; "+
 						"the manifest disagrees with itself",
@@ -180,11 +124,7 @@ func extractionFiles(fsys fs.FS) ([]string, error) {
 }
 
 // hashArtifact hashes one artifact, returning its size and lower-case hex
-// sha256 — the two things the manifest records about it.
-//
-// It streams rather than reading the file whole: the largest geometry artifact is
-// modest, but a checker that loads whatever it is pointed at is a checker with a
-// size limit nobody wrote down.
+// sha256, streamed.
 func hashArtifact(fsys fs.FS, name string) (int64, string, error) {
 	f, err := fsys.Open(name)
 	if err != nil {
@@ -199,23 +139,13 @@ func hashArtifact(fsys fs.FS, name string) (int64, string, error) {
 	return n, hex.EncodeToString(h.Sum(nil)), nil
 }
 
-// artifactPath names an artifact the way a reader can act on: the path from the
-// repository root, which is what a finding has to print for `git log` or an editor
-// to be any use.
-//
-// It concatenates rather than path.Join-ing, because Join CLEANS, and rel may be a
-// manifest key — which corpus.Artifacts hands back exactly as the file spells it,
-// so that a report cites a path the file actually contains. A key of
-// "pages/../geometry/p0001.json" is unreadable through an fs.FS and must be
-// reported under the name that makes that make sense; cleaning it to
-// "geometry/p0001.json" would print an existing, readable path and call it
-// unreadable.
+// artifactPath is an artifact's path from the repository root. It concatenates
+// rather than path.Join-ing, because Join cleans: a manifest key of
+// "pages/../geometry/p0001.json" must be reported as spelled, not as an
+// existing readable path.
 func artifactPath(docID, rel string) string { return extractedDir + "/" + docID + "/" + rel }
 
-// short abbreviates a sha256 for a report line. Twelve hex digits is 48 bits,
-// which is plenty to tell two hashes apart by eye and short enough that the
-// interesting half of the sentence is still on the line. The full value is in the
-// manifest, which the finding names.
+// short abbreviates a sha256 to twelve hex digits for a report line.
 func short(sha string) string {
 	if len(sha) <= 12 {
 		return sha
@@ -224,33 +154,14 @@ func short(sha string) string {
 }
 
 // extractionEmittedEveryPage asserts each extraction is COMPLETE: two artifacts
-// for every page of the document.
+// for every page of the document. The artifact sweep is a consistency claim:
+// delete pages from both directory and manifest and it still passes.
+// page_count, counted by pdfinfo and held to data/sources.yaml by
+// manifest-matches-source-registry, is the witness. It counts documents, not
+// artifacts, so an emptied extraction is not hidden in an aggregate.
 //
-// This is the check that makes the artifact sweep mean something, and it is
-// separate from it deliberately. artifacts-match-manifest is a bijection between
-// the manifest's map and the directory, and a bijection is a consistency claim, not
-// a completeness one: delete every page of an extraction from the directory AND
-// from its manifest and the two agree perfectly. The report would go from 1,572
-// artifacts to 1,182 and still say PASS — a number a reader would have to diff two
-// reports to notice, over an extraction that is now empty.
-//
-// page_count is the witness, because it is the one number in the manifest that is
-// not derived from the artifact map: pdfinfo counted the pages. It is not
-// self-certifying either, so it is checked twice — manifest-matches-source-registry
-// compares it against the `pages:` data/sources.yaml records by hand from the
-// document, and registry.LoadSources refuses a source with no page count — which is
-// what stops the same deletion being laundered by zeroing page_count as well.
-//
-// It is its own check rather than a clause of the sweep because the two work in
-// different units, and the units are the substance here. The sweep counts
-// artifacts, in the thousands, aggregated across documents; an emptied extraction
-// is invisible in an aggregate. This counts DOCUMENTS, and prints each one's page
-// count in its own summary, so the passing report states the size of every
-// extraction on the line a reader actually reads.
-//
-// What it does not witness: a page poppler returned no text for still has both
-// artifacts, so a run where fifty pages came out blank is complete by this
-// definition. The blank count is printed for that reason.
+// A page poppler returned no text for still has both artifacts; the blank
+// count is printed for that reason.
 type extractionEmittedEveryPage struct{}
 
 func (*extractionEmittedEveryPage) meta() meta {
@@ -261,12 +172,6 @@ func (*extractionEmittedEveryPage) meta() meta {
 
 // Run compares the artifact map against page_count in both directions: a page with
 // no artifact, and an artifact for a page the document does not have.
-//
-// Both directions matter for the same reason they do in the sweep. A missing page is
-// a partial extraction; an artifact numbered past the end is a manifest describing a
-// document other than the one it claims, and it is what a re-extraction of a
-// SHORTER document would leave behind if extract.py's clean_output ever stopped
-// clearing the directories.
 func (*extractionEmittedEveryPage) Run(_ context.Context, s *Subject) (Result, error) {
 	var findings []Finding
 	var summaries []string
@@ -331,9 +236,8 @@ func (*extractionEmittedEveryPage) Run(_ context.Context, s *Subject) (Result, e
 	}.result(), nil
 }
 
-// describeExtraction is one document's size, for the passing summary. The blank
-// count appears only when there is one, because a zero would read as a caveat where
-// there is none — and where there is one, it is the caveat on this check's claim.
+// describeExtraction is one document's size, for the passing summary, with a
+// blank count only when there is one.
 func describeExtraction(docID string, pages, blank int) string {
 	if blank == 0 {
 		return fmt.Sprintf("%s %d pages", docID, pages)
@@ -341,9 +245,7 @@ func describeExtraction(docID string, pages, blank int) string {
 	return fmt.Sprintf("%s %d pages (%d blank)", docID, pages, blank)
 }
 
-// describePages renders a list of page numbers for a finding, capped. The total is
-// carried so that "195 of 195" reads as an emptied extraction rather than as a long
-// list.
+// describePages renders a list of page numbers for a finding, capped.
 func describePages(pages []int, of int) string {
 	if len(pages) == of {
 		return fmt.Sprintf("any of the %d pages", of)
@@ -355,9 +257,7 @@ func describePages(pages []int, of int) string {
 	return fmt.Sprintf("%d of %d pages (%s)", len(pages), of, strings.Join(capped(out, 8), ", "))
 }
 
-// capped truncates a list for a report line, saying how much it left out. A finding
-// that prints 195 page numbers is a finding nobody reads to the end of, and the
-// manifest holds the whole of it.
+// capped truncates a list for a report line, saying how much it left out.
 func capped(items []string, n int) []string {
 	if len(items) <= n {
 		return items
@@ -365,30 +265,12 @@ func capped(items []string, n int) []string {
 	return append(items[:n:n], fmt.Sprintf("and %d more", len(items)-n))
 }
 
-// extractorReportedNoErrors asserts the extractor did not tell us it failed.
+// extractorReportedNoErrors asserts the manifest records no extraction error.
+// It is a second witness beside extraction-emitted-every-page, naming the stage
+// and message; that one fires when the extractor's record is silent.
 //
-// tools/extract.py records every failure in the manifest rather than only logging
-// it, on the stated principle that "a run that failed on some pages must be visible
-// to fisc verify rather than looking clean", and exits non-zero. This is the
-// consumer that promise was made to: until it existed, a poppler run that failed on
-// fifty pages wrote a manifest naming all fifty failures, emitted fifty fewer
-// artifacts, exited 1 — and `fisc verify` said PASS, because the missing pages were
-// missing from the manifest too and corpus.Doc documents an unlisted page as the
-// NORMAL "no such page" case.
-//
-// It is a second, independent witness to the same event
-// extraction-emitted-every-page catches, and neither subsumes the other. This one is
-// the extractor's own confession and names the stage and the message, which a count
-// cannot; the count fires when the confession is absent, which is the case
-// extract.py itself warns about — "a run whose `errors` is empty is NOT a promise
-// that every page came out whole".
-//
-// Warnings are not failures and are not treated as any: all three committed
-// extractions carry some, poppler writes free-form English to stderr and exits 0 for
-// a damaged xref and an unread metadata key alike, and a check that failed on them
-// would be red today and permanently. They are counted into the passing summary
-// instead, because the alternative — decoding them and saying nothing — is how
-// "reading the warnings is the human's job" becomes nobody's.
+// Warnings are not failures: poppler writes free-form stderr and exits 0. They
+// are counted into the passing summary.
 type extractorReportedNoErrors struct{}
 
 func (*extractorReportedNoErrors) meta() meta {
@@ -441,21 +323,9 @@ func (*extractorReportedNoErrors) Run(_ context.Context, s *Subject) (Result, er
 }
 
 // manifestMatchesSourceRegistry asserts the extraction and the registry agree
-// about the document each extraction came from.
-//
-// The agreement is evidence because the two records are independent.
-// tools/extract.py discovers its work from data/pdf/<doc-id>.pdf, computes the
-// hash and size itself, and deliberately has no YAML parser — so it cannot copy
-// either number from data/sources.yaml, and data/sources.yaml's numbers were
-// verified against a re-download. Two parties that never read each other agreeing
-// on a sha256 means the extraction really was made from the document the registry
-// says it was. This check needs no PDF for exactly that reason: it compares two
-// written claims, not bytes.
-//
-// It also checks that the two sets of document ids are the same set. A source
-// nobody has extracted is a document the site can cite and no fact can come from;
-// an extraction no source claims is 15 MB of pages with no recorded origin, no URL
-// and no retrieval date, which is the provenance chain broken at its first link.
+// about the document each extraction came from, and that both name the same
+// set of document ids. The agreement is evidence because tools/extract.py
+// reads no YAML, so the two records are independent.
 type manifestMatchesSourceRegistry struct{}
 
 func (*manifestMatchesSourceRegistry) meta() meta {
@@ -519,10 +389,7 @@ func compareManifest(docID string, src registry.Source, doc *corpus.Doc) []Findi
 		says = append(says, fmt.Sprintf("the manifest was made from %q and the registry "+
 			"names %q", doc.SourceFile(), src.File))
 	}
-	// The page count is a fourth independently recorded claim: extract.py got it
-	// from pdfinfo, and the registry's was written down by hand from the document.
-	// It is the one of the four that a human could get wrong without any file
-	// changing, which is exactly why it is worth comparing.
+	// pdfinfo's page count against the one written by hand in the registry.
 	if doc.PageCount() != src.Pages {
 		says = append(says, fmt.Sprintf("the extractor found %d pages and the registry "+
 			"records %d", doc.PageCount(), src.Pages))
@@ -549,27 +416,10 @@ func union[A, B any](a map[string]A, b map[string]B) []string {
 }
 
 // extractionToolchainPinned asserts every extraction was produced by the
-// toolchain this fisc is pinned to.
-//
-// The versions are provenance, not a read contract. An extraction from another
-// poppler build parses fine and reads fine; it simply is not the extraction that
-// was reviewed, and poppler's output is not stable across versions — which is why
-// requirements.txt's re-extraction workflow is "make extract, review the artifact
-// diff, then fisc reanchor --accept" rather than a bump in place. A manifest from
-// extractor_version 2 is stronger still: that was xberg, whose table substrate no
-// longer exists.
-//
-// This is why the pin is compared against and mutual agreement between the three
-// documents is NOT separately asserted: each manifest is compared to one
-// constant, so agreement between them follows, and a check that also reported
-// "the documents disagree" would be reporting a consequence of its own first
-// finding as a second one.
-//
-// The manifest's schema_version is not here either, and for the opposite reason:
-// corpus.Open refuses a version it does not understand, so an extraction with a
-// bumped schema never reaches a check at all. It is stated in the passing summary,
-// where it belongs — a reader of the report learns which contract the artifacts
-// were read under.
+// toolchain this fisc is pinned to. The versions are provenance, not a read
+// contract: another poppler build reads fine and is not what was reviewed.
+// schema_version is not checked here because corpus.Open refuses an unknown
+// one.
 type extractionToolchainPinned struct{}
 
 func (*extractionToolchainPinned) meta() meta {
@@ -613,43 +463,16 @@ func (*extractionToolchainPinned) Run(_ context.Context, s *Subject) (Result, er
 }
 
 // sourcePDFsMatchBothRecords asserts the source documents on disk are the ones
-// two independent records say they are.
+// two independent records (data/sources.yaml and each manifest) say they are;
+// the only check that reads the bytes.
 //
-// This is the check --full exists for, and the first in this package to need an
-// input a plain clone does not have. Three parties are involved: the bytes under
-// data/pdf/, the sha256 and size data/sources.yaml records, and the sha256 and size
-// each extraction manifest records. The other structural checks compare the two
-// records against each other; this one is the only thing in the project that asks
-// the bytes.
+// It does not establish that the extraction came from the document on disk:
+// correct both records to a different file and it passes (repoWithPDFs shows
+// it). Re-resolving each fact against the pages is fisc-1wr.5.1.
 //
-// # Exactly what this adds, and what it does not
-//
-// It catches a source document whose bytes no longer match what was written down:
-// corruption in transit or on disk, a truncated download, a file replaced or swapped
-// without either record being updated. That is a real event and nothing else in the
-// project can see it — every other check reads the extraction, which was made from
-// the old bytes and remains self-consistent with them.
-//
-// It does NOT establish that the extraction came from the document on disk. Correct
-// both records TO the file — the two-line edit a "the city re-uploaded it" cleanup
-// would naturally make — and this check passes while every page under
-// data/extracted/ is still the old document's. That is demonstrated rather than
-// argued, by this package's own tests: repoWithPDFs stands 70-byte stand-in "PDFs"
-// beside the real extraction of the real documents, corrects both records to them,
-// and this check passes over the result. The bytes are
-// hashed but nothing here ties them to the pages: no check in this project derives
-// anything from a PDF, because that would mean running the extractor, which is
-// deliberately not a Go responsibility. The nearest thing to that witness is
-// re-resolving each fact's cell against the pages (fisc-1wr.5.1), and the real one
-// is re-extracting and reviewing the artifact diff.
-//
-// Unavailable bytes are an ERROR and wrong bytes are a FAILURE, which is this
-// package's line between a claim about the checker and a claim about the corpus.
-// data/pdf/ is Git LFS and is deliberately absent from CI, so "the file is not
-// here" is a normal state of a checkout and must not be reported as a corrupted
-// document. The consequence, stated because it is a real limitation: in a run where
-// one document is unavailable and another's bytes are wrong, the error is what the
-// report carries, and the mismatch surfaces on the next run once the fetch is done.
+// Unavailable bytes are an error and wrong bytes a failure, since data/pdf/ is
+// absent from CI. An unavailable document masks another's mismatch until the
+// next run.
 type sourcePDFsMatchBothRecords struct{}
 
 func (*sourcePDFsMatchBothRecords) meta() meta {

@@ -13,36 +13,14 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
-// trendPointsTieToFacts asserts every published point IS the fact it cites.
+// trendPointsTieToFacts asserts every published point is the fact it cites,
+// one to one, in every published field.
 //
-// It is the trends document's link-values-tie-to-facts, and it is stricter,
-// because the relationship is different: a link is a SUM of facts and this
-// comparison is one to one. So there is no netting to reproduce and no tolerance
-// to argue about — a point either equals its fact in every published field or it
-// does not.
-//
-// IT CHECKS BOTH DIRECTIONS, and the second is the one that catches a dropped
-// row. A point citing a fact the store does not carry is the obvious failure; a
-// fact in the document's own slice that NO point publishes is the quiet one, and
-// it is exactly what a resolver change that silently stopped emitting a row would
-// look like. counts.facts would fall and nothing else would say anything.
-//
-// AND A THIRD THING, which neither direction reaches: that each point's COLUMN
-// is one the document declares. Both arms above compare a point against the
-// FACTS, and a point can agree with a real fact in every published field while
-// sitting in a column the document does not publish -- comparePoint compares it
-// only to its own fact, and the reverse sweep filters the facts on those same
-// columns, so the fact behind it is never looked at. internal/export then drops
-// such a point when it lays the table out, because there is no column to put it
-// in, and the figure leaves the published page with nothing saying so.
-// internal/export refuses that document too; this arm is what names
-// which point, and it is reached first because `fisc verify` runs before
-// `fisc export`.
-//
-// Nothing in graph.go covers this. Those checks read Subject.Graphs() and this
-// document has no nodes and no links, so without this check and
-// trend-series-are-complete the document ships unexamined — which is the state
-// documents-are-checked exists to refuse.
+// Both directions: a point citing no stored fact, and a fact in the document's
+// slice no point publishes (a dropped row). And a third arm: each point's
+// column is one the document declares, which neither direction reaches since
+// the reverse sweep filters on those columns; internal/export would drop such
+// a point silently.
 type trendPointsTieToFacts struct{}
 
 func (*trendPointsTieToFacts) meta() meta {
@@ -66,21 +44,8 @@ func (*trendPointsTieToFacts) Run(_ context.Context, s *Subject) (Result, error)
 			for _, pt := range series.Points {
 				points++
 				findings = append(findings, comparePoint(p, series, pt, byID, published)...)
-				// A POINT IN A COLUMN THE DOCUMENT DOES NOT DECLARE is invisible
-				// to every other arm here, and measured rather than assumed:
-				// comparePoint compares a point only against ITS OWN FACT, so a
-				// point whose every field matches a real fact passes it; and the
-				// reverse sweep below walks project.SelectFacts(p.Options), which filters on
-				// these same columns, so the fact behind such a point is never
-				// even looked at. Append a genuine FY2027 point to a one-column
-				// document and both arms stay green over it.
-				//
-				// It matters because internal/export DROPS such a point when it
-				// lays the table out -- there is no column to put it in -- so the
-				// figure leaves the published page without anything saying so.
-				// The packager refuses that document too; this is the half
-				// that names WHICH point, and which is reached first because
-				// `fisc verify` runs before `fisc export`.
+				// Mutation: append a genuine FY2027 point to a one-column
+				// document and only this arm fails.
 				if col := (project.Column{FiscalYear: pt.FiscalYear, Basis: vocab.Basis(pt.Basis)}); !declared[col] {
 					findings = append(findings, finding(
 						fmt.Sprintf("%s %s %s", p.Name, series.SeriesID, fact.ColumnLabel(pt.FiscalYear, pt.Basis)),
@@ -91,10 +56,7 @@ func (*trendPointsTieToFacts) Run(_ context.Context, s *Subject) (Result, error)
 				}
 			}
 		}
-		// The other direction: what the slice carries that the document does
-		// not. Iterating the facts the projection was BUILT over rather than the
-		// whole store is what keeps this a statement about the document rather
-		// than about every schedule in the corpus.
+		// The other direction, over the facts the projection was built over.
 		slice, err := p.slice(s.Facts)
 		if err != nil {
 			return Result{}, err
@@ -122,13 +84,8 @@ func (*trendPointsTieToFacts) Run(_ context.Context, s *Subject) (Result, error)
 	}.result(), nil
 }
 
-// comparePoint checks one point against the fact it names.
-//
-// The fields compared are exactly the ones the point PUBLISHES, which is the
-// rule that keeps this from drifting into a partial check: a point carries an
-// amount, an id and four provenance fields, and every one of them is a claim a
-// reader can act on. Comparing the amount alone would let a point cite the right
-// figure off the wrong page.
+// comparePoint checks one point against the fact it names, over every field
+// the point publishes.
 func comparePoint(p projection, series project.Series, pt project.Point,
 	byID map[string]fact.Fact, published map[string]bool,
 ) []Finding {
@@ -140,9 +97,6 @@ func comparePoint(p projection, series project.Series, pt project.Point,
 			"this point cites fact %s, which is not in the fact store; a citation the "+
 				"reader cannot follow is the defect this project exists to prevent", pt.FactID)}
 	}
-	// A fact published twice would be counted twice by anything summing the
-	// document, and the two points need not even agree — this is the shape a
-	// duplicated series takes.
 	if published[f.ID] {
 		return []Finding{finding(subject,
 			"fact %s is published by more than one point; anything summing this document "+
@@ -176,10 +130,8 @@ func comparePoint(p projection, series project.Series, pt project.Point,
 	if pt.FiscalYear != f.FiscalYear || pt.Basis != string(f.Basis) {
 		report("column", fact.ColumnLabel(pt.FiscalYear, pt.Basis), fyBasis(f))
 	}
-	// The series id is recomputed from the fact rather than trusted, because it
-	// is what groups the four points into one printed row. A point filed under
-	// the wrong series is a row that reads as another row's history, and every
-	// field above would still agree.
+	// The series id is recomputed, not trusted: a point under the wrong series
+	// agrees in every field above.
 	if got := f.SeriesID(); got != series.SeriesID {
 		out = append(out, finding(subject,
 			"this point is published under series %s, but fact %s recomputes to series %s; "+
@@ -193,47 +145,15 @@ func comparePoint(p projection, series project.Series, pt project.Point,
 func fyBasis(f fact.Fact) string { return fact.BandLabel(f.FiscalYear, fact.BandOf(&f), f.Basis) }
 
 // incompleteSeries are the series a trends document legitimately cannot fill in
-// every column, each with the reason.
-//
-// It is the same kind of declaration as uncheckedDocuments, and it carries the
-// same danger: an entry is a human saying
-// a gap is real, and an entry that outlives its reason is an exemption nobody
-// can see expiring. staleSeriesDeclarations is the branch that refuses that.
-//
-// IT IS EMPTY TODAY AND THAT IS THE STATE TO KEEP IT IN. Measured on the
-// committed store: all 231 revenue-by-fund series carry a point in all four
-// columns. The check is green the day it lands, which is the point — it exists
-// for the day the city drops a printed row from one column or adds a line
-// mid-book that only the later years carry, neither of which any other check can
-// see, because a missing point publishes nothing to disagree with.
-//
-// The key is the series id, because that is what identifies a printed row across
-// columns and is recomputable by anyone holding facts.jsonl. The check reads it
-// off Subject.IncompleteSeries, which [Load] fills from here.
+// every column, each with the reason, keyed by series id. An entry that
+// outlives its reason is refused by staleSeriesDeclarations. Keep it empty.
+// [Load] copies it to Subject.IncompleteSeries.
 var incompleteSeries = map[string]string{}
 
-// trendSeriesAreComplete asserts every series has a point in every column.
-//
-// SEPARATE FROM trend-points-tie-to-facts ON PURPOSE: one check is about VALUES
-// and one about SHAPE, and a combined check would report "N of M" over two
-// different units — points and series — which is a summary a reader cannot act
-// on.
-//
-// WHAT IT CATCHES AND WHAT IT DOES NOT, because the difference is easy to
-// overstate. The columns compared against
-// are the ones the projection was BUILT over -- Options.Columns -- and
-// Trends.Slices derives those from the facts that survive, so they and the
-// document's published columns are the same list by construction. That means:
-//
-//   - A ROW dropped from ONE column is caught. The other series still carry that
-//     column, so it is still in Options.Columns, and the short series is short a
-//     point in a known position. This is fisc-d5n's case and the one that
-//     actually arrives when a city reprints a schedule.
-//   - A WHOLE COLUMN vanishing from the corpus is NOT caught here. Every series
-//     loses it together, Slices returns one column fewer, and every series is
-//     complete over what remains. An expected column list to compare against
-//     would be a constant nobody could justify off a page; the published
-//     floor is project.TrendsColumns, which publishedProjectionBuilt holds.
+// trendSeriesAreComplete asserts every series has a point in every column of
+// Options.Columns. A row dropped from one column is caught (fisc-d5n); a whole
+// column vanishing is not, since Slices derives the columns from the facts;
+// project.TrendsColumns, held by publishedProjectionBuilt, is that floor.
 type trendSeriesAreComplete struct{}
 
 func (*trendSeriesAreComplete) meta() meta {
