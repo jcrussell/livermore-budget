@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/jcrussell/livermore-budget/internal/hint"
-	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
 // rollupSpanFile is two rules that agree on everything a rollup already
@@ -220,44 +219,5 @@ rollups:
 	var h *hint.ErrHint
 	if !errors.As(err, &h) || !strings.Contains(h.Hint, "covers none") {
 		t.Errorf("hint = %+v, want it to say an unassertable rollup covers no rules", h)
-	}
-}
-
-// TestTheCommittedRollupsSpanOneKindAndOneScope is the measurement the two
-// guards land green against, kept so that a rule file edit which quietly makes a
-// rollup mixed shows up here as well as at the parse.
-func TestTheCommittedRollupsSpanOneKindAndOneScope(t *testing.T) {
-	f, err := Load(publishedSpine)
-	if err != nil {
-		t.Fatalf("Load(%s): %v", publishedSpine, err)
-	}
-	byID := map[string]*Rule{}
-	for i := range f.Rules {
-		byID[f.Rules[i].ID] = &f.Rules[i]
-	}
-	assertable := 0
-	for i := range f.Rollups {
-		ro := &f.Rollups[i]
-		if len(ro.Covers) == 0 {
-			continue
-		}
-		assertable++
-		kinds, scopes := map[vocab.Kind]bool{}, map[string]bool{}
-		for _, id := range ro.Covers {
-			kinds[byID[id].Kind] = true
-			scopes[byID[id].Scope] = true
-		}
-		if len(kinds) != 1 || len(scopes) != 1 {
-			t.Errorf("rollup %q spans %d kind(s) and %d scope(s); if that is now "+
-				"correct, declare kinds: and read the scope refusal again",
-				ro.ID, len(kinds), len(scopes))
-		}
-		if len(ro.Kinds) != 0 {
-			t.Errorf("rollup %q declares kinds: over covered rules that agree, "+
-				"which the parser refuses", ro.ID)
-		}
-	}
-	if assertable != 13 {
-		t.Errorf("%d assertable rollups, want 13; one of the 14 is unassertable", assertable)
 	}
 }

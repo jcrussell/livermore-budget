@@ -2,8 +2,6 @@ package mapping
 
 import (
 	"testing"
-
-	"github.com/jcrussell/livermore-budget/internal/amount"
 )
 
 // These tests read the PUBLISHED rule file — mappings/, not testdata/ — against
@@ -22,10 +20,6 @@ const publishedSpine = "../../mappings/livermore-budget-fy2026-2027.yaml"
 // stopped being so when fisc-5gk.1 published four transfers-only fund rules on
 // p134: a filter on KindTransferIn alone swept them into a read of pp.66-67.
 const publishedSpineScope = "all-funds-gross"
-
-// dollars converts a figure written the way the document prints it into the
-// integer cents a fact carries.
-func dollars(d int64) amount.Cents { return amount.Cents(d) * 100 }
 
 // TestPublishedPartsDeclareColumnHeaders is the ratchet on an opt-in guard.
 //

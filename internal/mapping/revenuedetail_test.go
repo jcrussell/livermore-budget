@@ -23,3 +23,20 @@ func TestDroppingARevenueRuleFails(t *testing.T) {
 		t.Errorf("error = %v, want it to name the missing rule", err)
 	}
 }
+
+// removeRule cuts one rule out of the YAML source, by id, keeping the rest
+// byte-identical. It is deliberately textual: the point is to delete what an
+// author would delete.
+func removeRule(t *testing.T, src, id string) string {
+	t.Helper()
+	start := strings.Index(src, "  - id: "+id+"\n")
+	if start < 0 {
+		t.Fatalf("no rule %q in the published file", id)
+	}
+	rest := src[start+1:]
+	next := strings.Index(rest, "\n  - id: ")
+	if next < 0 {
+		t.Fatalf("rule %q is the last in the file; this helper needs a following rule", id)
+	}
+	return src[:start] + rest[next+1:]
+}
