@@ -106,9 +106,8 @@ func changeRows(d changeDocument, kind string, cite *cellCites) ([]changeRow, in
 	if len(rows) == 0 {
 		return nil, 0, fmt.Errorf("%s publishes no series of kind %q", d.stem, kind)
 	}
-	// buildCells places a point only into a declared column and says nothing
-	// of one it finds no column for, so a kind's figure is held to every
-	// point of that kind here, whether or not the document as a whole is.
+	// buildCells drops a point in no declared column silently, so each kind
+	// is held to every point of that kind here.
 	if placed != published {
 		return nil, 0, fmt.Errorf("%s publishes %d points of kind %q and %d of them fall in a declared column",
 			d.stem, published, kind, placed)
@@ -116,11 +115,9 @@ func changeRows(d changeDocument, kind string, cite *cellCites) ([]changeRow, in
 	return rows, placed, nil
 }
 
-// buildChangePage renders the change view: the ACFR's ten reported years of
-// governmental-fund revenue and expenditure by category, the printed excess
-// of one over the other, and the Budget Book's four columns of revenue by
-// category. The view's own document is the ten-year schedule; the budget
-// columns are read from the revenue-trends document, which must be built.
+// buildChangePage renders the change view over the ACFR's ten-year schedule
+// (the view's own document) and the Budget Book's four columns, read from the
+// revenue-trends document, which must be built.
 func buildChangePage(p pageCtx) (changePageData, error) {
 	o, v, ix := p.o, p.v, p.ix
 	cite := newCellCites(p.byID, p.pageTextBase)
@@ -185,11 +182,9 @@ func buildChangePage(p pageCtx) (changePageData, error) {
 			Document: ix.PublishedPath(s.doc.stem),
 		})
 	}
-	// Each document's own count holds the page to every point it publishes:
-	// a point is placed in a figure or is of a kind leftOut declares the page
-	// leaves out. The budget document's transfers in are money moved between
-	// the city's own funds, which the budget figure's lede says it does not
-	// count.
+	// Every point a document publishes is placed in a figure or of a kind
+	// leftOut declares; the budget's transfers in are inter-fund, which its
+	// lede says it does not count.
 	leftOut := map[string]map[string]bool{budget.stem: {"transfer_in": true}}
 	for _, d := range []changeDocument{audited, budget} {
 		left := 0

@@ -104,12 +104,9 @@ func (v View) validateSplitCaps() error {
 	return nil
 }
 
-// validateSides refuses a sides chart the client could not draw as sides: a
-// side with no heading, a tier declared twice, a tier no root of the drawn
-// schedule stands at, and a root whose ribbons to what is outside it both
-// arrive and leave, since no one figure is then its size. Each is read off
-// the drawn document of every year, so a declaration is held against the
-// schedule and not against a reading of it.
+// validateSides refuses a sides chart the client could not draw: a side with
+// no heading, a tier declared twice, and, in any year's drawn document, a
+// tier with no root or a root whose outside ribbons both arrive and leave.
 func (v View) validateSides(drawn []string, built map[string][]byte) error {
 	h := v.Overview.sides()
 	for j, s := range h.Sides {

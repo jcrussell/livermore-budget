@@ -14,10 +14,9 @@ import (
 // sidesConfigVersion is the version a sides config declares.
 const sidesConfigVersion = 1
 
-// sidesConfig is what site/sides.js reads from ledger.html before it fetches
-// a column, shaped by schema/sides.schema.json. It carries no figure: every
-// figure is a link of the column a year names, folded by the client to the
-// frontier it opens.
+// sidesConfig is what site/sides.js reads from ledger.html, shaped by
+// schema/sides.schema.json. It carries no figure: every figure is a link of
+// the column a year names.
 type sidesConfig struct {
 	SchemaVersion int                  `json:"schema_version"`
 	ExportedBy    string               `json:"exported_by"`
@@ -55,9 +54,8 @@ func encodeSidesConfig(cfg sidesConfig) ([]byte, error) {
 }
 
 // buildSidesPage renders a ledger view: the spine's years as the year
-// control, the drawn schedule's declared sides as sections the client fills,
-// and the config the client folds by. The chart's figures are the
-// drawn schedule's; the year control is the spine's.
+// control, and the drawn schedule's declared sides as sections the client
+// fills.
 func buildSidesPage(p pageCtx) (sidesPageData, error) {
 	o, v, ix := p.o, p.v, p.ix
 	hints := v.Overview.sides()

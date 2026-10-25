@@ -15,13 +15,11 @@ import (
 // MarkerName is the manifest `fisc export` keeps in the output directory: the
 // header line ManifestHeader, then the sorted, slash-separated relative path of
 // every file the export wrote, one per line, itself excluded. A directory is
-// fisc's only while it carries a valid one, and --clean removes no file it
-// does not list but a manifest temp file an interrupted export stranded.
+// fisc's only while it carries a valid one.
 const MarkerName = ".fisc-export"
 
-// ManifestHeader is the manifest's first line. A marker with any other first
-// line -- the bare "fisc export" an older binary wrote included -- is not a
-// manifest, and the directory carrying it is not fisc's.
+// ManifestHeader is the manifest's first line; a marker with any other is not
+// a manifest.
 const ManifestHeader = "fisc export manifest 1"
 
 // probePrefix names the directory WritableDir creates and removes. A process
@@ -30,12 +28,9 @@ const ManifestHeader = "fisc export manifest 1"
 const probePrefix = ".fisc-write-probe-"
 
 // ResolveOutputDir abs-resolves a user-supplied output directory, follows
-// symlinks on its existing prefix, and refuses the two locations where a
-// mistyped flag does the most damage: the filesystem root and the user's home
-// directory. This is byob-input-validation.1 for the CLI output-dir case,
-// where — unlike an archive entry or a template include — the user may
-// legitimately name an absolute path outside the working directory, so
-// containment inside a base is the wrong check.
+// symlinks on its existing prefix, and refuses the filesystem root and the
+// user's home directory (byob-input-validation.1; an output dir may lie
+// outside the working directory, so containment is the wrong check).
 func ResolveOutputDir(outputDir string) (string, error) {
 	if outputDir == "" {
 		return "", errors.New("output directory is required")
@@ -51,11 +46,8 @@ func ResolveOutputDir(outputDir string) (string, error) {
 	if resolved == string(os.PathSeparator) {
 		return "", fmt.Errorf("refusing to use filesystem root %q as output directory", resolved)
 	}
-	// Both sides are symlink-resolved before comparing. Comparing a resolved
-	// target against a raw $HOME silently disarms the guard wherever the home
-	// directory traverses a symlink, which is the normal case on NFS-mounted
-	// homes and on macOS -- outputdir_test.go already works around the same thing
-	// for /tmp.
+	// $HOME is symlink-resolved too, or the guard is disarmed wherever home
+	// traverses a symlink (NFS, macOS).
 	if home, herr := os.UserHomeDir(); herr == nil && home != "" {
 		if rhome, rerr := evalExistingSymlinks(home); rerr == nil && resolved == rhome {
 			return "", fmt.Errorf("refusing to use home directory %q as output directory", resolved)
@@ -64,10 +56,8 @@ func ResolveOutputDir(outputDir string) (string, error) {
 	return resolved, nil
 }
 
-// ErrForeignDir matches every refusal RefuseForeignDir makes, and none of
-// the I/O errors it can meet reading the directory: a refusal means the
-// caller named a directory fisc must not write into, an I/O error means the
-// environment failed, and the two exit differently.
+// ErrForeignDir matches every refusal RefuseForeignDir makes and none of its
+// I/O errors; the two exit differently.
 var ErrForeignDir = errors.New("output directory is not one fisc may write into")
 
 type foreignDirError struct{ msg string }
@@ -81,17 +71,9 @@ func refuse(format string, a ...any) error {
 
 // RefuseForeignDir refuses an output directory fisc does not own: one that
 // exists, holds anything but a stranded write probe or manifest temp file,
-// and carries no valid MarkerName manifest. Export writes only into a
-// directory that is missing, empty, or carries an earlier export's manifest;
-// writing anywhere else would overwrite files fisc did not write. An
-// unreadable directory or manifest is an I/O error rather than a refusal,
-// and neither is assumed empty.
-//
-// What else the directory holds does not matter here: --clean removes no
-// file the manifest does not list but a stranded manifest temp file, and no
-// directory but an empty one, and Write refuses to write over anything else
-// at a path it writes that the manifest does not list, so a file beside it
-// that no export wrote is never at risk.
+// and carries no valid MarkerName manifest. An unreadable directory or
+// manifest is an I/O error, never assumed empty. Other files beside a valid
+// manifest are safe: --clean and Write touch only what it lists.
 func RefuseForeignDir(dir string) error {
 	info, err := os.Stat(dir)
 	if errors.Is(err, os.ErrNotExist) {
@@ -146,10 +128,8 @@ type invalidManifestError struct{ reason string }
 
 func (e *invalidManifestError) Error() string { return "invalid export manifest: " + e.reason }
 
-// readManifest returns the paths dir's manifest lists. It fails with
-// errNoManifest when there is none, with an *invalidManifestError when the
-// marker is not a regular file or does not parse, and with anything else
-// only on I/O.
+// readManifest returns the paths dir's manifest lists, or errNoManifest, an
+// *invalidManifestError, or an I/O error.
 func readManifest(dir string) ([]string, error) {
 	name := filepath.Join(dir, MarkerName)
 	info, err := os.Lstat(name)
@@ -169,10 +149,8 @@ func readManifest(dir string) ([]string, error) {
 	return parseManifest(b)
 }
 
-// parseManifest is the one reading of a manifest. Every entry must be a clean,
-// local, slash-separated path other than the marker, and the entries strictly
-// ascending, so no listing can name a file outside the directory or name one
-// twice.
+// parseManifest is the one reading of a manifest: entries must pass
+// manifestEntry and be strictly ascending.
 func parseManifest(b []byte) ([]string, error) {
 	s := string(b)
 	if !strings.HasSuffix(s, "\n") {
@@ -195,9 +173,8 @@ func parseManifest(b []byte) ([]string, error) {
 }
 
 // manifestEntry reports whether rel may be listed: a path naming a file
-// strictly inside the directory, spelled one way only, on one line. It is
-// also the screen Prepare puts every planned path through, so no export plans
-// a path its manifest could not list.
+// strictly inside the directory, spelled one way only, on one line. Prepare
+// screens every planned path with it too.
 func manifestEntry(rel string) bool {
 	return rel != "" && rel != "." && rel != MarkerName &&
 		!strings.ContainsAny(rel, "\\\x00\r\n") &&
@@ -217,9 +194,7 @@ func encodeManifest(paths []string) []byte {
 }
 
 // writeManifest replaces dir's manifest with one listing paths, atomically,
-// so a run stopped at any point leaves the old manifest or the new one. It
-// refuses a listing parseManifest would refuse, so no export can write a
-// manifest that dead-ends the next one.
+// and refuses a listing parseManifest would refuse.
 func writeManifest(dir string, paths []string) error {
 	b := encodeManifest(paths)
 	if _, err := parseManifest(b); err != nil {
@@ -233,9 +208,8 @@ func writeManifest(dir string, paths []string) error {
 	})
 }
 
-// strandedProbe reports whether e is a WritableDir probe left behind empty.
-// One holding anything, or unreadable, is not disregarded: only an empty
-// directory says nothing but that a probe was interrupted.
+// strandedProbe reports whether e is a WritableDir probe left behind empty;
+// one holding anything, or unreadable, is not.
 func strandedProbe(dir string, e os.DirEntry) bool {
 	if !e.IsDir() || !strings.HasPrefix(e.Name(), probePrefix) {
 		return false
@@ -244,18 +218,16 @@ func strandedProbe(dir string, e os.DirEntry) bool {
 	return err == nil && len(inside) == 0
 }
 
-// strandedTemp reports whether e is a temp file writeManifest's
-// cmdutil.WriteFile left behind: a regular file named exactly as WriteFile
-// names them. Anything else of a similar name is not disregarded.
+// strandedTemp reports whether e is a regular file named exactly as
+// cmdutil.WriteFile names its temp files.
 func strandedTemp(e os.DirEntry) bool {
 	return e.Type().IsRegular() && cmdutil.IsTempName(e.Name())
 }
 
 // WritableDir reports whether path — or, if it does not exist yet, its
-// nearest existing ancestor — is a directory this process can write to. It
-// probes by creating and removing a hidden temporary directory, because the
-// permission bits alone do not answer the question on a read-only mount, over
-// NFS, or under a container's user mapping. It does not create path itself.
+// nearest existing ancestor — is a directory this process can write to, by
+// creating and removing a probe directory, since permission bits do not
+// answer on a read-only mount, NFS or a user mapping.
 func WritableDir(path string) error {
 	target := path
 	for {
@@ -282,9 +254,8 @@ func WritableDir(path string) error {
 }
 
 // evalExistingSymlinks resolves symlinks in the longest existing prefix of p
-// and rejoins the components that do not exist yet. filepath.EvalSymlinks
-// rejects a path that is not there, which is exactly the case a CLI cares
-// about: "I am about to create this, but canonicalise it first."
+// and rejoins the components that do not exist yet, which
+// filepath.EvalSymlinks refuses.
 func evalExistingSymlinks(p string) (string, error) {
 	p = filepath.Clean(p)
 	var trailing []string

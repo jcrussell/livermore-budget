@@ -64,10 +64,9 @@ type departmentYear struct {
 	Sides []departmentSide `json:"sides"`
 }
 
-// departmentSide says of one department in one column whether its two blocks
-// tie to the cent, as cuts-tie-along-the-lattice holds them, or are held apart
-// by a declared exception. A declaration and not a comparison: the client
-// prints it and computes no difference.
+// departmentSide says whether one department's two blocks tie to the cent in
+// one column (cuts-tie-along-the-lattice) or are held apart by a declared
+// exception. The client prints it and computes no difference.
 type departmentSide struct {
 	Department string `json:"department"`
 	Ties       bool   `json:"ties"`
@@ -136,16 +135,10 @@ func decodeDepartmentDocument(stem, want string, raw []byte) (departmentDocument
 	return d, nil
 }
 
-// buildDepartmentPage renders the department view: every department as a bar
-// of the fund groups paying it, and a dropdown of departments, each read out
-// of every year's column on two sides -- department-funding's links into the
-// department, and department-spending's into its divisions.
-//
-// It refuses what would make a side less than the department, in any year:
-// a drawn department or division the membership does not file exactly once,
-// a department with nothing on either side, a division of the membership the
-// spending side draws nothing for, a paying fund under no fund group, and a
-// label the two disagree on.
+// buildDepartmentPage renders the department view, each department read out
+// of every year's column on two sides: department-funding's links into it and
+// department-spending's into its divisions. It refuses, in any year, whatever
+// would make a side less than the department (vetDepartmentColumn).
 func buildDepartmentPage(p pageCtx) (departmentPageData, error) {
 	o, v, ix := p.o, p.v, p.ix
 	if !slices.Equal(v.Reads, []string{project.DepartmentSpendingProjection}) {
@@ -331,18 +324,11 @@ var spendingKindOf = map[string]project.LinkKind{
 }
 
 // vetDepartmentColumn holds one year's two documents to the membership: every
-// department funding pays is stated, every fund paying one hangs from a fund
-// group the funding document draws, every division spending draws is filed
-// under a stated department, every stated department is paid, every stated
-// division draws, every label is the one the membership states, every
-// funding cell is a positive integer of cents no wider than a JavaScript safe
-// integer, and every spending link declares the kind its object end's role
-// names.
-//
-// A fund's group is the one membership site/department.js splits a
-// department's bar by; a fund with none would be drawn in no segment.
-// site/department.js refuses a funding cell that is not a positive safe
-// integer, so one would pass here and the reader be refused the page.
+// department paid is stated and every stated one paid, every paying fund
+// hangs from a drawn fund group, every division drawn is filed and every
+// filed one drawn, labels agree, funding cells are positive safe integers
+// (site/department.js refuses any other), and each spending link declares
+// its object end's kind.
 func vetDepartmentColumn(entries []departmentEntry, ofDivision map[string]string,
 	fundingStem string, funding departmentDocument, spendingStem string, spending departmentDocument,
 ) error {

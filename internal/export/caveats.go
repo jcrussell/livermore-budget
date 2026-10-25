@@ -22,12 +22,8 @@ type documentCaveats struct {
 	} `json:"metadata"`
 }
 
-// caveatMeta is a decoded caveat.
-//
-// A SEPARATE TYPE FROM project.Caveat because this package consumes
-// projections as bytes. The field set is the contract, and it is pinned by
-// TestEveryNameThisPackageDecodesIsOneAProjectionStates rather than by the two
-// declarations happening to agree.
+// caveatMeta is a decoded caveat. Its field set is pinned to project.Caveat's
+// by TestEveryNameThisPackageDecodesIsOneAProjectionStates.
 type caveatMeta struct {
 	ID        string   `json:"id"`
 	Summary   string   `json:"summary"`
@@ -134,9 +130,7 @@ type caveatAbout struct {
 	Files     []caveatFile
 	// Flagged is whether a chart flags these marks: every file of the group
 	// is a schedule a Sankey page draws, whose caveats site/app.js chips on
-	// the marks they name. A document only read beside the chart (the spine
-	// a Flows page opens on) is not flagged, and neither is any ledger or
-	// table.
+	// the marks they name.
 	Flagged bool
 }
 
@@ -190,8 +184,6 @@ type caveatView struct {
 }
 
 // caveatsPathOf is the caveats view's path, or "" when the site has none.
-//
-// Derived from the view set, so it cannot drift out of step with it.
 func caveatsPathOf(o *Options) string { return templatePathOf(o, CaveatsTemplate) }
 
 // caveatSectionPrefix, caveatEntryPrefix and caveatThemePrefix are the
@@ -682,9 +674,8 @@ func buildCaveatsPage(p pageCtx) (caveatsPageData, error) {
 			ExportedBy:  o.GeneratedBy,
 			Projections: projectionRefs(o, p.ix),
 			SourcesPath: templatePathOf(o, ProvenanceTemplate),
-			// NO Sources: this page shows no figure, so it cites no page.
-			// NO DataPath either, for buildProvenancePage's reason: this page
-			// draws no projection.
+			// No Sources (it shows no figure) and no DataPath (it draws no
+			// projection).
 		},
 		Themes:    cx.themes,
 		Sections:  cx.sections,

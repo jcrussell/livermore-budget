@@ -7,10 +7,8 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/amount"
 )
 
-// debtPageData is the debt template's input. Every figure is rendered
-// server-side from the debt-service document, so the page works with
-// JavaScript off, and none is computed here: a fund type's total is the
-// document's, which cites its facts.
+// debtPageData is the debt template's input, rendered server-side; a fund
+// type's total is the document's, not computed here.
 type debtPageData struct {
 	chrome
 	Columns []string
@@ -115,10 +113,8 @@ type debtFigure struct {
 	Token       string `json:"token"`
 }
 
-// buildDebtPage renders the debt view from its document. It refuses a
-// document whose figures do not reconcile with its own count, and a row whose
-// cells do not match its table's width, because either would drop a figure
-// from the page in silence.
+// buildDebtPage renders the debt view, refusing figures that do not reconcile
+// with the document's count and a row not its table's width.
 func buildDebtPage(p pageCtx) (debtPageData, error) {
 	o, v, ix := p.o, p.v, p.ix
 	d, err := decodeWhole[debtDoc](v.Projection, o.Projections[v.Projection])

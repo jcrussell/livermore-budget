@@ -207,12 +207,10 @@ type decoded struct {
 	} `json:"metadata"`
 }
 
-// ColumnIndex answers which built document is one schedule of one column:
-// [ColumnPath] -> the document's own projection name -> filename stem. It is the same join
-// site/app.js makes, and is built in [ColumnsOf]'s own loop so the fold and
-// the index cannot disagree. It also answers the tiers each built document
-// carries a node at, read off the same decode, so a declaration is held
-// against the document and not against a second reading of it.
+// ColumnIndex answers which built document is one schedule of one column
+// ([ColumnPath] -> projection name -> stem), the join site/app.js makes, and
+// the tiers each document carries. [ColumnsOf] builds it in its own decode
+// loop, so the fold and the index cannot disagree.
 type ColumnIndex struct {
 	schedules map[string]map[string]string
 	columns   map[string]string
@@ -233,9 +231,8 @@ func (ix ColumnIndex) Stem(column, schedule string) (string, bool) {
 }
 
 // PublishedPath is where a reader fetches a built document: the column it
-// folded into, or its own file under data/ where it folded into none. The
-// write plan, the footer and the caveats page all read it, so none can link a
-// path the site does not write.
+// folded into, or its own file under data/ where it folded into none. Every
+// link to a document reads it, so none names a path the site does not write.
 func (ix ColumnIndex) PublishedPath(stem string) string {
 	if column, folded := ix.Column(stem); folded {
 		return column
@@ -280,8 +277,7 @@ func ColumnsOf(projections map[string][]byte, generatedBy string) (map[string]Co
 		if schedule == "" && len(d.Nodes) > 0 {
 			return nil, ColumnIndex{}, fmt.Errorf("document %s states no projection, so it is no schedule of its column", stem)
 		}
-		// The tiers the document carries, column or none: a view may draw a
-		// document that folded into no column.
+		// Tiers are indexed column or none: a view may draw an unfolded one.
 		for _, n := range d.Nodes {
 			if !slices.Contains(ix.tiers[stem], n.Tier) {
 				ix.tiers[stem] = append(ix.tiers[stem], n.Tier)
@@ -398,12 +394,9 @@ func ColumnsOf(projections map[string][]byte, generatedBy string) (map[string]Co
 }
 
 // fundGroupDisplayOrder is the fund column top to bottom, by fund-type slug,
-// and with it the categorical slot each group wears.
-//
-// The order is measured: over the colour pairs that touch in this graph its
-// worst is CVD dE 9.1 light / 8.4 dark (target 8); sorting by size drops the
-// worst dark pair to 6.9. Re-run the dataviz validator over the touching pairs
-// before changing it (fisc-y0k). A slug it does not name sorts after, by id.
+// and the categorical slot each group wears; an unnamed slug sorts after, by
+// id. Measured: worst touching pair CVD dE 9.1 light / 8.4 dark (target 8);
+// re-run the dataviz validator before changing it (fisc-y0k).
 var fundGroupDisplayOrder = []string{
 	registry.FundTypeInternalService,
 	registry.FundTypeCapital,
@@ -456,18 +449,11 @@ func encodeColumn(doc ColumnDoc) ([]byte, error) {
 }
 
 // ReachedStems is every document a reader of this view can reach, once each:
-// its projection, its year stems, and the [View.Draws] schedule of each
-// year's column, with, where that schedule is the expansion, every document
-// of that column the expansion is stitched from ([project.ExpansionStitches]),
-// whose links are the expansion's leaves. A view drawing its own document
-// reaches no expansion whatever its form, since its page draws none. It
-// refuses a projection outside the year stems, as validate does, since it
-// runs on views validate has not seen. The caveats a page states
-// (caveatsOfView) and `fisc export`'s reachability gate both read it, so the
-// two cannot disagree.
-//
-// A [ChangeTemplate] view also reaches [project.TrendsProjection], whose
-// columns buildChangePage renders beside the view's own document.
+// its year stems, each year column's [View.Draws] schedule and, for the
+// expansion, the documents it is stitched from ([project.ExpansionStitches]),
+// plus [View.Reads]; a [ChangeTemplate] view also reaches
+// [project.TrendsProjection]. It refuses a projection outside the year stems.
+// caveatsOfView and `fisc export`'s reachability gate both read it.
 func (v View) ReachedStems(ix ColumnIndex) ([]string, error) {
 	if err := v.projectionAmongYears(); err != nil {
 		return nil, err

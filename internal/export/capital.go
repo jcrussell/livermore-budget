@@ -7,10 +7,8 @@ import (
 	"strings"
 )
 
-// capitalPageData is the capital template's input: the project listing as a
-// table, every cell a figure the document cites, and the funds its filter
-// offers. Nothing here is summed; site/capital.js sums the rows a reader has
-// left shown.
+// capitalPageData is the capital template's input. Nothing here is summed;
+// site/capital.js sums the rows a reader has left shown.
 type capitalPageData struct {
 	chrome
 	Columns []columnRef
@@ -54,11 +52,8 @@ type capitalBody struct {
 	} `json:"series"`
 }
 
-// buildCapitalPage renders the capital view over its series document.
-//
-// buildHistoryPage's rules apply: every figure is read out of the document and
-// the counts must reconcile. A zero renders as the token the page printed, a
-// dash, rather than as "$0", which the city did not print.
+// buildCapitalPage renders the capital view; the counts must reconcile. A
+// zero renders as the printed token, a dash, not "$0".
 func buildCapitalPage(p pageCtx) (capitalPageData, error) {
 	o, v, ix := p.o, p.v, p.ix
 	cite := newCellCites(p.byID, p.pageTextBase)
@@ -67,8 +62,7 @@ func buildCapitalPage(p pageCtx) (capitalPageData, error) {
 		return capitalPageData{}, err
 	}
 	meta, body, columns := d.meta, d.body, d.cols
-	// The top bar opens on every year, which is the table whole; a year
-	// narrows it to the column whose header carries the year's key.
+	// The select opens on every year; a year narrows to its keyed column.
 	sel := yearSelect{Options: []yearOption{{Label: "Every year", Selected: true}}}
 	for i, c := range meta.Columns {
 		columns[i].Key = YearKey(c.FiscalYear, c.Basis)

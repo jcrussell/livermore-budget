@@ -2,161 +2,111 @@ package export
 
 import "github.com/jcrussell/livermore-budget/internal/project"
 
-// wording is every sentence site/app.js composes about the chart on screen,
-// as templates the client fills in: the counts line, the chart hint and the
-// toolbar's buttons over every split. `{name}` is a variable's value and
-// `{name:one|many}` is the value followed by the singular or the plural word,
-// by whether the value is 1.
-//
-// A sentence carrying a count the client takes carries the mark ◇ with it:
-// a count of what is drawn is the page's sentence, never a figure the city
-// printed.
-//
-// Declared here and formatted there, so the words are the packager's and the
-// numbers the chart's.
+// wording is every sentence site/app.js composes about the chart, as
+// templates the client fills: `{name}` is a value and `{name:one|many}` the
+// value followed by the singular or plural word. A sentence carrying a count
+// the client takes carries ◇: it is the page's sentence, never a printed
+// figure. The words are the packager's and the numbers the chart's.
 type wording struct {
 	Counts        string `json:"counts"`
 	CountsPartial string `json:"counts_partial"`
 	OpenInto      string `json:"open_into"`
 	NothingOpens  string `json:"nothing_opens"`
-	// FoldBack is said beside a chart with a node split open: the ways to
-	// fold one back.
-	FoldBack string `json:"fold_back"`
-	// Follow is said beside every chart, under DetailEmpty: what Escape and
-	// a node's menu do.
-	Follow string `json:"follow"`
-	Expand string `json:"expand"`
-	Swatch string `json:"swatch"`
-	// The glyph beside a node: GlyphOpen names the ⊕ that splits a node one
-	// way, GlyphChoose the ⊕ that offers a node's ways, and GlyphFold the ⊖
-	// that folds a split node back. SplitChooser names the menu GlyphChoose
-	// opens.
+	FoldBack      string `json:"fold_back"`
+	Follow        string `json:"follow"`
+	Expand        string `json:"expand"`
+	Swatch        string `json:"swatch"`
+	// GlyphOpen and GlyphChoose name a node's ⊕ (one way, or a choice of
+	// ways, in the SplitChooser menu); GlyphFold its ⊖.
 	GlyphOpen    string `json:"glyph_open"`
 	GlyphChoose  string `json:"glyph_choose"`
 	GlyphFold    string `json:"glyph_fold"`
 	SplitChooser string `json:"split_chooser"`
-	// NodeMenu names a node's context menu, which a right-click, M,
-	// Shift+F10, the ContextMenu key or the drawer's NodeMenuMore opens;
-	// FollowMoney, FilterOutNode and ShowOnlyNode are its three choices.
+	// NodeMenu names a node's context menu; FollowMoney, FilterOutNode and
+	// ShowOnlyNode are its choices.
 	NodeMenu      string `json:"node_menu"`
 	NodeMenuMore  string `json:"node_menu_more"`
 	FilterOutNode string `json:"filter_out_node"`
 	ShowOnlyNode  string `json:"show_only_node"`
-	// RefusedPart, RefusedAloneEmpty and RefusedOther are said under a
-	// choice of the node menu the redraw would refuse: a cut of part of a
-	// flow the city printed as one total, the other filters leaving none of
-	// the money of the node shown alone, and any other refusal.
+	// RefusedPart, RefusedAloneEmpty and RefusedOther are said under a node
+	// menu choice the redraw would refuse; RedrawPart and RedrawAloneEmpty
+	// follow any redraw's refusal for the same reasons.
 	RefusedPart       string `json:"refused_part"`
 	RefusedAloneEmpty string `json:"refused_alone_empty"`
 	RefusedOther      string `json:"refused_other"`
-	// RedrawPart and RedrawAloneEmpty follow a redraw's refusal, the search
-	// reveal's among them, where the filters refuse it as the menu's
-	// RefusedPart and RefusedAloneEmpty would.
-	RedrawPart       string `json:"redraw_part"`
-	RedrawAloneEmpty string `json:"redraw_alone_empty"`
-	// The toolbar's two buttons over every split at once.
-	ExpandAll     string `json:"expand_all"`
-	CollapseAll   string `json:"collapse_all"`
-	PrintedByCity string `json:"printed_by_city"`
-	InferredByUs  string `json:"inferred_by_us"`
-	OurInference  string `json:"our_inference"`
-	InferredChip  string `json:"inferred_chip"`
-	PrintedChip   string `json:"printed_chip"`
-	CarriedNote   string `json:"carried_note"`
-	CarriedChip   string `json:"carried_chip"`
-	// RepeatsNote and RepeatsChip are said of a link drawing a leaf another
-	// drawn link draws too: a figure the city printed between other ends,
-	// repeated through a hub a split opened.
-	RepeatsNote string `json:"repeats_note"`
-	RepeatsChip string `json:"repeats_chip"`
-	// CaveatChip is said beside a mark's figure: how many caveats are about
-	// the mark.
-	CaveatChip string `json:"caveat_chip"`
-	DescOpens  string `json:"desc_opens"`
-	// DescFolds is said of an open hub: the activation that opened it folds
-	// it back.
+	RedrawPart        string `json:"redraw_part"`
+	RedrawAloneEmpty  string `json:"redraw_alone_empty"`
+	ExpandAll         string `json:"expand_all"`
+	CollapseAll       string `json:"collapse_all"`
+	PrintedByCity     string `json:"printed_by_city"`
+	InferredByUs      string `json:"inferred_by_us"`
+	OurInference      string `json:"our_inference"`
+	InferredChip      string `json:"inferred_chip"`
+	PrintedChip       string `json:"printed_chip"`
+	CarriedNote       string `json:"carried_note"`
+	CarriedChip       string `json:"carried_chip"`
+	// RepeatsNote and RepeatsChip are said of a printed figure repeated
+	// through a hub a split opened.
+	RepeatsNote  string `json:"repeats_note"`
+	RepeatsChip  string `json:"repeats_chip"`
+	CaveatChip   string `json:"caveat_chip"`
+	DescOpens    string `json:"desc_opens"`
 	DescFolds    string `json:"desc_folds"`
 	DescExpands  string `json:"desc_expands"`
 	DescFollows  string `json:"desc_follows"`
 	FlowInferred string `json:"flow_inferred"`
-	// The aggregate marks, schema/mark.schema.json: their
-	// labels, rationales and source notes are templates the constructors
-	// fill, so no sentence about what a mark IS is spelled in JavaScript.
+	// The aggregate marks' words (schema/mark.schema.json), so no sentence
+	// about what a mark IS is spelled in JavaScript.
 	AggregateLabel     string `json:"aggregate_label"`
 	AggregateRationale string `json:"aggregate_rationale"`
 	AggregateNote      string `json:"aggregate_note"`
 	AggregateTogether  string `json:"aggregate_together"`
-	// ContraOrphan is project.ContraOrphan, the sentence a reduction carries
-	// when no printed line explains it, shipped so a fold that nets a ribbon
-	// negative names it in the producer's words.
-	ContraOrphan string `json:"contra_orphan"`
-	// A fund's printed balances, schema/column.schema.json's balances, each
-	// said beside the node's figure with the fact and pages it cites.
+	// ContraOrphan is project.ContraOrphan, for a fold that nets a ribbon
+	// negative.
+	ContraOrphan     string `json:"contra_orphan"`
 	BalanceBeginning string `json:"balance_beginning"`
 	BalanceEnding    string `json:"balance_ending"`
 	// BalanceChange says Go's derived change beside the two it is taken from.
 	BalanceChange string `json:"balance_change"`
-	// The filter panel's sentences: what the filters leave out of the chart,
-	// said beside it as a client sum over cited cents, and the smaller-flows
-	// mark and merged ribbon the smallest-flow filter draws.
-	FilterHidden   string `json:"filter_hidden"`
-	FilterFolded   string `json:"filter_folded"`
-	FilterHiddenAt string `json:"filter_hidden_at"`
-	// FilterOnly and FilterOut name, on the filter line, the node shown
-	// alone and the nodes filtered out.
-	FilterOnly string `json:"filter_only"`
-	FilterOut  string `json:"filter_out"`
-	// FilterDrawnAt is said beside a node's figure, which is the view's
-	// whatever the filters leave drawn, where they leave part of it.
+	// The filter panel's sentences, each a client sum over cited cents.
+	FilterHidden     string `json:"filter_hidden"`
+	FilterFolded     string `json:"filter_folded"`
+	FilterHiddenAt   string `json:"filter_hidden_at"`
+	FilterOnly       string `json:"filter_only"`
+	FilterOut        string `json:"filter_out"`
 	FilterDrawnAt    string `json:"filter_drawn_at"`
 	SmallestAll      string `json:"smallest_all"`
 	SmallerLabel     string `json:"smaller_label"`
 	SmallerRationale string `json:"smaller_rationale"`
 	SmallerNote      string `json:"smaller_note"`
 	SmallerFlow      string `json:"smaller_flow"`
-	// The search box over the marks of the chart drawn: its label, what it
-	// found, and what Enter does to an option beyond following it.
-	SearchLabel   string `json:"search_label"`
-	SearchCount   string `json:"search_count"`
-	SearchNone    string `json:"search_none"`
-	SearchOpens   string `json:"search_opens"`
-	SearchExpands string `json:"search_expands"`
-	// SearchReveals is what Enter does on a search option the chart does not
-	// draw: it splits the nodes above it until it is drawn.
-	SearchReveals string `json:"search_reveals"`
-	// The full-screen control on the chart's card, in each of its two states.
-	FullScreen     string `json:"full_screen"`
-	FullScreenExit string `json:"full_screen_exit"`
-	// ZoomReset is the control that puts the chart back as its year opens:
-	// whole, unfiltered, unsplit and with nothing pinned.
-	ZoomReset string `json:"zoom_reset"`
-	// Rail names the toggle that collapses and expands the rail beside the
-	// chart holding the legend, the filters and the key.
-	Rail string `json:"rail"`
-	// Drawer names the provenance drawer below the chart; DetailEmpty is
-	// what it says with nothing previewed or pinned, and Pin its toggle
-	// that pins what it shows or lets it go.
+	SearchLabel      string `json:"search_label"`
+	SearchCount      string `json:"search_count"`
+	SearchNone       string `json:"search_none"`
+	SearchOpens      string `json:"search_opens"`
+	SearchExpands    string `json:"search_expands"`
+	SearchReveals    string `json:"search_reveals"`
+	FullScreen       string `json:"full_screen"`
+	FullScreenExit   string `json:"full_screen_exit"`
+	// ZoomReset puts the chart back as its year opens.
+	ZoomReset   string `json:"zoom_reset"`
+	Rail        string `json:"rail"`
 	Drawer      string `json:"drawer"`
 	DetailEmpty string `json:"detail_empty"`
 	Pin         string `json:"pin"`
-	// FollowMoney names the drawer's toggle that follows the money of the
-	// node it shows, and puts the rest back.
 	FollowMoney string `json:"follow_money"`
-	// SourcesChart heads the drawer's sources for a node that draws no
-	// ribbon: the pages of the whole chart drawn, not pages of its own.
+	// SourcesChart heads the whole chart's sources, for a node drawing no
+	// ribbon.
 	SourcesChart string `json:"sources_chart"`
-	// Hairline is said beside a chart drawing ribbons under a pixel of its
-	// canvas: they are drawn a screen pixel wide, which overstates them, and
-	// the sentence says so.
+	// Hairline says ribbons under a pixel are drawn wider than their share.
 	Hairline string `json:"hairline"`
-	// SplitsDropped is said when a year switch folds back the splits of
-	// nodes the new year's expansion schedule does not carry.
+	// SplitsDropped is said when a year switch folds back splits the new
+	// year's expansion schedule does not carry.
 	SplitsDropped string `json:"splits_dropped"`
 }
 
-// splitLabels is the words for what a node splits into, keyed by every split
-// key the expansion schedule declares ([project.SplitKeys]): what the glyph
-// and the chooser call a node's members.
+// splitLabels is what the glyph and the chooser call a node's members, keyed
+// by every [project.SplitKeys].
 func splitLabels() map[string]string {
 	return map[string]string{
 		"lines":       "its lines",
@@ -168,10 +118,9 @@ func splitLabels() map[string]string {
 	}
 }
 
-// memberNouns is what one member of each split key is called, keyed by every
-// split key the expansion schedule declares ([project.SplitKeys]): the noun a
-// member drawn beside a parent the city prints in the same words is told
-// apart by. `{fund}` is the member's column node's fund number.
+// memberNouns is what one member of each [project.SplitKeys] is called, to
+// tell it apart from a parent printed in the same words. `{fund}` is the
+// member's fund number.
 func memberNouns() map[string]string {
 	return map[string]string{
 		"lines":       "line",

@@ -38,9 +38,8 @@ type glanceRow struct {
 
 // glanceApart is one ApartFromSpine as the page prints it.
 type glanceApart struct {
-	// Residual is the magnitude; Direction is "less" or "more", read off
-	// the sign of ApartFromSpine.ResidualCents, which is what the rows
-	// miss the whole by, either way.
+	// Residual is the magnitude; Direction is "less" or "more", by the sign
+	// of ApartFromSpine.ResidualCents.
 	Residual  string
 	Direction string
 	Reason    string
@@ -82,8 +81,7 @@ type glancePageData struct {
 }
 
 // glanceDocument is as much of the spine or of department-funding as the
-// glance page reads: the node table for roles and labels, every link with
-// its figure and provenance, and the metadata its caveats and year words state.
+// glance page reads.
 type glanceDocument struct {
 	Projection string `json:"projection"`
 	Nodes      []struct {
@@ -124,10 +122,8 @@ func decodeGlanceDocument(stem, want string, raw []byte) (glanceDocument, error)
 }
 
 // glanceRows is every link of doc whose ends pick picks, as rows grouped by
-// the end pick names. It refuses a link naming a node the table lacks and a
-// node with no label, because a row with no words is a cell a reader cannot
-// name, and an inferred link, because the page lists every row as a printed
-// cell and marks none inferred.
+// the end pick names. It refuses an end the table lacks or that has no label,
+// and an inferred link: the page lists every row as a printed cell.
 func glanceRows(doc glanceDocument, pick func(src, dst string) (group, other string, ok bool),
 	cite *cellCites,
 ) ([]glanceRow, error) {

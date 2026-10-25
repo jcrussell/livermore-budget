@@ -12,13 +12,9 @@ import (
 	"github.com/jcrussell/livermore-budget/schema"
 )
 
-// projectionMetadata is the decoded metadata block of a SANKEY document. The
-// page renders these figures server-side so the headline survives without
-// JavaScript.
-//
-// IT IS THE SPINE'S AND NOT EVERY DOCUMENT'S, which is what the split in
-// decodeSankey is about: headline is the spine's alone, and a trends document
-// carries neither it nor a fiscal year and is not defective for that.
+// projectionMetadata is the decoded metadata block of a SANKEY document,
+// rendered server-side so the headline survives without JavaScript. Only the
+// spine carries a headline (decodeSankey).
 type projectionMetadata struct {
 	GeneratedBy     string           `json:"generated_by"`
 	FiscalYear      int              `json:"fiscal_year"`
@@ -37,46 +33,37 @@ type projectionMetadata struct {
 	Caveats []caveatMeta `json:"caveats"`
 }
 
-// Scope is the schedule set as a page prints it: the scopes joined, in
-// the document's own order.
+// Scope is the scopes joined, in the document's own order.
 func (m projectionMetadata) Scope() string { return strings.Join(m.Scopes, ", ") }
 
-// figure is one headline figure: the index's headline, and a glance bar's
-// printed total. The JSON tags are load-bearing: the hero ships in
-// window.FISC_CONFIG for a year switch to paint, which reads label and value,
-// and the template never sees the JSON to notice a missing tag.
+// figure is one headline figure. The JSON tags are load-bearing: a year
+// switch paints the hero from window.FISC_CONFIG, and the template would not
+// notice a missing tag.
 type figure struct {
 	Label string `json:"label"`
 	Value string `json:"value"`
 	Note  string `json:"note"`
-	// Kind selects the figure's treatment: "hero" for the headline, "" for
-	// the rest. It is a class name, not a colour: the stylesheet owns the
-	// palette.
+	// Kind is a class name: "hero" for the headline, "" for the rest.
 	Kind string `json:"kind"`
 }
 
-// yearView is one published fiscal year's worth of everything the page states
-// in words rather than draws.
-//
-// It is built in Go for every year, not just the one the page opens on, and
-// the client only chooses between them.
+// yearView is one published year's worth of everything the page states in
+// words, built in Go for every year; the client only chooses between them.
 type yearView struct {
 	Year  int    `json:"year"`
 	Label string `json:"label"`
 	Stem  string `json:"stem"`
 	Path  string `json:"path"`
 	Basis string `json:"basis"`
-	// Title is this year's <title>. See sankeyTitle for why the caller's words
-	// survive the switch.
+	// Title is this year's <title> (sankeyTitle).
 	Title   string      `json:"title"`
 	Hero    figure      `json:"hero"`
 	Caveats []caveatRef `json:"caveats"`
 	Counts  countsRef   `json:"counts"`
-	// ChartTitle is the <title> inside the SVG -- the chart's accessible name,
-	// and a different string from Title, which is the document's.
+	// ChartTitle is the SVG's <title>, the chart's accessible name.
 	ChartTitle string `json:"chart_title"`
-	// Lede is the year and basis as the lede names them, "FY 2025-26 adopted";
-	// the template renders it and app.js repaints it and names a column by it.
+	// Lede is "FY 2025-26 adopted"; app.js repaints it and names a column by
+	// it.
 	Lede string `json:"lede"`
 }
 
@@ -87,29 +74,25 @@ type countsRef struct {
 	Links int `json:"links"`
 }
 
-// pageData is the Sankey template's input: the shared chrome plus everything
-// only a spine page has.
+// pageData is the Sankey template's input. Lede, ChartTitle and Hero are the
+// opening year's.
 type pageData struct {
 	chrome
-	// Lede is the opening year's, as yearView carries it.
 	Lede  string
 	Basis string
 	// Wording is the client's words, which the template's legend shares.
-	Wording wording
-	// ChartTitle is the SVG's accessible name: the opening yearView's string,
-	// the same one app.js repaints on a year switch.
+	Wording    wording
 	ChartTitle string
 	Hero       figure
-	// Years is every published year, oldest first, the newest the one the
-	// page opens on.
-	Years []yearView
-	Facts int
-	Nodes int
-	Links int
-	// Description is [View.Description].
+	// Years is every published year, oldest first; the page opens on the
+	// newest.
+	Years       []yearView
+	Facts       int
+	Nodes       int
+	Links       int
 	Description string
-	// Narrow is the view a narrow screen is pointed to in place of the
-	// chart, the site's bars; its Path is "" on a site with none.
+	// Narrow is where a narrow screen is pointed in place of the chart; its
+	// Path is "" on a site with none.
 	Narrow navItem
 	// ConfigJSON is window.FISC_CONFIG. json.Marshal escapes <, > and & to
 	// their \u form, so the blob cannot close the script element it sits in.
@@ -121,45 +104,35 @@ func ledeOf(label, basis string) string { return label + " " + basis }
 
 // PageConfigVersion is the version window.FISC_CONFIG declares, and
 // site/core.js's SCHEMA_VERSION must equal it. It versions the page as
-// site/app.js reads it -- the config's keys, its wording keys and the elements
-// the script paints into -- apart from the projection's own SchemaVersion, so
-// a script cached across a change to the page refuses it and asks for a
-// reload rather than throwing on an element or a key the page no longer has.
+// site/app.js reads it, so a script cached across a page change asks for a
+// reload rather than throwing.
 const PageConfigVersion = 2
 
 // clientConfig is window.FISC_CONFIG: the metadata the page needs before it
 // has fetched anything, plus where to fetch the bulk from.
 type clientConfig struct {
 	SchemaVersion int `json:"schema_version"`
-	// ProjectionVersion is project.SchemaVersion, the projection site/core.js
-	// assembles from a column; the script refuses a page whose projection is
-	// not its PROJECTION_VERSION, as it refuses a SchemaVersion not its own.
+	// ProjectionVersion is project.SchemaVersion; site/core.js refuses one
+	// not its PROJECTION_VERSION.
 	ProjectionVersion int    `json:"projection_version"`
 	ExportedBy        string `json:"exported_by"`
 	Primary           string `json:"primary"`
-	// Years is every published year with the words that belong to it, built by
-	// the packager so the client never composes a figure or a caveat itself.
-	Years []yearView           `json:"years"`
-	Docs  map[string]clientDoc `json:"docs"`
-	// KindLabels is each link kind in the page's words.
-	KindLabels map[string]string `json:"kind_labels"`
-	// SplitLabels is what each split key's members are called, in the page's
-	// words, keyed as the expansion schedule names a split.
+	// Years carries each year's words, so the client never composes a figure
+	// or a caveat itself.
+	Years      []yearView           `json:"years"`
+	Docs       map[string]clientDoc `json:"docs"`
+	KindLabels map[string]string    `json:"kind_labels"`
+	// SplitLabels and MemberNouns name a split key's members and one member,
+	// keyed as the expansion schedule names a split.
 	SplitLabels map[string]string `json:"split_labels"`
-	// MemberNouns is what one member of each split key is called, in the
-	// page's words, keyed as SplitLabels.
 	MemberNouns map[string]string `json:"member_nouns"`
-	// Wording is every sentence the client composes, as templates it fills.
-	Wording wording `json:"wording"`
+	Wording     wording           `json:"wording"`
 	// Overview is the page's own chart: its form and that form's hints.
 	Overview Chart `json:"overview"`
 }
 
 // encodeConfig renders window.FISC_CONFIG and refuses bytes that do not match
-// the published schema, as encodeColumn does for a column.
-//
-// The template renders these structs by Go field name, so a missing JSON tag
-// would blank only what a reader gets after a year switch; this catches it.
+// the published schema, which catches a missing JSON tag the template cannot.
 func encodeConfig(cfg clientConfig) ([]byte, error) {
 	blob, err := json.Marshal(cfg)
 	return schemaChecked(blob, err, schema.Page, fmt.Sprintf("page config for %q", cfg.Primary))
@@ -181,12 +154,8 @@ func schemaChecked(blob []byte, err error, name, what string) ([]byte, error) {
 	return blob, nil
 }
 
-// heroFor renders one year's headline figure.
-//
-// The prose lives here and nowhere else. The note is a claim about what the
-// number means, and a second implementation of it — in the client, for a year
-// switch — is the way two figures on one page come to disagree about the same
-// schedule.
+// heroFor renders one year's headline figure. Its prose lives here only; a
+// client copy for a year switch would let two figures on one page disagree.
 func heroFor(meta projectionMetadata) figure {
 	h := meta.Headline
 	return figure{
@@ -197,10 +166,8 @@ func heroFor(meta projectionMetadata) figure {
 	}
 }
 
-// decodeSankey reads a document as a SPINE document, and refuses one that is not.
-//
-// The two refusals below are the Sankey's, not every document's: a trends
-// document carries neither a fiscal_year_label nor a headline.
+// decodeSankey reads a document as a SPINE document, and refuses one with no
+// fiscal_year_label or headline.
 func decodeSankey(stem string, raw []byte) (projectionDoc, projectionMetadata, error) {
 	doc, err := decodeDocument(stem, raw)
 	if err != nil {
@@ -219,10 +186,8 @@ func decodeSankey(stem string, raw []byte) (projectionDoc, projectionMetadata, e
 	return doc, meta, nil
 }
 
-// sankeyTitle is one year's <title> on the spine page.
-//
-// THE CALLER'S WORDS SURVIVE THE SWITCH: a View that sets a Title gets it on
-// every year, unsuffixed. Only the fallback carries a year.
+// sankeyTitle is one year's <title>: a View's own Title on every year,
+// unsuffixed; only the fallback carries a year.
 func sankeyTitle(callerTitle, yearLabel string) string {
 	if callerTitle != "" {
 		return callerTitle
@@ -230,9 +195,8 @@ func sankeyTitle(callerTitle, yearLabel string) string {
 	return "City of Livermore budget flows — " + yearLabel
 }
 
-// scheduleDocument is as much of ANY document as a view's chart needs when it
-// draws a schedule other than the view's own: who built it, what it cites and
-// what it discloses.
+// scheduleDocument is as much of any document as a view's chart needs when it
+// draws a schedule other than the view's own.
 type scheduleDocument struct {
 	Metadata struct {
 		GeneratedBy string       `json:"generated_by"`
@@ -250,10 +214,8 @@ type drawn struct {
 	doc  scheduleDocument
 }
 
-// drawnDocument is the document a view's own chart draws in one year, where
-// [View.Draws] names a schedule other than the view's: the year's column's
-// document of it, refused where the column carries none or another
-// projection built it.
+// drawnDocument is the year's column's document of [View.Draws], refused
+// where the column carries none or another build made it.
 func drawnDocument(v View, year, builtBy string, projections map[string][]byte, ix ColumnIndex) (drawn, error) {
 	var out drawn
 	col, folded := ix.Column(year)
@@ -285,19 +247,16 @@ func buildSankeyPage(p pageCtx) (pageData, error) {
 		return pageData{}, err
 	}
 
-	// Every published year, in the order the caller handed them, opening year
-	// first. A year's document is decoded and refused on its own terms: one bad
-	// document is named, rather than the page silently opening on whichever year
-	// happened to parse.
+	// Each year's document is refused on its own terms, so one bad document
+	// is named rather than skipped.
 	stems := v.YearStems
 	if len(stems) == 0 {
 		stems = []string{v.Projection}
 	}
 	years := make([]yearView, 0, len(stems))
 	var sel yearSelect
-	// THE FOOTER AND THE CLIENT'S DOC MAP ARE THE UNION OVER EVERY YEAR, not the
-	// opening year's. See unionSources for what breaks otherwise; the union is
-	// accumulated here because this loop already decodes every year.
+	// The footer and the client's doc map are the union over every year
+	// (unionSources).
 	var cited []sourceMeta
 	for _, stem := range stems {
 		m := meta
@@ -332,9 +291,8 @@ func buildSankeyPage(p pageCtx) (pageData, error) {
 			if chartErr != nil {
 				return pageData{}, chartErr
 			}
-			// The chart, its counts line and its caveats are the drawn
-			// schedule's; the headline stays the spine's, whose caveats
-			// come first.
+			// The chart, counts and caveats are the drawn schedule's; the
+			// headline and its caveats stay the spine's, first.
 			cited = append(cited, chart.doc.Metadata.Sources...)
 			counts = chart.doc.Metadata.Counts
 			drawnRefs, drawnErr := cx.refs(chart.doc.Metadata.Caveats, chart.stem, v.Path)
@@ -358,8 +316,7 @@ func buildSankeyPage(p pageCtx) (pageData, error) {
 			Counts:     counts,
 		})
 	}
-	// The page opens on the newest year, the last of them; everything
-	// per-year the page renders statically comes from this entry.
+	// The page opens on the newest year.
 	open := years[len(years)-1]
 
 	ch, clientDocs, err := p.chrome(chrome{
@@ -403,17 +360,14 @@ func buildSankeyPage(p pageCtx) (pageData, error) {
 		Links:       open.Counts.Links,
 		Description: v.Description,
 		Narrow:      narrowRoute(o, nav),
-		// #nosec G203 -- blob is encoding/json's output, which escapes <, >
-		// and & to their \u form, so it cannot terminate the script element
-		// or inject markup. The alternative, letting html/template escape a
-		// string, would corrupt the JSON.
+		// #nosec G203 -- encoding/json escapes <, > and & to their \u form,
+		// so blob cannot terminate the script element.
 		ConfigJSON: template.JS(blob),
 	}, nil
 }
 
-// narrowRoute is the nav's item for the view rendering LedgerTemplate, the
-// bars of the same money a narrow screen is pointed to, or the zero item on a
-// site with none.
+// narrowRoute is the nav's item for the view rendering LedgerTemplate, or the
+// zero item on a site with none.
 func narrowRoute(o *Options, nav []navItem) navItem {
 	path := templatePathOf(o, LedgerTemplate)
 	for _, n := range nav {

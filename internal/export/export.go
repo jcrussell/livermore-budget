@@ -1,12 +1,8 @@
 // Package export packages a set of projection documents into a static site.
 //
-// The seam this package sits on is deliberate: it consumes projections as
-// filename stem -> JSON bytes and knows nothing about how they were built. It
-// names what it reads with internal/project's constants and types, and it does
-// not recompute anything the projection already published. Every figure the page shows — the fiscal year
-// label, the headline totals, the caveats, the source pages — is read back out
-// of the projection JSON, because a packager that reassembles metadata is a
-// second implementation of the contract and will drift from the first.
+// It consumes projections as filename stem -> JSON bytes and recomputes
+// nothing they publish: every figure the page shows is read back out of the
+// projection JSON.
 //
 // The output layout is fixed:
 //
@@ -20,12 +16,8 @@
 //	<dir>/extracted/<doc>/pages/pNNNN.txt   the cited pages' committed text
 //	<dir>/<Files...>          whatever else the caller ships
 //
-// Every asset path in the page is relative, so the same output serves from a
-// user's file tree, from a project subpath on GitHub Pages, and from a domain
-// root without a base-path setting anywhere. That is also why the cited pages'
-// extracted text is copied into the output rather than linked at the forge:
-// provenance a reader can only check with a network round-trip to a third
-// party is provenance the site does not actually ship.
+// Every asset path in the page is relative, so the output serves from any
+// root, and the cited pages' extracted text ships beside it.
 package export
 
 import (
@@ -55,49 +47,24 @@ import (
 // document a site opens on is the caller's Views.
 const PrimaryProjection = project.PublishedProjection
 
-// IndexPath is the view the site opens on. It is the fixed entry point of the
-// output layout, so it is a constant rather than something a caller may move.
+// IndexPath is the view the site opens on, the fixed entry point of the layout.
 const IndexPath = "index.html"
 
-// dataDir is the output subdirectory holding projection JSON. It is part of
-// the published contract — docs/sankey-contract.md promises
-// <output>/data/<projection>.json — so it is a constant, not a flag.
+// dataDir is the output subdirectory holding projection JSON, part of the
+// published contract (docs/sankey-contract.md).
 const dataDir = "data"
 
 // PageTextDir is the output subdirectory holding the committed extraction of
-// every page the projection cites. The tree under it mirrors the repository's
-// data/extracted/ — <doc-id>/pages/pNNNN.txt — so the same base-plus-filename
-// rule composes a citation whether the text is served from here or from a
-// forge's blob view, and a reader who knows one layout knows the other.
-//
-// ONLY CITED PAGES ARE COPIED, where cited means cited by the SITE and not by a
-// chart. The corpus is 786 pages and the site cites 21, so a packager that
-// shipped the whole extraction would put the corpus in every deploy to publish
-// a handful of citations.
-//
-// The set is the union of every projection's metadata.sources AND every entry
-// of [Options.PageIndex]. That second half is what makes the published record
-// store complete rather than a function of what the charts happen to draw:
-// without it a page whose facts ship but whose figures no projection selects --
-// p76 today -- would be published as records sitting beside a 404, and the set
-// would change silently as views were added.
+// every cited page, mirroring data/extracted/ as <doc-id>/pages/pNNNN.txt.
+// Only pages the SITE cites are copied: the union of every projection's
+// metadata.sources and every [Options.PageIndex] entry, so every published
+// record has its page text beside it.
 const PageTextDir = "extracted"
 
-// DefaultSourceBrowseURL is where the committed page text is browsable when
-// the site does not ship it itself — that is, when the caller supplies neither
-// [Options.PageText] nor [Options.SourceBrowseURL]. It is the last resort and
-// not the normal path: a citation served from this constant needs a network
-// round-trip to a third party, and it goes stale the moment the repository
-// moves. `fisc export` always passes the extraction tree, so its output cites
-// the bytes beside it.
-//
-// It points at github.com's blob view, never at raw.githubusercontent.com. The
-// reason is not Git LFS: data/extracted/ is ordinary git — only data/pdf/** is
-// LFS — so the raw host would serve the text correctly. It is that the blob
-// view is the one worth citing, with line numbers, history and the rest of the
-// document beside it, and that the artifacts are .txt precisely so that view
-// renders them verbatim rather than collapsing the runs of spaces that are the
-// column grid (see corpus.PagePath).
+// DefaultSourceBrowseURL is where committed page text is cited when the caller
+// supplies neither [Options.PageText] nor [Options.SourceBrowseURL]: the
+// github.com blob view, which renders the .txt grid verbatim (see
+// corpus.PagePath).
 const DefaultSourceBrowseURL = RepositoryURL + "/blob/main"
 
 // RepositoryURL is this project's repository, which every page's footer links.
@@ -110,26 +77,13 @@ var verbatimAssets = []string{"app.js", "core.js", "sankey.js",
 	"change.js", "format.js", "theme.js", "style.css", ".nojekyll"}
 
 // View is one HTML page of the site: one document, rendered by one template.
-//
-// N FLAT PAGES RATHER THAN HASH ROUTING, and the reason is a property this
-// package already defends: the page renders its figures server-side so the
-// headline survives without JavaScript (see buildSankeyPage). Under hash routing
-// views 2..N have no server-rendered content at all. Two further reasons.
-// Citations are PER VIEW, so one page would need a footer listing the union of
-// every view's sources -- a page claiming provenance for figures it never showed.
-// And the client refuses the whole page on a schema mismatch, which under one
-// page blanks the site rather than one view.
-//
-// FLAT rather than nested because every asset path in the output is relative
-// (style.css, data/x.json, vendor/), and a page one directory deep would need
-// ../ on every one of them or a <base> element.
+// Each view is its own server-rendered page at the root, citing only its own
+// sources.
 type View struct {
 	// Path is the output path, always .html and always at the root. Exactly one
 	// view must be at [IndexPath].
 	Path string
-	// Nav is the words this view is listed under in every view's nav. Every
-	// page carries the whole nav, which is what makes the set of views visible
-	// from any one of them.
+	// Nav is the words this view is listed under in every page's nav.
 	Nav string
 	// Template is the name of the template in the asset tree.
 	Template string
@@ -137,19 +91,12 @@ type View struct {
 	// must be a key of [Options.Projections].
 	Projection string
 	// Title is the <title>, and on a template that renders one, the page
-	// heading. Lede is the sentence under it. Both are the caller's words.
-	//
-	// The spine's template renders no Lede: its lede wraps a live
-	// <span id="lede-year"> that app.js rewrites on every year switch. A Lede
-	// on a template that renders none is refused rather than dropped.
+	// heading. Lede is the sentence under it. A Lede on a template that renders
+	// none (the spine's, whose lede app.js rewrites) is refused.
 	Title string
 	Lede  string
-	// YearStems are the documents that are the same projection for different
-	// fiscal years, OLDEST FIRST, which is the order a reader meets them in.
-	// Empty means this view has one document and renders no year control.
-	//
-	// THE PAGE OPENS ON THE LAST OF THEM, so reordering this list changes
-	// which year a reader is greeted with.
+	// YearStems are the same projection for different fiscal years, OLDEST
+	// FIRST; the page opens on the last. Empty renders no year control.
 	YearStems []string
 
 	// Sections are the printed blocks a history table groups its rows under,
@@ -159,12 +106,8 @@ type View struct {
 
 	// Overview is the view's own chart, its form and that form's hints,
 	// shipped as FISC_CONFIG.overview. Required on a template that draws a
-	// chart and refused on one that does not. A Sankey overview with no tiers
-	// draws the document whole.
-	//
-	// THE SANKEY'S TIERS ARE A COLUMN ORDER AND NOT ONLY A SET: site/sankey.js
-	// places a node by its slot, and a root of the expansion schedule by its
-	// tier's place in this list. The fold is the client's.
+	// chart and refused on one that does not. A Sankey's tiers are a column
+	// order, not only a set; with none it draws the document whole.
 	Overview Chart
 
 	// Draws is the schedule the view's own chart draws out of each year's
@@ -178,9 +121,8 @@ type View struct {
 	Description string
 
 	// Reads are schedules other than Projection's that the page reads out of
-	// each year's column, by projection name. Each year's column must carry
-	// every one, and a reader reaches each as it reaches the years. Only a
-	// template that reads a second schedule (templateSpec.reads) takes any.
+	// each year's column, which must carry every one. Only a template with
+	// templateSpec.reads takes any.
 	Reads []string
 }
 
@@ -207,68 +149,33 @@ type Options struct {
 	Projections map[string][]byte
 
 	// Views are the site's pages, in nav order, the view the site opens on
-	// first. Empty is refused.
-	//
-	// The list is STATED BY THE CALLER, as YearStems was and for the same
-	// reason: which documents are views of what, and which are years of which,
-	// is the composition root's knowledge. This package lays out what it is
-	// handed and does not decide it.
+	// first, stated by the caller. Empty is refused.
 	Views []View
 
 	// Docs are the source documents the page cites, keyed by doc id in the
 	// projection's metadata.sources.
 	Docs []Doc
 
-	// SourceBrowseURL is the base URL for committed page text: a remote whose
-	// tree holds data/extracted/<doc-id>/pages/pNNNN.txt, such as a forge's
-	// blob view of this repository. Setting it means the page cites there
-	// INSTEAD of shipping the text, so PageText is not read and nothing is
-	// copied; a caller that wants both would be publishing two answers to the
-	// same question. Empty means ship the text (PageText) or, failing that,
-	// DefaultSourceBrowseURL.
+	// SourceBrowseURL is the base URL of a remote holding
+	// data/extracted/<doc-id>/pages/pNNNN.txt. Setting it cites there INSTEAD
+	// of shipping the text, so PageText is not read. Empty means ship PageText
+	// or, failing that, cite DefaultSourceBrowseURL.
 	SourceBrowseURL string
 
-	// PageText is the committed extraction tree, rooted where the repository's
-	// data/extracted/ is: the text of page N of document D is read from
-	// <D>/pages/pNNNN.txt, which is corpus.PagePath under a doc-id directory.
-	//
-	// Only the pages the projection cites are read, and a cited page missing
-	// from the tree is an error rather than a citation quietly left dangling.
+	// PageText is the committed extraction tree, rooted at data/extracted/.
+	// Only cited pages are read, and a cited page missing from it is an error.
 	// Nil means the page text is not shipped and citations go to a URL.
 	PageText fs.FS
 
 	// Files is the non-projection asset channel: slash-separated path relative
-	// to Dir -> bytes, written verbatim into the output tree.
-	//
-	// It is general on purpose, and the generality is the point rather than
-	// speculation. Projections are a closed namespace — a filename STEM that
-	// validate rejects for containing '/', '\' or '.', written to
-	// data/<stem>.json because DataDir is part of the published contract
-	// (docs/sankey-contract.md) — so anything else the site has to carry needs
-	// a channel of its own. There are two such things already: the cited pages'
-	// extracted text, which Write puts through this same path (see writeFiles),
-	// and the fact store the provenance browser downloads. Built
-	// once, used twice; a page-text-shaped option would have to be built again
-	// for the second caller.
-	//
-	// Paths are screened by assetPath: relative, clean, slash-separated, and
-	// outside the fixed site layout, so an asset cannot shadow index.html, an
+	// to Dir -> bytes, written verbatim. The cited page text goes through it
+	// too. assetPath screens each path, so an asset cannot shadow a view, an
 	// embedded asset or a projection.
 	Files map[string][]byte
 
 	// PageIndex is what the provenance view publishes: one entry per locator
-	// the site can resolve, in the order the page lists them.
-	//
-	// THE PACKAGE STILL DOES NOT KNOW WHAT A FACT IS. An entry says "there are
-	// N records for (doc, page), they are at this path, and here is a sentence
-	// about them" -- which is a statement the composition root makes, in the
-	// same way Views is. Inferring it here from the shape of the Files keys
-	// would be this package guessing what a name means, which is exactly what
-	// Views' doc comment above refuses.
-	//
-	// IT ALSO DECIDES WHAT PAGE TEXT SHIPS. Every entry's page is cited, so
-	// the extraction copied into the output covers every locator published --
-	// not merely every page a chart happens to draw from. See PageTextDir.
+	// the site can resolve, in the order the page lists them, stated by the
+	// caller. Every entry's page is cited, so its text ships (PageTextDir).
 	PageIndex []PageIndexEntry
 
 	// Downloads are the whole-store artifacts a page offers, described so the
@@ -276,24 +183,11 @@ type Options struct {
 	Downloads []Download
 
 	// RecordsBase is where each document's records live, keyed by doc id, in
-	// the form a client appends pNNNN.jsonl to. It is what lets a mark on a
-	// chart resolve to the facts behind it: a link publishes locators, and
-	// base + [RecordsFile] is each cited page's records link in the config.
-	//
-	// THIS PACKAGE DOES NOT KNOW HOW THAT PATH IS BUILT AND MUST NOT LEARN.
-	// The rule is spelled once, in whoever produced the records -- the same
-	// rule PageIndexEntry.Data is written by, which is why validate can assert
-	// the two agree instead of taking this on trust.
-	//
-	// UNLIKE PageTextBase THERE IS NO LOCAL/REMOTE FORK. A --source-browse-url
-	// export ships no page text and cites a remote URL, so a page's text link
-	// goes absolute; the shards are always written into the output tree, so
-	// its records link stays site-relative. The two therefore differ in kind
-	// while sitting beside each other in the same clientPage.
-	//
+	// the form a client appends [RecordsFile] to. The caller builds it by the
+	// same rule as PageIndexEntry.Data, and validate holds the two to agree.
+	// It is always site-relative, even when page text is cited remotely.
 	// A doc with no entry publishes records: "" and the client renders no
-	// records link. Absent is not zero: a base that was never supplied is not
-	// a base pointing at nothing.
+	// records link.
 	RecordsBase map[string]string
 
 	// GeneratedBy names the tool and version that wrote the output. The
@@ -329,12 +223,8 @@ type Options struct {
 	Gate func(ix ColumnIndex) error
 }
 
-// Citation is one (document, page) pair the site cites.
-//
-// Exported because [PageIndexEntry] embeds it: a page index entry IS a
-// citation, plus what is published about it, and saying so in the type is what
-// makes "every published locator ships its page text" a property of the code
-// rather than a claim in a comment.
+// Citation is one (document, page) pair the site cites. [PageIndexEntry]
+// embeds it, so every published locator is a citation and ships its page text.
 type Citation struct {
 	DocID string
 	Page  int
@@ -343,8 +233,7 @@ type Citation struct {
 // PageIndexEntry is one locator the provenance view publishes.
 type PageIndexEntry struct {
 	Citation
-	// Records is how many records the shard holds. Named for what it counts
-	// rather than "Facts", because this package does not know what a fact is.
+	// Records is how many records the shard holds.
 	Records int
 	// Data is the site-relative path the records are at. It must be a key of
 	// [Options.Files]; validate refuses an entry whose file was not supplied,
@@ -365,30 +254,17 @@ type Section struct {
 	Heading   string
 	Kind      string
 	FundGroup string
-	// Rows, when non-nil, closes the section: it is every printed row label the
-	// section claims, each mapped to the label its Line cell displays, where ""
-	// displays the printed label unchanged. The display label exists for the
-	// wrapped row — a fact's row_label is text the page prints, so a label the
-	// document wraps across lines arrives here as its printed tail, and the
-	// view is the layer allowed to say what a reader should call that row
-	// without touching what the page said. Both directions refuse: a series
-	// landing here that Rows does not name is an error, because a heading that
-	// enumerates its rows must not absorb a new one silently, and a name
-	// matching no series is an error, because a declaration that marks nothing
-	// never goes red. That is the opposite of the category and fund-name
-	// lookups, whose miss falls back so a newly mapped slug still renders;
-	// Rows is a small closed declaration about one printed block, so a miss
-	// is a defect rather than a gap. Nil leaves the section open: any series
-	// matching its key belongs, under its printed label.
+	// Rows, when non-nil, closes the section: every printed row label it
+	// claims, mapped to the label its Line cell displays ("" for the printed
+	// label unchanged; a wrapped row's display label names it whole). Both
+	// directions refuse: a series Rows does not name, and a name matching no
+	// series. Nil leaves the section open under printed labels.
 	Rows map[string]string
 }
 
 // Chart is one drawn chart's form and that form's hints under the form's own
 // key, as [View.Overview] declares it. A hint foreign to the declared form is
-// refused by schema/page.schema.json at the write, and the client core reads
-// none of them. A second form adds one
-// value to [ChartForms], one hint type here, one closed object in the schema
-// and one renderer module under site/.
+// refused by schema/page.schema.json at the write.
 type Chart struct {
 	// Form is which renderer draws the chart, one of [ChartForms].
 	Form string `json:"form"`
@@ -445,12 +321,9 @@ func (c Chart) foreignHints() string {
 }
 
 // MarkRoles is the declared set of roles a node the CLIENT makes may wear:
-// the aggregate a split cap folds a split's tail into, and the smaller-flows
-// mark the reader's smallest-flow filter folds small ribbons onto. No
-// document carries one: [ColumnsOf] refuses a producer node wearing a mark's
-// role or id, schema/enums.schema.json states the set as mark_role, and
-// schema/mark.schema.json is the shape, held on the client by
-// site/marks.test.mjs.
+// a split cap's tail aggregate and the smallest-flow filter's mark. [ColumnsOf]
+// refuses a producer node wearing one; schema/enums.schema.json states the set
+// as mark_role and schema/mark.schema.json the shape.
 func MarkRoles() []string { return []string{"aggregate", "smaller"} }
 
 // MarkPrefixes is the id prefix each mark role's ids carry, in [MarkRoles]
@@ -798,9 +671,7 @@ type templateSpec struct {
 	// [View.Sections] headings.
 	sections bool
 	// form is the one chart form the template's module draws, or "" for a
-	// template that ships no module and with it no [View.Overview]. Each
-	// module refuses a page declaring another form at boot, after the write;
-	// this is the write's own refusal of it.
+	// template that ships no module and with it no [View.Overview].
 	form string
 }
 
@@ -832,9 +703,8 @@ func page[T any](build func(pageCtx) (T, error)) func(pageCtx) (any, error) {
 // document; an unknown template renders none.
 func templateRendersADocument(name string) bool { return templates[name].document }
 
-// assetPath screens one [Options.Files] key. The output tree is a web root
-// somebody will unpack, serve, or rsync, so a path that escapes it is a defect
-// worth refusing at the door rather than a file written outside Dir.
+// assetPath screens one [Options.Files] key: a clean relative path outside the
+// fixed site layout.
 func assetPath(rel string, reserved map[string]bool) error {
 	switch {
 	case reserved[rel], strings.HasPrefix(rel, dataDir+"/"), strings.HasPrefix(rel, "vendor/"):
@@ -951,11 +821,8 @@ func Prepare(o Options) (*plan, error) {
 			return nil, err
 		}
 	}
-	// The pages are written last, and index.html last of all, so the entry
-	// point does not exist until the site around it does -- including the
-	// other views it links to, or it would appear while its own nav pointed
-	// at 404s. Over an earlier export, Write removes that export's pages
-	// first, so the same holds there.
+	// Pages go last, and index.html last of all, so the entry point does not
+	// exist until the site it links to does.
 	for _, pg := range pages {
 		if pg.Path == IndexPath {
 			continue
@@ -987,47 +854,37 @@ func Prepare(o Options) (*plan, error) {
 	return plan, nil
 }
 
-// Removal is what a clean removed from the output directory, each path
-// relative to it: Files, what the earlier export's manifest listed and this
-// plan does not write, and Temps, the manifest temp files an interrupted
-// export stranded at its top, both sorted; and Dirs, the directories that
-// left empty or that stood empty in the way of a planned file, in the order
-// they were removed.
+// Removal is what a clean removed, relative to the output directory: Files
+// (listed by the earlier manifest, not planned) and Temps (stranded manifest
+// temp files), both sorted, and Dirs, the emptied or in-the-way empty
+// directories in removal order.
 type Removal struct{ Files, Temps, Dirs []string }
 
 // Write puts a prepared Plan on disk, creating o.Dir if needed. It returns
 // the slash-separated paths it wrote, the manifest included, sorted and
 // relative to o.Dir, and with clean what it removed. It checks ctx before
 // creating o.Dir, before each file, before removing what is in the way, and
-// before the last manifest and what is removed with it, and stops with an
-// error wrapping ctx.Err(), leaving what is on disk in place.
+// before the last manifest, and stops with an error wrapping ctx.Err(),
+// leaving what is on disk in place.
 //
-// The manifest goes down first and last. First it lists every path the
-// previous manifest did and every path this plan writes, so a run stopped at
-// any point leaves a manifest covering everything an export may have put
-// there. Without clean nothing is removed, and the last manifest lists this
-// plan's paths and whatever the earlier export wrote that is still there;
-// with clean those leftovers are removed, with the temp files an interrupted
-// manifest write strands at the top of o.Dir and the directories prunedBy
-// names, and the last manifest lists this plan's paths alone. What stands in
-// the way of a planned path goes before any file is written, which is what
-// lets a path that was a file in the earlier export be a directory in this
-// one, or the reverse; the rest goes after the last file, so the earlier site
-// keeps what it links to until this one is in place. No file the previous
-// manifest does not list is ever removed but a stranded temp file, and no
-// directory but an empty one; a missing or unparseable manifest lists
-// nothing.
+// The manifest goes down first and last. The first lists the previous
+// manifest's paths plus this plan's, so a run stopped anywhere leaves a
+// manifest covering everything an export may have put there. The last lists
+// this plan's paths plus, without clean, the earlier export's surviving
+// leftovers; with clean those leftovers, stranded temp files and the
+// directories prunedBy names are removed. What stands in the way of a planned
+// path goes before any file is written; the rest goes after the last file,
+// so the earlier site keeps what it links to. Nothing unlisted is removed but
+// a stranded temp file or an empty directory; a missing or unparseable
+// manifest lists nothing.
 //
 // Before writing anything it refuses, with an error matching ErrForeignDir,
 // a plan whose write would overwrite, write through or be blocked by
 // anything the previous valid manifest does not list and clean would not
-// remove -- a file somebody put at a planned path, say -- since recording it
-// in the first manifest would license a later --clean to delete it. It
-// refuses as well a plan whose write would meet something clean removes when
-// clean is not set, since only clean may remove it.
-//
-// Everything else that can be decided has been. What is left can fail only on
-// I/O or stop on a cancelled ctx.
+// remove, since recording it in the first manifest would license a later
+// --clean to delete it; and, without clean, a plan whose write would meet
+// something only clean removes. What is left can fail only on I/O or a
+// cancelled ctx.
 func (p *plan) Write(ctx context.Context, clean bool) ([]string, Removal, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, Removal{}, fmt.Errorf("create output directory: %w", err)
@@ -1063,10 +920,8 @@ func (p *plan) Write(ctx context.Context, clean bool) ([]string, Removal, error)
 		}
 		removed.Dirs = dirs
 	}
-	// An earlier export's pages go before anything is written, since the
-	// pages are written last: a write that stops partway then leaves no page
-	// beside a mix of old and new data for a server to go on serving. Only a
-	// page the manifest lists is fisc's to remove.
+	// An earlier export's listed pages go before anything is written, so a
+	// write that stops partway leaves no page over a mix of old and new data.
 	for _, f := range p.files {
 		if path.Ext(f.Path) != ".html" || !slices.Contains(prev, f.Path) {
 			continue
@@ -1340,14 +1195,11 @@ func notEmpty(err error) bool {
 }
 
 // prunedBy is the one rule for which directories a clean removes: those that
-// removing rels leaves holding nothing, deepest first, each holding nothing
-// but rels and directories before it in the list. It weighs every directory
-// above one of rels and every directory at or under a path planned writes
-// as a file, so an empty directory in the way of a planned file is pruned
-// too; it holds no data, and an earlier export or an interrupted clean can
-// leave one. A directory above a planned path is never pruned, since the
-// write puts a file in it. It only reads, so the screen, the dry run and the
-// removal answer from one rule.
+// removing rels leaves holding nothing, deepest first. It weighs every
+// directory above one of rels and every directory at or under a planned file
+// path, so an empty directory in the way is pruned too, and never one above a
+// planned path. It only reads, so the screen, the dry run and the removal
+// share it.
 func prunedBy(dir string, rels, planned []string) ([]string, error) {
 	gone := make(map[string]bool, len(rels))
 	weigh := make(map[string]bool)
@@ -1494,15 +1346,9 @@ func copyTree(fsys fs.FS, root string, write func(string, []byte) error) error {
 	})
 }
 
-// withPageText returns files plus the committed text of every cited page, read
-// out of the extraction tree.
-//
-// It copies through [Options.Files] rather than around it: the page text is not
-// a special kind of output, it is the first user of the general channel, and a
-// second write path would be a second set of rules about what may land where.
-// The input map is not modified — a caller's map is the caller's.
-//
-// A cited page the tree does not hold is an error.
+// withPageText returns a copy of files plus the committed text of every cited
+// page, screened as any [Options.Files] entry. A cited page the tree does not
+// hold is an error.
 func withPageText(files map[string][]byte, tree fs.FS, cited []Citation, reserved map[string]bool) (map[string][]byte, error) {
 	out := make(map[string][]byte, len(files)+len(cited))
 	maps.Copy(out, files)
@@ -1516,9 +1362,7 @@ func withPageText(files map[string][]byte, tree fs.FS, cited []Citation, reserve
 		if err := assetPath(rel, reserved); err != nil {
 			return nil, err
 		}
-		// Assigning over a caller's asset would resolve the collision in
-		// silence, and this map is written before Write's own duplicate guard
-		// can see two claims on the path.
+		// Before Prepare's duplicate guard can see it, so refuse here.
 		if _, taken := out[rel]; taken {
 			return nil, fmt.Errorf("two assets claim the output path %q", rel)
 		}
@@ -1528,9 +1372,7 @@ func withPageText(files map[string][]byte, tree fs.FS, cited []Citation, reserve
 }
 
 // LocalPageTextBase is the output directory holding one document's cited page
-// text, relative to the site root and with the trailing slash the client
-// appends a filename to. It is exported because it is where a caller has to
-// look for what Write copied.
+// text, site-relative, with the trailing slash the client appends a filename to.
 func LocalPageTextBase(docID string) string {
 	return path.Join(PageTextDir, docID, "pages") + "/"
 }

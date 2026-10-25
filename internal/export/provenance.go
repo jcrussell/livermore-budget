@@ -21,10 +21,8 @@ type sourceMeta struct {
 	Pages []int  `json:"pages"`
 }
 
-// documentSources is as much of ANY document as the citation union needs.
-//
-// It is deliberately shape-blind: metadata.sources is the one block every
-// projection carries whatever its body is.
+// documentSources is as much of ANY document as the citation union needs:
+// metadata.sources, which every projection carries whatever its body is.
 type documentSources struct {
 	Metadata struct {
 		Sources []sourceMeta `json:"sources"`
@@ -69,11 +67,8 @@ type clientPage struct {
 	Records string `json:"records"`
 }
 
-// citationsOf is every (document, page) one projection's metadata cites.
-//
-// It decodes through documentSources rather than through the projection
-// metadata, so a view of a document this packager has never heard of still
-// contributes its pages to the set the site ships.
+// citationsOf is every (document, page) one projection's metadata cites,
+// decoded shape-blind through documentSources.
 func citationsOf(stem string, raw []byte) ([]Citation, error) {
 	if _, err := decodeDocument(stem, raw); err != nil {
 		return nil, err
@@ -102,9 +97,7 @@ func sourcesFor(srcs []sourceMeta, byID map[string]Doc, pageTextBase func(string
 		d := byID[s.DocID]
 		ref := sourceRef{DocID: s.DocID, Title: d.Title, Publisher: d.Publisher, PDFURL: d.PDFURL}
 		if ref.Title == "" {
-			// A document the registry does not describe still gets cited, by
-			// id. Dropping the citation because a title is missing would hide
-			// the provenance the page exists to show.
+			// A document the registry does not describe is still cited, by id.
 			ref.Title = s.DocID
 		}
 		base := pageTextBase(s.DocID)
@@ -115,8 +108,7 @@ func sourcesFor(srcs []sourceMeta, byID map[string]Doc, pageTextBase func(string
 				PDFURL:  pdfPageURL(d.PDFURL, p),
 				TextURL: base + pageTextFile(p),
 			})
-			// An empty records base is a document published with no records:
-			// no link, not one pointing nowhere.
+			// An empty records base means no records: no link.
 			records := ""
 			if rb := recordsBase[s.DocID]; rb != "" {
 				records = rb + RecordsFile(p)
@@ -132,15 +124,11 @@ func sourcesFor(srcs []sourceMeta, byID map[string]Doc, pageTextBase func(string
 // citedSources is what a view's footer and client take of the pages it cites:
 // the footer's list and the client's documents, and the sources page the
 // footer links instead of a list when the site has one. cells is every page
-// this export composed a figure's own citation for, and nil for a view whose
-// figures the client cites from their links' locators -- the sankey,
-// department and sides views -- whose pages are held here only as far as
-// cited names them (fisc-51fr.40).
+// this export composed a figure's own citation for, nil for a view whose
+// figures the client cites from locators (fisc-51fr.40).
 //
-// WITH A SOURCES PAGE THE LIST IS NIL, and only because listedBy has held
-// every cited page -- its metadata's and each figure's own -- to that page's
-// index; a page it does not list refuses the export rather than dropping out
-// of every list on the site.
+// With a sources page the list is nil, and listedBy refuses the export for
+// any cited page that page's index does not list.
 func citedSources(o *Options, view string, cited []sourceMeta, cells *cellCites, byID map[string]Doc,
 	pageTextBase func(string) string,
 ) (sources []sourceRef, sourcesPath string, docs map[string]clientDoc, err error) {
@@ -162,11 +150,8 @@ func citedSources(o *Options, view string, cited []sourceMeta, cells *cellCites,
 }
 
 // unionSources merges the sources of every year a view publishes into one list,
-// deduplicated and ordered.
-//
-// A union and not the opening year's, because site/app.js's citations() skips
-// a fact whose doc_id is not in CONFIG.docs, in silence. A union within a view
-// and never across views.
+// deduplicated and ordered. A union of all years, because site/app.js's
+// citations() silently skips a doc_id not in CONFIG.docs; never across views.
 func unionSources(srcs []sourceMeta) []sourceMeta {
 	pages := map[string]map[int]bool{}
 	for _, s := range srcs {
@@ -189,9 +174,8 @@ func unionSources(srcs []sourceMeta) []sourceMeta {
 	return out
 }
 
-// projectionRefs is every data file the site publishes, which is the whole set
-// on every page: they are downloadable provenance, not this view's figures.
-// One entry per file and not per document.
+// projectionRefs is every data file the site publishes, the whole set on every
+// page, one entry per file.
 func projectionRefs(o *Options, ix ColumnIndex) []projectionRef {
 	seen := map[string]bool{}
 	var paths []string
@@ -259,9 +243,7 @@ func (c *cellCites) locators(locs []sourceMeta) ([]pageRef, error) {
 	return out, nil
 }
 
-// pdfPageURL points at a page of the published PDF. The city's CMS serves the
-// document from a numeric id and viewers honour the #page fragment, so the
-// citation lands on the page rather than the cover.
+// pdfPageURL points at a page of the published PDF via its #page fragment.
 func pdfPageURL(pdfURL string, page int) string {
 	if pdfURL == "" {
 		return ""
@@ -270,8 +252,7 @@ func pdfPageURL(pdfURL string, page int) string {
 }
 
 // remotePageTextBase is the directory URL of a document's committed page text
-// in a browsable copy of the repository, so the path after the base is the
-// repository's own layout rather than the exported site's.
+// in a browsable copy of the repository, in the repository's own layout.
 func remotePageTextBase(browseURL, docID string) string {
 	return strings.TrimSuffix(browseURL, "/") + "/data/extracted/" + docID + "/pages/"
 }
@@ -324,28 +305,19 @@ type inferredFlow struct {
 // inferredColumns gathers every derived node and every derived flow out of
 // the documents folded into a column, one entry per column in path order.
 //
-// A flow is the cells it cites: each set of fact ids is listed once however
-// many ribbons draw it -- the leaf, a hub leg repeating it, another schedule
-// stating it -- with every page any of those ribbons cites, and two ribbons
-// stating one set at two values refuse the export. A ribbon is named at the
-// ends its [project.Link.Repeats] spells, else at its own, in its own
-// schedule's labels. Of the ribbons drawing a set, the listed one is the
-// first whose target is derived, else the first whose source is, else the
-// first, a ribbon naming its Repeats first among equals; it is listed under
-// that derived end, and under the column when none has a derived end.
+// Each set of fact ids is listed once however many ribbons draw it, with
+// every page any of them cites; two ribbons stating one set at two values
+// refuse the export. A ribbon is named at the ends its [project.Link.Repeats]
+// spells, else its own. The listed ribbon is the first whose target is
+// derived, else whose source is, else the first (Repeats first among equals),
+// filed under that derived end or under the column.
 //
-// A ROW IS DROPPED ONLY WHERE A DECLARATION SAYS ANOTHER STATES IT, and the
-// one that can is [project.Link.Completes]: a derived ribbon whose own cell
-// the column's derived ribbons complete is not listed where each of its facts
-// is cited by a listed completing row citing every page it cites. Restates
-// says a split's links state leaves again only together, so it drops none.
-// Cents summing to a row's are no declaration, and leave it listed.
+// A row is dropped only where [project.Link.Completes] says listed rows state
+// it, each fact and page covered; cents summing to a row's leave it listed.
 //
-// The derived nodes are the column's across all its schedules, gathered
-// before any flow is filed, so the result does not depend on the order the
-// stems sort in. A column inferring nothing is listed with nothing. refs is
-// the sources page's composed citations, and a flow citing a page it does
-// not list is refused.
+// Derived nodes are gathered across all schedules before any flow is filed,
+// so stem order does not matter. A flow citing a page refs does not list is
+// refused.
 func inferredColumns(o *Options, ix ColumnIndex, refs map[Citation]pageRef) ([]inferredColumn, error) {
 	type ribbon struct {
 		stem            string
@@ -655,34 +627,19 @@ type downloadRef struct {
 
 // buildProvenancePage renders the index of the published fact store.
 //
-// IT COMPOSES NO URL ITSELF, and that is the one thing worth guarding here.
-// Every PDF and page-text link comes back out of sourcesFor, the same function
-// every other page's citations go through, so a citation's pdfPageURL and
-// pageTextFile are reached by exactly one path in this package. It matters
-// beyond tidiness: the PDF link must target the city's canonical URL with
-// #page=N and never a forge's raw host, which serves LFS pointer text rather
-// than the document. A second
-// composition here would be a second place for that to go wrong, on the one
-// page whose entire purpose is that its links resolve.
-//
-// THE DATA LINK IS THE EXCEPTION AND IS NOT COMPOSED EITHER: it is
-// PageIndexEntry.Data verbatim, the path the caller says it wrote the records
-// to, which Options.validate has already checked against the files being
-// written. This package does not know how that path is built and must not
-// learn -- the locator-to-URL rule belongs to whoever produced the records.
+// It composes no URL itself: every PDF and page-text link comes out of
+// sourcesFor, and the data link is PageIndexEntry.Data verbatim, already
+// checked by Options.validate.
 func buildProvenancePage(p pageCtx) (provenancePageData, error) {
 	o, v, nav, byID, ix, pageTextBase := p.o, p.v, p.nav, p.byID, p.ix, p.pageTextBase
 	if len(o.PageIndex) == 0 {
-		// A page listing nothing is not an empty state, it is a page that
-		// should not have been asked for: views() adds this one only when
-		// there is an index, so reaching here means two callers disagree.
+		// views() adds this page only when there is an index.
 		return provenancePageData{}, fmt.Errorf(
 			"view %q renders the provenance index and Options carries no page index", v.Path)
 	}
 
-	// The sources this page cites ARE its rows, so they are built from the
-	// index rather than read out of a document -- and then put through the
-	// same union and the same composition every other page uses.
+	// This page's sources are its rows, put through the same union and
+	// composition every other page uses.
 	byDoc := map[string][]int{}
 	order := []string{}
 	for _, e := range o.PageIndex {
@@ -697,8 +654,6 @@ func buildProvenancePage(p pageCtx) (provenancePageData, error) {
 	}
 	sources, _ := sourcesFor(unionSources(metas), byID, pageTextBase, o.RecordsBase)
 
-	// Index the composed refs so each row can take its own, rather than
-	// recomposing them.
 	refs := map[Citation]pageRef{}
 	titles := map[string]string{}
 	for _, s := range sources {
@@ -726,10 +681,7 @@ func buildProvenancePage(p pageCtx) (provenancePageData, error) {
 
 	downloads := make([]downloadRef, 0, len(o.Downloads))
 	for _, d := range o.Downloads {
-		// A conversion rather than a field-by-field copy: the two types have
-		// the same shape ON PURPOSE -- Download is the caller's vocabulary and
-		// downloadRef is the template's -- and a conversion cannot silently
-		// drop a field the day one of them gains one.
+		// A conversion, so neither type can gain a field the other drops.
 		downloads = append(downloads, downloadRef(d))
 	}
 
@@ -751,10 +703,8 @@ func buildProvenancePage(p pageCtx) (provenancePageData, error) {
 			SourcesPath: v.Path,
 			SourcesPage: true,
 			ExportedBy:  o.GeneratedBy,
-			// NO Projections: DataFiles lists every data file, described.
-			// NO DataPath. Every other page names the projection it draws;
-			// this one draws none, and pointing it at an unrelated document
-			// would be a false statement about where its figures came from.
+			// No Projections (DataFiles lists them) and no DataPath: this page
+			// draws no projection.
 		},
 		Rows:      rows,
 		Downloads: downloads,

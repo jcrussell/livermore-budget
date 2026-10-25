@@ -8,9 +8,8 @@ import (
 	"strings"
 )
 
-// historyPageData is the history template's input. It carries no ConfigJSON
-// and its page loads no app.js: every figure is rendered
-// server-side, so the table works with JavaScript off.
+// historyPageData is the history template's input, rendered wholly
+// server-side; its page loads no app.js.
 type historyPageData struct {
 	chrome
 	Columns []columnRef
@@ -30,16 +29,11 @@ type historySection struct {
 	Series  []seriesRef
 }
 
-// buildHistoryPage renders one ACFR ten-year view.
-//
-// Every figure is read out of the document, none is computed here, and the
-// counts must reconcile (reconcileSeriesCounts). The rows are grouped: each
-// series lands in the [View.Sections] entry matching
-// its (kind, fund_group) exactly, and both a series no section claims and a
-// section claiming no series are refused, because either one is a heading
-// telling a reader something the document does not say. A section that closes
-// itself with [Section.Rows] adds the refusal the key match cannot make: a
-// series its key claims but its rows do not name.
+// buildHistoryPage renders one ACFR ten-year view; the counts must reconcile
+// (reconcileSeriesCounts). Each series lands in the [View.Sections] entry
+// matching its (kind, fund_group) exactly; a series no section claims, a
+// section claiming none, and a series a [Section.Rows] does not name are
+// refused.
 func buildHistoryPage(p pageCtx) (historyPageData, error) {
 	o, v, ix := p.o, p.v, p.ix
 	cite := newCellCites(p.byID, p.pageTextBase)
@@ -49,11 +43,8 @@ func buildHistoryPage(p pageCtx) (historyPageData, error) {
 	}
 	meta, body, columns := d.meta, d.body, d.cols
 
-	// sectionKey is the (kind, fund_group) a series is claimed by. It is not
-	// [Section] itself because Rows makes that struct uncomparable, and the
-	// identity of a section deliberately excludes both its heading and its
-	// rows: two sections may not share a key however differently they would
-	// render.
+	// sectionKey is a section's identity, excluding heading and rows: two
+	// sections may not share one.
 	type sectionKey struct {
 		kind, fundGroup string
 	}
@@ -104,10 +95,8 @@ func buildHistoryPage(p pageCtx) (historyPageData, error) {
 			return historyPageData{}, fmt.Errorf("%s series %q: %w", v.Projection, s.Label, cellsErr)
 		}
 		rendered += placed
-		// A Category cell repeating its section's heading is the third reading
-		// of one phrase in a row (heading, row header, cell), so it is left
-		// empty; the case is the documents' and is compared folded, never
-		// rewritten.
+		// A Category repeating its section's heading is left empty, compared
+		// case-folded and never rewritten.
 		category := s.CategoryLabel
 		if strings.EqualFold(category, v.Sections[i].Heading) {
 			category = ""
@@ -120,8 +109,7 @@ func buildHistoryPage(p pageCtx) (historyPageData, error) {
 			Mark:     buildMark(cells, columns),
 		})
 	}
-	// The counts first: a document that disagrees with itself is refused before
-	// any question about how this view groups it.
+	// Counts before grouping: a self-contradicting document is refused first.
 	if err = reconcileSeriesCounts(v.Projection, rendered, len(body.Series), meta.Counts); err != nil {
 		return historyPageData{}, err
 	}

@@ -15,39 +15,28 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/project"
 )
 
-// The page templates inside the site asset tree, one per view.
-//
-// They are named here rather than in the caller because a template is an ASSET
-// of this package's embedded tree, and a caller naming one would be reaching
-// into a directory it does not own. What the caller chooses is which view uses
-// which, by name.
+// The page templates inside the site asset tree, one per view. They are this
+// package's assets, so the caller picks one by name rather than by path.
 const (
 	SankeyTemplate = "flows.html.tmpl"
-	// HistoryTemplate is a server-rendered series table, with the rows grouped
-	// under the printed block headings a [View.Sections] declares. It loads no
-	// client module of its own: its only scripts are the theme stamp and the
-	// shared top bar's theme toggle.
+	// HistoryTemplate is a server-rendered series table grouped under a
+	// [View.Sections]'s printed headings; it loads no client module.
 	HistoryTemplate = "history.html.tmpl"
-	// ProvenanceTemplate renders the fact store's index, and CaveatsTemplate
-	// every document's caveats in one place. They render no projection
-	// document (templateRendersADocument).
+	// ProvenanceTemplate and CaveatsTemplate render no projection document
+	// (templateRendersADocument).
 	ProvenanceTemplate = "provenance.html.tmpl"
 	CaveatsTemplate    = "caveats.html.tmpl"
-	// DepartmentTemplate, CapitalTemplate and DebtTemplate are server-rendered
-	// pages, one per subject, each loading its own client module.
-	// templateRendersADocument says which of them renders a projection document.
+	// DepartmentTemplate, CapitalTemplate and DebtTemplate each load their
+	// own client module.
 	DepartmentTemplate = "department.html.tmpl"
 	CapitalTemplate    = "capital.html.tmpl"
 	DebtTemplate       = "debt.html.tmpl"
-	// GlanceTemplate renders three bars of shares per published year
-	// out of the spine and department-funding, server-side as tables of
-	// printed cells; site/glance.js groups and sums them.
+	// GlanceTemplate renders tables of printed cells that site/glance.js
+	// groups and sums.
 	GlanceTemplate = "glance.html.tmpl"
-	// LedgerTemplate draws each declared side of the expansion schedule in
-	// place as ranked bars, loading site/ledger.js over site/sides.js.
+	// LedgerTemplate loads site/ledger.js over site/sides.js.
 	LedgerTemplate = "ledger.html.tmpl"
-	// ChangeTemplate renders the ACFR's ten reported years and the Budget
-	// Book's four columns as tables of printed points, which site/change.js
+	// ChangeTemplate renders tables of printed points that site/change.js
 	// stacks by category.
 	ChangeTemplate = "change.html.tmpl"
 )
@@ -61,15 +50,9 @@ const SchemaVersion = project.SchemaVersion
 // match it with errors.Is rather than by string.
 var ErrSchemaVersion = errors.New("unsupported schema_version")
 
-// checkSchemaVersion refuses a projection this packager cannot read.
-//
-// A version this binary does not know is not a malformed document — nothing is
-// wrong with the file — so the two directions get the hint that says which way
-// the mismatch runs, as registry.schemaVersionErr and mapping.File.validate
-// already do for their own files. Rendering it anyway is the failure worth
-// preventing: a schema bump changes what the graph MEANS, so an old packager
-// handed a new projection would publish a page that is wrong rather than one
-// that fails.
+// checkSchemaVersion refuses a projection this packager cannot read, with a
+// hint saying which way the mismatch runs. A schema bump changes what the
+// graph means, so rendering it anyway would publish a wrong page.
 func checkSchemaVersion(stem string, got int) error {
 	if got == SchemaVersion {
 		return nil
@@ -89,24 +72,16 @@ func checkSchemaVersion(stem string, got int) error {
 	}
 }
 
-// projectionDoc is as much of a projection document as the packager reads.
-// Everything else — nodes, links — is bulk the browser fetches, and decoding
-// it here would be a second parser for a contract that already has one.
-//
-// Metadata is kept as raw JSON and decoded by each reader for what it needs.
+// projectionDoc is as much of a projection document as the packager reads;
+// nodes and links are the browser's. Metadata is decoded by each reader.
 type projectionDoc struct {
 	SchemaVersion int             `json:"schema_version"`
 	Projection    string          `json:"projection"`
 	Metadata      json.RawMessage `json:"metadata"`
 }
 
-// decodeDocument reads the envelope of ANY projection document and refuses it
-// before anything is read out of it, because every field a view names belongs to
-// a contract a version this packager does not know may have renamed.
-//
-// What it checks is what every document has: a schema version this binary
-// understands and a metadata block. Anything shape-specific is the caller's,
-// below.
+// decodeDocument reads any projection document's envelope and refuses an
+// unknown schema version or a missing metadata block before any field is read.
 func decodeDocument(stem string, raw []byte) (projectionDoc, error) {
 	var doc projectionDoc
 	if err := json.Unmarshal(raw, &doc); err != nil {
@@ -203,18 +178,12 @@ func (y yearSelect) keys() []string {
 }
 
 // buildSite renders every view and returns the pages plus the union of the
-// citations they made.
+// citations they made. The shipped page text is that union; a footer lists
+// only its own view's sources, unioned across its years because app.js drops
+// a citation whose doc_id is missing from CONFIG.docs in silence.
 //
-// THE CITATION SET IS THE UNION AND THE FOOTERS ARE NOT: the shipped page text
-// is unioned across every view and year, while a footer lists its own view's
-// sources. The one exception is a view's own years, unioned because app.js
-// drops a citation whose doc_id is missing from CONFIG.docs in silence, and
-// the heading names the years.
-//
-// pageTextBase resolves a doc id to the directory the page text is cited from,
-// with its trailing slash. A FUNCTION AND NOT A URL because the caller, not
-// this file, decides between a remote browse view and the copy the site ships
-// -- see Write.
+// pageTextBase resolves a doc id to its page-text directory, with a trailing
+// slash; Write decides between a remote view and the shipped copy.
 func buildSite(o *Options, ix ColumnIndex, pageTextBase func(docID string) string) ([]sitePage, []Citation, error) {
 	views := o.Views
 	nav := make([]navItem, 0, len(views))
@@ -260,8 +229,6 @@ func buildSite(o *Options, ix ColumnIndex, pageTextBase func(docID string) strin
 
 	built := make([]any, 0, len(views))
 	for i, v := range views {
-		// Every document this view renders contributes citations: the one it
-		// opens on and every year of it.
 		if err := collect(v.Projection); err != nil {
 			return nil, nil, err
 		}
@@ -317,9 +284,8 @@ func buildSite(o *Options, ix ColumnIndex, pageTextBase func(docID string) strin
 		}
 	}
 
-	// And every page the index publishes is cited, so the published store
-	// ships its page text whatever the charts draw, under withPageText's
-	// refusal of a page the extraction tree lacks.
+	// Every page the index publishes ships its page text whatever the charts
+	// draw.
 	for _, e := range o.PageIndex {
 		if !seen[e.Citation] {
 			seen[e.Citation] = true
@@ -339,24 +305,17 @@ type chrome struct {
 	Projections []projectionRef
 	DataPath    string
 	Scope       string
-	// CaveatsHere is the page's one caveats line, which the "caveats-line"
-	// template renders.
 	CaveatsHere caveatsHere
 	// SourcesPath is the provenance index, or "" when the site has none. With
-	// one, the "footer" template links there and lists no cited page, and
-	// citedSources has held every page this view cites to that index.
+	// one, the footer links there and lists no cited page.
 	SourcesPath string
-	// SourcesPage is set on the provenance index itself, whose footer does
-	// not link the page it is on.
+	// SourcesPage is set on the provenance index itself.
 	SourcesPage bool
-	// YearSelect is the year control under the top bar, drawn where it offers more
-	// than one option; empty on a page that draws every year at once.
+	// YearSelect is empty on a page that draws every year at once.
 	YearSelect yearSelect
 }
 
-// pageCtx is what every page builder reads: the export, the view it builds,
-// that view's nav, the documents by id, the column index, the page text's
-// base and the caveat index.
+// pageCtx is what every page builder reads.
 type pageCtx struct {
 	o            *Options
 	v            View
@@ -367,10 +326,8 @@ type pageCtx struct {
 	cx           *caveatIndex
 }
 
-// chrome fills c, which carries the page's title, data path, scope and year
-// select, with what every page citing figures renders alike: the view's
-// lede and nav, the sources it cites (citedSources), the published documents
-// and its caveats line. It returns the documents the page's client reads.
+// chrome fills c with what every page citing figures renders alike, and
+// returns the documents the page's client reads.
 func (p pageCtx) chrome(c chrome, cited []sourceMeta, cells *cellCites) (chrome, map[string]clientDoc, error) {
 	sources, sourcesPath, docs, err := citedSources(p.o, p.v.Path, cited, cells, p.byID, p.pageTextBase)
 	if err != nil {
@@ -394,10 +351,9 @@ func (c chrome) yearSelect() yearSelect { return c.YearSelect }
 // Repository is the source repository the "footer" template links.
 func (chrome) Repository() string { return RepositoryURL }
 
-// SourcesPartial defines the "sources" list the "footer" template folds on a
-// site with no sources page. renderPage parses it BEFORE the page, so a page's
-// own "sources-heading" replaces the partial's default rather than being
-// replaced by it.
+// SourcesPartial defines the footer's "sources" list on a site with no
+// sources page. renderPage parses it BEFORE the page, so a page's own
+// "sources-heading" replaces the partial's default.
 const SourcesPartial = "sources.html.tmpl"
 
 // ChromePartial defines the "theme-stamp" head script, the "topbar" nav and
