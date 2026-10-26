@@ -12,7 +12,6 @@
 // malformed only when its quoted run resolves against the section anchors.
 // Out of reach: prose naming a section without quoting it, a malformed
 // citation of a renamed-away section, and a near-misspelling of a title.
-// The rest of the evidence-doc contract belongs to fisc-ak39.
 package main
 
 import (
@@ -35,7 +34,7 @@ import (
 var citePattern = regexp.MustCompile(`AGENTS\.md(?:'s|,)((?:[\s*>]|//|#)*(?:under)?(?:[\s*>]|//|#)*)\\?"([^"]*)"`)
 
 // furniture is what a wrapped citation picks up between its words: newline,
-// next-line marker and indentation. `>` is one because docs/ evidence files
+// next-line marker and indentation. `>` is one because a docs/ page may
 // cite from a markdown blockquote.
 var furniture = regexp.MustCompile(`(?:[\s]|//|#|\*|>)+`)
 

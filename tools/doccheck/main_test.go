@@ -143,7 +143,7 @@ func f() {
 }
 
 // A citation that wraps inside a markdown blockquote must be FOUND, not skipped.
-// Every docs/ evidence file opens with one, so a gap here is a dead citation
+// A docs/ page may open with one, so a gap here is a dead citation
 // that passes in silence -- the fail-open direction. citePattern's gap class and
 // furniture's must agree; `>` was in the second and missing from the first.
 func TestABlockquoteCitationIsFoundAndNormalised(t *testing.T) {
@@ -587,7 +587,7 @@ Relative, from a subdirectory: [contract](../docs/sankey-contract.md) and
 	}
 }
 
-// Renaming an evidence file reddens every pointer at it: the resolution arm
+// Renaming a docs/ page reddens every pointer at it: the resolution arm
 // reports the path that no longer exists and stays silent about the one that
 // does.
 func TestAMissingDocPathReddens(t *testing.T) {

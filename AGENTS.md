@@ -101,7 +101,6 @@ they are ordered for position rather than for reading and must stay above the
 - Never write "filed as a bead" without filing it. A pointer to nothing reads as
   though the work is tracked.
 
-Why, measured: [`docs/prose-claims-evidence.md`](docs/prose-claims-evidence.md).
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:7510c1e2 -->
 ## Beads Issue Tracker
 
@@ -231,8 +230,6 @@ bd close <id> --reason "..."       # close with what actually happened
   specific finding goes in the relevant bead, in this file, or in the contract
   doc under `docs/` it belongs to.
 
-Why, measured: [`docs/prose-claims-evidence.md`](docs/prose-claims-evidence.md).
-
 ## Review is a loop, not a pass
 
 - Skip review entirely for mechanical commits: a pinned dependency, a
@@ -283,9 +280,6 @@ Why, measured: [`docs/prose-claims-evidence.md`](docs/prose-claims-evidence.md).
   re-run-and-compare. Those stay mandatory whether or not a review ran.
 - Prove a claim about these documents with arithmetic, not intuition.
 
-Why, measured: [`docs/review-loop-evidence.md`](docs/review-loop-evidence.md) —
-115 findings classified, and the loop is its own second-largest defect source.
-
 ## Prove it can fail
 
 - **The mutation is the proof.** Reproduce the defect green, then show it red.
@@ -301,8 +295,6 @@ Why, measured: [`docs/review-loop-evidence.md`](docs/review-loop-evidence.md) �
   defect was prevented, and the two guarantee completely different things.
 - When one of those turns up, look for its siblings — the fixture that hid one
   usually hides several.
-
-Why, measured: [`docs/review-loop-evidence.md`](docs/review-loop-evidence.md).
 
 ## Before you quote a number
 
@@ -326,8 +318,6 @@ Why, measured: [`docs/review-loop-evidence.md`](docs/review-loop-evidence.md).
   `fisc-xbd4`.
 - `make beadrefs` checks ids in tracked prose and comments; `make doccheck`
   checks citations of this file's sections.
-
-Why, measured: [`docs/prose-claims-evidence.md`](docs/prose-claims-evidence.md).
 
 ## Commits
 
@@ -394,8 +384,9 @@ Breaking one is a defect even when tests pass.
   and a measurement nobody needs in hand should not live here.
 - **Do not argue for a rule.** The rule is the decision; the argument is what it
   cost to reach, and it is in git. A `docs/` page earns its place by holding a
-  number that is expensive to recover — 115 findings classified, twenty mutations
-  and what each caught — and not by explaining why the rule is right.
+  number that is expensive to recover — a schedule reconciled cell by cell
+  against the totals the city printed — and not by explaining why the rule is
+  right.
 - **A comment is tactical**: the surprise, the invariant this seam upholds, the
   mutation that proves the guard. If a comment has grown into an essay it is
   documentation in the wrong place — move the argument to `docs/` and leave the
@@ -443,8 +434,6 @@ Breaking one is a defect even when tests pass.
   three spellings none of which can be held against the data. `schema/fact.schema.json`
   is what the alternative looks like: it refused a float `amount_cents`, an empty
   `token` and a string `fund` on the day it landed.
-
-Why, measured: [`docs/prose-claims-evidence.md`](docs/prose-claims-evidence.md).
 
 ## Go
 
@@ -518,8 +507,6 @@ rather than inferring from the code.
 - **`app.js` quotes no measured figure about itself.** A figure that is evidence
   for a decision lives in the test that asserts it, printed with `t.diagnostic`
   so a reader of the run sees the measurement.
-
-Why, measured: [`docs/review-loop-evidence.md`](docs/review-loop-evidence.md).
 
 ## The extraction boundary
 
