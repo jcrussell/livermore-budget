@@ -35,8 +35,7 @@ func TestLocatorSetGroupsSortsAndDeduplicates(t *testing.T) {
 }
 
 // TestAnEmptyLocatorSetIsNotNull guards the contract rather than the code.
-// docs/outputs/sankey.md requires every key present on every object with no
-// null, so a link built from no facts must publish [] and not null.
+// The package doc requires every key present on every object with no null, so a link built from no facts must publish [] and not null.
 func TestAnEmptyLocatorSetIsNotNull(t *testing.T) {
 	var l locatorSet
 	got := l.sources()

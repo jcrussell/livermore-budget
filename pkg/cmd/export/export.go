@@ -25,9 +25,10 @@ import (
 const defaultOutputDir = "dist"
 
 // result is everything a builder produces for one export. Projections is keyed
-// by filename stem and written to data/<stem>.json (docs/outputs/sankey.md:
-// one file per projection); Files is keyed by a path relative to the output
-// root. Two maps, because telling a stem from a path would be a guess.
+// by filename stem; internal/export writes each into the column file it folds
+// into, or to data/<stem>.json where it states no column. Files is keyed by a
+// path relative to the output root. Two maps, because telling a stem from a
+// path would be a guess.
 type result struct {
 	Projections map[string][]byte
 	// Files is every non-projection asset; see export.Options.Files.

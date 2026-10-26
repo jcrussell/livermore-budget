@@ -68,7 +68,8 @@ func LinkKinds() []LinkKind {
 const (
 	tierRevenueSource = 0
 	// tierRevenueLine is a printed revenue ROW of pp.127-140, parented to its
-	// category. See docs/outputs/sankey.md for why tier 1 holds it.
+	// category. Tier 1 is free for it because the fund groups do not partition
+	// along constraint tier, so no constraint layer can sit there.
 	tierRevenueLine    = 1
 	tierFundGroup      = 2
 	tierFund           = 3
@@ -77,8 +78,8 @@ const (
 )
 
 // idFormTiers is the tier each node id form sits at, keyed by the prefix that
-// makes an id that form. A prefix not here is a coined form, which
-// docs/outputs/sankey.md forbids.
+// makes an id that form. A prefix not here is a coined form and is refused;
+// the slug after it is a data/taxonomy.yaml slug, never a new one.
 var idFormTiers = map[string]int{
 	PrefixRevenue:      tierRevenueSource,
 	PrefixRevenueLine:  tierRevenueLine,
@@ -195,7 +196,9 @@ const (
 	// PrefixTransfers is the flow endpoints outside the spine's hierarchy.
 	PrefixTransfers = "transfers/"
 	// PrefixTransferFrom and PrefixTransferTo are the two ends of one printed
-	// movement; see [transfersByFund].
+	// movement; see [transfersByFund]. A fund-to-fund link would run tier 3 to
+	// tier 3, which d3-sankey cannot lay out, so a payer's end sits at tier 2
+	// and a receiver's at tier 5.
 	PrefixTransferFrom = "transfer-from/"
 	PrefixTransferTo   = "transfer-to/"
 )
@@ -258,8 +261,7 @@ type labels interface {
 	FundGroup(name string) bool
 	// ConstraintTier is how tightly a fund's money is tied down, derived from
 	// pp.258-261; a node publishing one publishes a source note and rationale
-	// (docs/outputs/sankey.md). "" for an unlisted fund is not the tier
-	// "unknown".
+	// (see [Node]). "" for an unlisted fund is not the tier "unknown".
 	ConstraintTier(fund int) string
 	// RestrictionNote is the sentence a constraint tier was read from, which is
 	// what a node carrying one publishes as its rationale.
@@ -360,8 +362,10 @@ type Node struct {
 	Label string `json:"label"`
 	Tier  int    `json:"tier"`
 	// Parent and ConstraintTier are "" on every spine node, whose fund groups
-	// hold funds of several tiers. A node populating ConstraintTier sets
-	// SourceNote and Rationale (docs/outputs/sankey.md).
+	// hold funds of several tiers. ConstraintTier is our reading of
+	// pp.258-261, which print no such classification, so a node populating it
+	// sets SourceNote and Rationale while Derived stays false: the node itself
+	// is printed.
 	Parent         string `json:"parent"`
 	ConstraintTier string `json:"constraint_tier"`
 	Role           string `json:"role"`
@@ -526,8 +530,8 @@ type cell struct {
 // Document builds the graph without encoding it, so fisc verify can check the
 // structure without parsing back the JSON it is trying to validate.
 //
-// The switch below is the row-to-slug table of docs/outputs/sankey.md written
-// out as code, one case per printed row family, and it is kept in one function
+// The switch below is the row-to-slug table, over the mapping's categories,
+// written out as code, one case per printed row family, and it is kept in one function
 // so that correspondence stays visible.
 func (s *sankey) Document(facts []fact.Fact, o Options) (*Document, error) {
 	if err := o.validate(); err != nil {

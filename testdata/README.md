@@ -1,21 +1,10 @@
 # Test fixtures
 
-Real artifacts copied verbatim from `data/extracted/`, so Go tests never need
-Python, the source PDFs, or the network. Regenerate with `make extract` and
-re-copy if the extractor's output contract changes.
-
-Each page fixture's sha256 equals the one `data/extracted/<doc>/manifest.json`
-records for the artifact it came from, so a test that passes against these
-fixtures passes against the real corpus. Do not hand-edit one.
-
-Page fixtures are `.txt`, not `.md`: `pdftotext -layout` encodes the printed
-column grid in runs of spaces, which GitHub's markdown view collapses.
-
-Every fixture page carries **both** substrates — `pages/<doc>-pNNNN.txt` and
-`geometry/<doc>-pNNNN.json` — because one without the other is not a shape the
-extractor can produce.
-
-Each fixture is here for a specific failure mode; none is a generic sample.
+Real artifacts copied from `data/extracted/`, each here for one named failure
+mode; none is a generic sample. How to keep them in step with the corpus is
+AGENTS.md, "Testing". Every page fixture carries both substrates,
+`pages/<doc>-pNNNN.txt` and `geometry/<doc>-pNNNN.json`, because one without
+the other is not a shape the extractor produces.
 
 ## Pages
 
@@ -105,7 +94,7 @@ the glance page and `flows.golden.html` the Sankey.
 
 | Fixture | Source | Why |
 |---|---|---|
-| `sankey.golden.json` | Budget Book pp. 66–67, FY2026 | The hand-derived worked example of [`docs/outputs/sankey.md`](../docs/outputs/sankey.md), which `TestSankeyReproducesGoldenFile` requires Go to reproduce byte for byte; regenerate it only with a rule cheap enough to check its diff by eye. |
+| `sankey.golden.json` | Budget Book pp. 66–67, FY2026 | The hand-derived worked example of the spine document ([`docs/outputs/sankey.md`](../docs/outputs/sankey.md)), which `TestSankeyReproducesGoldenFile` requires Go to reproduce byte for byte; regenerate it only with a rule cheap enough to check its diff by eye. |
 | `fund-flows.golden.json` | Budget Book pp. 127–140 + 167–170, FY2026 | **A capture of Go's output**, not a derivation, held line for line to what `buildProjections` builds by `TestTheFundFlowsFixtureIsTheDocumentTheSiteDraws`; check a recapture by re-deriving every link's locators and `value_cents` from `facts/facts.jsonl`. |
 | `index.golden.html` | Budget Book pp. 66–67 and pp. 85–125, both published years, over the client subset | The glance page over `clientSubset`, held to Go's bytes by `TestTheGlanceFixtureIsWhatGoWrites`. |
 | `flows.golden.html` | The spine page, both published years, over the client subset | The Sankey page whose DOM and `window.FISC_CONFIG` the client tests boot, held decoded and whole to what Go writes by `TestTheClientFixturesHoldWhatTheClientReads`. |
@@ -113,3 +102,7 @@ the glance page and `flows.golden.html` the Sankey.
 | `fy2027-adopted.column.json` | The same pages, FY2027 | The second column, which differs in shape — `fund/207`, capital-outlay's divisions and the declared 250,000 gap — so a year joined to the wrong document is visible. |
 | `department.golden.html` | Budget Book pp. 85–125, every column, over the client subset | The department page and its config, held to what Go writes by `TestTheDepartmentFixtureHoldsWhatTheClientReads`. |
 | `fy2024-actual.column.json` | Budget Book pp. 85–125 and the other schedules of FY2024's actual column, over the client subset | The one column printing a Transfers Out row in pp.85-125's upper block and five departments held apart by a declared exception. |
+| `capital.golden.html` | Budget Book pp. 225–235, over the client subset | The capital page, held to Go's bytes by `TestTheCapitalFixtureIsWhatGoWrites`. |
+| `change.golden.html` | ACFR p168 and Budget Book pp. 127–140, over the client subset | The Over time page, held to Go's bytes by `TestTheChangeFixtureIsWhatGoWrites`. |
+| `ledger.golden.html` | The expansion schedule, over the client subset | The bars page's config and markup, no figures, held to Go's bytes by `TestTheSidesFixtureIsWhatGoWrites`. |
+| `caveats.golden.html` | Every caveat over the client subset | The caveats page, whose fragments `site/theme.test.mjs` opens, held to Go's bytes by `TestTheCaveatsFixtureIsWhatGoWrites`. |

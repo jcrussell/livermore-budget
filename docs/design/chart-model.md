@@ -1,8 +1,32 @@
 # The chart model: one model, drawn by forms
 
-Evidence for the rule in AGENTS.md, "Go vets, JavaScript renders", and the
-contract the decision bead `fisc-c2v6` froze. This file holds what the layers
-are, what each may compute, and the measurements that fixed the seams.
+Evidence for the rule in AGENTS.md, "Go vets, JavaScript renders": what each
+layer between a printed figure and a pixel may compute, and the measurements
+that fixed the seams.
+
+```mermaid
+flowchart TD
+  facts["Facts<br/>facts/facts.jsonl"]
+  structure["Structure<br/>internal/structure"]
+  projection["Projection<br/>internal/project"]
+  column["Column<br/>internal/export"]
+  decl["Declarations<br/>data/views.yaml"]
+  core["Client core<br/>site/core.js"]
+  form["Form renderer<br/>site/sankey.js"]
+  facts --> structure --> projection --> column --> core
+  decl --> core
+  core --> form
+  subgraph go["Go: vets and cites"]
+    structure
+    projection
+    column
+    decl
+  end
+  subgraph js["JavaScript: sums and draws"]
+    core
+    form
+  end
+```
 
 ## Seven layers, each computing only what the one below cannot
 
@@ -104,46 +128,12 @@ it folds; Go precomputes no closure. The declaration's syntax is `fisc-l8s5`.
 
 ## The renderer interface
 
-A form module exports one object, and `app.js` reaches a form through it and
-in no other way: it imports no helper of a form's, and reads no hint. The
-members, as `FormRenderer` in `site/app.js` types them:
-
-```js
-/** @typedef {{
- *  form: string,
- *  tiersOf(chart): number[],                    // the declared tiers, from its own hints: the spine's columns, which a root of the expansion is placed by
- *  width(columns): number,                      // the px a chart of this many columns is laid out at
- *  columnsOf(drawn, tiers): number,             // how many columns a shaped chart is laid out in
- *  shape(doc, view): FiscProjection,            // fold to the frontier, cap the open splits, stamp slots, flip reductions; throws to refuse; view is {chart, frontier, whole}
- *  layOut(drawn, ctx): Laid,                    // pure of the page; ctx.before seats a redrawn chart's columns
- *  render(laid, ctx): () => void,               // writes the DOM, keyed, moving from ctx.before; returns what ends the motion now
- *  canvas(nodes, ctx): number,                  // the canvas height render draws laid nodes on at ctx.room, nothing held
- *  paint(ctx): void,                            // repaints on a theme change
- *  cents(d): number,                            // the figure a laid mark prints, signed
- *  share(d, laid): string,                      // a laid node's share of what it is drawn among, in words; "" where none
- *  reduction(d): boolean,                       // whether a laid node's every ribbon is a printed reduction
- *  crossTab(d): boolean,                        // whether a laid node's whole figure is a cross-tab total
- *  reductionNote(d): string,                    // how much of a laid node's figure is printed as reductions, in words; ""
- *  drawnNote(d): string,                        // what the drawing does to a laid node's height, in words; "" where nothing
- *  hairlines(laid, chart): number,              // how many laid ribbons it draws as hairlines, wider than their share
- * }} FormRenderer */
-```
-
-`Laid` is `{nodes: LaidNode[], links: LaidLink[]}` as `app.js` types them: a
-node with `x0, x1, y0, y1, value, layer, depth, sourceLinks, targetLinks`, a
-link with its `source` and `target` resolved to nodes, a `width`, and the
-widths `w0` and `w1` it is drawn at where it meets its source and its target. The page
-reads a laid mark's geometry and its ribbons itself, for emphasis, focus and
-panning a mark into sight; what a laid mark's figure and ribbons MEAN -- its signed cents
-after the form has flipped a reduction to draw it, its share of a column, a
-note on what is printed as reductions -- it asks of the form that laid it,
-through the readings of a laid mark above, because only that layout knows. What is the
-mark's own and no form's -- whether it is a ribbon (`isLink`), the pages it
-cites -- the core answers.
-
-A renderer calls the core for every figure (`foldDocument`, `capColumn`,
-`tailFigure`, `reducedOf`) and computes none of its own; it hands the core
-what only it knows, which is where a mark stands. `app.js` registers
-renderers by form in `FORMS` and refuses, with a banner and before anything
-is fetched, a chart whose form it does not hold; `site/lifecycle.test.mjs`
-holds that refusal.
+A form module exports one object, `FormRenderer` in `site/app.js`, and `app.js`
+reaches a form through it and in no other way: it imports no helper of a
+form's and reads no hint. The page reads a laid mark's geometry itself, for
+emphasis, focus and panning; what a laid mark's figure MEANS after the form
+drew it (its signed cents, its share, how much of it is printed as
+reductions) it asks the form, because only that layout knows. A renderer calls
+the core for every figure and hands it only what the core cannot know, which
+is where a mark stands. `app.js` refuses, with a banner and before any fetch,
+a chart whose form it does not hold.

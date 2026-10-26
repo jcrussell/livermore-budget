@@ -37,7 +37,8 @@ func TrendsColumns() []Column {
 }
 
 // Trends is the four printed columns of pp.127-140 as one series per printed
-// row: not a graph. The contract is docs/outputs/revenue-trends.md.
+// row: not a graph. Its reconciliation with p63 is
+// docs/outputs/revenue-trends.md.
 type Trends struct {
 	// Labels resolves the fund name and the category label the document
 	// publishes. Nil is allowed and means both fall back, so a build never

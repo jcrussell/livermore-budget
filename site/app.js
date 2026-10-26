@@ -87,7 +87,24 @@ export function shareOf(d) {
 
 /**
  * A form module: the only way this file reaches a form. It reads only its
- * own hints and computes no figure; see docs/design/chart-model.md.
+ * own hints and computes no figure, calling the core for every one; see
+ * docs/design/chart-model.md.
+ *
+ * - tiersOf: the declared tiers, from the chart's own hints, which a root of
+ *   the expansion is placed by.
+ * - width, columnsOf: the px a chart of n columns is laid out at, and how many
+ *   columns a shaped chart takes.
+ * - shape: fold to the frontier, cap the open splits, stamp slots, flip
+ *   reductions; throws to refuse.
+ * - layOut: pure of the page; ctx.before seats a redrawn chart's columns.
+ * - canvas: the height render draws laid nodes on at ctx.room.
+ * - render: writes the DOM, keyed, moving from ctx.before; returns what ends
+ *   the motion now. paint repaints on a theme change.
+ * - cents, share, reduction, crossTab, reductionNote, drawnNote, hairlines:
+ *   what a laid mark means after this form drew it -- its signed figure, its
+ *   share of what it is drawn among, whether its ribbons are printed
+ *   reductions or a cross-tab total, and what the drawing did to it. Only the
+ *   layout knows these, so the page asks the form.
  * @typedef {{
  *   form: string,
  *   tiersOf(chart: FiscChart): number[],

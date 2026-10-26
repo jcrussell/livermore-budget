@@ -391,8 +391,7 @@ func (r *Registry) FundType(number int) (string, bool) {
 }
 
 // RestrictionNote is our DERIVED reading of what ties a fund's money down
-// (pp. 258-261). It travels beside ConstraintTier as its rationale. See
-// docs/outputs/sankey.md's constraint_tier section.
+// (pp. 258-261). It travels beside ConstraintTier as its rationale; see project.Node.
 func (r *Registry) RestrictionNote(fund int) string {
 	return r.funds[fund].RestrictionNote
 }

@@ -43,7 +43,7 @@ func HistoryColumns() []Column {
 // components of the General Fund's balance and of the aggregate All Other
 // Governmental Funds, across ten years. Every fact carries fund 0 --
 // the rows are a fund's components or an aggregate, never a numbered fund.
-// The contract is docs/outputs/acfr-history.md.
+// Its reconciliation with the printed pages is docs/outputs/acfr-history.md.
 type FundBalances struct {
 	// Labels resolves category labels; see Trends.Labels for the nil rule.
 	Labels labels
@@ -83,7 +83,8 @@ func (p *FundBalances) Document(facts []fact.Fact, o Options) (*TrendsDocument, 
 // FundBalanceChanges is ACFR pp.168-169 as one series per printed row: nine
 // revenue rows, twelve expenditure rows on the ACFR's function axis, and the
 // printed excess line, across ten years, all governmental funds
-// combined. The contract is docs/outputs/acfr-history.md.
+// combined. Its reconciliation with the printed pages is
+// docs/outputs/acfr-history.md.
 type FundBalanceChanges struct {
 	// Labels resolves category labels; see Trends.Labels for the nil rule.
 	Labels labels

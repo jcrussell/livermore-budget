@@ -28,8 +28,7 @@ import (
 	"github.com/jcrussell/livermore-budget/pkg/iostreams"
 )
 
-// goldenSankey is the hand-derived worked example of the contract
-// (docs/outputs/sankey.md). The pipeline has to reproduce it.
+// goldenSankey is the hand-derived worked example of the spine document. The pipeline has to reproduce it.
 func goldenSankey(t *testing.T) []byte {
 	t.Helper()
 	b, err := os.ReadFile(filepath.Join("..", "..", "..", "testdata", "sankey.golden.json"))

@@ -43,8 +43,8 @@ const PrimaryProjection = project.PublishedProjection
 // IndexPath is the view the site opens on, the fixed entry point of the layout.
 const IndexPath = "index.html"
 
-// dataDir is the output subdirectory holding projection JSON, part of the
-// published contract (docs/outputs/sankey.md).
+// dataDir is the output subdirectory holding the projection JSON that folds
+// into no column.
 const dataDir = "data"
 
 // PageTextDir is the output subdirectory holding the committed extraction of

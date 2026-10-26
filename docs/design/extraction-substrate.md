@@ -1,8 +1,7 @@
 # What the extracted substrate does and does not carry
 
-> Evidence for AGENTS.md, "The extraction boundary". This file states no rule.
-> The rules are in AGENTS.md; what is here is what was measured against the
-> real documents.
+Evidence for AGENTS.md, "The extraction boundary": what was measured against
+the three PDFs. The rules are in AGENTS.md.
 
 ## Two substrates, and why both
 
@@ -44,10 +43,9 @@ row missing a cell borrows the next row's leading token and reaches `ncols`
 anyway. The `len(toks) < ncols` guard fires only when the shortfall runs off the
 end of the block.
 
-**Do not trust this paragraph over the code.** Three successive attempts in
-AGENTS.md to summarise that function were wrong in three different ways, which is
-why AGENTS.md now points at the function instead of describing it. If you need
-the behaviour, read it and write a probe.
+**Do not trust this paragraph over the code.** Summaries of that function have
+been wrong in three different ways; if you need the behaviour, read it and
+write a probe.
 
 What catches the borrowing is mostly downstream of the read: `cursor` advances to
 the end of the last token consumed, so a row that borrows its neighbour's figures
@@ -78,11 +76,10 @@ pins the message shape.
 the CIP document at all**. The refusal is reproducible for a CIP
 part you write yourself, and that is the evidence.
 
-`TestCIPp40SparseRowFailsClosedButDoesNotRead` does now reach the row read
-(`fisc-i0d9`, closed). It used to anchor its block on the column-header line, so
-`checkGap`'s leading-gap arm refused before any row was read and its one
-assertion passed on an unrelated message quoting the first row's anchor name. It
-now starts past the headers and asserts the value-count refusal by name.
+`TestCIPp40SparseRowFailsClosedButDoesNotRead` starts its block past the
+column headers, so the row read is reached, and asserts the value-count
+refusal by name; anchored on the header line, `checkGap` would refuse first and
+the test would pass on an unrelated message.
 
 **The guard that fires there is not the geometry one.** The row yields 2 tokens
 against 8 columns, so `len(toks) < ncols` refuses first and geometry never places
@@ -93,15 +90,15 @@ the `toks[:ncols]` two lines below.
 Nobody has enumerated what is left once all four defences are in play. A
 block-final row backed by an unlabelled total line is the obvious candidate.
 
-## p67's row count caught our own pipeline dropping a row
+## p67's rows are identified by position
 
 p67 prints no row labels: it continues p66's ten revenue rows for four more
-fund groups, so its row identity is positional against p66. A read of 72
-values where 10 rows x 8 columns requires 80 failed closed. `pdftotext -bbox`
-puts ten rows on p67 at p66's ten y-positions; rows 8-10 are three consecutive
-all-dash lines, and the extractor of the day deleted the third as repeated
-boilerplate (`fisc-c00`). On a positional page a row our own pipeline drops
-mismaps every row beneath it, and `row_label` is part of the fact id.
+fund groups, so its row identity is positional against p66, and 10 rows x 8
+columns must read 80 values. `pdftotext -bbox` puts ten rows on p67 at p66's
+ten y-positions; rows 8-10 are three consecutive byte-identical all-dash
+lines, so an extractor that drops repeated lines as boilerplate loses one, and
+the read fails closed at 72 values (`fisc-c00`). On a positional page a dropped
+row mismaps every row beneath it, and `row_label` is part of the fact id.
 
 ## Two parties record the hash
 

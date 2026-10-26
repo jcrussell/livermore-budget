@@ -1,16 +1,12 @@
 # fisc — the Livermore budget, with its sources attached
 
-The purpose of this project is to let a reader explore the City of Livermore's
-budget. `fisc` turns the city's published budget PDFs into a verified fact
-store, and that fact store into a static site that opens on a glance page of
-where city money comes from and where it goes, each bar a sum of printed cells,
-with a Sankey of the same money on its Flows page.
+`fisc` turns the City of Livermore's published budget and financial reports
+into a fact store, and the fact store into a static site for exploring the
+budget: where the money comes from, what it buys, which department spends it,
+and how that has changed.
 
-**Every figure published carries a provenance pointer back to a page and cell of
-a source PDF**, and `fisc verify` fails if any link in that chain breaks. That is
-the feature. A number that cannot be traced, a check that cannot fail, or an
-inferred value presented as a published one is a defect regardless of how good
-the chart looks.
+Every figure the site shows cites the page and cell of the PDF it was read
+from, and `fisc verify` fails if any link in that chain breaks.
 
 ## What is covered
 
@@ -45,22 +41,23 @@ The spine gives the all-funds picture: $299,969,007 gross revenue and
 $254,095,412 gross expenditure in FY2026, over six fund groups whose printed
 `TOTAL SOURCES` and `TOTAL USES` the chart reconciles against exactly.
 
-The site's pages are the views `data/views.yaml` declares, in its nav order:
+The site's pages are the views `data/views.yaml` declares, in nav order:
 
-- `index.html`, the glance page: as shares of what the city budgets, where it
-  comes from, what it buys and which department spends it, each bar a sum of the
-  printed cells listed beneath it.
-- `flows.html`, the fund-group spine as a Sankey with a year control; click a
-  node and it opens in place into the funds, divisions, lines or object rows the
-  budget prints beneath it. `ledger.html` is the same money as ranked bars.
-- `change.html`, p168's ten years of what the governmental funds took in and
-  spent beside the four columns of pp.127-140's revenue lines; `balances.html`,
-  p167's ten years of fund balances. Both ACFR schedules sit in the section the
-  ACFR heads "(Unaudited)", and each page says so.
-- `department.html`, `capital.html` and `debt.html`, a page a subject.
-- `caveats.html`, every published caveat once, in full, grouped by kind; every
-  page drawing a schedule that carries one names the kinds in one line.
-- `provenance.html`, every fact, its page, and the text it was read from.
+| nav label | page | what it shows |
+|---|---|---|
+| At a glance | `index.html` | where the money comes from, what it buys and which department spends it, as shares of the whole |
+| Flows | `flows.html` | the fund groups as a Sankey with a year control; a node opens in place into the funds, divisions, lines or object rows printed beneath it |
+| Bars | `ledger.html` | the same money as ranked bars |
+| Over time | `change.html` | ten years of what the governmental funds took in and spent (ACFR p168), beside the budget's four revenue columns |
+| Fund balances | `balances.html` | ten years of fund balances (ACFR p167) |
+| Departments | `department.html` | one department's funding and spending |
+| Capital projects | `capital.html` | every capital project, under the fund that pays for it |
+| Debt | `debt.html` | debt service by issue, and what is owed through maturity |
+| Caveats | `caveats.html` | every limit on these figures, once, grouped by kind |
+| Sources and data | `provenance.html` | every fact, its page, and the text it was read from |
+
+Both ACFR schedules sit in the section the ACFR heads "(Unaudited)", and the
+pages say so.
 
 The CIP is extracted and unmapped. See `bd ready`.
 
@@ -103,25 +100,22 @@ diff, and move the pin in the same commit as the re-extraction.
 
 ## How it fits together
 
-```
-data/pdf/*.pdf                     source documents, LFS, sha256 in sources.yaml
-  │  tools/extract.py (poppler)    deterministic; NOT part of the Go binary
-  ▼
-data/extracted/<doc>/              786 pages of -layout text + -bbox geometry,
-                                   each hashed in a manifest
-  │  mappings/*.yaml               the judgment layer: which rows, which columns,
-  │                                what they mean. Written to be read.
-  ▼
-facts/facts.jsonl                  content-addressed facts, each carrying
-                                   doc_id / page / offset / token
-  │  internal/project              projections over (columns, scope)
-  ▼
-dist/                              static site: d3-sankey, no bundler, no build step
+```mermaid
+flowchart TD
+  pdf["data/pdf/*.pdf<br/>source documents in LFS, sha256 in data/sources.yaml"]
+  ext["data/extracted/doc-id/<br/>-layout text and -bbox geometry per page, hashed in a manifest"]
+  facts["facts/facts.jsonl<br/>one record per printed figure: doc_id, page, offset, token"]
+  dist["dist/<br/>static site and published data files"]
+  pdf -- "tools/extract.py (poppler), outside the Go binary" --> ext
+  ext -- "mappings/*.yaml: which rows and columns, and what they mean" --> facts
+  facts -- "internal/project and internal/export" --> dist
+  facts -. "fisc verify checks each fact against its page" .-> ext
 ```
 
-The invariants the code enforces — integer cents, absent is not zero, ambiguity
-fails closed, published is not derived — are in AGENTS.md, "Provenance
-invariants".
+The invariants the code enforces (integer cents, absent is not zero,
+ambiguity fails closed, published is not derived) are in AGENTS.md,
+"Provenance invariants". The rest of the documentation is indexed in
+[`docs/README.md`](docs/README.md).
 
 ## Sources
 
@@ -160,15 +154,9 @@ City of Livermore.
 ## Working on it
 
 Issues live in [beads](https://github.com/gastownhall/beads): `bd ready` for
-available work, `bd prime` for the workflow. Agent-facing rules are in
-[`AGENTS.md`](AGENTS.md). Each published document has a contract under `docs/`:
-[`sankey.md`](docs/outputs/sankey.md) for the citywide spine,
-[`fund-flows.md`](docs/outputs/fund-flows.md)
-for the fund-and-division drill-down,
-[`revenue-trends.md`](docs/outputs/revenue-trends.md) for the per-fund
-revenue series, [`acfr-history.md`](docs/outputs/acfr-history.md) for
-the ACFR ten-year history, and
-[`fact-store.md`](docs/outputs/fact-store.md) for the record store.
+available work, `bd prime` for the workflow. Rules for working on the tree are
+in [`AGENTS.md`](AGENTS.md); fixtures are catalogued in
+[`testdata/README.md`](testdata/README.md).
 
 The site publishes from the `pages-build` and `pages-deploy` jobs at the foot of
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml), on a push to `main` that
