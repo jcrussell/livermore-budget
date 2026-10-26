@@ -11,7 +11,8 @@
 // files are scanned whole; see titleOf. A non-canonical hit is refused as
 // malformed only when its quoted run resolves against the section anchors.
 // Out of reach: prose naming a section without quoting it, a malformed
-// citation of a renamed-away section, and a near-misspelling of a title.
+// citation of a renamed-away section, a near-misspelling of a title, and the
+// evidence marker a docs/design/ page opens with (fisc-ak39.2).
 package main
 
 import (
@@ -53,6 +54,11 @@ var loosePattern = regexp.MustCompile("AGENTS\\.md(?:[^\".\\n]|\\.[^\" \t\n]|\\n
 // naming another repository's docs. Group 2 is the path, prefix included;
 // missingDocs decides what a prefixed one resolves against.
 var docPathPattern = regexp.MustCompile(`(^|[^A-Za-z0-9_./-])((?:\.\.?/)*docs/[A-Za-z0-9._/-]+\.md)`)
+
+// mdLinkPattern finds a markdown link to a .md file, fragment aside. Group 1
+// is the target; mdLinksIn skips a URL and resolves the rest against the
+// linking file, as a reader following the link would.
+var mdLinkPattern = regexp.MustCompile(`\]\(([^)\s#]+\.md)(?:#[^)\s]*)?\)`)
 
 // srcPathPattern finds a source path, with docPathPattern's guard. Only four
 // directories and two extensions: other repo-shaped paths (data/, dist/,
@@ -493,6 +499,11 @@ func scanUnder(root string, paths []string, anchors map[string]bool) (cites, mal
 				return err
 			}
 			docRefs = append(docRefs, refs...)
+			links, err := mdLinksIn(path)
+			if err != nil {
+				return err
+			}
+			docRefs = append(docRefs, links...)
 			src, err := srcRefsIn(path)
 			if err != nil {
 				return err
@@ -586,6 +597,33 @@ func malformedIn(path string, anchors map[string]bool) ([]cite, error) {
 
 // docRefsIn collects every docs/ path the file cites.
 func docRefsIn(path string) ([]cite, error) { return pathRefsIn(path, docPathPattern) }
+
+// mdLinksIn collects a markdown file's relative links to .md files, each
+// written with a ./ prefix where it has none so missingDocs resolves it against
+// the linking file. docPathPattern sees only paths naming docs/; a link from
+// one docs/ page to its sibling names none.
+func mdLinksIn(path string) ([]cite, error) {
+	if !strings.HasSuffix(path, ".md") {
+		return nil, nil
+	}
+	b, err := os.ReadFile(path) // #nosec G304,G703 -- see scanUnder.
+	if err != nil {
+		return nil, err
+	}
+	text := string(b)
+	var out []cite
+	for _, loc := range mdLinkPattern.FindAllStringSubmatchIndex(text, -1) {
+		target := text[loc[2]:loc[3]]
+		if strings.Contains(target, "://") || strings.HasPrefix(target, "/") {
+			continue
+		}
+		if !strings.HasPrefix(target, "./") && !strings.HasPrefix(target, "../") {
+			target = "./" + target
+		}
+		out = append(out, cite{title: target, file: norm(path), line: 1 + strings.Count(text[:loc[2]], "\n")})
+	}
+	return out, nil
+}
 
 // srcRefsIn collects every source path the file cites.
 func srcRefsIn(path string) ([]cite, error) { return pathRefsIn(path, srcPathPattern) }

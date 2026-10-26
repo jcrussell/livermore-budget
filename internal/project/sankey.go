@@ -529,9 +529,8 @@ type cell struct {
 // Document builds the graph without encoding it, so fisc verify can check the
 // structure without parsing back the JSON it is trying to validate.
 //
-// The switch below is the row-to-slug table, over the mapping's categories,
-// written out as code, one case per printed row family, and it is kept in one
-// function so that correspondence stays visible.
+// The switch below maps each printed row family of pp.66-67 to its node, one
+// case per family, kept in one function so the correspondence stays visible.
 func (s *sankey) Document(facts []fact.Fact, o Options) (*Document, error) {
 	if err := o.validate(); err != nil {
 		return nil, fmt.Errorf("sankey options: %w", err)

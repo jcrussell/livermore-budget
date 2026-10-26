@@ -198,8 +198,8 @@ func ACFRCuts() []Cut {
 			Bases:      audited,
 		},
 		{
-			// pp.168-169, ten audited years of all governmental funds combined,
-			// with no fund group printed anywhere.
+			// pp.168-169, ten years from the unaudited statistical section, all
+			// governmental funds combined, with no fund group printed anywhere.
 			Name:  "acfr-changes-in-fund-balances",
 			Scope: ScopeACFRChangesInFundBalances,
 			Level: LevelCategory,

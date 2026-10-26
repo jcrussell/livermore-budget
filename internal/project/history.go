@@ -41,8 +41,8 @@ func HistoryColumns() []Column {
 
 // FundBalances is ACFR p167 as one series per printed row: the GASB 54
 // components of the General Fund's balance and of the aggregate All Other
-// Governmental Funds, across ten years. Every fact carries fund 0 --
-// the rows are a fund's components or an aggregate, never a numbered fund.
+// Governmental Funds, across ten years. No fact carries a fund: the rows
+// are a fund's components or an aggregate, never a numbered fund.
 // Its reconciliation with the printed pages is docs/outputs/acfr-history.md.
 type FundBalances struct {
 	// Labels resolves category labels; see Trends.Labels for the nil rule.

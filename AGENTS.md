@@ -227,8 +227,8 @@ bd close <id> --reason "..."       # close with what actually happened
   - A blocker ranks at least as high as what it blocks.
 - **Priority drifts.** Look for a bead whose `P1` contradicts its own note.
 - Use `bd remember` for cross-session knowledge, not MEMORY.md files. A durable,
-  specific finding goes in the relevant bead, in this file, or in the contract
-  doc under `docs/` it belongs to.
+  specific finding goes in the relevant bead, in this file, or in the `docs/`
+  page it belongs to.
 
 ## Review is a loop, not a pass
 
@@ -255,8 +255,7 @@ bd close <id> --reason "..."       # close with what actually happened
 - `make pre-commit` and the lane's mutation proofs green before re-reviewing.
 - Re-review the range **including the fixes**. This is the step that finds most.
 - **Stop when a pass returns no WRONG-OUTPUT and no FAIL-OPEN finding** — not
-  when it returns nothing. It will not return nothing; the smallest yield the log
-  records is two.
+  when it returns nothing. It will not return nothing.
 - **Three passes minimum, five maximum.** The ceiling is not a target.
 - At the cap, report what the last pass found and let the owner decide whether to
   narrow the commit rather than keep patching it.

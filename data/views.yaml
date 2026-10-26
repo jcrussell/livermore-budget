@@ -86,8 +86,9 @@ views:
           - {tier: 0, heading: Where the money comes from}
           - {tier: 5, heading: Where the money goes}
 
-  # Over time: the ACFR's ten years (its unaudited statistical section) and the Budget Book's four
-  # columns, each a table of printed points change.js stacks by kind. Its
+  # Over time: ten years from the ACFR's unaudited statistical section and
+  # the Budget Book's four columns, each a table of printed points change.js
+  # stacks by kind. Its
   # own document is the ten-year schedule; the budget columns are read from
   # revenue-trends, which the builder refuses to do without.
   - path: change.html

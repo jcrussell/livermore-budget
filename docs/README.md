@@ -44,6 +44,6 @@ reconcile with what the city printed, and what it does not claim.
 - [`revenue-trends.md`](outputs/revenue-trends.md) — revenue by fund and line,
   pp.127-140, four columns.
 - [`acfr-history.md`](outputs/acfr-history.md) — the ACFR's ten-year
-  fund-balance schedules, pp.167-168, and the p41 summary.
+  fund-balance schedules, pp.167-169, and the p41 summary.
 - [`fact-store.md`](outputs/fact-store.md) — the published record store under
   `facts/`.

@@ -80,7 +80,7 @@ func TestNodeTiersAreDeclaredIsFailable(t *testing.T) {
 			want: "its id form's is 1",
 		},
 		{
-			// Every id form is declared; a slug is never coined.
+			// An id form no prefix declares is refused.
 			name: "a coined id form",
 			damage: func(t *testing.T, g *project.Document) {
 				g.Nodes[nodeIndex(t, g, "revenue/")].ID = "programme/police"

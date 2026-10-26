@@ -68,9 +68,10 @@ print; that drill-down is [`fund-flows.md`](fund-flows.md).
 
 ## Link kinds and the headline
 
-Only `external` links count toward the headline. An internal service charge is
-billed by one city department to another, so counting it as revenue and as the
-payer's spending counts it twice.
+The `all_funds_gross_*` figures tie to the printed schedule and include
+internal service charges. The `external_*` figures count only `external`
+links: an internal service charge is billed by one city department to another,
+so counting it as revenue and as the payer's spending counts it twice.
 
 | headline, FY2026 | dollars | |
 |---|---:|---|

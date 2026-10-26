@@ -776,3 +776,48 @@ func TestDeadSchemaRefsResolvesEveryPointerAndEveryTypedef(t *testing.T) {
 		t.Errorf("deadSchemaRefs (-want +got):\n%s", diff)
 	}
 }
+
+// A markdown link between two docs/ pages names no docs/ path, so only
+// mdLinksIn sees it: a sibling that exists stays green, one that does not
+// reddens, a URL and a fragment-only link are skipped, and a .go file is not
+// read for links at all.
+func TestARelativeMarkdownLinkResolvesAgainstTheLinkingFile(t *testing.T) {
+	root := t.TempDir()
+	outputs := filepath.Join(root, "docs", "outputs")
+	if err := os.MkdirAll(filepath.Join(root, "docs", "design"), 0o750); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.MkdirAll(outputs, 0o750); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	write(t, filepath.Join(outputs, "real.md"), "# real\n")
+	write(t, filepath.Join(root, "docs", "design", "model.md"), "# model\n")
+	page := filepath.Join(outputs, "page.md")
+	write(t, page, `# page
+
+[a sibling](real.md#a-section), [up and over](../design/model.md),
+[gone](gone.md), [a site](https://example.com/x.md), [here](#top).
+`)
+	goFile := filepath.Join(root, "x.go")
+	write(t, goFile, "package x\n\n// [gone](gone.md)\n")
+
+	var refs []cite
+	for _, path := range []string{page, goFile} {
+		got, err := mdLinksIn(path)
+		if err != nil {
+			t.Fatalf("mdLinksIn(%s): %v", path, err)
+		}
+		refs = append(refs, got...)
+	}
+	var titles []string
+	for _, r := range refs {
+		titles = append(titles, r.title)
+	}
+	if diff := cmp.Diff([]string{"./real.md", "../design/model.md", "./gone.md"}, titles); diff != "" {
+		t.Errorf("links found (-want +got):\n%s", diff)
+	}
+	missing := missingDocs(root, refs)
+	if len(missing) != 1 || missing[0].title != "./gone.md" || missing[0].line != 4 {
+		t.Errorf("missingDocs = %+v, want only ./gone.md on line 4", missing)
+	}
+}
