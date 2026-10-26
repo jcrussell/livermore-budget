@@ -17,7 +17,7 @@ import (
 //
 //   - a link whose facts are all transfers, or all fund-balance rows, may not
 //     be `external`: nothing crosses the city's boundary.
-//   - a link may not carry a kind outside the four the contract declares.
+//   - a link may not carry a kind outside the four schema/enums.schema.json's link_kind declares.
 //   - a link's facts must agree about which family they are in; mixing a
 //     transfer with a revenue is a cell key that lost an axis.
 //

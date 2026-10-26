@@ -4,7 +4,7 @@
 the document, page and byte offset it was read from. The site republishes it
 under `facts/`, re-encoded or split and never recomputed. A record's shape is
 `schema/fact.schema.json`; how the export builds and checks these files is in
-`go doc ./pkg/cmd/export`.
+`go doc -u ./pkg/cmd/export buildFactAssets`.
 
 ## Files
 

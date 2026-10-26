@@ -32,7 +32,7 @@ Each schedule reconciles against something the city itself printed:
 | pp. 186–209 | each fund's sources, uses and balances | 2024 actual, 2025 revised, 2026 + 2027 adopted |
 | p. 222 | the Capital Improvement Plan's funding sources, transfers from operating funds among them | 2025 revised, 2026 + 2027 adopted |
 | pp. 225–235 | every capital project, under the fund that pays for it | 2026 + 2027 adopted, 2028–2030 projected |
-| ACFR p. 41 | the General Fund's revenues, transfers, General Government divisions and fund balances | 2025 audited |
+| ACFR p. 41 | the General Fund's revenues, transfers, General Government divisions and fund balances | 2025, from the MD&A, which the audit opinion does not cover |
 | ACFR p. 121 | the General Fund's budget against its actuals: original, final and actual | 2025 |
 | ACFR p. 167 | fund balances, ten years | 2016–2025, from the unaudited statistical section |
 | ACFR p. 168 | changes in fund balances, ten years | 2016–2025, from the unaudited statistical section |

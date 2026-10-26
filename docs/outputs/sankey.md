@@ -179,8 +179,8 @@ Three declared exceptions carry the $250,000 on different axes, so each is an
 independent witness: by fund group, by object category (pp.85-125 decompose the
 money by department, division and object with no fund dimension, and still
 put the difference in this category and year alone), and in the 48th cell
-itself. If the city reissues the page, delete the exceptions and the cell ties
-on its own (`fisc-av0w`).
+itself. A reissued p67 printing `26,294,515` would tie with none of them
+(`fisc-av0w`).
 
 ## What the fund groups satisfy
 

@@ -55,10 +55,12 @@ var loosePattern = regexp.MustCompile("AGENTS\\.md(?:[^\".\\n]|\\.[^\" \t\n]|\\n
 // missingDocs decides what a prefixed one resolves against.
 var docPathPattern = regexp.MustCompile(`(^|[^A-Za-z0-9_./-])((?:\.\.?/)*docs/[A-Za-z0-9._/-]+\.md)`)
 
-// mdLinkPattern finds a markdown link to a .md file, fragment aside. Group 1
-// is the target; mdLinksIn skips a URL and resolves the rest against the
-// linking file, as a reader following the link would.
-var mdLinkPattern = regexp.MustCompile(`\]\(([^)\s#]+\.md)(?:#[^)\s]*)?\)`)
+// mdLinkPattern finds a markdown link target ending in .md: an inline link,
+// bare or in angle brackets and with or without a title, or a reference
+// definition. Group 1 is the opening and no part of the claim; group 2 is the
+// target, up to the fragment. A link quoted in a code span or fence is found
+// too, which fails toward a finding.
+var mdLinkPattern = regexp.MustCompile(`(?m)(\]\(<?|^[ \t]*\[[^\]\n]+\]:[ \t]*<?)([^)\s#<>]+\.md)(?:[#)>\s]|$)`)
 
 // srcPathPattern finds a source path, with docPathPattern's guard. Only four
 // directories and two extensions: other repo-shaped paths (data/, dist/,
@@ -600,27 +602,25 @@ func docRefsIn(path string) ([]cite, error) { return pathRefsIn(path, docPathPat
 
 // mdLinksIn collects a markdown file's relative links to .md files, each
 // written with a ./ prefix where it has none so missingDocs resolves it against
-// the linking file. docPathPattern sees only paths naming docs/; a link from
-// one docs/ page to its sibling names none.
+// the linking file. A link naming docs/ is docPathPattern's already, and a URL
+// is no part of the tree. Fragments are not checked.
 func mdLinksIn(path string) ([]cite, error) {
 	if !strings.HasSuffix(path, ".md") {
 		return nil, nil
 	}
-	b, err := os.ReadFile(path) // #nosec G304,G703 -- see scanUnder.
+	refs, err := pathRefsIn(path, mdLinkPattern)
 	if err != nil {
 		return nil, err
 	}
-	text := string(b)
 	var out []cite
-	for _, loc := range mdLinkPattern.FindAllStringSubmatchIndex(text, -1) {
-		target := text[loc[2]:loc[3]]
-		if strings.Contains(target, "://") || strings.HasPrefix(target, "/") {
+	for _, r := range refs {
+		if strings.Contains(r.title, "://") || strings.HasPrefix(r.title, "/") || strings.Contains(r.title, "docs/") {
 			continue
 		}
-		if !strings.HasPrefix(target, "./") && !strings.HasPrefix(target, "../") {
-			target = "./" + target
+		if !strings.HasPrefix(r.title, "./") && !strings.HasPrefix(r.title, "../") {
+			r.title = "./" + r.title
 		}
-		out = append(out, cite{title: target, file: norm(path), line: 1 + strings.Count(text[:loc[2]], "\n")})
+		out = append(out, r)
 	}
 	return out, nil
 }

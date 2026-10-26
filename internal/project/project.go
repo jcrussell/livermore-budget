@@ -18,8 +18,9 @@
 // Output is deterministic: two Build calls over the same facts return
 // byte-identical output.
 //
-// The published shape is schema/projection.schema.json, with the worked FY2026
-// example in testdata/sankey.golden.json. What each document reads off the
+// Each document's published shape is a schema under schema/ (a graph's is
+// projection.schema.json, a series' series.schema.json), with the worked FY2026
+// spine in testdata/sankey.golden.json. What each document reads off the
 // printed pages, and how it reconciles with them, is under docs/outputs/.
 package project
 

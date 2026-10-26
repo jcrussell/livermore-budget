@@ -43,9 +43,8 @@ row missing a cell borrows the next row's leading token and reaches `ncols`
 anyway. The `len(toks) < ncols` guard fires only when the shortfall runs off the
 end of the block.
 
-**Do not trust this paragraph over the code.** Summaries of that function have
-been wrong in three different ways; if you need the behaviour, read it and
-write a probe.
+**Do not trust this paragraph over the code.** If you need the behaviour, read
+the function and write a probe.
 
 What catches the borrowing is mostly downstream of the read: `cursor` advances to
 the end of the last token consumed, so a row that borrows its neighbour's figures

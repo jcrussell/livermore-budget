@@ -209,7 +209,7 @@ func (*linkValuesTieToFacts) Run(_ context.Context, s *Subject) (Result, error) 
 					amount.Cents(l.ValueCents)))
 				continue
 			}
-			// Strictly ascending, as the contract states: an id cited twice
+			// Strictly ascending, as Link.FactIDs states: an id cited twice
 			// is summed twice.
 			if !strictlyAscending(l.FactIDs) {
 				findings = append(findings, finding(subject,
@@ -979,9 +979,9 @@ func (*constraintTierVocabulary) Run(_ context.Context, s *Subject) (Result, err
 
 	// AND THE DOCUMENT ITSELF MUST DISCLOSE, or the per-node notes are a
 	// provenance panel a reader has to know to open. The sentence must be in
-	// metadata.caveats, and it is compared against
-	// project's own constant rather than against prose written twice: two
-	// authors agreeing is not the same claim as the document saying the thing.
+	// metadata.caveats, and it is compared against project's own constant
+	// rather than against prose written twice: two authors agreeing is not the
+	// same claim as the document saying the thing.
 	for _, p := range s.Projections {
 		if !tiered[p.String()] {
 			continue
@@ -1014,7 +1014,7 @@ func (*constraintTierVocabulary) Run(_ context.Context, s *Subject) (Result, err
 				"nodes here carry constraint tiers and metadata.caveats carries %q with text "+
 					"that is not the disclosure internal/project declares. The document "+
 					"discloses something, under the right anchor, and it is not the sentence "+
-					"the contract requires", project.ConstraintTierCaveatID))
+					"project.ConstraintTierCaveat states", project.ConstraintTierCaveatID))
 		// THE SUMMARY IS CHECKED TOO, because it is the string a reader
 		// actually meets. flows.html prints summaries and links to the text; a
 		// document whose text was word-perfect and whose

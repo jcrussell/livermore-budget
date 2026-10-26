@@ -779,8 +779,9 @@ func TestDeadSchemaRefsResolvesEveryPointerAndEveryTypedef(t *testing.T) {
 
 // A markdown link between two docs/ pages names no docs/ path, so only
 // mdLinksIn sees it: a sibling that exists stays green, one that does not
-// reddens, a URL and a fragment-only link are skipped, and a .go file is not
-// read for links at all.
+// reddens in every link shape, a URL, a fragment-only link and a path
+// docPathPattern already owns are skipped, and a .go file is not read for
+// links at all.
 func TestARelativeMarkdownLinkResolvesAgainstTheLinkingFile(t *testing.T) {
 	root := t.TempDir()
 	outputs := filepath.Join(root, "docs", "outputs")
@@ -796,7 +797,11 @@ func TestARelativeMarkdownLinkResolvesAgainstTheLinkingFile(t *testing.T) {
 	write(t, page, `# page
 
 [a sibling](real.md#a-section), [up and over](../design/model.md),
-[gone](gone.md), [a site](https://example.com/x.md), [here](#top).
+[gone](gone.md), [a site](https://example.com/x.md), [here](#top),
+[titled](gone-titled.md "t"), [bracketed](<gone-bracketed.md>),
+[already docPathPattern's](../../docs/gone-docs.md).
+
+[ref]: gone-ref.md
 `)
 	goFile := filepath.Join(root, "x.go")
 	write(t, goFile, "package x\n\n// [gone](gone.md)\n")
@@ -813,11 +818,16 @@ func TestARelativeMarkdownLinkResolvesAgainstTheLinkingFile(t *testing.T) {
 	for _, r := range refs {
 		titles = append(titles, r.title)
 	}
-	if diff := cmp.Diff([]string{"./real.md", "../design/model.md", "./gone.md"}, titles); diff != "" {
+	want := []string{"./real.md", "../design/model.md", "./gone.md",
+		"./gone-titled.md", "./gone-bracketed.md", "./gone-ref.md"}
+	if diff := cmp.Diff(want, titles); diff != "" {
 		t.Errorf("links found (-want +got):\n%s", diff)
 	}
-	missing := missingDocs(root, refs)
-	if len(missing) != 1 || missing[0].title != "./gone.md" || missing[0].line != 4 {
-		t.Errorf("missingDocs = %+v, want only ./gone.md on line 4", missing)
+	var dead []string
+	for _, m := range missingDocs(root, refs) {
+		dead = append(dead, m.title)
+	}
+	if diff := cmp.Diff(want[2:], dead); diff != "" {
+		t.Errorf("missingDocs (-want +got):\n%s", diff)
 	}
 }

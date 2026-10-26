@@ -110,7 +110,8 @@ type View struct {
 	Draws string
 	// Description is the view's own chart said in words: the SVG's <desc>
 	// and the paragraph under the chart, or "" for the template's own, which
-	// describes the spine. Only a template that draws a chart renders it.
+	// describes the spine. Only a template that draws a chart renders it, and
+	// ledger.html.tmpl only as the page's meta description.
 	Description string
 
 	// Reads are schedules other than Projection's that the page reads out of

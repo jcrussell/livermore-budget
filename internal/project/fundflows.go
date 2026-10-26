@@ -642,7 +642,7 @@ func add[K comparable](m map[K]*cellSum, k K, fa *fact.Fact) {
 	}
 	c.cents += fa.AmountCents
 	// Inserted in order, because a cell's ids are published as its link's
-	// fact_ids, which the contract states ascending.
+	// fact_ids, which Link.FactIDs states ascending.
 	i, _ := slices.BinarySearch(c.factIDs, fa.ID)
 	c.factIDs = slices.Insert(c.factIDs, i, fa.ID)
 	c.locs.add(fa)
