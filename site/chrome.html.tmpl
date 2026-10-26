@@ -110,7 +110,7 @@
   {{- if and .Sources (not .SourcesPath)}}
   {{template "sources" .}}
   {{- end}}
-  <p>Built from the City of Livermore's published budget PDFs
+  <p>Built from the City of Livermore's published budget and financial reports
     {{- if and .SourcesPath (not .SourcesPage)}} · <a href="{{.SourcesPath}}">Sources and data</a>{{end}}
     · <a href="{{.Repository}}">Code on GitHub</a></p>
 </footer>{{end}}

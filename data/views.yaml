@@ -24,9 +24,9 @@ views:
     title: Livermore's budget at a glance
     lede: >-
       Where the money the city budgets comes from, what it buys and which
-      department spends it, each as a share of the whole. Each bar is a sum of
-      cells the city printed, and the sum of every such cell in the budget is
-      printed beside it.
+      department spends it, each as a share of the whole. Each bar adds up
+      figures the city printed, and the total of all of them is shown beside
+      it.
 
   # The same money as a Sankey. No title: sankeyTitle names the year in each
   # year's <title>, which a declared one would drop.
@@ -71,6 +71,10 @@ views:
     projection: sankey
     year_control: true
     title: Livermore's budget as bars
+    description: >-
+      The City of Livermore's budget as two lists of bars, where the money
+      comes from and where it goes, each opening in place into the parts the
+      budget prints.
     lede: >-
       Where the money comes from and where it goes, each a list of bars on one
       scale, largest first, opening in place into the parts the budget prints.
@@ -93,9 +97,8 @@ views:
     title: Livermore's budget over time
     lede: >-
       Ten years of what the city's governmental funds took in and spent, as
-      its annual financial report states them, and the four printed columns
-      of the current budget's revenue, each column a sum of rows the city
-      printed.
+      its annual financial report states them, and the current budget's four
+      columns of revenue, each a sum of rows the city printed.
 
   # The ACFR's fund balance table, server-rendered. The section headings are
   # the blocks the schedule prints, and each entry's kind/fund_group pair is
@@ -114,8 +117,9 @@ views:
     title: What Livermore's funds held at each year's end
     lede: >-
       The balance of the General Fund and of all other governmental funds at
-      each June 30, FY2015-16 through FY2024-25, split into the GASB 54
-      categories that say how spendable each dollar is.
+      each June 30, FY2015-16 through FY2024-25, split by how freely each
+      dollar can be spent: nonspendable, restricted, committed, assigned and
+      unassigned.
 
   # One page per subject, each server-rendered by its own template and
   # loading its own client module. A page naming no projection is never
@@ -132,8 +136,8 @@ views:
     lede: >-
       Every one of the city's departments as a bar of the funds that pay
       for it. Open one to see what it spends, every fund together, and
-      which funds pay for it, each read from the department's own
-      two-block page in the Budget Book.
+      which funds pay for it, each read from the department's own page in
+      the Budget Book.
   # The capital page renders its document as a table and loads capital.js
   # to filter it, so it is dropped when cip-projects is not built.
   - path: capital.html
@@ -164,11 +168,10 @@ views:
     title: What these figures do not say
     lede: >-
       Every page here shows figures the city printed, and every one of them has
-      edges: a schedule that stops short, a total the city's own book
-      contradicts, a classification that is ours rather than theirs. Those are
-      collected here in full, so the pages that draw the money can say them in
-      a line and point at this one. Nothing on this page is a hedge; each is a
-      specific thing a specific document does not do.
+      limits: a table that stops short, a total the city's own book
+      contradicts, a classification that is ours rather than the city's. They
+      are collected here in full, so the pages that draw the money can name
+      them in a line and point here.
 
   # The provenance index names no projection either; Go drops it when the
   # export built no page index, for the reason every view is conditional on

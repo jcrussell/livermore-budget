@@ -131,8 +131,8 @@ func buildSidesPage(p pageCtx) (sidesPageData, error) {
 	}
 	description := v.Description
 	if description == "" {
-		description = "The City of Livermore's budget as " + v.Overview.Form + " charts: " + strings.Join(headings, ", ") +
-			", each opening in place into the parts the budget prints, every figure a sum of cells the city printed."
+		description = "The City of Livermore's budget as lists of bars: " + strings.Join(headings, ", ") +
+			", each opening in place into the parts the budget prints, every figure a sum of figures the city printed."
 	}
 	return sidesPageData{
 		chrome:      ch,

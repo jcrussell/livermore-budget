@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>What each Livermore department spends, and who pays for it</title>
-<meta name="description" content="Every City of Livermore department as a bar, longest first, split by the fund groups that pay for it; open one for what it spends under each object heading, every fund together, and which funds pay for it, as two sides of bars, each figure naming the Budget Book page it was read from.">
+<meta name="description" content="Every City of Livermore department as a bar split by the fund groups that pay for it; open one to see what it spends by category and which funds pay for it, each figure naming the Budget Book page it was read from.">
 <meta name="color-scheme" content="light dark">
 <link rel="stylesheet" href="style.css">
 <script>
@@ -51,7 +51,7 @@
 <header class="page-head">
   <div>
     <h1>What each Livermore department spends, and who pays for it</h1>
-    <p class="lede">Every one of the city&#39;s departments as a bar of the funds that pay for it. Open one to see what it spends, every fund together, and which funds pay for it, each read from the department&#39;s own two-block page in the Budget Book.</p>
+    <p class="lede">Every one of the city&#39;s departments as a bar of the funds that pay for it. Open one to see what it spends, every fund together, and which funds pay for it, each read from the department&#39;s own page in the Budget Book.</p>
   </div>
 </header>
 
@@ -82,8 +82,8 @@
 
 <h3 id="department-heading">Choose a department</h3>
 <p class="department-tie" id="department-tie"
-   data-ties="Both blocks of this department's page add up to the same sum in this column, to the cent, and this site checks that they still do every time it is built."
-   data-held="In this column the two blocks do not add up to the same sum, and the project's checks declare why: "></p>
+   data-ties="Both blocks of this department's page add up to the same sum for this year, to the cent, and this site checks that they still do every time it is built."
+   data-held="For this year the two blocks do not add up to the same sum, and the project's checks declare why: "></p>
 
 <div class="department-sides">
 
@@ -109,9 +109,9 @@
   <h4 id="spending-heading">Where its money goes</h4>
   <p id="spending-says">
     Read from the department's <strong>Expenditures by Category</strong> block, the
-    upper half of the same page: what its divisions spend under each object
-    heading, whatever fund pays. <strong>Each figure is the whole department's
-    cost</strong> under that heading, summed over every division the page prints
+    upper half of the same page: what its divisions spend in each spending
+    category, whatever fund pays. <strong>Each figure is the whole department's
+    cost</strong> in that category, summed over every division the page prints
     under the department.
   </p>
   <p id="transfers-says" hidden>
@@ -145,7 +145,7 @@
 </main>
 
 <footer>
-  <p>Built from the City of Livermore's published budget PDFs · <a href="provenance.html">Sources and data</a>
+  <p>Built from the City of Livermore's published budget and financial reports · <a href="provenance.html">Sources and data</a>
     · <a href="https://github.com/jcrussell/livermore-budget">Code on GitHub</a></p>
 </footer>
 
