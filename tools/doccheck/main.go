@@ -63,9 +63,10 @@ var docPathPattern = regexp.MustCompile(`(^|[^A-Za-z0-9_./-])((?:\.\.?/)*docs/[A
 // fails toward a finding.
 var mdLinkPattern = regexp.MustCompile(`(?m)(\]\(<?|^[ \t]*\[[^\]^\n][^\]\n]*\]:[ \t]*<?)([^)\s#<>]+)`)
 
-// prefixedDocPath is a docs/ .md path behind ./ or ../, which docPathPattern
-// already resolves against the citing file, as a link is.
-var prefixedDocPath = regexp.MustCompile(`^(?:\.\.?/)+docs/.*\.md$`)
+// prefixedDocPath is a docs/ .md path behind ./ or ../ in docPathPattern's own
+// character class, which that pattern already resolves against the citing
+// file, as a link is.
+var prefixedDocPath = regexp.MustCompile(`^(?:\.\.?/)+docs/[A-Za-z0-9._/-]+\.md$`)
 
 // srcPathPattern finds a source path, with docPathPattern's guard. Only four
 // directories and two extensions: other repo-shaped paths (data/, dist/,

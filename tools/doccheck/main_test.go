@@ -802,7 +802,7 @@ func TestARelativeMarkdownLinkResolvesAgainstTheLinkingFile(t *testing.T) {
 [titled](gone-titled.md "t"), [bracketed](<gone-bracketed.md>),
 [already docPathPattern's](../../docs/gone-docs.md), [mail](mailto:x@y.z),
 [a schema](../../schema/gone.json), [root-relative](docs/outputs/real.md),
-[a picture under docs/](../../docs/gone.svg).
+[a picture under docs/](../../docs/gone.svg), [odd](../../docs/a+b.md).
 
 [ref]: gone-ref.md
 [^1]: A footnote, which names no file.
@@ -824,7 +824,7 @@ func TestARelativeMarkdownLinkResolvesAgainstTheLinkingFile(t *testing.T) {
 	}
 	want := []string{"./real.md", "../design/model.md", "./gone.md",
 		"./gone-titled.md", "./gone-bracketed.md", "../../schema/gone.json",
-		"./docs/outputs/real.md", "../../docs/gone.svg", "./gone-ref.md"}
+		"./docs/outputs/real.md", "../../docs/gone.svg", "../../docs/a+b.md", "./gone-ref.md"}
 	if diff := cmp.Diff(want, titles); diff != "" {
 		t.Errorf("links found (-want +got):\n%s", diff)
 	}
