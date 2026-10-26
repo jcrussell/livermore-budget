@@ -5,8 +5,10 @@ into a fact store, and the fact store into a static site for exploring the
 budget: where the money comes from, what it buys, which department spends it,
 and how that has changed.
 
-Every figure the site shows cites the page and cell of the PDF it was read
-from, and `fisc verify` fails if any link in that chain breaks.
+Every figure the site shows is one the city printed, cited to the page and
+cell it was read from, or a sum of such figures citing all of theirs; a count
+or share the site computes is marked as its own. `fisc verify` fails if any
+link in that chain breaks.
 
 ## What is covered
 

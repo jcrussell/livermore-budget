@@ -616,7 +616,7 @@ func TestLinkValueMustEqualItsFacts(t *testing.T) {
 	}
 }
 
-// TestLinkFactIDsMustAscend holds the contract's fact_ids order. Mutation:
+// TestLinkFactIDsMustAscend holds Link.FactIDs' ascending order. Mutation:
 // drop the strictlyAscending arm from link-values-tie-to-facts and a link
 // citing its facts reversed passes, since the sum is the same.
 func TestLinkFactIDsMustAscend(t *testing.T) {
@@ -1129,7 +1129,7 @@ func TestConstraintTierComesFromTheFile(t *testing.T) {
 }
 
 // tierNodeWithDisclosure hangs a constraint tier on the fixture's fund-balance
-// node, with the source note and rationale the contract requires beside it.
+// node, with the source note and rationale Node.ConstraintTier requires beside it.
 func tierNodeWithDisclosure(t *testing.T, s *Subject, tier string) {
 	t.Helper()
 	n := nodePointer(t, s.Projections[0].Graph, project.NodeFundBalanceDraw)

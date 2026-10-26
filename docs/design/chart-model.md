@@ -12,7 +12,7 @@ flowchart TD
   column["Column<br/>internal/export"]
   decl["Declarations<br/>data/views.yaml"]
   core["Client core<br/>site/core.js"]
-  form["Form renderers<br/>site/sankey.js, site/ledger.js"]
+  form["Form renderer<br/>site/sankey.js"]
   facts --> structure --> projection --> column --> core
   decl --> core
   core --> form
@@ -38,7 +38,7 @@ flowchart TD
 | Column | `internal/export` | one node table per `(fiscal_year, basis)` and, per schedule, its parent edges and links indexed into that table; re-keys and orders, computes no new figure | `schema/column.schema.json` |
 | Declarations | `internal/export`, authored in `data/views.yaml` and loaded by `pkg/cmd/export` | which schedule the page's chart draws (`primary`: the expansion schedule, whose `splits` say how each node opens in place), every sentence the page says, and per chart a **form** with that form's hints under its own key | `schema/page.schema.json`, as `window.FISC_CONFIG` |
 | Client core | `site/core.js` | sums over cited figures: schedule assembly, hierarchy by parent chain, the frontier a list of splits comes to, the fold to that frontier, the cap, provenance union, years, wording, and the client marks with their figures: a capped split's tail and the smaller-flows mark, the reductions among a mark's ribbons, the pages cited around a node. Reads no form hint. | `schema/mark.schema.json` for the marks it makes |
-| Form renderers | `site/sankey.js`, `site/ledger.js` | what depends on the screen and the mark type: which open splits a cap folds and into which tail, the slot each drawn node stands in, how tall the canvas grows, where a mark stands, layout, paint. Reads only its own hints. | nothing: a renderer emits pixels |
+| Form renderers | `site/sankey.js` | what depends on the screen and the mark type: which open splits a cap folds and into which tail, the slot each drawn node stands in, how tall the canvas grows, where a mark stands, layout, paint. Reads only its own hints. | nothing: a renderer emits pixels |
 
 A figure the client shows is one Go cited, or a sum or union of such figures.
 A count of drawn members or a share of one drawn sum in another is a sentence

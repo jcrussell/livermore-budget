@@ -182,14 +182,16 @@ var everyKind = []vocab.Kind{
 }
 
 // ACFRCuts are the ACFR's schedules as cuts of the same hierarchy. Their
-// audited bases are what keep them from comparing against the Budget Book, and
+// audited bases are what keep them from comparing against the Budget Book --
+// the label every ACFR fact carries, though p41 is MD&A and pp.167-169 the
+// statistical section, neither covered by the audit opinion -- and
 // p167's one scope prints two grains, so it is two cuts selected by rule.
 func ACFRCuts() []Cut {
 	audited := []vocab.Basis{vocab.BasisAudited}
 	return []Cut{
 		{
 			// p41, the General Fund's revenues, expenditures, transfers and
-			// fund balance for one audited year, at the spine's own grain.
+			// fund balance for one year, at the spine's own grain.
 			Name:       "acfr-general-fund-summary",
 			Scope:      ScopeACFRGeneralFundSummary,
 			Level:      LevelFundGroupByCategory,
@@ -198,8 +200,8 @@ func ACFRCuts() []Cut {
 			Bases:      audited,
 		},
 		{
-			// pp.168-169, ten years from the unaudited statistical section, all
-			// governmental funds combined, with no fund group printed anywhere.
+			// pp.168-169, ten years of all governmental funds combined, with no
+			// fund group printed anywhere.
 			Name:  "acfr-changes-in-fund-balances",
 			Scope: ScopeACFRChangesInFundBalances,
 			Level: LevelCategory,

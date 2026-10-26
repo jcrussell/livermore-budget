@@ -55,12 +55,16 @@ var loosePattern = regexp.MustCompile("AGENTS\\.md(?:[^\".\\n]|\\.[^\" \t\n]|\\n
 // missingDocs decides what a prefixed one resolves against.
 var docPathPattern = regexp.MustCompile(`(^|[^A-Za-z0-9_./-])((?:\.\.?/)*docs/[A-Za-z0-9._/-]+\.md)`)
 
-// mdLinkPattern finds a markdown link target ending in .md: an inline link,
-// bare or in angle brackets and with or without a title, or a reference
-// definition. Group 1 is the opening and no part of the claim; group 2 is the
-// target, up to the fragment. A link quoted in a code span or fence is found
-// too, which fails toward a finding.
-var mdLinkPattern = regexp.MustCompile(`(?m)(\]\(<?|^[ \t]*\[[^\]\n]+\]:[ \t]*<?)([^)\s#<>]+\.md)(?:[#)>\s]|$)`)
+// mdLinkPattern finds a markdown link target: an inline link, bare or in
+// angle brackets and with or without a title, or a reference definition.
+// Group 1 is the opening and no part of the claim; group 2 is the target, up
+// to the fragment. A link quoted in a code span or fence is found too, which
+// fails toward a finding.
+var mdLinkPattern = regexp.MustCompile(`(?m)(\]\(<?|^[ \t]*\[[^\]\n]+\]:[ \t]*<?)([^)\s#<>]+)`)
+
+// prefixedDocPath is a docs/ path behind ./ or ../, which docPathPattern
+// already resolves against the citing file, as a link is.
+var prefixedDocPath = regexp.MustCompile(`^(?:\.\.?/)+docs/`)
 
 // srcPathPattern finds a source path, with docPathPattern's guard. Only four
 // directories and two extensions: other repo-shaped paths (data/, dist/,
@@ -137,7 +141,7 @@ func run(args []string, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "doccheck: %s yielded no headings at all, so every citation would resolve\n", agents)
 		return 2
 	}
-	cites, malformed, docRefs, srcRefs, testRefs, declaredTests, err := scanUnder(root, args[1:], anchors)
+	cites, malformed, docRefs, links, srcRefs, testRefs, declaredTests, err := scanUnder(root, args[1:], anchors)
 	if err != nil {
 		fmt.Fprintf(stderr, "doccheck: %v\n", err)
 		return 2
@@ -150,7 +154,8 @@ func run(args []string, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "  match rather than a tree with nothing to check.")
 		return 2
 	}
-	// The same floor for docPathPattern.
+	// The same floor for docPathPattern, over its own finds alone: the markdown
+	// links are counted apart, or they would hold it up when it matched nothing.
 	if len(docRefs) == 0 {
 		fmt.Fprintln(stderr, "doccheck: no docs/ path found anywhere in the scanned paths")
 		fmt.Fprintln(stderr, "  The tree has always carried some, so this is docPathPattern failing")
@@ -171,7 +176,7 @@ func run(args []string, stderr io.Writer) int {
 			dead = append(dead, c)
 		}
 	}
-	missing := missingDocs(root, docRefs)
+	missing := missingDocs(root, append(docRefs, links...))
 	fail := false
 	if len(dead) > 0 {
 		fail = true
@@ -468,7 +473,7 @@ func fold(s string) string {
 // that cannot be read is an error, not a skip; a path dropped from the
 // Makefile's list is invisible. root makes walked paths repo-relative for the
 // exempt lookup.
-func scanUnder(root string, paths []string, anchors map[string]bool) (cites, malformed, docRefs, srcRefs []cite, testRefs []testRef, declared map[string]bool, err error) {
+func scanUnder(root string, paths []string, anchors map[string]bool) (cites, malformed, docRefs, links, srcRefs []cite, testRefs []testRef, declared map[string]bool, err error) {
 	declared = map[string]bool{}
 	for _, p := range paths {
 		// #nosec G703 -- the path list is this command's argument; it checks the
@@ -501,11 +506,11 @@ func scanUnder(root string, paths []string, anchors map[string]bool) (cites, mal
 				return err
 			}
 			docRefs = append(docRefs, refs...)
-			links, err := mdLinksIn(path)
+			linked, err := mdLinksIn(path)
 			if err != nil {
 				return err
 			}
-			docRefs = append(docRefs, links...)
+			links = append(links, linked...)
 			src, err := srcRefsIn(path)
 			if err != nil {
 				return err
@@ -530,10 +535,10 @@ func scanUnder(root string, paths []string, anchors map[string]bool) (cites, mal
 			return nil
 		})
 		if err != nil {
-			return nil, nil, nil, nil, nil, nil, err
+			return nil, nil, nil, nil, nil, nil, nil, err
 		}
 	}
-	return cites, malformed, docRefs, srcRefs, testRefs, declared, nil
+	return cites, malformed, docRefs, links, srcRefs, testRefs, declared, nil
 }
 
 // citesIn reads the whole file, because a citation may wrap across lines.
@@ -600,10 +605,13 @@ func malformedIn(path string, anchors map[string]bool) ([]cite, error) {
 // docRefsIn collects every docs/ path the file cites.
 func docRefsIn(path string) ([]cite, error) { return pathRefsIn(path, docPathPattern) }
 
-// mdLinksIn collects a markdown file's relative links to .md files, each
-// written with a ./ prefix where it has none so missingDocs resolves it against
-// the linking file. A link naming docs/ is docPathPattern's already, and a URL
-// is no part of the tree. Fragments are not checked.
+// mdLinksIn collects a markdown file's relative link targets, each written
+// with a ./ prefix where it has none so missingDocs resolves it against the
+// linking file, as a reader following the link would. A URL, a mailto: and a
+// root-absolute path are no part of the tree, and a prefixed docs/ path is
+// docPathPattern's already. A bare docs/ target is kept: docPathPattern
+// resolves it against the root, where a link from a subdirectory does not
+// point. Fragments are not checked.
 func mdLinksIn(path string) ([]cite, error) {
 	if !strings.HasSuffix(path, ".md") {
 		return nil, nil
@@ -614,7 +622,7 @@ func mdLinksIn(path string) ([]cite, error) {
 	}
 	var out []cite
 	for _, r := range refs {
-		if strings.Contains(r.title, "://") || strings.HasPrefix(r.title, "/") || strings.Contains(r.title, "docs/") {
+		if strings.Contains(r.title, ":") || strings.HasPrefix(r.title, "/") || prefixedDocPath.MatchString(r.title) {
 			continue
 		}
 		if !strings.HasPrefix(r.title, "./") && !strings.HasPrefix(r.title, "../") {

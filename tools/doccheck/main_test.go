@@ -779,9 +779,10 @@ func TestDeadSchemaRefsResolvesEveryPointerAndEveryTypedef(t *testing.T) {
 
 // A markdown link between two docs/ pages names no docs/ path, so only
 // mdLinksIn sees it: a sibling that exists stays green, one that does not
-// reddens in every link shape, a URL, a fragment-only link and a path
-// docPathPattern already owns are skipped, and a .go file is not read for
-// links at all.
+// reddens in every link shape and to any file type, a bare docs/ target
+// resolves from the linking file as GitHub resolves it, a URL, a mailto, a
+// fragment-only link and a path docPathPattern already owns are skipped, and a
+// .go file is not read for links at all.
 func TestARelativeMarkdownLinkResolvesAgainstTheLinkingFile(t *testing.T) {
 	root := t.TempDir()
 	outputs := filepath.Join(root, "docs", "outputs")
@@ -799,7 +800,8 @@ func TestARelativeMarkdownLinkResolvesAgainstTheLinkingFile(t *testing.T) {
 [a sibling](real.md#a-section), [up and over](../design/model.md),
 [gone](gone.md), [a site](https://example.com/x.md), [here](#top),
 [titled](gone-titled.md "t"), [bracketed](<gone-bracketed.md>),
-[already docPathPattern's](../../docs/gone-docs.md).
+[already docPathPattern's](../../docs/gone-docs.md), [mail](mailto:x@y.z),
+[a schema](../../schema/gone.json), [root-relative](docs/outputs/real.md).
 
 [ref]: gone-ref.md
 `)
@@ -819,7 +821,8 @@ func TestARelativeMarkdownLinkResolvesAgainstTheLinkingFile(t *testing.T) {
 		titles = append(titles, r.title)
 	}
 	want := []string{"./real.md", "../design/model.md", "./gone.md",
-		"./gone-titled.md", "./gone-bracketed.md", "./gone-ref.md"}
+		"./gone-titled.md", "./gone-bracketed.md", "../../schema/gone.json",
+		"./docs/outputs/real.md", "./gone-ref.md"}
 	if diff := cmp.Diff(want, titles); diff != "" {
 		t.Errorf("links found (-want +got):\n%s", diff)
 	}
@@ -829,5 +832,32 @@ func TestARelativeMarkdownLinkResolvesAgainstTheLinkingFile(t *testing.T) {
 	}
 	if diff := cmp.Diff(want[2:], dead); diff != "" {
 		t.Errorf("missingDocs (-want +got):\n%s", diff)
+	}
+}
+
+// The docs/ path floor counts docPathPattern's own finds: a tree whose only
+// docs/ references are relative markdown links still trips it, so a pattern
+// that stopped matching cannot hide behind the link arm.
+func TestTheDocPathFloorIgnoresMarkdownLinks(t *testing.T) {
+	root := t.TempDir()
+	for _, d := range []string{filepath.Join("docs", "sub"), filepath.Join("tools", "doccheck"), filepath.Join("tools", "beadrefs")} {
+		if err := os.MkdirAll(filepath.Join(root, d), 0o750); err != nil {
+			t.Fatalf("mkdir %s: %v", d, err)
+		}
+	}
+	write(t, filepath.Join(root, "AGENTS.md"), "# T\n\n## The extraction boundary\n")
+	write(t, filepath.Join(root, "tools", "doccheck", "main_test.go"), "package main\n")
+	write(t, filepath.Join(root, "tools", "beadrefs", "main_test.go"), "package main\n")
+	write(t, filepath.Join(root, "docs", "sub", "a.md"), "# a\n\n[b](b.md)\n")
+	write(t, filepath.Join(root, "docs", "sub", "b.md"), "# b\n")
+	src := filepath.Join(root, "x.go")
+	write(t, src, "package x\n\n// see AGENTS.md, \"The extraction boundary\".\n// TestTheOnlyOne pins it.\n")
+	decls := filepath.Join(root, "x_test.go")
+	write(t, decls, "package x\n\nfunc TestTheOnlyOne(t *testing.T) {}\n")
+
+	var stderr strings.Builder
+	code := run([]string{filepath.Join(root, "AGENTS.md"), src, decls, filepath.Join(root, "docs")}, &stderr)
+	if code != 2 || !strings.Contains(stderr.String(), "no docs/ path found") {
+		t.Errorf("run = %d, want 2 on the docs/ path floor; stderr:\n%s", code, stderr.String())
 	}
 }

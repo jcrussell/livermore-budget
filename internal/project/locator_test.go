@@ -34,7 +34,7 @@ func TestLocatorSetGroupsSortsAndDeduplicates(t *testing.T) {
 	}
 }
 
-// TestAnEmptyLocatorSetIsNotNull guards the contract rather than the code.
+// TestAnEmptyLocatorSetIsNotNull guards the published shape rather than the code.
 // The package doc requires every key present on every object, so a link built
 // from no facts must publish [] and not null.
 func TestAnEmptyLocatorSetIsNotNull(t *testing.T) {
@@ -42,7 +42,7 @@ func TestAnEmptyLocatorSetIsNotNull(t *testing.T) {
 	got := l.sources()
 	if got == nil {
 		t.Error("sources() over an empty set = nil, want an empty slice; a nil " +
-			"encodes as null and the contract forbids it")
+			"encodes as null and the package doc forbids it")
 	}
 	if len(got) != 0 {
 		t.Errorf("sources() over an empty set = %v, want empty", got)

@@ -6,7 +6,7 @@ and reserves out, in six fund-group columns. The `sankey` projection draws it,
 one document per adopted year, inside that year's column file
 (`fy2026-adopted.json`, `fy2027-adopted.json`). Its shape is
 `schema/projection.schema.json`; how it is built, where it is written and how
-node ids map to tiers are in `go doc ./internal/project`. The worked example is
+node ids map to tiers are in `go doc -all -u ./internal/project`. The worked example is
 `testdata/sankey.golden.json`, real FY2026 figures with real fact ids.
 
 ```mermaid

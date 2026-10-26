@@ -50,7 +50,7 @@ func TestSankeyReproducesGoldenFile(t *testing.T) {
 
 	var want Document
 	dec := json.NewDecoder(bytes.NewReader(wantBytes))
-	// A key in the golden file this package has no field for is a contract we
+	// A key in the golden file this package has no field for is a shape we
 	// are not implementing, not a key to skip.
 	dec.DisallowUnknownFields()
 	if err = dec.Decode(&want); err != nil {
@@ -421,8 +421,9 @@ func TestFactOrderDoesNotMatter(t *testing.T) {
 	}
 }
 
-// TestNoNullsOrMissingKeys enforces the contract's shape rule directly on the
-// bytes: every key present on every object, no null anywhere.
+// TestNoNullsOrMissingKeys enforces the package doc's shape rule directly on
+// the spine's bytes: every key present on every object, and the spine has no
+// nullable field.
 func TestNoNullsOrMissingKeys(t *testing.T) {
 	out, err := (&sankey{}).Build(nil, testOptions())
 	if err != nil {
@@ -612,7 +613,7 @@ func TestNodeTiersAndRoles(t *testing.T) {
 	}
 }
 
-// TestNodesAndLinksAreSorted states the ordering the contract fixes, on the
+// TestNodesAndLinksAreSorted states the ordering Document's fields fix, on the
 // real fixture rather than on a constructed one.
 func TestNodesAndLinksAreSorted(t *testing.T) {
 	g := buildGraph(t, spineFacts(t, testYear), testOptions())

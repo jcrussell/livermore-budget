@@ -25,8 +25,8 @@ views:
     lede: >-
       Where the money the city budgets comes from, what it buys and which
       department spends it, each as a share of the whole. Each bar adds up
-      figures the city printed, and the total of every such figure in the
-      budget is shown with them.
+      figures the city printed, and beneath it is the sum of every such
+      figure in the budget.
 
   # The same money as a Sankey. No title: sankeyTitle names the year in each
   # year's <title>, which a declared one would drop.
