@@ -1,0 +1,210 @@
+<!doctype html>
+<!-- A planted Over time page: the DOM site/change.js and site/theme.js bind
+     on change.html, held to schema/bindings.json, over tables shaped for the
+     mechanisms site/change.test.mjs states. No figure is the city's. -->
+<html lang="en">
+<head><meta charset="utf-8"><title>change</title></head>
+<body>
+<nav class="site-nav" aria-label="Views">
+  <button type="button" id="nav-toggle" aria-expanded="false" aria-controls="nav-views" hidden>Menu <span class="nav-here">Over time</span></button>
+  <ul id="nav-views"><li><span aria-current="page">Over time</span></li></ul>
+  <button type="button" id="theme-toggle" hidden>Dark mode</button>
+</nav>
+<template id="lede-more"><button type="button" class="lede-more">More</button></template>
+<header class="page-head"><div><h1>Over time</h1><p class="lede">Lede.</p></div></header>
+<main>
+<section class="change-figure" data-figure="audited-revenue" data-chart="true" aria-labelledby="figure-audited-revenue">
+  <h2 id="figure-audited-revenue">audited-revenue</h2>
+  <p class="change-lede">Lede.</p>
+  <figure class="change-chart" hidden>
+    <div class="change-columns"></div>
+    <ol class="change-legend"></ol>
+    <figcaption class="change-sum"></figcaption>
+  </figure>
+  <div class="change-cells">
+    <table class="series-table change-table">
+      <thead>
+        <tr>
+          <th scope="col">Row</th>
+          <th scope="col">Kind</th>
+          <th scope="col" class="num" data-column="0">FY 2021-22<span class="basis"></span></th>
+          <th scope="col" class="num" data-column="1">FY 2022-23<span class="basis"></span></th>
+          <th scope="col" class="num" data-column="2">FY 2023-24<span class="basis">unaudited</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr data-category="taxes">
+          <th scope="row">Property</th>
+          <td class="subtle">taxes</td>
+          <td class="num" data-column="0" data-cents="900000"><a href="extracted/livermore-acfr-fy2025/pages/p0168.txt" data-page="168" data-pdf="https://example.test/acfr.pdf#page=168">900000</a></td>
+          <td class="num" data-column="1" data-cents="950000"><a href="extracted/livermore-acfr-fy2025/pages/p0168.txt" data-page="168" data-pdf="https://example.test/acfr.pdf#page=168">950000</a></td>
+          <td class="num" data-column="2" data-cents="1000000"><a href="extracted/livermore-acfr-fy2025/pages/p0168.txt" data-page="168" data-pdf="https://example.test/acfr.pdf#page=168">1000000</a></td>
+        </tr>
+        <tr data-category="sales">
+          <th scope="row">Sales</th>
+          <td class="subtle">sales</td>
+          <td class="num" data-column="0" data-cents="500000"><a href="extracted/livermore-acfr-fy2025/pages/p0168.txt" data-page="168" data-pdf="https://example.test/acfr.pdf#page=168">500000</a></td>
+          <td class="num" data-column="1" data-cents="520000"><a href="extracted/livermore-acfr-fy2025/pages/p0168.txt" data-page="168" data-pdf="https://example.test/acfr.pdf#page=168">520000</a></td>
+          <td class="num" data-column="2" data-cents="540000"><a href="extracted/livermore-acfr-fy2025/pages/p0168.txt" data-page="168" data-pdf="https://example.test/acfr.pdf#page=168">540000</a></td>
+        </tr>
+        <tr data-category="charges">
+          <th scope="row">Charges</th>
+          <td class="subtle">charges</td>
+          <td class="num" data-column="0" data-cents="300000"><a href="extracted/livermore-acfr-fy2025/pages/p0168.txt" data-page="168" data-pdf="https://example.test/acfr.pdf#page=168">300000</a></td>
+          <td class="num" data-column="1" data-cents="310000"><a href="extracted/livermore-acfr-fy2025/pages/p0168.txt" data-page="168" data-pdf="https://example.test/acfr.pdf#page=168">310000</a></td>
+          <td class="num" data-column="2" data-cents="320000"><a href="extracted/livermore-acfr-fy2025/pages/p0168.txt" data-page="168" data-pdf="https://example.test/acfr.pdf#page=168">320000</a></td>
+        </tr>
+        <tr data-category="grants">
+          <th scope="row">Grants</th>
+          <td class="subtle">grants</td>
+          <td class="num" data-column="0" data-cents="200000"><a href="extracted/livermore-acfr-fy2025/pages/p0168.txt" data-page="168" data-pdf="https://example.test/acfr.pdf#page=168">200000</a></td>
+          <td class="num" data-column="1" data-cents="210000"><a href="extracted/livermore-acfr-fy2025/pages/p0168.txt" data-page="168" data-pdf="https://example.test/acfr.pdf#page=168">210000</a></td>
+          <td class="num" data-column="2" data-cents="220000"><a href="extracted/livermore-acfr-fy2025/pages/p0168.txt" data-page="168" data-pdf="https://example.test/acfr.pdf#page=168">220000</a></td>
+        </tr>
+        <tr data-category="fines">
+          <th scope="row">Fines</th>
+          <td class="subtle">fines</td>
+          <td class="num" data-column="0" data-cents="100000"><a href="extracted/livermore-acfr-fy2025/pages/p0168.txt" data-page="168" data-pdf="https://example.test/acfr.pdf#page=168">100000</a></td>
+          <td class="num" data-column="1" data-cents="90000"><a href="extracted/livermore-acfr-fy2025/pages/p0168.txt" data-page="168" data-pdf="https://example.test/acfr.pdf#page=168">90000</a></td>
+          <td class="num" data-column="2" data-cents="80000"><a href="extracted/livermore-acfr-fy2025/pages/p0168.txt" data-page="168" data-pdf="https://example.test/acfr.pdf#page=168">80000</a></td>
+        </tr>
+        <tr data-category="rents">
+          <th scope="row">Rents</th>
+          <td class="subtle">rents</td>
+          <td class="num" data-column="0" data-cents="60000"><a href="extracted/livermore-acfr-fy2025/pages/p0168.txt" data-page="168" data-pdf="https://example.test/acfr.pdf#page=168">60000</a></td>
+          <td class="num" data-column="1" data-cents="70000"><a href="extracted/livermore-acfr-fy2025/pages/p0168.txt" data-page="168" data-pdf="https://example.test/acfr.pdf#page=168">70000</a></td>
+          <td class="num missing" data-column="2"><span title="Not printed">-</span></td>
+        </tr>
+        <tr data-category="investment">
+          <th scope="row">Investment</th>
+          <td class="subtle">investment</td>
+          <td class="num" data-column="0" data-cents="-50000"><a href="extracted/livermore-acfr-fy2025/pages/p0168.txt" data-page="168" data-pdf="https://example.test/acfr.pdf#page=168">-50000</a></td>
+          <td class="num" data-column="1" data-cents="400000"><a href="extracted/livermore-acfr-fy2025/pages/p0168.txt" data-page="168" data-pdf="https://example.test/acfr.pdf#page=168">400000</a></td>
+          <td class="num" data-column="2" data-cents="450000"><a href="extracted/livermore-acfr-fy2025/pages/p0168.txt" data-page="168" data-pdf="https://example.test/acfr.pdf#page=168">450000</a></td>
+        </tr>
+        <tr data-category="other">
+          <th scope="row">Other</th>
+          <td class="subtle">other</td>
+          <td class="num" data-column="0" data-cents="10000"><a href="extracted/livermore-acfr-fy2025/pages/p0168.txt" data-page="168" data-pdf="https://example.test/acfr.pdf#page=168">10000</a></td>
+          <td class="num" data-column="1" data-cents="12000"><a href="extracted/livermore-acfr-fy2025/pages/p0168.txt" data-page="168" data-pdf="https://example.test/acfr.pdf#page=168">12000</a></td>
+          <td class="num" data-column="2" data-cents="14000"><a href="extracted/livermore-acfr-fy2025/pages/p0168.txt" data-page="168" data-pdf="https://example.test/acfr.pdf#page=168">14000</a></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+<section class="change-figure" data-figure="audited-spending" data-chart="true" aria-labelledby="figure-audited-spending">
+  <h2 id="figure-audited-spending">audited-spending</h2>
+  <p class="change-lede">Lede.</p>
+  <figure class="change-chart" hidden>
+    <div class="change-columns"></div>
+    <ol class="change-legend"></ol>
+    <figcaption class="change-sum"></figcaption>
+  </figure>
+  <div class="change-cells">
+    <table class="series-table change-table">
+      <thead>
+        <tr>
+          <th scope="col">Row</th>
+          <th scope="col">Kind</th>
+          <th scope="col" class="num" data-column="0">FY 2021-22<span class="basis"></span></th>
+          <th scope="col" class="num" data-column="1">FY 2022-23<span class="basis"></span></th>
+          <th scope="col" class="num" data-column="2">FY 2023-24<span class="basis">unaudited</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr data-category="police">
+          <th scope="row">Police</th>
+          <td class="subtle">police</td>
+          <td class="num" data-column="0" data-cents="1200000"><a href="extracted/livermore-acfr-fy2025/pages/p0168.txt" data-page="168" data-pdf="https://example.test/acfr.pdf#page=168">1200000</a></td>
+          <td class="num" data-column="1" data-cents="1250000"><a href="extracted/livermore-acfr-fy2025/pages/p0168.txt" data-page="168" data-pdf="https://example.test/acfr.pdf#page=168">1250000</a></td>
+          <td class="num" data-column="2" data-cents="1300000"><a href="extracted/livermore-acfr-fy2025/pages/p0168.txt" data-page="168" data-pdf="https://example.test/acfr.pdf#page=168">1300000</a></td>
+        </tr>
+        <tr data-category="parks">
+          <th scope="row">Parks</th>
+          <td class="subtle">parks</td>
+          <td class="num" data-column="0" data-cents="700000"><a href="extracted/livermore-acfr-fy2025/pages/p0168.txt" data-page="168" data-pdf="https://example.test/acfr.pdf#page=168">700000</a></td>
+          <td class="num" data-column="1" data-cents="720000"><a href="extracted/livermore-acfr-fy2025/pages/p0168.txt" data-page="168" data-pdf="https://example.test/acfr.pdf#page=168">720000</a></td>
+          <td class="num" data-column="2" data-cents="740000"><a href="extracted/livermore-acfr-fy2025/pages/p0168.txt" data-page="168" data-pdf="https://example.test/acfr.pdf#page=168">740000</a></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+<section class="change-figure" data-figure="audited-excess" data-chart="false" aria-labelledby="figure-audited-excess">
+  <h2 id="figure-audited-excess">audited-excess</h2>
+  <p class="change-lede">Lede.</p>
+  <div class="change-cells">
+    <table class="series-table change-table">
+      <thead>
+        <tr>
+          <th scope="col">Row</th>
+          <th scope="col">Kind</th>
+          <th scope="col" class="num" data-column="0">FY 2021-22<span class="basis"></span></th>
+          <th scope="col" class="num" data-column="1">FY 2022-23<span class="basis"></span></th>
+          <th scope="col" class="num" data-column="2">FY 2023-24<span class="basis">unaudited</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr data-category="fund_balance">
+          <th scope="row">Excess</th>
+          <td class="subtle">fund_balance</td>
+          <td class="num" data-column="0" data-cents="120000"><a href="extracted/livermore-acfr-fy2025/pages/p0168.txt" data-page="168" data-pdf="https://example.test/acfr.pdf#page=168">120000</a></td>
+          <td class="num" data-column="1" data-cents="592000"><a href="extracted/livermore-acfr-fy2025/pages/p0168.txt" data-page="168" data-pdf="https://example.test/acfr.pdf#page=168">592000</a></td>
+          <td class="num" data-column="2" data-cents="584000"><a href="extracted/livermore-acfr-fy2025/pages/p0168.txt" data-page="168" data-pdf="https://example.test/acfr.pdf#page=168">584000</a></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+<section class="change-figure" data-figure="budget-revenue" data-chart="true" aria-labelledby="figure-budget-revenue">
+  <h2 id="figure-budget-revenue">budget-revenue</h2>
+  <p class="change-lede">Lede.</p>
+  <figure class="change-chart" hidden>
+    <div class="change-columns"></div>
+    <ol class="change-legend"></ol>
+    <figcaption class="change-sum"></figcaption>
+  </figure>
+  <div class="change-cells">
+    <table class="series-table change-table">
+      <thead>
+        <tr>
+          <th scope="col">Row</th>
+          <th scope="col">Kind</th>
+          <th scope="col">Fund</th>
+          <th scope="col" class="num" data-column="0">FY 2023-24<span class="basis">actual</span></th>
+          <th scope="col" class="num group-start" data-column="1">FY 2024-25<span class="basis">revised</span></th>
+          <th scope="col" class="num group-start" data-column="2">FY 2025-26<span class="basis">adopted</span></th>
+          <th scope="col" class="num" data-column="3">FY 2026-27<span class="basis">adopted</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr data-category="taxes">
+          <th scope="row">Property</th>
+          <td class="subtle">taxes</td>
+          <td class="subtle">General</td>
+          <td class="num" data-column="0" data-cents="1000000"><a href="extracted/livermore-acfr-fy2025/pages/p0066.txt" data-page="66" data-pdf="https://example.test/acfr.pdf#page=66">1000000</a></td>
+          <td class="num group-start" data-column="1" data-cents="1050000"><a href="extracted/livermore-acfr-fy2025/pages/p0066.txt" data-page="66" data-pdf="https://example.test/acfr.pdf#page=66">1050000</a></td>
+          <td class="num group-start" data-column="2" data-cents="1100000"><a href="extracted/livermore-acfr-fy2025/pages/p0066.txt" data-page="66" data-pdf="https://example.test/acfr.pdf#page=66">1100000</a></td>
+          <td class="num" data-column="3" data-cents="1150000"><a href="extracted/livermore-acfr-fy2025/pages/p0066.txt" data-page="66" data-pdf="https://example.test/acfr.pdf#page=66">1150000</a></td>
+        </tr>
+        <tr data-category="sales">
+          <th scope="row">Sales</th>
+          <td class="subtle">sales</td>
+          <td class="subtle">General</td>
+          <td class="num" data-column="0" data-cents="540000"><a href="extracted/livermore-acfr-fy2025/pages/p0066.txt" data-page="66" data-pdf="https://example.test/acfr.pdf#page=66">540000</a></td>
+          <td class="num group-start" data-column="1" data-cents="560000"><a href="extracted/livermore-acfr-fy2025/pages/p0066.txt" data-page="66" data-pdf="https://example.test/acfr.pdf#page=66">560000</a></td>
+          <td class="num group-start" data-column="2" data-cents="580000"><a href="extracted/livermore-acfr-fy2025/pages/p0066.txt" data-page="66" data-pdf="https://example.test/acfr.pdf#page=66">580000</a></td>
+          <td class="num" data-column="3" data-cents="600000"><a href="extracted/livermore-acfr-fy2025/pages/p0066.txt" data-page="66" data-pdf="https://example.test/acfr.pdf#page=66">600000</a></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+<template id="change-column"><div class="change-column"><div class="change-total subtle"></div><div class="change-stack"><div class="change-above"></div><div class="change-below"></div></div><div class="change-year"></div></div></template>
+<template id="change-segment"><div class="change-seg"></div></template>
+<template id="change-entry"><li><span class="change-swatch" aria-hidden="true"></span><span class="change-name"></span> <span class="subtle change-detail"></span></li></template>
+<div class="tooltip" id="tooltip" role="status" aria-live="polite" hidden></div>
+</main>
+</body>
+</html>

@@ -89,7 +89,7 @@ func buildClientSubset(repoRoot string) (result, error) {
 	return buildFrom(repoRoot, raw.Bytes(), subset)
 }
 
-// packagedBy is the footer's build stamp, blanked before markup is compared.
+// packagedBy is the footer's build stamp, blanked from the markup split returns.
 var packagedBy = regexp.MustCompile(`Packaged by [^<\n]*`)
 
 const configOpen, configClose = "window.FISC_CONFIG = ", ";</script>"
@@ -238,52 +238,10 @@ func leaveCopies(t *testing.T, dir string, files map[string]string) {
 	})
 }
 
-// holdGolden holds testdata/<golden> to the page Go writes at served under
-// dir, byte for byte but the build stamp.
-func holdGolden(t *testing.T, dir, served, golden string) {
-	t.Helper()
-	leaveCopies(t, dir, map[string]string{served: golden})
-	page := []byte(readFile(t, dir, served))
-	fixture, err := os.ReadFile(filepath.Join(repoRootForTest(t), "testdata", golden)) // #nosec G304 -- testdata/.
-	if err != nil {
-		t.Fatalf("read the fixture: %v", err)
-	}
-	page, fixture = packagedBy.ReplaceAll(page, nil), packagedBy.ReplaceAll(fixture, nil)
-	if !bytes.Equal(page, fixture) {
-		t.Errorf("testdata/%s is not the page Go writes (-go +fixture):\n%s", golden,
-			cmp.Diff(strings.Split(string(page), "\n"), strings.Split(string(fixture), "\n")))
-	}
-}
-
-// TestTheGlanceFixtureIsWhatGoWrites holds testdata/index.golden.html to the
-// glance page Go writes over clientSubset.
-func TestTheGlanceFixtureIsWhatGoWrites(t *testing.T) {
-	holdGolden(t, clientExport(t), "index.html", "index.golden.html")
-}
-
-// TestTheCapitalFixtureIsWhatGoWrites holds testdata/capital.golden.html to the
-// capital page Go writes over clientSubset.
-func TestTheCapitalFixtureIsWhatGoWrites(t *testing.T) {
-	holdGolden(t, clientExport(t), "capital.html", "capital.golden.html")
-}
-
-// TestTheChangeFixtureIsWhatGoWrites holds testdata/change.golden.html to the
-// change page Go writes over clientSubset.
-func TestTheChangeFixtureIsWhatGoWrites(t *testing.T) {
-	holdGolden(t, clientExport(t), "change.html", "change.golden.html")
-}
-
 // TestTheSidesFixtureIsWhatGoWrites holds testdata/client/ledger.config.json
 // to the config of the page Go writes over clientSubset.
 func TestTheSidesFixtureIsWhatGoWrites(t *testing.T) {
 	holdConfig(t, clientExport(t), "ledger.html", sidesConfig)
-}
-
-// TestTheCaveatsFixtureIsWhatGoWrites holds testdata/caveats.golden.html,
-// which site/theme.test.mjs opens fragments on, to the page Go writes over
-// clientSubset.
-func TestTheCaveatsFixtureIsWhatGoWrites(t *testing.T) {
-	holdGolden(t, clientExport(t), "caveats.html", "caveats.golden.html")
 }
 
 // columnFixtureFaults is every way one column fixture fails to be served, the

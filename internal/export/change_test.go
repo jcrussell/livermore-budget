@@ -158,6 +158,12 @@ func TestChangePageRendersEachKindAsItsOwnFigure(t *testing.T) {
 	if strings.Contains(html, "Transfer from General Fund") {
 		t.Error("the budget figure lists a transfer in; the page draws revenue alone")
 	}
+	// The audited revenue lede says what its stack is: a total that is the
+	// net, a negative kind below the baseline. Mutation: put back "Each
+	// column's height is our sum" in change.go.
+	if !strings.Contains(html, "hangs below the baseline and counts against that total") || strings.Contains(html, "height is our sum") {
+		t.Error("the audited revenue lede does not say a negative kind hangs below the baseline and counts against the total")
+	}
 }
 
 // TestChangePageRefusesWhatItCannotDraw: no revenue-trends document, another

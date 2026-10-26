@@ -1,7 +1,7 @@
-// What site/capital.js does for capital.html, over testdata/capital.golden.html:
-// the page Go writes over the client subset, which keeps the whole project
-// listing. Every figure here is one Go cited; what is tested is the client's
-// filtering and its sum of the rows left shown.
+// What site/capital.js does for capital.html, over testdata/client/capital.html:
+// a planted page held to schema/bindings.json. What is tested is the
+// client's filtering and its sum of the rows left shown; the footer's label
+// is the template's, which Go holds.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -12,7 +12,7 @@ import { bootedDocument } from "./testlib.mjs";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const MODULE = pathToFileURL(path.join(HERE, "capital.js")).href;
 const { dollars } = await import(pathToFileURL(path.join(HERE, "format.js")).href);
-const PAGE = readFileSync(path.join(HERE, "..", "testdata", "capital.golden.html"), "utf8");
+const PAGE = readFileSync(path.join(HERE, "..", "testdata", "client", "capital.html"), "utf8");
 
 /** A fresh document over the pinned page at `hash`, booted. */
 const booted = (hash = "") => bootedDocument(PAGE, MODULE, "https://capital.test/capital.html" + hash);
@@ -51,7 +51,7 @@ function footer(doc) {
   return out;
 }
 
-test("boot offers the controls and labels the footer as our sum, never as a Total", async () => {
+test("boot offers the controls, counts the lines as ours and shows the footer", async () => {
   const { doc } = await booted();
   assert.equal(doc.getElementById("capital-filters").hidden, false);
   const rows = bodyRows(doc).length;
@@ -60,9 +60,6 @@ test("boot offers the controls and labels the footer as our sum, never as a Tota
     `◇ ${rows} of ${rows} project lines shown, by our count`);
   const foot = doc.querySelector("#capital-table tfoot");
   assert.equal(foot.hidden, false);
-  const label = foot.querySelector("th").textContent;
-  assert.ok(label.includes("◇") && label.includes("sum of the rows shown"), label);
-  assert.ok(!/\btotal\b/i.test(label), label);
 });
 
 // Mutation: make sumShown add every row rather than the shown ones, and the

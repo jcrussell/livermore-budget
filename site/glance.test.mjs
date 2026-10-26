@@ -1,8 +1,8 @@
-// What site/glance.js does for the glance page, over testdata/index.golden.html:
-// the page Go writes over the client subset, which keeps every fund group of
-// a budget year whole. Every cell here is one Go cited; what is tested is the
-// client's grouping, its sums, its shares and its fold of the tail, and that
-// the whole it draws is the figure Go printed beside it.
+// What site/glance.js does for the glance page, over testdata/client/index.html:
+// a planted page held to schema/bindings.json, its tables shaped for the
+// mechanisms below. What is tested is the client's grouping, its sums, its
+// shares and its fold of the tail; that each bar's rows reach the whole Go
+// prints beside it is Go's, refused at the write (glanceTies).
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -14,17 +14,10 @@ import { bootedDocument } from "./testlib.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const MODULE = pathToFileURL(path.join(HERE, "glance.js")).href;
-const PAGE = readFileSync(path.join(HERE, "..", "testdata", "index.golden.html"), "utf8");
+const PAGE = readFileSync(path.join(HERE, "..", "testdata", "client", "index.html"), "utf8");
 
 /** A fresh document over the pinned page, booted. */
 const booted = (url) => bootedDocument(PAGE, MODULE, url);
-
-/** Cents of a figure as Go prints it: "$254,095,412" or "$1,234.56". */
-function centsOf(text) {
-  const m = /^\$([\d,]+)(?:\.(\d{2}))?$/.exec(text.trim());
-  assert.ok(m, `not a dollar figure: ${text}`);
-  return Number(m[1].replace(/,/g, "")) * 100 + Number(m[2] || 0);
-}
 
 /** The bars of the page, by year label and bar id. */
 function bars(doc) {
@@ -47,11 +40,10 @@ function rowsOf(section) {
   }));
 }
 
-test("the page carries two years of three bars, and boot fills every figure", async () => {
+test("boot fills every bar's figure", async () => {
   const { doc } = await booted();
   const all = bars(doc);
-  assert.equal(all.length, 6, all.map((b) => `${b.label} ${b.id}`).join(", "));
-  assert.deepEqual([...new Set(all.map((b) => b.id))], ["revenue", "spending", "departments"]);
+  assert.ok(all.length > 1, "the planted page carries fewer than two bars");
   for (const b of all) {
     const figure = b.section.querySelector("figure.glance-figure");
     assert.equal(figure.hidden, false, `${b.label} ${b.id} figure stays hidden`);
@@ -68,6 +60,7 @@ test("the page carries two years of three bars, and boot fills every figure", as
 // tail's push in rank and the fold loses its members.
 describe("a bar's segments are sums of its cells, and no cell is lost or counted twice", async () => {
   const { mod, doc } = await booted();
+  let folded = 0;
   for (const b of bars(doc)) {
     test(`${b.label}: ${b.id}`, (t) => {
       const rows = rowsOf(b.section);
@@ -82,6 +75,7 @@ describe("a bar's segments are sums of its cells, and no cell is lost or counted
       const tail = segments.find((s) => !s.id);
       for (const s of named) assert.equal(s.cents, byGroup.get(s.id), `${s.id} is not its rows' sum`);
       const members = segments.flatMap((s) => s.members);
+      if (tail) folded++;
       assert.deepEqual(members.sort(), [...new Set(rows.map((r) => r.label))].sort(), "a group is lost or doubled");
       if (byGroup.size > NAMED + 1) {
         assert.ok(tail, `${byGroup.size} groups and no tail`);
@@ -103,49 +97,28 @@ describe("a bar's segments are sums of its cells, and no cell is lost or counted
         (tail ? `, ${tail.members.length} folded` : ""));
     });
   }
+  test("the planted page folds a tail in one bar and names every group in another", () => {
+    assert.ok(folded > 0 && folded < bars(doc).length, `${folded} of ${bars(doc).length} bars fold a tail`);
+  });
 });
 
-// The whole the client sums is the figure Go printed beside the bar, except
-// where Go declares the rows apart from it, and there the difference is the
-// declared residual. The declaration is Go's; the client only sums.
-// Mutation: drop the fund/730 rows from a departments table and the
-// FY2025-26 bar no longer reaches its printed whole.
-describe("the client's whole is the city's figure, or the declared residual short of it", async () => {
+// A bar that ties states its total once, in the printed line under it; one
+// Go holds apart states the client's own sum too, since that sum is not the
+// printed figure. Mutation: say the sum in the caption whatever data-ties
+// says, and the tied arm goes red.
+test("a tied bar's caption states no sum of ours, and one held apart states it", async () => {
   const { doc } = await booted();
-  let apart = 0;
+  const seen = new Set();
   for (const b of bars(doc)) {
-    test(`${b.label}: ${b.id}`, (t) => {
-      const printed = centsOf(b.section.querySelector("[data-whole-cents]").textContent);
-      const whole = rowsOf(b.section).reduce((a, r) => a + r.cents, 0);
-      const caption = b.section.querySelector(".glance-sum").textContent;
-      // A bar that ties states its total once, in the printed line under it;
-      // one held apart states the client's own sum too. Mutation: say the
-      // sum in the caption whatever data-ties says, and the tied arm goes red.
-      const said = caption.includes(new Intl.NumberFormat("en-US").format(whole / 100));
-      if (b.section.dataset.ties === "true") {
-        assert.ok(caption.startsWith("◇ The shares are ours") && !said, caption);
-      } else {
-        assert.ok(caption.startsWith("◇ Our sum of the") && said, caption);
-      }
-      if (b.section.dataset.ties === "true") {
-        assert.equal(whole, printed, `${b.label} ${b.id}: rows do not reach the printed whole`);
-        assert.equal(b.section.querySelector(".glance-apart"), null);
-      } else {
-        apart++;
-        const line = b.section.querySelector(".glance-apart");
-        assert.ok(line, "marked apart with no declaration printed");
-        const residual = centsOf(line.querySelector("strong").textContent);
-        assert.equal(whole + residual, printed, `${b.label} ${b.id}: rows plus the declared residual miss the printed whole`);
-        t.diagnostic(`${b.label} ${b.id}: rows ${whole} + declared ${residual} = printed ${printed}`);
-      }
-    });
+    const whole = rowsOf(b.section).reduce((a, r) => a + r.cents, 0);
+    const caption = b.section.querySelector(".glance-sum").textContent;
+    const said = caption.includes(new Intl.NumberFormat("en-US").format(whole / 100));
+    const ties = b.section.dataset.ties === "true";
+    seen.add(ties);
+    if (ties) assert.ok(caption.startsWith("◇ The shares are ours") && !said, caption);
+    else assert.ok(caption.startsWith("◇ Our sum of the") && said, caption);
   }
-  test("exactly one bar is declared apart: FY2026-27's departments", () => {
-    assert.equal(apart, 1);
-    const b = bars(doc).find((x) => x.section.dataset.ties === "false");
-    assert.equal(b.id, "departments");
-    assert.equal(b.label, "FY 2026-27 adopted");
-  });
+  assert.deepEqual([...seen].sort(), [false, true], "the planted page lacks a tied bar or one held apart");
 });
 
 // The legend's shares are the client's, each a percentage marked ours and
@@ -202,61 +175,33 @@ test("a group labelled two ways is refused", async () => {
     /labelled A and B/);
 });
 
-/** The page each fact cites, by fact id, read off facts/facts.jsonl. */
-function factPages() {
-  const out = new Map();
-  const text = readFileSync(path.join(HERE, "..", "facts", "facts.jsonl"), "utf8");
-  for (const line of text.split("\n")) {
-    if (!line) continue;
-    const f = JSON.parse(line);
-    out.set(f.id, `extracted/${f.doc_id}/pages/p${String(f.page).padStart(4, "0")}.txt`);
-  }
-  return out;
-}
-
-// A click on a segment pins its tip, and the tip links the page text of
-// every page its rows' facts were printed on, read off the fact store and
-// not off the table the client reads. Mutation: drop pageLinks from the
-// segment's fill in glance.js and every segment's links are missing; drop
-// the PDF link from format.js's pageLinks and every PDF arm goes red; match
-// the tail's rows by its id in place of its members and the tail links no page.
-test("a click pins a segment's tip, linking the page text and the PDF page of every fact its rows cite", async (t) => {
-  const { installBrowser, tipState, pageTextExists, pdfFaults, fire } = await import("./testlib.mjs");
+// A click on a segment pins its tip, and the tip links the page text and
+// the PDF page of every row the segment sums, the tail's included.
+// Mutation: drop pageLinks from the segment's fill in glance.js and every
+// segment's links are missing; drop the PDF link from format.js's pageLinks
+// and the PDF arm goes red; match the tail's rows by its id in place of its
+// members and the tail links no page.
+test("a click pins a segment's tip, linking the page text and the PDF page of each of its rows", async () => {
+  const { installBrowser, tipState, pdfFaults, fire } = await import("./testlib.mjs");
   const { document } = installBrowser({ html: PAGE });
   const mod = await import(MODULE);
   mod.boot(document);
   // Mutation: set role="img" on a segment before pinnable and this is red.
   assert.deepEqual([...document.querySelectorAll("[data-pins]")].filter((m) => m.getAttribute("role") !== "button").map((m) => m.dataset.rank), []);
-  const pages = factPages();
-  let pinned = 0;
-  let tails = 0;
-  for (const b of bars(document).slice(0, 3)) {
-    const { segments } = mod.rank(mod.groupRows(mod.readRows(b.section.querySelector("table"))));
-    const segs = [...b.section.querySelectorAll(".glance-seg")];
-    assert.equal(segs.length, segments.length);
-    segments.forEach((s, i) => {
-      const want = new Set();
-      for (const tr of b.section.querySelectorAll("tbody tr")) {
-        if (!s.members.includes(tr.querySelector("th[scope=row]").textContent.trim())) continue;
-        for (const id of tr.dataset.facts.split(" ").filter(Boolean)) {
-          assert.ok(pages.has(id), `${id} is in no fact`);
-          want.add(pages.get(id));
-        }
-      }
-      fire(segs[i], "click");
-      const tip = tipState(document);
-      assert.ok(tip.pinned && tip.shown, `${b.label} ${b.id} ${s.label}: no pinned tip`);
-      assert.equal(tip.label, s.label);
-      assert.deepEqual([...new Set(tip.hrefs)].sort(), [...want].sort(), `${b.label} ${b.id} ${s.label}: the tip links other pages`);
-      for (const href of tip.hrefs) assert.ok(pageTextExists(href), `${href} names no committed page text`);
-      assert.deepEqual(pdfFaults(tip), [], `${b.label} ${b.id} ${s.label}: the tip's PDF links are not its pages'`);
-      pinned++;
-      if (!s.id) tails++;
-    });
+  const revenue = bars(document)[0];
+  const segs = [...revenue.section.querySelectorAll(".glance-seg")];
+  const pages = (seg) => {
+    fire(seg, "click");
+    const tip = tipState(document);
+    assert.ok(tip.pinned && tip.shown, `${tip.label}: no pinned tip`);
+    assert.deepEqual(pdfFaults(tip), [], `${tip.label}: the tip's PDF links are not its pages'`);
     fire(document.body, "click");
-  }
-  t.diagnostic(`${pinned} segments pinned, ${tails} of them a tail, each linking its rows' facts' pages`);
-  assert.ok(tails > 0, "no bar sampled folds a tail, so the tail's pages are not checked");
+    return { label: tip.label, pages: tip.hrefs.map((h) => Number(/p(\d{4})\.txt$/.exec(h)[1])) };
+  };
+  // The planted revenue bar: Taxes is two rows on pp.66 and 67, and the
+  // tail folds Interest (p66) and Other (p67).
+  assert.deepEqual(pages(segs[0]), { label: "Taxes", pages: [66, 67] });
+  assert.deepEqual(pages(segs.at(-1)), { label: TAIL_LABEL, pages: [66, 67] });
 });
 
 // A bar that cannot draw says so in its own section, its table left shown,

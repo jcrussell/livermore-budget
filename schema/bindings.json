@@ -4,16 +4,116 @@
     "$comment": "theme.js, on every page fisc export writes.",
     "selectors": [
       "nav.site-nav button#theme-toggle[hidden]",
+      "nav.site-nav button#nav-toggle[aria-expanded=\"false\"][aria-controls=\"nav-views\"][hidden] > span.nav-here",
+      "nav.site-nav ul#nav-views [aria-current=\"page\"]",
       "template#lede-more > button.lede-more"
     ]
   },
   "pages": {
+    "capital.html": {
+      "skeleton": "testdata/client/capital.html",
+      "modules": [
+        "capital.js",
+        "theme.js"
+      ],
+      "selectors": [
+        "select#year-select > option[value=\"\"]",
+        "nav.site-nav a[data-years]",
+        "form#capital-filters[hidden] select#capital-fund > option[value=\"\"]",
+        "#capital-filters input#capital-search",
+        "#capital-filters #capital-shown",
+        "table#capital-table thead th[data-column][data-year] span.basis",
+        "#capital-table tbody tr[data-fund] > th[scope=\"row\"]",
+        "#capital-table tbody tr[data-fund] td[data-column][data-cents]",
+        "#capital-table tfoot[hidden] th",
+        "#capital-table tfoot td[data-column]"
+      ]
+    },
+    "caveats.html": {
+      "skeleton": "testdata/client/caveats.html",
+      "modules": [
+        "theme.js"
+      ],
+      "selectors": [
+        "main details.caveat[id] > summary",
+        "details.caveat p.caveat-link > a[href]"
+      ]
+    },
+    "change.html": {
+      "skeleton": "testdata/client/change.html",
+      "modules": [
+        "change.js",
+        "theme.js"
+      ],
+      "selectors": [
+        "section.change-figure[data-figure][data-chart] > h2",
+        "section.change-figure[data-chart=\"true\"] figure.change-chart[hidden] div.change-columns",
+        "section.change-figure[data-chart=\"true\"] figure.change-chart ol.change-legend",
+        "section.change-figure[data-chart=\"true\"] figure.change-chart figcaption.change-sum",
+        "section.change-figure[data-chart=\"false\"] .change-cells table",
+        "section.change-figure .change-cells table thead th[data-column] span.basis",
+        "section.change-figure table thead th.group-start[data-column]",
+        "section.change-figure table tbody tr[data-category] > th[scope=\"row\"]",
+        "section.change-figure table tr[data-category] td[data-column][data-cents] a[data-page][data-pdf]",
+        "template#change-column > div.change-column .change-total",
+        "template#change-column .change-stack .change-above",
+        "template#change-column .change-stack .change-below",
+        "template#change-column .change-year",
+        "template#change-segment > div.change-seg",
+        "template#change-entry > li .change-name",
+        "template#change-entry .change-detail",
+        "div.tooltip#tooltip"
+      ]
+    },
+    "department.html": {
+      "skeleton": "testdata/client/department.html",
+      "modules": [
+        "department.js",
+        "theme.js"
+      ],
+      "selectors": [
+        "script#department-config[type=\"application/json\"]",
+        "header.page-head .lede",
+        "select#year-select",
+        "details.how-to-read",
+        "main#department-main",
+        "#department-main h2#bars-heading",
+        "ul#department-legend",
+        "ol#department-list",
+        "h3#department-heading",
+        "p#department-tie[data-ties][data-held]",
+        "section.department-side[data-side=\"funding\"] p.sides-total",
+        "section.department-side[data-side=\"funding\"] figure.sides-figure",
+        "section.department-side[data-side=\"spending\"] p.sides-total",
+        "section.department-side[data-side=\"spending\"] figure.sides-figure",
+        "section.department-side[data-side=\"spending\"] p#transfers-says",
+        "div.tooltip#tooltip",
+        "template#department-bar > li.department-bar",
+        "template#department-bar .department-row[role=\"button\"]",
+        "template#department-bar .department-name",
+        "template#department-bar .department-track",
+        "template#department-bar .department-value",
+        "template#department-bar .department-detail ul.department-groups",
+        "template#department-bar a.department-to-sides",
+        "template#department-seg > span.department-seg",
+        "template#department-key > li .department-key-name",
+        "template#department-group > li .department-group-name",
+        "template#department-group .department-group-value",
+        "template#department-group .department-group-share",
+        "template#ledger-list > ol.ledger-list",
+        "template#ledger-row > li.bar-row .bar-label",
+        "template#ledger-row .bar-track .bar-fill",
+        "template#ledger-row .bar-value",
+        "template#ledger-row .bar-share"
+      ]
+    },
     "flows.html": {
       "skeleton": "testdata/client/flows.html",
-      "modules": ["app.js", "theme.js"],
+      "modules": [
+        "app.js",
+        "theme.js"
+      ],
       "selectors": [
-        "nav.site-nav button#nav-toggle[aria-controls=\"nav-views\"]",
-        "nav.site-nav ul#nav-views span[aria-current=\"page\"]",
         "nav.site-nav a[data-years]",
         "select#year-select",
         "main",
@@ -58,48 +158,37 @@
         "span#counts-line"
       ]
     },
-    "department.html": {
-      "skeleton": "testdata/client/department.html",
-      "modules": ["department.js", "theme.js"],
+    "index.html": {
+      "skeleton": "testdata/client/index.html",
+      "modules": [
+        "glance.js",
+        "theme.js"
+      ],
       "selectors": [
-        "script#department-config[type=\"application/json\"]",
-        "header.page-head .lede",
         "select#year-select",
-        "details.how-to-read",
-        "main#department-main",
-        "#department-main h2#bars-heading",
-        "ul#department-legend",
-        "ol#department-list",
-        "h3#department-heading",
-        "p#department-tie[data-ties][data-held]",
-        "section.department-side[data-side=\"funding\"] p.sides-total",
-        "section.department-side[data-side=\"funding\"] figure.sides-figure",
-        "section.department-side[data-side=\"spending\"] p.sides-total",
-        "section.department-side[data-side=\"spending\"] figure.sides-figure",
-        "section.department-side[data-side=\"spending\"] p#transfers-says",
-        "div.tooltip#tooltip",
-        "template#department-bar > li.department-bar",
-        "template#department-bar .department-row[role=\"button\"]",
-        "template#department-bar .department-name",
-        "template#department-bar .department-track",
-        "template#department-bar .department-value",
-        "template#department-bar .department-detail ul.department-groups",
-        "template#department-bar a.department-to-sides",
-        "template#department-seg > span.department-seg",
-        "template#department-key > li .department-key-name",
-        "template#department-group > li .department-group-name",
-        "template#department-group .department-group-value",
-        "template#department-group .department-group-share",
-        "template#ledger-list > ol.ledger-list",
-        "template#ledger-row > li.bar-row .bar-label",
-        "template#ledger-row .bar-track .bar-fill",
-        "template#ledger-row .bar-value",
-        "template#ledger-row .bar-share"
+        "nav.site-nav a[data-years]",
+        "section.glance-year[data-year] > h2",
+        "section.glance-year section.glance-bar[data-bar][data-ties] > h3",
+        "section.glance-bar figure.glance-figure[hidden] div.glance-track",
+        "section.glance-bar figure.glance-figure ol.glance-legend",
+        "section.glance-bar figure.glance-figure figcaption.glance-sum",
+        "section.glance-bar .glance-cells table tbody tr[data-group][data-facts] th[scope=\"row\"]",
+        "section.glance-bar table tr[data-group] td[data-cents]",
+        "section.glance-bar table tr[data-group] a[data-page][data-pdf]",
+        "template#glance-segment > span.glance-seg",
+        "template#glance-entry > li .glance-per",
+        "template#glance-entry .glance-name",
+        "template#glance-entry .glance-detail",
+        "div.tooltip#tooltip"
       ]
     },
     "ledger.html": {
       "skeleton": "testdata/client/ledger.html",
-      "modules": ["ledger.js", "sides.js", "theme.js"],
+      "modules": [
+        "ledger.js",
+        "sides.js",
+        "theme.js"
+      ],
       "selectors": [
         "script#sides-config[type=\"application/json\"]",
         "header.page-head .lede span#lede-year",

@@ -1,0 +1,194 @@
+<!doctype html>
+<!-- A planted glance page: the DOM site/glance.js and site/theme.js bind on
+     index.html, held to schema/bindings.json, over tables shaped for the
+     mechanisms site/glance.test.mjs states. No figure is the city's. -->
+<html lang="en">
+<head><meta charset="utf-8"><title>glance</title></head>
+<body>
+<nav class="site-nav" aria-label="Views">
+  <button type="button" id="nav-toggle" aria-expanded="false" aria-controls="nav-views" hidden>Menu <span class="nav-here">Glance</span></button>
+  <ul id="nav-views">
+    <li><span aria-current="page">Glance</span></li>
+    <li><a href="flows.html" data-years="fy2026-adopted fy2027-adopted">Flows</a></li>
+    <li><a href="change.html">Over time</a></li>
+  </ul>
+  <button type="button" id="theme-toggle" hidden>Dark mode</button>
+</nav>
+<template id="lede-more"><button type="button" class="lede-more">More</button></template>
+<div class="year-bar">
+  <label class="year-select">Budget year
+    <select id="year-select" disabled>
+      <option value="fy2026-adopted">FY 2025-26 adopted</option>
+      <option value="fy2027-adopted" selected>FY 2026-27 adopted</option>
+    </select>
+  </label>
+</div>
+<header class="page-head"><div><h1>Glance</h1><p class="lede">Lede.</p></div></header>
+<main>
+<section class="glance-year" data-year="fy2026-adopted">
+  <h2>FY 2025-26 adopted</h2>
+  <section class="glance-bar" data-bar="revenue" data-ties="true">
+    <h3>Where it comes from</h3>
+    <figure class="glance-figure" hidden>
+      <div class="glance-track" role="group"></div>
+      <ol class="glance-legend"></ol>
+      <figcaption class="glance-sum"></figcaption>
+    </figure>
+    <p class="glance-whole"><span class="label">Whole</span>: <strong class="value" data-whole-cents>$190,000.00</strong></p>
+    <div class="table-scroll glance-cells">
+      <table class="series-table glance-table">
+        <thead><tr><th scope="col">Group</th><th scope="col">Other</th><th scope="col" class="num">Amount</th><th scope="col">Page</th></tr></thead>
+        <tbody>
+          <tr data-group="taxes" data-facts="fact-001">
+            <th scope="row">Taxes</th>
+            <td>Property</td>
+            <td class="num" data-cents="5000000">$50,000.00</td>
+            <td class="pages"><a href="https://example.test/budget.pdf#page=66">p66</a> / <a href="extracted/livermore-budget-fy2026-2027/pages/p0066.txt" data-page="66" data-pdf="https://example.test/budget.pdf#page=66">text</a></td>
+          </tr>
+          <tr data-group="taxes" data-facts="fact-002">
+            <th scope="row">Taxes</th>
+            <td>Sales</td>
+            <td class="num" data-cents="2500000">$25,000.00</td>
+            <td class="pages"><a href="https://example.test/budget.pdf#page=67">p67</a> / <a href="extracted/livermore-budget-fy2026-2027/pages/p0067.txt" data-page="67" data-pdf="https://example.test/budget.pdf#page=67">text</a></td>
+          </tr>
+          <tr data-group="charges" data-facts="fact-003">
+            <th scope="row">Charges</th>
+            <td>Fees</td>
+            <td class="num" data-cents="4000000">$40,000.00</td>
+            <td class="pages"><a href="https://example.test/budget.pdf#page=66">p66</a> / <a href="extracted/livermore-budget-fy2026-2027/pages/p0066.txt" data-page="66" data-pdf="https://example.test/budget.pdf#page=66">text</a></td>
+          </tr>
+          <tr data-group="grants" data-facts="fact-004">
+            <th scope="row">Grants</th>
+            <td>State</td>
+            <td class="num" data-cents="3000000">$30,000.00</td>
+            <td class="pages"><a href="https://example.test/budget.pdf#page=66">p66</a> / <a href="extracted/livermore-budget-fy2026-2027/pages/p0066.txt" data-page="66" data-pdf="https://example.test/budget.pdf#page=66">text</a></td>
+          </tr>
+          <tr data-group="fines" data-facts="fact-005">
+            <th scope="row">Fines</th>
+            <td>Court</td>
+            <td class="num" data-cents="2000000">$20,000.00</td>
+            <td class="pages"><a href="https://example.test/budget.pdf#page=67">p67</a> / <a href="extracted/livermore-budget-fy2026-2027/pages/p0067.txt" data-page="67" data-pdf="https://example.test/budget.pdf#page=67">text</a></td>
+          </tr>
+          <tr data-group="rents" data-facts="fact-006">
+            <th scope="row">Rents</th>
+            <td>Leases</td>
+            <td class="num" data-cents="1500000">$15,000.00</td>
+            <td class="pages"><a href="https://example.test/budget.pdf#page=67">p67</a> / <a href="extracted/livermore-budget-fy2026-2027/pages/p0067.txt" data-page="67" data-pdf="https://example.test/budget.pdf#page=67">text</a></td>
+          </tr>
+          <tr data-group="interest" data-facts="fact-007">
+            <th scope="row">Interest</th>
+            <td>Pooled</td>
+            <td class="num" data-cents="600000">$6,000.00</td>
+            <td class="pages"><a href="https://example.test/budget.pdf#page=66">p66</a> / <a href="extracted/livermore-budget-fy2026-2027/pages/p0066.txt" data-page="66" data-pdf="https://example.test/budget.pdf#page=66">text</a></td>
+          </tr>
+          <tr data-group="other" data-facts="fact-008 fact-009">
+            <th scope="row">Other</th>
+            <td>Misc</td>
+            <td class="num" data-cents="400000">$4,000.00</td>
+            <td class="pages"><a href="https://example.test/budget.pdf#page=67">p67</a> / <a href="extracted/livermore-budget-fy2026-2027/pages/p0067.txt" data-page="67" data-pdf="https://example.test/budget.pdf#page=67">text</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+  <section class="glance-bar" data-bar="spending" data-ties="true">
+    <h3>What it buys</h3>
+    <figure class="glance-figure" hidden>
+      <div class="glance-track" role="group"></div>
+      <ol class="glance-legend"></ol>
+      <figcaption class="glance-sum"></figcaption>
+    </figure>
+    <p class="glance-whole"><span class="label">Whole</span>: <strong class="value" data-whole-cents>$120,000.00</strong></p>
+    <div class="table-scroll glance-cells">
+      <table class="series-table glance-table">
+        <thead><tr><th scope="col">Group</th><th scope="col">Other</th><th scope="col" class="num">Amount</th><th scope="col">Page</th></tr></thead>
+        <tbody>
+          <tr data-group="police" data-facts="fact-010">
+            <th scope="row">Police</th>
+            <td>Salaries</td>
+            <td class="num" data-cents="6000000">$60,000.00</td>
+            <td class="pages"><a href="https://example.test/budget.pdf#page=66">p66</a> / <a href="extracted/livermore-budget-fy2026-2027/pages/p0066.txt" data-page="66" data-pdf="https://example.test/budget.pdf#page=66">text</a></td>
+          </tr>
+          <tr data-group="fire" data-facts="fact-011">
+            <th scope="row">Fire</th>
+            <td>Salaries</td>
+            <td class="num" data-cents="5000000">$50,000.00</td>
+            <td class="pages"><a href="https://example.test/budget.pdf#page=66">p66</a> / <a href="extracted/livermore-budget-fy2026-2027/pages/p0066.txt" data-page="66" data-pdf="https://example.test/budget.pdf#page=66">text</a></td>
+          </tr>
+          <tr data-group="parks" data-facts="fact-012">
+            <th scope="row">Parks</th>
+            <td>Supplies</td>
+            <td class="num" data-cents="1000000">$10,000.00</td>
+            <td class="pages"><a href="https://example.test/budget.pdf#page=67">p67</a> / <a href="extracted/livermore-budget-fy2026-2027/pages/p0067.txt" data-page="67" data-pdf="https://example.test/budget.pdf#page=67">text</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+  <section class="glance-bar" data-bar="departments" data-ties="false">
+    <h3>Who spends it</h3>
+    <figure class="glance-figure" hidden>
+      <div class="glance-track" role="group"></div>
+      <ol class="glance-legend"></ol>
+      <figcaption class="glance-sum"></figcaption>
+    </figure>
+    <p class="glance-whole"><span class="label">Whole</span>: <strong class="value" data-whole-cents>$41,000.00</strong></p>
+    <p class="glance-apart">The printed figures sum to <strong>$1,000.00</strong> less than that figure. Declared.</p>
+    <div class="table-scroll glance-cells">
+      <table class="series-table glance-table">
+        <thead><tr><th scope="col">Group</th><th scope="col">Other</th><th scope="col" class="num">Amount</th><th scope="col">Page</th></tr></thead>
+        <tbody>
+          <tr data-group="works" data-facts="fact-013">
+            <th scope="row">Works</th>
+            <td>All</td>
+            <td class="num" data-cents="3000000">$30,000.00</td>
+            <td class="pages"><a href="https://example.test/budget.pdf#page=85">p85</a> / <a href="extracted/livermore-budget-fy2026-2027/pages/p0085.txt" data-page="85" data-pdf="https://example.test/budget.pdf#page=85">text</a></td>
+          </tr>
+          <tr data-group="library" data-facts="fact-014">
+            <th scope="row">Library</th>
+            <td>All</td>
+            <td class="num" data-cents="1000000">$10,000.00</td>
+            <td class="pages"><a href="https://example.test/budget.pdf#page=86">p86</a> / <a href="extracted/livermore-budget-fy2026-2027/pages/p0086.txt" data-page="86" data-pdf="https://example.test/budget.pdf#page=86">text</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</section>
+<section class="glance-year" data-year="fy2027-adopted">
+  <h2>FY 2026-27 adopted</h2>
+  <section class="glance-bar" data-bar="revenue" data-ties="true">
+    <h3>Where it comes from</h3>
+    <figure class="glance-figure" hidden>
+      <div class="glance-track" role="group"></div>
+      <ol class="glance-legend"></ol>
+      <figcaption class="glance-sum"></figcaption>
+    </figure>
+    <p class="glance-whole"><span class="label">Whole</span>: <strong class="value" data-whole-cents>$93,000.00</strong></p>
+    <div class="table-scroll glance-cells">
+      <table class="series-table glance-table">
+        <thead><tr><th scope="col">Group</th><th scope="col">Other</th><th scope="col" class="num">Amount</th><th scope="col">Page</th></tr></thead>
+        <tbody>
+          <tr data-group="taxes" data-facts="fact-015">
+            <th scope="row">Taxes</th>
+            <td>Property</td>
+            <td class="num" data-cents="5200000">$52,000.00</td>
+            <td class="pages"><a href="https://example.test/budget.pdf#page=66">p66</a> / <a href="extracted/livermore-budget-fy2026-2027/pages/p0066.txt" data-page="66" data-pdf="https://example.test/budget.pdf#page=66">text</a></td>
+          </tr>
+          <tr data-group="charges" data-facts="fact-016">
+            <th scope="row">Charges</th>
+            <td>Fees</td>
+            <td class="num" data-cents="4100000">$41,000.00</td>
+            <td class="pages"><a href="https://example.test/budget.pdf#page=67">p67</a> / <a href="extracted/livermore-budget-fy2026-2027/pages/p0067.txt" data-page="67" data-pdf="https://example.test/budget.pdf#page=67">text</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</section>
+<template id="glance-segment"><span class="glance-seg"></span></template>
+<template id="glance-entry"><li><span class="glance-swatch" aria-hidden="true"></span><b class="glance-per"></b> <span class="glance-name"></span> <span class="subtle glance-detail"></span></li></template>
+<div class="tooltip" id="tooltip" role="status" aria-live="polite" hidden></div>
+</main>
+</body>
+</html>

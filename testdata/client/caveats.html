@@ -1,0 +1,39 @@
+<!doctype html>
+<!-- A planted caveats page: the DOM site/theme.js's wireTargets binds on
+     caveats.html, held to schema/bindings.json. One caveat is stated in two
+     sections, each copy with its own anchor; no prose is the site's. -->
+<html lang="en">
+<head><meta charset="utf-8"><title>caveats</title></head>
+<body>
+<nav class="site-nav" aria-label="Views">
+  <button type="button" id="nav-toggle" aria-expanded="false" aria-controls="nav-views" hidden>Menu <span class="nav-here">Caveats</span></button>
+  <ul id="nav-views"><li><span aria-current="page">Caveats</span></li></ul>
+  <button type="button" id="theme-toggle" hidden>Dark mode</button>
+</nav>
+<template id="lede-more"><button type="button" class="lede-more">More</button></template>
+<header class="page-head"><div><h1>Caveats</h1><p class="lede">Lede.</p></div></header>
+<main>
+<h2 id="caveats-on-index">On the glance page</h2>
+<div class="caveat-group">
+  <details class="caveat" id="caveat-transfer-legs-unpaired">
+    <summary>Transfers need not match.</summary>
+    <p>First statement.</p>
+    <p class="caveat-link"><a href="#caveat-transfer-legs-unpaired">Link to this caveat</a></p>
+  </details>
+  <details class="caveat" id="caveat-a-second">
+    <summary>A second caveat.</summary>
+    <p>Its body.</p>
+    <p class="caveat-link"><a href="#caveat-a-second">Link to this caveat</a></p>
+  </details>
+</div>
+<h2 id="caveats-on-flows">On the flows page</h2>
+<div class="caveat-group">
+  <details class="caveat" id="caveats-on-flows--caveat-transfer-legs-unpaired">
+    <summary>Transfers need not match.</summary>
+    <p>Stated again.</p>
+    <p class="caveat-link"><a href="#caveat-transfer-legs-unpaired">Link to this caveat</a></p>
+  </details>
+</div>
+</main>
+</body>
+</html>

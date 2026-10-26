@@ -1,19 +1,18 @@
-// What site/theme.js does for the top bar of every page Go pins under
-// testdata/: one toggle, in the nav, that switches the page, stores the
-// choice and says what it will do.
+// What site/theme.js does for the top bar, over the skeletons under
+// testdata/client/: a toggle in the nav that switches the page, stores the
+// choice and says what it will do. That every page Go writes carries the top
+// bar it binds is schema/bindings.json's chrome, held in Go.
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const MODULE = pathToFileURL(path.join(HERE, "theme.js")).href;
-const TESTDATA = path.join(HERE, "..", "testdata");
-const PAGES = [
-  ...readdirSync(TESTDATA).filter((f) => f.endsWith(".golden.html")),
-  ...readdirSync(path.join(TESTDATA, "client")).filter((f) => f.endsWith(".html")).map((f) => "client/" + f),
-].sort();
+const TESTDATA = path.join(HERE, "..", "testdata", "client");
+/** The skeleton the top bar's tests boot. */
+const PAGE = "index.html";
 
 test("theme.js imports with no DOM and runs nothing", async () => {
   assert.equal(typeof globalThis.document, "undefined", "nothing installed a DOM before the import");
@@ -21,7 +20,7 @@ test("theme.js imports with no DOM and runs nothing", async () => {
   assert.deepEqual(Object.keys(mod).sort(), ["THEME_EVENT", "THEME_KEY", "boot", "prefersDark", "syncTheme", "wireHowTo", "wireLede", "wireMenu", "wireTargets"]);
 });
 
-/** One pinned page in a browser, theme.js booted against it as its top bar does. */
+/** One skeleton in a browser, theme.js booted against it as its top bar does. */
 async function booted(page, o = {}) {
   const { installBrowser } = await import("./testlib.mjs");
   const browser = installBrowser({ html: readFileSync(path.join(TESTDATA, page), "utf8"), osDark: o.osDark });
@@ -43,40 +42,32 @@ async function booted(page, o = {}) {
 const read = (button) =>
   `${button.textContent} / aria-pressed=${button.getAttribute("aria-pressed")} / hidden=${button.hidden}`;
 
-describe("the theme toggle in every pinned page's top bar", () => {
-  test("the pins are every page Go pins", (t) => {
-    t.diagnostic(`pinned pages: ${PAGES.join(", ")}`);
-    // Anti-vacuity: a glob that matched nothing would pass every test below.
-    assert.ok(PAGES.length > 1 && PAGES.includes("index.golden.html"), PAGES.join(", "));
+describe("the theme toggle in the top bar", () => {
+  test("one toggle, in the nav, that switches the page and stores the choice", async (t) => {
+    const { document, window, events } = await booted(PAGE);
+    const toggles = document.querySelectorAll("#theme-toggle");
+    assert.equal(toggles.length, 1, `${toggles.length} theme toggles`);
+    const button = /** @type {HTMLButtonElement} */ (toggles[0]);
+    assert.ok(button.closest("nav.site-nav") !== null, "the theme toggle is outside nav.site-nav");
+    const before = read(button);
+    button.click();
+    const theme = document.documentElement.dataset.theme || "";
+    const stored = window.localStorage.getItem("fisc-theme");
+    const after = read(button);
+    button.click();
+    const back = document.documentElement.dataset.theme || "";
+    t.diagnostic(`"${before}" -> "${after}"; data-theme "${theme}" then "${back}", stored "${stored}", events ${JSON.stringify(events)}`);
+    assert.equal(before, "Dark mode / aria-pressed=null / hidden=false");
+    assert.equal(theme, "dark");
+    assert.equal(stored, "dark");
+    assert.equal(after, "Light mode / aria-pressed=null / hidden=false");
+    assert.equal(back, "light");
+    assert.equal(window.localStorage.getItem("fisc-theme"), "light");
+    assert.deepEqual(events, [true, false]);
   });
 
-  for (const page of PAGES) {
-    test(`${page}: one toggle, in the nav, that switches the page and stores the choice`, async (t) => {
-      const { document, window, events } = await booted(page);
-      const toggles = document.querySelectorAll("#theme-toggle");
-      assert.equal(toggles.length, 1, `${page} carries ${toggles.length} theme toggles`);
-      const button = /** @type {HTMLButtonElement} */ (toggles[0]);
-      assert.ok(button.closest("nav.site-nav") !== null, `${page}'s theme toggle is outside nav.site-nav`);
-      const before = read(button);
-      button.click();
-      const theme = document.documentElement.dataset.theme || "";
-      const stored = window.localStorage.getItem("fisc-theme");
-      const after = read(button);
-      button.click();
-      const back = document.documentElement.dataset.theme || "";
-      t.diagnostic(`${page}: "${before}" -> "${after}"; data-theme "${theme}" then "${back}", stored "${stored}", events ${JSON.stringify(events)}`);
-      assert.equal(before, "Dark mode / aria-pressed=null / hidden=false");
-      assert.equal(theme, "dark");
-      assert.equal(stored, "dark");
-      assert.equal(after, "Light mode / aria-pressed=null / hidden=false");
-      assert.equal(back, "light");
-      assert.equal(window.localStorage.getItem("fisc-theme"), "light");
-      assert.deepEqual(events, [true, false]);
-    });
-  }
-
   test("an OS that prefers dark opens the toggle on Light mode, and a click stores light", async (t) => {
-    const { document, window } = await booted("client/flows.html", { osDark: true });
+    const { document, window } = await booted(PAGE, { osDark: true });
     const button = /** @type {HTMLButtonElement} */ (document.getElementById("theme-toggle"));
     const before = read(button);
     button.click();
@@ -87,7 +78,7 @@ describe("the theme toggle in every pinned page's top bar", () => {
   });
 
   test("the toggle follows an OS switch while nothing is stored", async () => {
-    const { document, media } = await booted("index.golden.html");
+    const { document, media } = await booted(PAGE);
     const button = /** @type {HTMLButtonElement} */ (document.getElementById("theme-toggle"));
     media.setOSDark(true);
     assert.equal(read(button), "Light mode / aria-pressed=null / hidden=false");
@@ -97,7 +88,7 @@ describe("the theme toggle in every pinned page's top bar", () => {
   // and boot throws: the toggle stays hidden and follows no OS switch.
   test("a MediaQueryList with only addListener still shows a working toggle that follows the OS", async (t) => {
     const { installBrowser } = await import("./testlib.mjs");
-    const { window, document, media } = installBrowser({ html: readFileSync(path.join(TESTDATA, "index.golden.html"), "utf8") });
+    const { window, document, media } = installBrowser({ html: readFileSync(path.join(TESTDATA, PAGE), "utf8") });
     const modern = window.matchMedia;
     window.matchMedia = (q) => {
       const m = modern(q);
@@ -122,41 +113,30 @@ describe("the theme toggle in every pinned page's top bar", () => {
     });
   });
 
-  test("the toggle ships hidden, for a page with JavaScript off", () => {
-    for (const page of PAGES) {
-      const html = readFileSync(path.join(TESTDATA, page), "utf8");
-      assert.ok(html.includes('<button type="button" id="theme-toggle" hidden>'),
-        `${page} ships a theme toggle that is not hidden`);
-    }
-  });
 });
 
-// On every pinned page the view list folds behind a menu button naming the
-// page on: shipped hidden with the list whole (no script, no fold), shown and
-// closed once booted, opened by a click, and closed again by Escape with the
-// focus back on the button. Mutation: drop wireMenu's data-menu and the
+// The view list folds behind a menu button naming the page on: shipped
+// hidden with the list whole (no script, no fold; the chrome's binding), shown
+// and closed once booted, opened by a click, and closed again by Escape with
+// the focus back on the button. Mutation: drop wireMenu's data-menu and the
 // stylesheet folds nothing; drop its Escape arm and the last arm goes red.
-describe("the narrow-screen menu in every pinned page's top bar", () => {
-  for (const page of PAGES) {
-    test(page, async () => {
-      const shipped = readFileSync(path.join(TESTDATA, page), "utf8");
-      assert.match(shipped, /<button type="button" id="nav-toggle" aria-expanded="false" aria-controls="nav-views" hidden>/);
-      const { document, window } = await booted(page);
-      const nav = document.querySelector("nav.site-nav");
-      const button = document.getElementById("nav-toggle");
-      const current = document.querySelector('#nav-views [aria-current="page"]');
-      assert.ok(current !== null, "no view is marked current");
-      assert.equal(button.querySelector(".nav-here").textContent, current.textContent);
-      const state = () => `${nav.hasAttribute("data-menu")}/${nav.hasAttribute("data-open")}/${button.getAttribute("aria-expanded")}/${button.hidden}`;
-      assert.equal(state(), "true/false/false/false");
-      button.click();
-      assert.equal(state(), "true/true/true/false");
-      document.querySelector("#nav-views a").focus();
-      nav.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-      assert.equal(state(), "true/false/false/false");
-      assert.equal(document.activeElement, button);
-    });
-  }
+describe("the narrow-screen menu in the top bar", () => {
+  test("shown and closed once booted, opened by a click, closed by Escape", async () => {
+    const { document, window } = await booted(PAGE);
+    const nav = document.querySelector("nav.site-nav");
+    const button = document.getElementById("nav-toggle");
+    const current = document.querySelector('#nav-views [aria-current="page"]');
+    assert.ok(current !== null, "no view is marked current");
+    assert.equal(button.querySelector(".nav-here").textContent, current.textContent);
+    const state = () => `${nav.hasAttribute("data-menu")}/${nav.hasAttribute("data-open")}/${button.getAttribute("aria-expanded")}/${button.hidden}`;
+    assert.equal(state(), "true/false/false/false");
+    button.click();
+    assert.equal(state(), "true/true/true/false");
+    document.querySelector("#nav-views a").focus();
+    nav.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    assert.equal(state(), "true/false/false/false");
+    assert.equal(document.activeElement, button);
+  });
 });
 
 // How-to-read prose folds on a narrow screen and opens on a wide one,
@@ -166,7 +146,7 @@ describe("the narrow-screen menu in every pinned page's top bar", () => {
 test("wireHowTo folds the how-to-read prose on a narrow screen and opens it on a wide one", async () => {
   const { JSDOM } = await import("jsdom");
   const mod = await import(MODULE);
-  const html = readFileSync(path.join(TESTDATA, "client", "ledger.html"), "utf8");
+  const html = readFileSync(path.join(TESTDATA, "ledger.html"), "utf8");
   const { window } = new JSDOM(html);
   const listeners = [];
   const mq = { matches: true, addEventListener: (_, f) => listeners.push(f) };
@@ -182,7 +162,7 @@ test("wireHowTo folds the how-to-read prose on a narrow screen and opens it on a
 
 // A fragment naming a folded caveat opens it, at load, on a later fragment
 // change and on a click of a link to the fragment already in the URL, over
-// the pinned caveats page: the canonical anchor on the <details> itself, a
+// the planted caveats page: the canonical anchor on the <details> itself, a
 // section's own anchor for a caveat another section states first, and a
 // target inside a folded one. One already open is not re-scrolled.
 // Mutation: open only the element the fragment names and not the <details>
@@ -193,7 +173,7 @@ test("wireHowTo folds the how-to-read prose on a narrow screen and opens it on a
 test("wireTargets opens the folded caveat a fragment names", async () => {
   const { JSDOM } = await import("jsdom");
   const mod = await import(MODULE);
-  const html = readFileSync(path.join(TESTDATA, "caveats.golden.html"), "utf8");
+  const html = readFileSync(path.join(TESTDATA, "caveats.html"), "utf8");
   const { window } = new JSDOM(html, { url: "https://example.test/caveats.html#caveat-transfer-legs-unpaired" });
   const doc = window.document;
   let scrolled = 0;
@@ -241,7 +221,7 @@ test("wireTargets opens the folded caveat a fragment names", async () => {
 test("wireLede offers More only where the lede is cut, and a press shows it whole", async () => {
   const { JSDOM } = await import("jsdom");
   const mod = await import(MODULE);
-  const html = readFileSync(path.join(TESTDATA, "client", "ledger.html"), "utf8");
+  const html = readFileSync(path.join(TESTDATA, "ledger.html"), "utf8");
   for (const [scroll, client, want] of [[120, 72, true], [72, 72, false]]) {
     const { window } = new JSDOM(html);
     const lede = window.document.querySelector(".page-head .lede");
@@ -266,7 +246,7 @@ test("wireLede offers More only where the lede is cut, and a press shows it whol
 test("wireLede measures the lede again when its words are repainted", async () => {
   const { JSDOM } = await import("jsdom");
   const mod = await import(MODULE);
-  const { window } = new JSDOM(readFileSync(path.join(TESTDATA, "client", "ledger.html"), "utf8"));
+  const { window } = new JSDOM(readFileSync(path.join(TESTDATA, "ledger.html"), "utf8"));
   const lede = window.document.querySelector(".page-head .lede");
   let scroll = 72;
   Object.defineProperty(lede, "scrollHeight", { get: () => scroll });

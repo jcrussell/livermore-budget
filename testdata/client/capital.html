@@ -1,0 +1,93 @@
+<!doctype html>
+<!-- A planted capital page: the DOM site/capital.js and site/theme.js bind
+     on capital.html, held to schema/bindings.json, over rows shaped for the
+     mechanisms site/capital.test.mjs states. No figure is the city's. -->
+<html lang="en">
+<head><meta charset="utf-8"><title>capital</title></head>
+<body>
+<nav class="site-nav" aria-label="Views">
+  <button type="button" id="nav-toggle" aria-expanded="false" aria-controls="nav-views" hidden>Menu <span class="nav-here">Capital projects</span></button>
+  <ul id="nav-views">
+    <li><a href="flows.html" data-years="fy2026-adopted fy2027-adopted">Flows</a></li>
+    <li><a href="change.html">Over time</a></li>
+    <li><span aria-current="page">Capital projects</span></li>
+  </ul>
+  <button type="button" id="theme-toggle" hidden>Dark mode</button>
+</nav>
+<template id="lede-more"><button type="button" class="lede-more">More</button></template>
+<div class="year-bar">
+  <label class="year-select">Budget year
+    <select id="year-select" disabled>
+      <option value="" selected>Every year</option>
+      <option value="fy2026-adopted">FY 2025-26 adopted</option>
+      <option value="fy2027-adopted">FY 2026-27 adopted</option>
+      <option value="fy2028-projected">FY 2027-28 projected</option>
+    </select>
+  </label>
+</div>
+<header class="page-head"><div><h1>Capital</h1><p class="lede">Lede.</p></div></header>
+<main>
+<form class="capital-filters" id="capital-filters" hidden>
+  <label>Fund
+    <select id="capital-fund">
+      <option value="">Every fund</option>
+      <option value="305">Streets</option>
+      <option value="310">Parks</option>
+      <option value="410">Water</option>
+    </select>
+  </label>
+  <label>Project <input type="search" id="capital-search" autocomplete="off"></label>
+  <p class="capital-shown" id="capital-shown" role="status"></p>
+</form>
+<table class="series-table capital-table" id="capital-table">
+  <thead>
+    <tr>
+      <th scope="col">Fund</th>
+      <th scope="col">Project</th>
+      <th scope="col" class="num" data-column="0" data-year="fy2026-adopted">FY 2025-26<span class="basis">adopted</span></th>
+      <th scope="col" class="num" data-column="1" data-year="fy2027-adopted">FY 2026-27<span class="basis">adopted</span></th>
+      <th scope="col" class="num" data-column="2" data-year="fy2028-projected">FY 2027-28<span class="basis">projected</span></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr data-fund="305">
+      <td>Streets</td>
+      <th scope="row">Street Resurfacing</th>
+      <td class="num" data-column="0" data-cents="120000"><a href="extracted/livermore-budget-fy2026-2027/pages/p0225.txt">120000</a></td>
+      <td class="num" data-column="1" data-cents="130000"><a href="extracted/livermore-budget-fy2026-2027/pages/p0225.txt">130000</a></td>
+      <td class="num" data-column="2" data-cents="140000"><a href="extracted/livermore-budget-fy2026-2027/pages/p0225.txt">140000</a></td>
+    </tr>
+    <tr data-fund="305">
+      <td>Streets</td>
+      <th scope="row">Bridge Repair</th>
+      <td class="num" data-column="0" data-cents="50000"><a href="extracted/livermore-budget-fy2026-2027/pages/p0225.txt">50000</a></td>
+      <td class="num" data-column="1" data-cents="0"><a href="extracted/livermore-budget-fy2026-2027/pages/p0225.txt">0</a></td>
+      <td class="num" data-column="2" data-cents="60000"><a href="extracted/livermore-budget-fy2026-2027/pages/p0225.txt">60000</a></td>
+    </tr>
+    <tr data-fund="310">
+      <td>Parks</td>
+      <th scope="row">Park Street Resurfacing Study</th>
+      <td class="num" data-column="0" data-cents="10000"><a href="extracted/livermore-budget-fy2026-2027/pages/p0225.txt">10000</a></td>
+      <td class="num" data-column="1" data-cents="20000"><a href="extracted/livermore-budget-fy2026-2027/pages/p0225.txt">20000</a></td>
+      <td class="num" data-column="2" data-cents="30000"><a href="extracted/livermore-budget-fy2026-2027/pages/p0225.txt">30000</a></td>
+    </tr>
+    <tr data-fund="410">
+      <td>Water</td>
+      <th scope="row">Main Replacement</th>
+      <td class="num" data-column="0" data-cents="200000"><a href="extracted/livermore-budget-fy2026-2027/pages/p0225.txt">200000</a></td>
+      <td class="num" data-column="1" data-cents="210000"><a href="extracted/livermore-budget-fy2026-2027/pages/p0225.txt">210000</a></td>
+      <td class="num missing" data-column="2"><span title="Not printed">-</span></td>
+    </tr>
+  </tbody>
+  <tfoot hidden>
+    <tr class="capital-sum">
+      <th scope="row" colspan="2">◇ Our sum</th>
+      <td class="num" data-column="0"></td>
+      <td class="num" data-column="1"></td>
+      <td class="num" data-column="2"></td>
+    </tr>
+  </tfoot>
+</table>
+</main>
+</body>
+</html>

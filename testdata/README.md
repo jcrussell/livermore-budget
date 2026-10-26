@@ -88,21 +88,16 @@ in points, y increasing downward.
 
 ## Projections
 
-A pinned page is named after the path `fisc export` writes it at:
-`<page>.golden.html` is the page at `<page>.html`, so `index.golden.html` is
-the glance page. Under `client/`, `<page>.html` is the skeleton of the page at
-`<page>.html` and `<page>.config.json` its config.
+Under `client/`, `<page>.html` is the skeleton of the page `fisc export`
+writes at `<page>.html`, and `<page>.config.json` its config.
 
 | Fixture | Source | Why |
 |---|---|---|
 | `sankey.golden.json` | Budget Book pp. 66–67, FY2026 | The hand-derived worked example of the spine document ([`docs/outputs/sankey.md`](../docs/outputs/sankey.md)), which `TestSankeyReproducesGoldenFile` requires Go to reproduce byte for byte; regenerate it only with a rule cheap enough to check its diff by eye. |
 | `fund-flows.golden.json` | Budget Book pp. 127–140 + 167–170, FY2026 | **A capture of Go's output**, not a derivation, held line for line to what `buildProjections` builds by `TestTheFundFlowsFixtureIsTheDocumentTheSiteDraws`; check a recapture by re-deriving every link's locators and `value_cents` from `facts/facts.jsonl`. |
-| `index.golden.html` | Budget Book pp. 66–67 and pp. 85–125, both published years, over the client subset | The glance page over `clientSubset`, held to Go's bytes by `TestTheGlanceFixtureIsWhatGoWrites`. |
 | `client/{flows,department,ledger}.html` | None: hand-written | The DOM each page's modules bind and no prose, held to `schema/bindings.json` by `site/bindings.test.mjs`; Go holds every page it writes to the same file by `TestEveryPageCarriesTheDOMItsModulesBind`. |
+| `client/{index,change,capital,caveats}.html` | None: planted | The same, the page's data its tables: rows shaped for the mechanism each client test states (a tail to fold, a tie and a declared residual, a kind negative in one column, an absent cell, a caveat stated in two sections). No figure is the city's; that each bar's rows reach the whole Go prints is refused at the write, and the audited excess is held by `TestTheAuditedRevenueRowsLessTheSpendingRowsAreThePrintedExcess`. |
 | `client/{flows,department,ledger}.config.json` | The page configs, over the client subset | `window.FISC_CONFIG` and the department and sides configs, held decoded to what Go writes, and to their schemas, by `TestTheClientFixturesHoldWhatTheClientReads`, `TestTheDepartmentFixtureHoldsWhatTheClientReads` and `TestTheSidesFixtureIsWhatGoWrites`. |
 | `fy2026-adopted.column.json` | Budget Book pp. 66–67, 76, 85–125, 127–140, 167–170, FY2026, over the client subset | The column document the page fetches, over `clientSubset` (every fund group with a non-zero figure kept whole, `TestTheClientSubsetDrawsEveryGroupWhole`), held by `TestTheClientFixturesHoldWhatTheClientReads` and broken once per fault by `TestTheClientFixtureChecksCanFail`. |
 | `fy2027-adopted.column.json` | The same pages, FY2027 | The second column, which differs in shape — `fund/207`, capital-outlay's divisions and the declared 250,000 gap — so a year joined to the wrong document is visible. |
 | `fy2024-actual.column.json` | Budget Book pp. 85–125 and the other schedules of FY2024's actual column, over the client subset | The one column printing a Transfers Out row in pp.85-125's upper block and five departments held apart by a declared exception. |
-| `capital.golden.html` | Budget Book pp. 225–235, over the client subset | The capital page, held to Go's bytes by `TestTheCapitalFixtureIsWhatGoWrites`. |
-| `change.golden.html` | ACFR p168 and Budget Book pp. 127–140, over the client subset | The Over time page, held to Go's bytes by `TestTheChangeFixtureIsWhatGoWrites`. |
-| `caveats.golden.html` | Every caveat over the client subset | The caveats page, whose fragments `site/theme.test.mjs` opens, held to Go's bytes by `TestTheCaveatsFixtureIsWhatGoWrites`. |
