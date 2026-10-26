@@ -137,8 +137,10 @@ type Options struct {
 	// (ResolveOutputDir) before getting here.
 	Dir string
 
-	// Projections maps a filename stem to a projection's JSON document, which
-	// is written verbatim to data/<stem>.json. Must contain PrimaryProjection.
+	// Projections maps a filename stem to a projection's JSON document. One
+	// stating a column is written into that column's file, any other verbatim
+	// to data/<stem>.json; [ColumnIndex.PublishedPath] says which. Must contain
+	// PrimaryProjection.
 	Projections map[string][]byte
 
 	// Views are the site's pages, in nav order, the view the site opens on
