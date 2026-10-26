@@ -19,29 +19,19 @@ import (
 var departmentFixtureColumns = []string{"fy2024-actual"}
 
 // TestTheDepartmentFixtureHoldsWhatTheClientReads pins
-// testdata/department.golden.html and testdata/fy2024-actual.column.json to what
-// Go writes over the client subset, build stamps aside.
+// testdata/client/department.config.json and testdata/fy2024-actual.column.json
+// to what Go writes over the client subset, build stamps aside.
 func TestTheDepartmentFixtureHoldsWhatTheClientReads(t *testing.T) {
 	dir := clientExport(t)
 	root := repoRootForTest(t)
-	files := map[string]string{"department.html": "department.golden.html"}
+	holdConfig(t, dir, "department.html", departmentConfig)
+	files := map[string]string{}
 	for _, stem := range departmentFixtureColumns {
 		files[stem+".json"] = stem + ".column.json"
 	}
 	leaveCopies(t, dir, files)
-	fixture, err := os.ReadFile(filepath.Join(root, "testdata", "department.golden.html")) // #nosec G304 -- testdata/.
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, f := range departmentConfig.faults([]byte(readFile(t, dir, "department.html")), fixture) {
-		t.Error(f)
-	}
-	_, fBody, err := departmentConfig.split(fixture)
-	if err != nil {
-		t.Fatal("the fixture " + err.Error())
-	}
 	var fCfg map[string]any
-	if err := json.Unmarshal(fBody, &fCfg); err != nil {
+	if err := json.Unmarshal(departmentConfig.read(t), &fCfg); err != nil {
 		t.Fatalf("the fixture's config does not decode: %v", err)
 	}
 	var paths []string

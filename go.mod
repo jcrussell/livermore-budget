@@ -12,6 +12,7 @@ require (
 	github.com/google/jsonschema-go v0.4.3
 	github.com/spf13/cobra v1.10.2
 	go.yaml.in/yaml/v3 v3.0.5
+	golang.org/x/net v0.58.0
 )
 
 require (

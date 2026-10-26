@@ -1,0 +1,113 @@
+<!doctype html>
+<!-- The DOM site/app.js and site/theme.js bind on flows.html, held to
+     schema/bindings.json; no prose. testlib hands app.js its config. -->
+<html lang="en">
+<head><meta charset="utf-8"><title>flows</title></head>
+<body>
+<nav class="site-nav" aria-label="Views">
+  <button type="button" id="nav-toggle" aria-expanded="false" aria-controls="nav-views" hidden>Menu <span class="nav-here">Flows</span></button>
+  <ul id="nav-views">
+    <li><a href="index.html" data-years="fy2026-adopted fy2027-adopted">At a glance</a></li>
+    <li><span aria-current="page">Flows</span></li>
+    <li><a href="ledger.html" data-years="fy2026-adopted fy2027-adopted">Bars</a></li>
+    <li><a href="change.html">Over time</a></li>
+    <li><a href="balances.html">Fund balances</a></li>
+    <li><a href="department.html" data-years="fy2024-actual fy2025-revised fy2026-adopted fy2027-adopted">Departments</a></li>
+    <li><a href="capital.html" data-years="fy2026-adopted fy2027-adopted fy2028-projected fy2029-projected fy2030-projected">Capital projects</a></li>
+    <li><a href="debt.html">Debt</a></li>
+    <li><a href="caveats.html">Caveats</a></li>
+    <li><a href="provenance.html">Sources and data</a></li>
+  </ul>
+  <button type="button" id="theme-toggle" hidden>Dark mode</button>
+</nav>
+<template id="lede-more"><button type="button" class="lede-more">More</button></template>
+<div class="year-bar">
+  <label class="year-select">Budget year
+    <select id="year-select" disabled>
+      <option value="fy2026-adopted">FY 2025-26 adopted</option>
+      <option value="fy2027-adopted" selected>FY 2026-27 adopted</option>
+    </select>
+  </label>
+</div>
+<header class="page-head chart-head"><h1>Flows</h1></header>
+<main>
+<div class="card" id="chart-card" role="region" aria-label="The flow">
+  <div class="chart-toolbar" id="chart-toolbar">
+    <div class="search" id="search" hidden>
+      <label for="search-input" id="search-label">Find</label>
+      <input type="text" id="search-input" role="combobox" aria-autocomplete="list"
+             aria-expanded="false" aria-controls="search-list" autocomplete="off" spellcheck="false">
+      <ul class="search-list" id="search-list" role="listbox" aria-labelledby="search-label" hidden></ul>
+      <span id="search-status" role="status"></span>
+    </div>
+    <div class="chart-tools" id="chart-tools">
+      <button type="button" id="chart-expand-all" disabled hidden></button>
+      <button type="button" id="chart-collapse-all" disabled hidden></button>
+      <button type="button" id="chart-zoom-reset" disabled hidden></button>
+      <button type="button" id="chart-fullscreen" hidden></button>
+    </div>
+  </div>
+  <p class="filter-line" id="filter-line" aria-live="polite" hidden>
+    <span id="filter-said"></span>
+    <button type="button" id="filter-reset">Reset</button>
+  </p>
+  <div class="chart-body" id="chart-body">
+  <div class="rail" id="rail">
+    <button type="button" class="rail-toggle" id="rail-toggle" aria-controls="rail-content" aria-expanded="true" hidden></button>
+    <div class="rail-content" id="rail-content">
+    <span class="legend-head" id="legend-head" hidden></span>
+    <div class="legend" id="legend" aria-labelledby="legend-head"></div>
+    <details class="filters" id="filters" hidden>
+      <summary>Show and hide</summary>
+      <fieldset class="filter-set">
+        <div class="filter-bulk">
+          <button type="button" id="filter-all" aria-label="Show every fund group">All</button>
+          <button type="button" id="filter-none" aria-label="Hide every fund group">None</button>
+        </div>
+        <div class="filter-list" id="filter-group-list"></div>
+      </fieldset>
+      <fieldset class="filter-set">
+        <div class="filter-list" id="filter-kind-list"></div>
+      </fieldset>
+      <div class="filter-set filter-smallest">
+        <label for="filter-smallest">Smallest</label>
+        <input type="range" id="filter-smallest" min="0" max="0" step="1" value="0">
+        <output id="filter-smallest-value" for="filter-smallest"></output>
+      </div>
+    </details>
+    </div>
+  </div>
+  <div class="chart-wrap">
+    <div class="chart-scroll">
+    <svg class="sankey" id="chart" role="group" aria-labelledby="chart-title chart-desc">
+      <title id="chart-title"></title>
+      <desc id="chart-desc"></desc>
+    </svg>
+    </div>
+    <p class="hairline-line" id="splits-line" aria-live="polite" hidden></p>
+    <p class="hairline-line" id="hairline-line" aria-live="polite" hidden></p>
+    <div class="tooltip" id="tooltip" role="status" aria-live="polite" hidden></div>
+  </div>
+  <aside class="drawer" id="drawer" aria-label="Detail">
+    <div class="drawer-head">
+      <button type="button" id="detail-follow" aria-pressed="false" hidden></button>
+      <button type="button" id="detail-pin" aria-pressed="false" hidden></button>
+      <button type="button" id="detail-menu" aria-expanded="false" hidden></button>
+    </div>
+    <div class="detail" id="detail" aria-live="polite"></div>
+    <p class="subtle chart-hint" id="chart-hint"></p>
+  </aside>
+  </div>
+</div>
+<div class="narrow-note" id="narrow-note">
+  <p><a href="ledger.html" data-years="fy2026-adopted fy2027-adopted">Bars</a></p>
+  <button type="button" id="narrow-show" hidden>Show the chart anyway</button>
+</div>
+<p class="lede">
+  <span id="hero"><span class="label"></span>: <strong class="value"></strong></span>
+  <span id="lede-year"></span>
+</p>
+<p class="subtle"><span id="counts-line"></span></p>
+</main>
+</body>
+</html>

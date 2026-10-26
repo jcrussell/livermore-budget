@@ -1,4 +1,4 @@
-// site/department.js over testdata/department.golden.html and its columns,
+// site/department.js over testdata/client/department.html and its columns,
 // imported with no globals, so reading one at import fails first.
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
@@ -340,9 +340,6 @@ describe("the page over the pinned columns", () => {
     assert.ok(bars.some((x) => x.rank !== "0"), "no fund bar wears a hue");
     assert.deepEqual(drawnOf(document, "spending").filter((x) => x.rank !== undefined).map((x) => `${x.id}: ${x.rank}`), [],
       "a spending bar wears a fund group's hue or the tail's");
-    assert.match(document.getElementById("internal-service-says").textContent, /charging its own\s+departments/);
-    assert.match(document.getElementById("funding-says").textContent, /General Fund bar is the General Fund's share alone/);
-    assert.match(document.getElementById("spending-says").textContent, /whole department's\s+cost/);
   });
 });
 
@@ -609,7 +606,6 @@ describe("every department is a bar of the funds that pay for it", () => {
     assert.equal(tracks.at(-1), Number((100 * bars.at(-1).cents / bars[0].cents).toFixed(2)));
     const legend = [...document.querySelectorAll("#department-legend li")].map((li) => li.dataset.rank);
     assert.deepEqual(legend, groups.map((g) => String(g.rank)));
-    assert.match(document.getElementById("department-bars-sum").textContent, /◇ A bar's figure is our sum/);
   });
 });
 

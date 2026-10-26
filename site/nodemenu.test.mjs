@@ -171,7 +171,6 @@ describe("a node's context menu", () => {
     assert.deepEqual({ idle, onRibbon, onNode, acts, out: [...app.filter.nodes] },
       { idle: true, onRibbon: true, onNode: false, acts: ["follow", "out", "only"], out: [id] });
     assert.equal(named, app.say("node_menu", { label: name }));
-    assert.equal(more.textContent, app.say("node_menu_more"));
     assert.equal(refusals(document).length, 0);
   });
 

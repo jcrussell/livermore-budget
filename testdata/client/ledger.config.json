@@ -1,0 +1,317 @@
+{
+  "docs": {
+    "livermore-budget-fy2026-2027": {
+      "pages": {
+        "101": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=101",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0101.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0101.txt"
+        },
+        "105": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=105",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0105.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0105.txt"
+        },
+        "108": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=108",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0108.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0108.txt"
+        },
+        "111": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=111",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0111.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0111.txt"
+        },
+        "115": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=115",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0115.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0115.txt"
+        },
+        "119": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=119",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0119.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0119.txt"
+        },
+        "124": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=124",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0124.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0124.txt"
+        },
+        "127": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=127",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0127.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0127.txt"
+        },
+        "128": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=128",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0128.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0128.txt"
+        },
+        "129": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=129",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0129.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0129.txt"
+        },
+        "130": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=130",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0130.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0130.txt"
+        },
+        "131": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=131",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0131.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0131.txt"
+        },
+        "132": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=132",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0132.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0132.txt"
+        },
+        "133": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=133",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0133.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0133.txt"
+        },
+        "134": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=134",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0134.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0134.txt"
+        },
+        "135": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=135",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0135.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0135.txt"
+        },
+        "136": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=136",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0136.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0136.txt"
+        },
+        "137": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=137",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0137.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0137.txt"
+        },
+        "138": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=138",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0138.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0138.txt"
+        },
+        "139": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=139",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0139.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0139.txt"
+        },
+        "140": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=140",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0140.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0140.txt"
+        },
+        "167": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=167",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0167.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0167.txt"
+        },
+        "168": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=168",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0168.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0168.txt"
+        },
+        "169": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=169",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0169.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0169.txt"
+        },
+        "170": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=170",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0170.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0170.txt"
+        },
+        "173": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=173",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0173.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0173.txt"
+        },
+        "174": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=174",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0174.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0174.txt"
+        },
+        "175": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=175",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0175.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0175.txt"
+        },
+        "176": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=176",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0176.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0176.txt"
+        },
+        "178": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=178",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0178.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0178.txt"
+        },
+        "179": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=179",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0179.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0179.txt"
+        },
+        "180": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=180",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0180.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0180.txt"
+        },
+        "181": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=181",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0181.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0181.txt"
+        },
+        "182": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=182",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0182.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0182.txt"
+        },
+        "183": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=183",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0183.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0183.txt"
+        },
+        "198": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=198",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0198.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0198.txt"
+        },
+        "199": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=199",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0199.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0199.txt"
+        },
+        "200": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=200",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0200.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0200.txt"
+        },
+        "201": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=201",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0201.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0201.txt"
+        },
+        "202": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=202",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0202.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0202.txt"
+        },
+        "203": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=203",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0203.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0203.txt"
+        },
+        "204": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=204",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0204.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0204.txt"
+        },
+        "205": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=205",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0205.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0205.txt"
+        },
+        "206": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=206",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0206.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0206.txt"
+        },
+        "207": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=207",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0207.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0207.txt"
+        },
+        "208": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=208",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0208.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0208.txt"
+        },
+        "209": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=209",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0209.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0209.txt"
+        },
+        "222": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=222",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0222.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0222.txt"
+        },
+        "66": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=66",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0066.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0066.txt"
+        },
+        "67": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=67",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0067.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0067.txt"
+        },
+        "76": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=76",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0076.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0076.txt"
+        },
+        "85": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=85",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0085.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0085.txt"
+        },
+        "89": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=89",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0089.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0089.txt"
+        },
+        "93": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=93",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0093.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0093.txt"
+        },
+        "97": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=97",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0097.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0097.txt"
+        }
+      },
+      "publisher": "City of Livermore, California",
+      "title": "FY 2025-2027 Budget Book"
+    }
+  },
+  "exported_by": "fisc dev",
+  "overview": {
+    "form": "ledger",
+    "ledger": {
+      "sides": [
+        {
+          "heading": "Where the money comes from",
+          "tier": 0
+        },
+        {
+          "heading": "Where the money goes",
+          "tier": 5
+        }
+      ]
+    }
+  },
+  "primary": "expansion",
+  "schema_version": 1,
+  "years": [
+    {
+      "basis": "adopted",
+      "label": "FY 2025-26",
+      "lede": "FY 2025-26 adopted",
+      "path": "fy2026-adopted.json"
+    },
+    {
+      "basis": "adopted",
+      "label": "FY 2026-27",
+      "lede": "FY 2026-27 adopted",
+      "path": "fy2027-adopted.json"
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-// site/sides.js and site/ledger.js over testdata/ledger.golden.html and its
+// site/sides.js and site/ledger.js over testdata/client/ledger.html and its
 // columns. Figures are core.sideTree's; tested: the fold keeps every sum,
 // the form draws every tile once, and state, gestures and tips say what is
 // drawn.

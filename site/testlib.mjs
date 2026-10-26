@@ -1,6 +1,7 @@
-// The client tests' shared harness: jsdom over the page Go pins, the vendored
-// d3, and the SHIPPED site/app.js imported afresh per test. Every artifact is
-// read from testdata/, never assembled here.
+// The client tests' shared harness: jsdom over the skeletons under
+// testdata/client/ (held to schema/bindings.json), the vendored d3, and the
+// SHIPPED site/app.js imported afresh per test. Every artifact is read from
+// testdata/, never assembled here.
 
 import { JSDOM } from "jsdom";
 import { existsSync, readFileSync } from "node:fs";
@@ -96,31 +97,29 @@ export function loadD3() {
   d3Loaded = true;
 }
 
-/** testdata/flows.golden.html and its config: the one copy of the config. */
+/** testdata/client/flows.html and testdata/client/flows.config.json. */
 export function pageFixture() {
-  return servedPage("flows.golden.html");
+  return {
+    html: readFileSync(join(repoRoot, "testdata", "client", "flows.html"), "utf8"),
+    config: clientConfig("flows"),
+  };
 }
 
-/** @param {string} name */
-function servedPage(name) {
-  const html = readFileSync(join(repoRoot, "testdata", name), "utf8");
-  const open = "window.FISC_CONFIG = ";
-  const i = html.indexOf(open);
-  if (i < 0) throw new Error("the pinned page carries no window.FISC_CONFIG");
-  const rest = html.slice(i + open.length);
-  const j = rest.indexOf(";</script>");
-  if (j < 0) throw new Error("the pinned page's FISC_CONFIG assignment is unterminated");
-  return { html, config: JSON.parse(rest.slice(0, j)) };
+/** testdata/client/<name>.config.json. */
+function clientConfig(name) {
+  return JSON.parse(readFileSync(join(repoRoot, "testdata", "client", name + ".config.json"), "utf8"));
 }
 
-/** testdata/<name>.golden.html and the JSON config in its `<script id>`. */
+/**
+ * testdata/client/<name>.html with testdata/client/<name>.config.json in its
+ * empty `<script id>`, as the template carries it.
+ */
 export function configuredPage(name, id) {
-  const html = readFileSync(join(repoRoot, "testdata", name + ".golden.html"), "utf8");
-  const open = `<script type="application/json" id="${id}">`;
-  const i = html.indexOf(open);
-  if (i < 0) throw new Error(`the pinned ${name} page carries no ${id}`);
-  const rest = html.slice(i + open.length);
-  return { html, config: JSON.parse(rest.slice(0, rest.indexOf("</script>"))) };
+  const skeleton = readFileSync(join(repoRoot, "testdata", "client", name + ".html"), "utf8");
+  const empty = `<script type="application/json" id="${id}"></script>`;
+  if (!skeleton.includes(empty)) throw new Error(`the ${name} skeleton carries no empty ${id}`);
+  const config = clientConfig(name);
+  return { html: skeleton.replace(empty, empty.replace("></", ">" + JSON.stringify(config) + "</")), config };
 }
 
 /** A fresh jsdom over `html`, at `url` when given, with `module` imported and booted on its document. */

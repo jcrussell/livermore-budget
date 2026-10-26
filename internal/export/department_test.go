@@ -125,6 +125,7 @@ func TestDepartmentPageCarriesItsMembershipAndItsTies(t *testing.T) {
 		"<strong>Each figure is one fund's share</strong>",
 		"<strong>Each figure is the whole department's\n    cost</strong>",
 		"so neither sum is presented as the department's total",
+		"◇ A bar's figure is our sum of the department's funding rows",
 	} {
 		if !strings.Contains(html, want) {
 			t.Errorf("department.html does not carry %q", want)

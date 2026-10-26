@@ -1,0 +1,47 @@
+<!doctype html>
+<!-- The DOM site/ledger.js, site/sides.js and site/theme.js bind on
+     ledger.html, held to schema/bindings.json; no prose. testlib fills the
+     config. -->
+<html lang="en">
+<head><meta charset="utf-8"><title>ledger</title>
+<script type="application/json" id="sides-config"></script>
+</head>
+<body>
+<nav class="site-nav" aria-label="Views">
+  <button type="button" id="nav-toggle" aria-expanded="false" aria-controls="nav-views" hidden>Menu <span class="nav-here">Bars</span></button>
+  <ul id="nav-views">
+    <li><a href="index.html" data-years="fy2026-adopted fy2027-adopted">At a glance</a></li>
+    <li><a href="flows.html" data-years="fy2026-adopted fy2027-adopted">Flows</a></li>
+    <li><span aria-current="page">Bars</span></li>
+    <li><a href="change.html">Over time</a></li>
+    <li><a href="balances.html">Fund balances</a></li>
+    <li><a href="department.html" data-years="fy2024-actual fy2025-revised fy2026-adopted fy2027-adopted">Departments</a></li>
+    <li><a href="capital.html" data-years="fy2026-adopted fy2027-adopted fy2028-projected fy2029-projected fy2030-projected">Capital projects</a></li>
+    <li><a href="debt.html">Debt</a></li>
+    <li><a href="caveats.html">Caveats</a></li>
+    <li><a href="provenance.html">Sources and data</a></li>
+  </ul>
+  <button type="button" id="theme-toggle" hidden>Dark mode</button>
+</nav>
+<template id="lede-more"><button type="button" class="lede-more">More</button></template>
+<div class="year-bar">
+  <label class="year-select">Budget year
+    <select id="year-select" disabled>
+      <option value="fy2026-adopted">FY 2025-26 adopted</option>
+      <option value="fy2027-adopted" selected>FY 2026-27 adopted</option>
+    </select>
+  </label>
+</div>
+<header class="page-head"><div><h1>Bars</h1><p class="lede">Lede. Drawn from the <span id="lede-year"></span> budget.</p></div></header>
+<main id="sides-main">
+<details class="how-to-read" open><summary>How to read</summary><p>How.</p></details>
+<div class="sides">
+<section class="sides-side" data-tier="0" aria-labelledby="side-0"><h2 id="side-0">In</h2><p class="sides-total subtle"></p><figure class="sides-figure" hidden></figure></section>
+<section class="sides-side" data-tier="5" aria-labelledby="side-5"><h2 id="side-5">Out</h2><p class="sides-total subtle"></p><figure class="sides-figure" hidden></figure></section>
+</div>
+<div class="tooltip" id="tooltip" role="status" aria-live="polite" hidden></div>
+<template id="ledger-list"><ol class="ledger-list"></ol></template>
+<template id="ledger-row"><li class="bar-row" tabindex="0" role="button"><span class="bar-label"></span><span class="bar-track"><span class="bar-fill"></span></span><span class="bar-value"></span><span class="bar-share subtle"></span></li></template>
+</main>
+</body>
+</html>

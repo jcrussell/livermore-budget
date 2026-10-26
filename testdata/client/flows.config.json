@@ -1,0 +1,592 @@
+{
+  "docs": {
+    "livermore-budget-fy2026-2027": {
+      "pages": {
+        "101": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=101",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0101.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0101.txt"
+        },
+        "105": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=105",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0105.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0105.txt"
+        },
+        "108": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=108",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0108.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0108.txt"
+        },
+        "111": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=111",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0111.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0111.txt"
+        },
+        "115": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=115",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0115.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0115.txt"
+        },
+        "119": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=119",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0119.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0119.txt"
+        },
+        "124": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=124",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0124.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0124.txt"
+        },
+        "127": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=127",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0127.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0127.txt"
+        },
+        "128": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=128",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0128.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0128.txt"
+        },
+        "129": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=129",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0129.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0129.txt"
+        },
+        "130": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=130",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0130.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0130.txt"
+        },
+        "131": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=131",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0131.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0131.txt"
+        },
+        "132": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=132",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0132.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0132.txt"
+        },
+        "133": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=133",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0133.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0133.txt"
+        },
+        "134": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=134",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0134.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0134.txt"
+        },
+        "135": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=135",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0135.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0135.txt"
+        },
+        "136": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=136",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0136.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0136.txt"
+        },
+        "137": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=137",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0137.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0137.txt"
+        },
+        "138": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=138",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0138.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0138.txt"
+        },
+        "139": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=139",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0139.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0139.txt"
+        },
+        "140": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=140",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0140.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0140.txt"
+        },
+        "167": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=167",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0167.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0167.txt"
+        },
+        "168": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=168",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0168.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0168.txt"
+        },
+        "169": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=169",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0169.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0169.txt"
+        },
+        "170": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=170",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0170.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0170.txt"
+        },
+        "173": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=173",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0173.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0173.txt"
+        },
+        "174": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=174",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0174.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0174.txt"
+        },
+        "175": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=175",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0175.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0175.txt"
+        },
+        "176": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=176",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0176.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0176.txt"
+        },
+        "178": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=178",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0178.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0178.txt"
+        },
+        "179": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=179",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0179.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0179.txt"
+        },
+        "180": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=180",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0180.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0180.txt"
+        },
+        "181": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=181",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0181.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0181.txt"
+        },
+        "182": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=182",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0182.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0182.txt"
+        },
+        "183": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=183",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0183.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0183.txt"
+        },
+        "198": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=198",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0198.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0198.txt"
+        },
+        "199": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=199",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0199.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0199.txt"
+        },
+        "200": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=200",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0200.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0200.txt"
+        },
+        "201": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=201",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0201.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0201.txt"
+        },
+        "202": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=202",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0202.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0202.txt"
+        },
+        "203": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=203",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0203.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0203.txt"
+        },
+        "204": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=204",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0204.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0204.txt"
+        },
+        "205": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=205",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0205.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0205.txt"
+        },
+        "206": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=206",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0206.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0206.txt"
+        },
+        "207": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=207",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0207.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0207.txt"
+        },
+        "208": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=208",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0208.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0208.txt"
+        },
+        "209": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=209",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0209.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0209.txt"
+        },
+        "222": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=222",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0222.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0222.txt"
+        },
+        "66": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=66",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0066.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0066.txt"
+        },
+        "67": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=67",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0067.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0067.txt"
+        },
+        "76": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=76",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0076.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0076.txt"
+        },
+        "85": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=85",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0085.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0085.txt"
+        },
+        "89": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=89",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0089.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0089.txt"
+        },
+        "93": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=93",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0093.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0093.txt"
+        },
+        "97": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=97",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0097.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0097.txt"
+        }
+      },
+      "publisher": "City of Livermore, California",
+      "title": "FY 2025-2027 Budget Book"
+    }
+  },
+  "exported_by": "fisc dev",
+  "kind_labels": {
+    "external": "external money",
+    "fund_balance": "fund balance movement",
+    "internal_service": "internal service charge",
+    "internal_transfer": "transfer between funds"
+  },
+  "member_nouns": {
+    "divisions": "division",
+    "funds": "fund {fund}",
+    "lines": "line",
+    "object-rows": "object row",
+    "payers": "fund {fund}",
+    "receivers": "fund {fund}"
+  },
+  "overview": {
+    "form": "sankey",
+    "sankey": {
+      "grow": {
+        "ceiling": 4800,
+        "floor": 820,
+        "node_px": 40
+      },
+      "split_caps": [
+        {
+          "cap": 8,
+          "split": "funds",
+          "tail": "funds"
+        },
+        {
+          "cap": 24,
+          "split": "divisions",
+          "tail": "divisions"
+        },
+        {
+          "cap": 8,
+          "split": "object-rows",
+          "tail": "object rows"
+        },
+        {
+          "cap": 8,
+          "split": "lines",
+          "tail": "lines"
+        },
+        {
+          "cap": 8,
+          "split": "receivers",
+          "tail": "funds"
+        }
+      ],
+      "tiers": [
+        0,
+        2,
+        5
+      ]
+    }
+  },
+  "primary": "expansion",
+  "projection_version": 1,
+  "schema_version": 2,
+  "split_labels": {
+    "divisions": "its divisions",
+    "funds": "its funds",
+    "lines": "its lines",
+    "object-rows": "its object rows",
+    "payers": "the funds that pay it",
+    "receivers": "the funds it pays"
+  },
+  "wording": {
+    "aggregate_label": "{folded} smaller {word}",
+    "aggregate_note": "The {folded} smallest printed rows of {total} by value, at this page's cap of {cap}",
+    "aggregate_rationale": "Our grouping, not a line the city printed: the {folded} smallest {word} in this column are drawn as one mark because they cannot be drawn separately. Every figure inside it is printed; the box around them is ours.",
+    "aggregate_together": ", together {figure}.",
+    "balance_beginning": "Balance at the start of the year, as printed: {figure}",
+    "balance_change": "Change in balance, the end of the year's less the start's: {figure}",
+    "balance_ending": "Balance at the end of the year, as printed: {figure}",
+    "carried_chip": "◇ re-pointed by us",
+    "carried_note": "figure printed by the city, re-pointed onto a mark of ours",
+    "caveat_chip": "⚠ ◇ {n:caveat|caveats}",
+    "collapse_all": "Collapse all",
+    "contra_orphan": "printed rows netting to a reduction",
+    "counts": "◇ our count: {links:flow|flows} between {nodes:node|nodes}, from {facts:fact|facts}",
+    "counts_partial": "◇ our count: {links:flow|flows} between {nodes:node|nodes}, from {cited} of the document's {facts:fact|facts}",
+    "desc_expands": ", draws all of them separately on a click, Enter or Space",
+    "desc_folds": ", folds back into one mark on a click, Enter or Space, and stays pinned in the drawer",
+    "desc_follows": ", a click, Enter or Space pins it in the drawer",
+    "desc_opens": ", splits in place into its parts on a click, Enter or Space, and is pinned in the drawer",
+    "detail_empty": "Hover a flow or a node to trace its path and preview where its figure comes from; click it to pin it here.",
+    "drawer": "Where a figure comes from",
+    "expand": "The folded mark is several of them drawn as one; click it, or tab to it and press Enter, to draw them separately.",
+    "expand_all": "Expand all",
+    "filter_drawn_at": "{cents} of it drawn under your filters",
+    "filter_folded": "◇ {flows:flow|flows} under {threshold} are drawn merged by this page into {ribbons:ribbon|ribbons} of smaller flows.",
+    "filter_hidden": "Hidden by your filters: {cents} in ◇ {flows:flow|flows}. Marks are sized to what is drawn, and each mark's figure is still this view's.",
+    "filter_hidden_at": "Your filters hide {cents} of this mark's flows, in ◇ {flows:flow|flows}.",
+    "filter_only": "Showing only the money through {label}.",
+    "filter_out": "Filtered out: {names}.",
+    "filter_out_node": "Filter this out",
+    "flow_inferred": "This flow is inferred; both endpoints are printed by the city.",
+    "fold_back": "A second click on a split node, or ⊖ beside it, folds it back; Collapse all folds every split, and Back undoes the last step.",
+    "follow": "Escape unpins and puts the rest back. Right-click a node, press M on it, or choose More… here, to follow its money, filter it out or show only it.",
+    "follow_money": "Follow this money",
+    "full_screen": "Full screen",
+    "full_screen_exit": "Exit full screen",
+    "glyph_choose": "Choose what to split {label} into",
+    "glyph_fold": "Fold {label} back into one mark",
+    "glyph_open": "Split {label} into {split}",
+    "hairline": "◇ {n:flow is|flows are} under a pixel wide on this chart's canvas, and each is drawn as a hairline one screen pixel wide, which is wider than its share; every other flow is drawn to scale. Zoom in, go full screen, or search to read them.",
+    "inferred_by_us": "inferred by us",
+    "inferred_chip": "◇ inferred",
+    "node_menu": "What to do with {label}",
+    "node_menu_more": "More…",
+    "nothing_opens": "Nothing on this chart opens.",
+    "open_into": "Click a node marked ⊕, or tab to it and press Enter, to split it in place into its parts; every other node stays where it is.",
+    "our_inference": "◇ our inference",
+    "pin": "Pin",
+    "printed_by_city": "printed by the city",
+    "printed_chip": "printed",
+    "rail": "Legend and filters",
+    "redraw_alone_empty": "the other filters would leave none of the money through {label} to show.",
+    "redraw_part": "the filters would draw part of the money from {source} to {target}, which the city printed as one total over several parts together.",
+    "refused_alone_empty": "Not offered: the other filters would leave none of the money through {label} to show.",
+    "refused_other": "Not offered: the chart cannot be drawn that way.",
+    "refused_part": "Not offered with the chart open as it is: the city printed the money from {source} to {target} as one total over several parts together, and this is only some of them.",
+    "repeats_chip": "◇ a printed figure, repeated through a split",
+    "repeats_note": "figure printed by the city between other ends, repeated by us through a split",
+    "search_count": "◇ {n:mark matches|marks match}; the arrow keys move between them, and Enter goes to one.",
+    "search_expands": "Enter draws out every one it folds",
+    "search_label": "Find a mark on this chart",
+    "search_none": "No mark drawn on this chart has “{query}” in its name.",
+    "search_opens": "Enter splits it in place",
+    "search_reveals": "Enter splits the chart until it is drawn",
+    "show_only_node": "Show only this",
+    "smaller_flow": "{flows:flow|flows} under {threshold}, each printed by the city, merged by this page",
+    "smaller_label": "{flows:flow|flows} under {threshold}",
+    "smaller_note": "Merged by this page from {flows:flow|flows} the city printed, together {figure}; its ribbons cite every fact and page they merge.",
+    "smaller_rationale": "Our grouping, not a line the city printed: {flows:flow|flows} each under {threshold}, the smallest flow your filters draw as itself, are drawn as one mark. Every figure inside it is printed; the merge is this page's.",
+    "smallest_all": "every flow",
+    "sources_chart": "This mark draws no flow, so these are the sources of the whole chart, not of it:",
+    "split_chooser": "Split {label} into",
+    "splits_dropped": "{year} has no {nodes} to split, so ◇ {n:split was|splits were} folded back.",
+    "swatch": "A fund swatch follows one group's money without opening anything.",
+    "zoom_reset": "Reset view"
+  },
+  "years": [
+    {
+      "basis": "adopted",
+      "caveats": [
+        {
+          "href": "caveats.html#caveats-on-flows--caveat-transfer-legs-unpaired",
+          "id": "transfer-legs-unpaired",
+          "summary": "Transfers in and transfers out are two separate totals here, and they need not match."
+        },
+        {
+          "href": "caveats.html#caveats-on-flows--caveat-internal-service-is-outside-the-external-headline",
+          "id": "internal-service-is-outside-the-external-headline",
+          "summary": "Charges one city department bills another are left out of the headline totals."
+        },
+        {
+          "href": "caveats.html#caveats-on-flows--caveat-working-capital-is-a-stock",
+          "id": "working-capital-is-a-stock",
+          "summary": "The money funds hold at the start and end of the year is not drawn, only what moves."
+        },
+        {
+          "href": "caveats.html#caveats-on-flows--caveat-permanent-funds-have-no-column",
+          "id": "permanent-funds-have-no-column",
+          "summary": "The city's two Permanent Funds have no column on this page, so they are not drawn."
+        },
+        {
+          "href": "caveats.html#caveats-on-flows--caveat-constraint-tier-is-our-reading",
+          "id": "constraint-tier-is-our-reading",
+          "summary": "How restricted each fund's money is comes from this site's reading of the city's fund descriptions."
+        },
+        {
+          "href": "caveats.html#caveat-the-revenue-schedule-is-published-twice",
+          "id": "the-revenue-schedule-is-published-twice",
+          "summary": "Revenue the charts draw is the same money the Over time page prints; don't add the two."
+        },
+        {
+          "href": "caveats.html#caveat-the-expansion-is-the-spine-at-finer-grain",
+          "id": "the-expansion-is-the-spine-at-finer-grain",
+          "summary": "Click into any part of the citywide chart and the pages it opens into add back up to it, to the cent."
+        },
+        {
+          "href": "caveats.html#caveat-an-opened-box-repeats-its-members",
+          "id": "an-opened-box-repeats-its-members",
+          "summary": "In this file an opened box repeats its members' links, so adding every link counts money twice."
+        },
+        {
+          "href": "caveats.html#caveat-one-row-is-one-printed-line",
+          "id": "one-row-is-one-printed-line",
+          "summary": "A revenue line marked \"one row\" is how Budget Book pp.127-140 print that whole category."
+        },
+        {
+          "href": "caveats.html#caveat-the-line-so-named-is-one-row-of-several",
+          "id": "the-line-so-named-is-one-row-of-several",
+          "summary": "A revenue line marked \"the line so named\" is one row, not its category's total."
+        },
+        {
+          "href": "caveats.html#caveat-some-fund-group-money-is-not-by-fund",
+          "id": "some-fund-group-money-is-not-by-fund",
+          "summary": "Some fund groups carry money that no single fund's own page prints."
+        }
+      ],
+      "chart_title": "Sankey diagram of the FY 2025-26 adopted budget",
+      "counts": {
+        "facts": 1567,
+        "links": 1006,
+        "nodes": 443
+      },
+      "hero": {
+        "kind": "hero",
+        "label": "What the city actually spends",
+        "note": "All funds, gross, FY 2025-26 adopted budget",
+        "value": "$254,095,412"
+      },
+      "label": "FY 2025-26",
+      "lede": "FY 2025-26 adopted",
+      "path": "fy2026-adopted.json",
+      "stem": "sankey",
+      "title": "City of Livermore budget flows — FY 2025-26",
+      "year": 2026
+    },
+    {
+      "basis": "adopted",
+      "caveats": [
+        {
+          "href": "caveats.html#caveats-on-flows--caveat-transfer-legs-unpaired",
+          "id": "transfer-legs-unpaired",
+          "summary": "Transfers in and transfers out are two separate totals here, and they need not match."
+        },
+        {
+          "href": "caveats.html#caveats-on-flows--caveat-internal-service-is-outside-the-external-headline",
+          "id": "internal-service-is-outside-the-external-headline",
+          "summary": "Charges one city department bills another are left out of the headline totals."
+        },
+        {
+          "href": "caveats.html#caveats-on-flows--caveat-contested-total-internal-service",
+          "id": "contested-total-internal-service",
+          "summary": "The budget book prints two different totals for Internal Service Funds spending; this chart draws the summary page's."
+        },
+        {
+          "href": "caveats.html#caveats-on-flows--caveat-working-capital-is-a-stock",
+          "id": "working-capital-is-a-stock",
+          "summary": "The money funds hold at the start and end of the year is not drawn, only what moves."
+        },
+        {
+          "href": "caveats.html#caveats-on-flows--caveat-permanent-funds-have-no-column",
+          "id": "permanent-funds-have-no-column",
+          "summary": "The city's two Permanent Funds have no column on this page, so they are not drawn."
+        },
+        {
+          "href": "caveats.html#caveats-on-flows--caveat-constraint-tier-is-our-reading",
+          "id": "constraint-tier-is-our-reading",
+          "summary": "How restricted each fund's money is comes from this site's reading of the city's fund descriptions."
+        },
+        {
+          "href": "caveats.html#caveat-the-revenue-schedule-is-published-twice",
+          "id": "the-revenue-schedule-is-published-twice",
+          "summary": "Revenue the charts draw is the same money the Over time page prints; don't add the two."
+        },
+        {
+          "href": "caveats.html#caveat-the-expansion-is-the-spine-at-finer-grain",
+          "id": "the-expansion-is-the-spine-at-finer-grain",
+          "summary": "Click into any part of the citywide chart and the pages it opens into add back up to it, to the cent."
+        },
+        {
+          "href": "caveats.html#caveat-an-opened-box-repeats-its-members",
+          "id": "an-opened-box-repeats-its-members",
+          "summary": "In this file an opened box repeats its members' links, so adding every link counts money twice."
+        },
+        {
+          "href": "caveats.html#caveat-one-row-is-one-printed-line",
+          "id": "one-row-is-one-printed-line",
+          "summary": "A revenue line marked \"one row\" is how Budget Book pp.127-140 print that whole category."
+        },
+        {
+          "href": "caveats.html#caveat-the-line-so-named-is-one-row-of-several",
+          "id": "the-line-so-named-is-one-row-of-several",
+          "summary": "A revenue line marked \"the line so named\" is one row, not its category's total."
+        },
+        {
+          "href": "caveats.html#caveat-some-fund-group-money-is-not-by-fund",
+          "id": "some-fund-group-money-is-not-by-fund",
+          "summary": "Some fund groups carry money that no single fund's own page prints."
+        }
+      ],
+      "chart_title": "Sankey diagram of the FY 2026-27 adopted budget",
+      "counts": {
+        "facts": 1564,
+        "links": 995,
+        "nodes": 439
+      },
+      "hero": {
+        "kind": "hero",
+        "label": "What the city actually spends",
+        "note": "All funds, gross, FY 2026-27 adopted budget",
+        "value": "$252,854,896"
+      },
+      "label": "FY 2026-27",
+      "lede": "FY 2026-27 adopted",
+      "path": "fy2027-adopted.json",
+      "stem": "sankey-2027",
+      "title": "City of Livermore budget flows — FY 2026-27",
+      "year": 2027
+    }
+  ]
+}

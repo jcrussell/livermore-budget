@@ -1,0 +1,489 @@
+{
+  "departments": [
+    {
+      "divisions": [
+        {
+          "id": "dept/administrative-services",
+          "label": "Administrative Services"
+        },
+        {
+          "id": "dept/cybersecurity",
+          "label": "Cybersecurity"
+        },
+        {
+          "id": "dept/finance",
+          "label": "Finance"
+        },
+        {
+          "id": "dept/human-resources",
+          "label": "Human Resources"
+        },
+        {
+          "id": "dept/information-technology",
+          "label": "Information Technology"
+        }
+      ],
+      "id": "department/administrative-services",
+      "label": "Administrative Services"
+    },
+    {
+      "divisions": [
+        {
+          "id": "dept/city-attorney",
+          "label": "City Attorney"
+        },
+        {
+          "id": "dept/risk-management",
+          "label": "Risk Management"
+        }
+      ],
+      "id": "department/city-attorney",
+      "label": "City Attorney"
+    },
+    {
+      "divisions": [
+        {
+          "id": "dept/city-council",
+          "label": "City Council"
+        }
+      ],
+      "id": "department/city-council",
+      "label": "City Council"
+    },
+    {
+      "divisions": [
+        {
+          "id": "dept/city-clerk",
+          "label": "City Clerk"
+        },
+        {
+          "id": "dept/city-manager",
+          "label": "City Manager"
+        }
+      ],
+      "id": "department/city-manager",
+      "label": "City Manager"
+    },
+    {
+      "divisions": [
+        {
+          "id": "dept/building-and-safety",
+          "label": "Building & Safety"
+        },
+        {
+          "id": "dept/community-development-admin",
+          "label": "Community Development Admin"
+        },
+        {
+          "id": "dept/engineering",
+          "label": "Engineering"
+        },
+        {
+          "id": "dept/housing-and-human-services",
+          "label": "Housing & Human Services"
+        },
+        {
+          "id": "dept/planning",
+          "label": "Planning"
+        }
+      ],
+      "id": "department/community-development",
+      "label": "Community Development"
+    },
+    {
+      "divisions": [
+        {
+          "id": "dept/fire-administration",
+          "label": "Fire Administration"
+        }
+      ],
+      "id": "department/fire-department",
+      "label": "Fire Department"
+    },
+    {
+      "divisions": [
+        {
+          "id": "dept/general-services",
+          "label": "General Services"
+        }
+      ],
+      "id": "department/general-services",
+      "label": "General Services"
+    },
+    {
+      "divisions": [
+        {
+          "id": "dept/airport",
+          "label": "Airport"
+        },
+        {
+          "id": "dept/innovation-and-economic-devel",
+          "label": "Innovation & Economic Devel"
+        }
+      ],
+      "id": "department/innovation-and-economic-development",
+      "label": "Innovation & Economic Development"
+    },
+    {
+      "divisions": [
+        {
+          "id": "dept/library",
+          "label": "Library"
+        }
+      ],
+      "id": "department/library-department",
+      "label": "Library Department"
+    },
+    {
+      "divisions": [
+        {
+          "id": "dept/horizons",
+          "label": "Horizons"
+        },
+        {
+          "id": "dept/patrol",
+          "label": "Patrol"
+        },
+        {
+          "id": "dept/police-administration",
+          "label": "Police Administration"
+        },
+        {
+          "id": "dept/special-operations",
+          "label": "Special Operations"
+        },
+        {
+          "id": "dept/support-services",
+          "label": "Support Services"
+        }
+      ],
+      "id": "department/police-department",
+      "label": "Police Department"
+    },
+    {
+      "divisions": [
+        {
+          "id": "dept/environmental-services",
+          "label": "Environmental Services"
+        },
+        {
+          "id": "dept/maintenance",
+          "label": "Maintenance"
+        },
+        {
+          "id": "dept/public-works-administration",
+          "label": "Public Works Administration"
+        },
+        {
+          "id": "dept/water-resources",
+          "label": "Water Resources"
+        }
+      ],
+      "id": "department/public-works",
+      "label": "Public Works"
+    }
+  ],
+  "docs": {
+    "livermore-budget-fy2026-2027": {
+      "pages": {
+        "101": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=101",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0101.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0101.txt"
+        },
+        "102": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=102",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0102.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0102.txt"
+        },
+        "105": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=105",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0105.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0105.txt"
+        },
+        "108": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=108",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0108.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0108.txt"
+        },
+        "111": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=111",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0111.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0111.txt"
+        },
+        "115": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=115",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0115.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0115.txt"
+        },
+        "119": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=119",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0119.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0119.txt"
+        },
+        "120": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=120",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0120.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0120.txt"
+        },
+        "124": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=124",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0124.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0124.txt"
+        },
+        "125": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=125",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0125.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0125.txt"
+        },
+        "85": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=85",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0085.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0085.txt"
+        },
+        "89": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=89",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0089.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0089.txt"
+        },
+        "93": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=93",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0093.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0093.txt"
+        },
+        "97": {
+          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=97",
+          "records": "facts/livermore-budget-fy2026-2027/pages/p0097.jsonl",
+          "text": "extracted/livermore-budget-fy2026-2027/pages/p0097.txt"
+        }
+      },
+      "publisher": "City of Livermore, California",
+      "title": "FY 2025-2027 Budget Book"
+    }
+  },
+  "exported_by": "fisc dev",
+  "funding": "department-funding",
+  "kind_labels": {
+    "external": "external money",
+    "fund_balance": "fund balance movement",
+    "internal_service": "internal service charge",
+    "internal_transfer": "transfer between funds"
+  },
+  "schema_version": 1,
+  "spending": "department-spending",
+  "years": [
+    {
+      "basis": "actual",
+      "label": "FY 2023-24",
+      "lede": "FY 2023-24 actual",
+      "path": "fy2024-actual.json",
+      "sides": [
+        {
+          "department": "department/administrative-services",
+          "reason": "the two schedules print one total and round the rows under it differently in the FY2023-24 Actual column",
+          "ties": false
+        },
+        {
+          "department": "department/city-attorney",
+          "ties": true
+        },
+        {
+          "department": "department/city-council",
+          "ties": true
+        },
+        {
+          "department": "department/city-manager",
+          "ties": true
+        },
+        {
+          "department": "department/community-development",
+          "ties": true
+        },
+        {
+          "department": "department/fire-department",
+          "ties": true
+        },
+        {
+          "department": "department/general-services",
+          "ties": true
+        },
+        {
+          "department": "department/innovation-and-economic-development",
+          "reason": "the two schedules print one total and round the rows under it differently in the FY2023-24 Actual column",
+          "ties": false
+        },
+        {
+          "department": "department/library-department",
+          "reason": "the two schedules print one total and round the rows under it differently in the FY2023-24 Actual column",
+          "ties": false
+        },
+        {
+          "department": "department/police-department",
+          "reason": "the two schedules print one total and round the rows under it differently in the FY2023-24 Actual column",
+          "ties": false
+        },
+        {
+          "department": "department/public-works",
+          "reason": "Maintenance's Transfers Out is a declared residue in no cut, so the check compares the funding sources with the expenditure rows without it; counted with it, as the department page counts it, the two schedules still round the rows under one printed total differently",
+          "ties": false
+        }
+      ]
+    },
+    {
+      "basis": "revised",
+      "label": "FY 2024-25",
+      "lede": "FY 2024-25 revised",
+      "path": "fy2025-revised.json",
+      "sides": [
+        {
+          "department": "department/administrative-services",
+          "ties": true
+        },
+        {
+          "department": "department/city-attorney",
+          "ties": true
+        },
+        {
+          "department": "department/city-council",
+          "ties": true
+        },
+        {
+          "department": "department/city-manager",
+          "ties": true
+        },
+        {
+          "department": "department/community-development",
+          "ties": true
+        },
+        {
+          "department": "department/fire-department",
+          "ties": true
+        },
+        {
+          "department": "department/general-services",
+          "ties": true
+        },
+        {
+          "department": "department/innovation-and-economic-development",
+          "ties": true
+        },
+        {
+          "department": "department/library-department",
+          "ties": true
+        },
+        {
+          "department": "department/police-department",
+          "ties": true
+        },
+        {
+          "department": "department/public-works",
+          "ties": true
+        }
+      ]
+    },
+    {
+      "basis": "adopted",
+      "label": "FY 2025-26",
+      "lede": "FY 2025-26 adopted",
+      "path": "fy2026-adopted.json",
+      "sides": [
+        {
+          "department": "department/administrative-services",
+          "ties": true
+        },
+        {
+          "department": "department/city-attorney",
+          "ties": true
+        },
+        {
+          "department": "department/city-council",
+          "ties": true
+        },
+        {
+          "department": "department/city-manager",
+          "ties": true
+        },
+        {
+          "department": "department/community-development",
+          "ties": true
+        },
+        {
+          "department": "department/fire-department",
+          "ties": true
+        },
+        {
+          "department": "department/general-services",
+          "ties": true
+        },
+        {
+          "department": "department/innovation-and-economic-development",
+          "ties": true
+        },
+        {
+          "department": "department/library-department",
+          "ties": true
+        },
+        {
+          "department": "department/police-department",
+          "ties": true
+        },
+        {
+          "department": "department/public-works",
+          "ties": true
+        }
+      ]
+    },
+    {
+      "basis": "adopted",
+      "label": "FY 2026-27",
+      "lede": "FY 2026-27 adopted",
+      "path": "fy2027-adopted.json",
+      "sides": [
+        {
+          "department": "department/administrative-services",
+          "ties": true
+        },
+        {
+          "department": "department/city-attorney",
+          "ties": true
+        },
+        {
+          "department": "department/city-council",
+          "ties": true
+        },
+        {
+          "department": "department/city-manager",
+          "ties": true
+        },
+        {
+          "department": "department/community-development",
+          "ties": true
+        },
+        {
+          "department": "department/fire-department",
+          "ties": true
+        },
+        {
+          "department": "department/general-services",
+          "ties": true
+        },
+        {
+          "department": "department/innovation-and-economic-development",
+          "ties": true
+        },
+        {
+          "department": "department/library-department",
+          "ties": true
+        },
+        {
+          "department": "department/police-department",
+          "ties": true
+        },
+        {
+          "department": "department/public-works",
+          "ties": true
+        }
+      ]
+    }
+  ]
+}

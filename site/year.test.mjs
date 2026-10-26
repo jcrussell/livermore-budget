@@ -52,25 +52,24 @@ describe("a year's words are the packager's, painted whole", () => {
   test("the lede, the flow count and the document title follow the year", async (t) => {
     const { app, document } = await loadApp();
     const year = shippedYear();
-    // THE COUNTS SENTENCE IS THE TEMPLATE'S: the served page renders it for the
-    // opening year, which is this year, so the repaint must write the very
-    // sentence the server wrote.
-    const served = servedCountsHead(document);
+    // THE COUNTS SENTENCE IS THE WORDING'S: Go holds the template's to
+    // wording.counts (TestTheTemplatesCountsHeadIsTheWordingsCounts), so the
+    // repaint of an undrawn year must be that sentence over its counts.
+    const served = app.say("counts", year.counts);
     const got = painted(app, document, year);
     t.diagnostic(`lede "${got.lede}", counts "${got.counts}", title "${got.title}"`);
     assert.equal(got.lede, year.label + " " + year.basis);
     assert.equal(got.counts, served);
     assert.equal(got.title, year.title);
   });
-  test("after a draw, the repainted counts sentence still opens with the template's own head", async (t) => {
+  test("after a draw, the repainted counts sentence still opens with the wording's own head", async (t) => {
     const { document } = await bootedApp({ checkedStem: "sankey" });
-    // The served page's own sentence for its opening year; the drawn one for
-    // the year that booted must open with the same words up to the numbers.
-    const head = (s) => s.replace(/\d[\d,]*/g, "N");
+    // The drawn sentence for the year that booted opens with wording.counts'
+    // words up to its first number.
     const drawn = servedCountsHead(document);
-    const template = pageFixture().html.match(/<span id="counts-line">([\s\S]*?)<\/span>/)[1].replace(/\s+/g, " ").trim();
+    const head = pageFixture().config.wording.counts.split("{")[0];
     t.diagnostic(`the drawn page's counts-line reads "${drawn}"`);
-    assert.ok(drawn.startsWith(head(template).split("N")[0]), `"${drawn}" does not open with the template's head "${template}"`);
+    assert.ok(head.trim() && drawn.startsWith(head), `"${drawn}" does not open with the wording's head "${head}"`);
     // The tail is the wording's counts_partial past its {cited} placeholder,
     // with the numbers and the plural left open.
     const tail = pageFixture().config.wording.counts_partial.split("{cited}")[1];

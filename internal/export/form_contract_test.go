@@ -12,13 +12,12 @@ import (
 )
 
 // TestTheSchemaHoldsAChartToItsForm: schema/page.schema.json refuses a hint
-// foreign to the chart's form, over testdata/flows.golden.html's config.
+// foreign to the chart's form, over testdata/client/flows.config.json.
 func TestTheSchemaHoldsAChartToItsForm(t *testing.T) {
-	page, err := os.ReadFile("../../testdata/flows.golden.html")
+	blob, err := os.ReadFile("../../testdata/client/flows.config.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	blob := configBlob(t, string(page))
 	overview := func(cfg map[string]any) map[string]any { return cfg["overview"].(map[string]any) }
 	hints := func(cfg map[string]any) map[string]any { return overview(cfg)["sankey"].(map[string]any) }
 	for _, c := range []struct {
@@ -81,11 +80,10 @@ func TestTheSchemaHoldsAChartToItsForm(t *testing.T) {
 // grows its canvas and caps the expansion's splits, and schema/page.schema.json
 // refuses each hint broken one way, and a growth beside a fixed height.
 func TestTheSchemaHoldsTheExpansionsCanvasAndCaps(t *testing.T) {
-	page, err := os.ReadFile("../../testdata/flows.golden.html")
+	blob, err := os.ReadFile("../../testdata/client/flows.config.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	blob := configBlob(t, string(page))
 	hints := func(cfg map[string]any) map[string]any {
 		return cfg["overview"].(map[string]any)["sankey"].(map[string]any)
 	}

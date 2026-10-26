@@ -10,7 +10,10 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const MODULE = pathToFileURL(path.join(HERE, "theme.js")).href;
 const TESTDATA = path.join(HERE, "..", "testdata");
-const PAGES = readdirSync(TESTDATA).filter((f) => f.endsWith(".golden.html")).sort();
+const PAGES = [
+  ...readdirSync(TESTDATA).filter((f) => f.endsWith(".golden.html")),
+  ...readdirSync(path.join(TESTDATA, "client")).filter((f) => f.endsWith(".html")).map((f) => "client/" + f),
+].sort();
 
 test("theme.js imports with no DOM and runs nothing", async () => {
   assert.equal(typeof globalThis.document, "undefined", "nothing installed a DOM before the import");
@@ -73,7 +76,7 @@ describe("the theme toggle in every pinned page's top bar", () => {
   }
 
   test("an OS that prefers dark opens the toggle on Light mode, and a click stores light", async (t) => {
-    const { document, window } = await booted("flows.golden.html", { osDark: true });
+    const { document, window } = await booted("client/flows.html", { osDark: true });
     const button = /** @type {HTMLButtonElement} */ (document.getElementById("theme-toggle"));
     const before = read(button);
     button.click();
@@ -163,7 +166,7 @@ describe("the narrow-screen menu in every pinned page's top bar", () => {
 test("wireHowTo folds the how-to-read prose on a narrow screen and opens it on a wide one", async () => {
   const { JSDOM } = await import("jsdom");
   const mod = await import(MODULE);
-  const html = readFileSync(path.join(TESTDATA, "ledger.golden.html"), "utf8");
+  const html = readFileSync(path.join(TESTDATA, "client", "ledger.html"), "utf8");
   const { window } = new JSDOM(html);
   const listeners = [];
   const mq = { matches: true, addEventListener: (_, f) => listeners.push(f) };
@@ -238,7 +241,7 @@ test("wireTargets opens the folded caveat a fragment names", async () => {
 test("wireLede offers More only where the lede is cut, and a press shows it whole", async () => {
   const { JSDOM } = await import("jsdom");
   const mod = await import(MODULE);
-  const html = readFileSync(path.join(TESTDATA, "ledger.golden.html"), "utf8");
+  const html = readFileSync(path.join(TESTDATA, "client", "ledger.html"), "utf8");
   for (const [scroll, client, want] of [[120, 72, true], [72, 72, false]]) {
     const { window } = new JSDOM(html);
     const lede = window.document.querySelector(".page-head .lede");
@@ -263,7 +266,7 @@ test("wireLede offers More only where the lede is cut, and a press shows it whol
 test("wireLede measures the lede again when its words are repainted", async () => {
   const { JSDOM } = await import("jsdom");
   const mod = await import(MODULE);
-  const { window } = new JSDOM(readFileSync(path.join(TESTDATA, "ledger.golden.html"), "utf8"));
+  const { window } = new JSDOM(readFileSync(path.join(TESTDATA, "client", "ledger.html"), "utf8"));
   const lede = window.document.querySelector(".page-head .lede");
   let scroll = 72;
   Object.defineProperty(lede, "scrollHeight", { get: () => scroll });
