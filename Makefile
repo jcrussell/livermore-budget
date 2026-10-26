@@ -96,11 +96,12 @@ beadrefs: ## Refuse bead ids that name no bead, in prose and in comments
 
 # doccheck refuses a citation naming no section (or bold lead phrase) of
 # AGENTS.md, a citation outside the canonical form, a docs/ path naming no file,
-# and a source path under internal/, pkg/, cmd/ or tools/ naming no file. It
+# a relative markdown link to no file, and a source path under internal/, pkg/,
+# cmd/ or tools/ naming no file. It
 # reads committed files only, so it is a real gate. The boundary of each arm is
 # in the tool's package comment.
 .PHONY: doccheck
-doccheck: ## Refuse dead citations, malformed citations, and dead docs/ and source paths
+doccheck: ## Refuse dead citations, malformed citations, dead links, and dead docs/ and source paths
 	@go run ./tools/doccheck AGENTS.md \
 		AGENTS.md CLAUDE.md README.md Makefile \
 		.github docs cmd internal pkg tools site schema mappings data testdata

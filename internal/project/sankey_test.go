@@ -422,8 +422,8 @@ func TestFactOrderDoesNotMatter(t *testing.T) {
 }
 
 // TestNoNullsOrMissingKeys enforces the package doc's shape rule directly on
-// the spine's bytes: every key present on every object, and the spine has no
-// nullable field.
+// the bytes of a spine built from no facts: its top-level keys present and
+// none null.
 func TestNoNullsOrMissingKeys(t *testing.T) {
 	out, err := (&sankey{}).Build(nil, testOptions())
 	if err != nil {

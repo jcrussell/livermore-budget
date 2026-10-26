@@ -14,7 +14,7 @@ flowchart TD
   core["Client core<br/>site/core.js"]
   form["Form renderer<br/>site/sankey.js"]
   facts --> structure --> projection --> column --> core
-  decl --> core
+  decl --> column
   core --> form
   subgraph go["Go: vets and cites"]
     structure

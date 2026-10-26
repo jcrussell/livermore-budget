@@ -95,8 +95,8 @@ p67 prints no row labels: it continues p66's ten revenue rows for four more
 fund groups, so its row identity is positional against p66, and 10 rows x 8
 columns must read 80 values. `pdftotext -bbox` puts ten rows on p67 at p66's
 ten y-positions; rows 8-10 are three consecutive byte-identical all-dash
-lines, so an extractor that drops repeated lines as boilerplate loses one, and
-the read fails closed at 72 values (`fisc-c00`). On a positional page a dropped
+lines. An extractor that dropped the third as repeated boilerplate gave 72
+values, and the read failed closed (`fisc-c00`). On a positional page a dropped
 row mismaps every row beneath it, and `row_label` is part of the fact id.
 
 ## Two parties record the hash

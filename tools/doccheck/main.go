@@ -56,15 +56,16 @@ var loosePattern = regexp.MustCompile("AGENTS\\.md(?:[^\".\\n]|\\.[^\" \t\n]|\\n
 var docPathPattern = regexp.MustCompile(`(^|[^A-Za-z0-9_./-])((?:\.\.?/)*docs/[A-Za-z0-9._/-]+\.md)`)
 
 // mdLinkPattern finds a markdown link target: an inline link, bare or in
-// angle brackets and with or without a title, or a reference definition.
+// angle brackets and with or without a title, or a reference definition
+// other than a footnote.
 // Group 1 is the opening and no part of the claim; group 2 is the target, up
 // to the fragment. A link quoted in a code span or fence is found too, which
 // fails toward a finding.
-var mdLinkPattern = regexp.MustCompile(`(?m)(\]\(<?|^[ \t]*\[[^\]\n]+\]:[ \t]*<?)([^)\s#<>]+)`)
+var mdLinkPattern = regexp.MustCompile(`(?m)(\]\(<?|^[ \t]*\[[^\]^\n][^\]\n]*\]:[ \t]*<?)([^)\s#<>]+)`)
 
-// prefixedDocPath is a docs/ path behind ./ or ../, which docPathPattern
+// prefixedDocPath is a docs/ .md path behind ./ or ../, which docPathPattern
 // already resolves against the citing file, as a link is.
-var prefixedDocPath = regexp.MustCompile(`^(?:\.\.?/)+docs/`)
+var prefixedDocPath = regexp.MustCompile(`^(?:\.\.?/)+docs/.*\.md$`)
 
 // srcPathPattern finds a source path, with docPathPattern's guard. Only four
 // directories and two extensions: other repo-shaped paths (data/, dist/,
@@ -219,7 +220,7 @@ func run(args []string, stderr io.Writer) int {
 			fmt.Fprintf(stderr, "%s:%d: cites %s, which is not in the tree\n", c.file, c.line, c.title)
 		}
 		fmt.Fprintln(stderr, "")
-		fmt.Fprintln(stderr, "doccheck: the docs/ paths above resolve to no file.")
+		fmt.Fprintln(stderr, "doccheck: the paths and links above resolve to no file.")
 		fmt.Fprintln(stderr, "  A path cited from a comment or a doc is a claim about the tree,")
 		fmt.Fprintln(stderr, "  exactly as a section name is. Re-point it at the file that carries")
 		fmt.Fprintln(stderr, "  the text now, or drop it. If you renamed a docs/ file, grep for")
