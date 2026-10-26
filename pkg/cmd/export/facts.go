@@ -19,7 +19,7 @@ import (
 )
 
 // factsDir is top-level, not under data/: export.assetPath rejects data/ and
-// vendor/ keys, since docs/sankey-contract.md reserves data/ for projections.
+// vendor/ keys, since docs/outputs/sankey.md reserves data/ for projections.
 // Its tree mirrors PageTextDir's, <doc-id>/pages/pNNNN.
 const factsDir = "facts"
 

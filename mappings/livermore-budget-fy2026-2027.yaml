@@ -148,7 +148,7 @@ rules:
           # Services & Supplies 16,796,010 and TOTAL EXPENDITURES 26,544,515;
           # p0183, p0075, p0205 and p0209 print that total as 26,294,515. The S&S
           # figure that would yield it is printed on no page.
-          # docs/sankey-contract.md, "The contested total". fisc-av0w.
+          # docs/outputs/sankey.md, "The contested total". fisc-av0w.
           - {fund_group: internal-service, fiscal_year: 2027}
     rows:
       - {label: "Wages & Benefits", category: wages-and-benefits}

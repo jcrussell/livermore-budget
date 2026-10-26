@@ -18,7 +18,7 @@
 // Output is deterministic: two Build calls over the same facts return
 // byte-identical output.
 //
-// The frozen sankey.json contract is docs/sankey-contract.md, with the worked
+// The frozen sankey.json contract is docs/outputs/sankey.md, with the worked
 // FY2026 example in testdata/sankey.golden.json.
 package project
 

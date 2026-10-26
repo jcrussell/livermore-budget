@@ -37,7 +37,7 @@ func TrendsColumns() []Column {
 }
 
 // Trends is the four printed columns of pp.127-140 as one series per printed
-// row: not a graph. The contract is docs/revenue-trends-contract.md.
+// row: not a graph. The contract is docs/outputs/revenue-trends.md.
 type Trends struct {
 	// Labels resolves the fund name and the category label the document
 	// publishes. Nil is allowed and means both fall back, so a build never
@@ -154,7 +154,7 @@ func (t *Trends) Document(facts []fact.Fact, o Options) (*TrendsDocument, error)
 
 // The caveats this document ships: where its fund-group sums do not tie to
 // p63 Table 2. Their figures are read off pages, never derived as one total
-// minus another. The reconciliation is in docs/revenue-trends-contract.md.
+// minus another. The reconciliation is in docs/outputs/revenue-trends.md.
 var (
 	caveatGeneralFundTransfersIn = Caveat{
 		ID:      "no-general-fund-transfers-in-row",

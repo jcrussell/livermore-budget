@@ -1,6 +1,6 @@
 # `fund-flows.json` — the General Fund drill-down
 
-The citywide spine ([`sankey-contract.md`](sankey-contract.md)) prints six fund
+The citywide spine ([`sankey.md`](sankey.md)) prints six fund
 groups, ten revenue categories and four object categories on pp.66-67, and
 neither a fund nor a department axis. This document reads Budget Book
 **pp.127-140** (revenue by fund), **pp.167-170** (General Fund expenditure by
@@ -125,7 +125,7 @@ each a declaration.
 
 Every tier-3 fund node carries one, and the value is ours: our reading of the
 Description of Funds narrative, pp.258-261 (see
-[`sankey-contract.md`](sankey-contract.md), `constraint_tier`). The document
+[`sankey.md`](sankey.md), `constraint_tier`). The document
 carries the disclosure in `metadata.caveats` under
 `constraint-tier-is-our-reading`, and `constraint-tier-vocabulary` holds its text
 to `project.ConstraintTierCaveat()`.
@@ -192,4 +192,4 @@ A split's members are capped (`sankey.split_caps`, `capColumn`), and the tail is
 order is fold, cap, fold. `site/fold.test.mjs` holds the cents drawn and the fact
 ids cited equal before and after, at every split the page offers in both pinned
 columns. The layers and the Go/client seam are in
-[`chart-model.md`](chart-model.md).
+[`chart-model.md`](../design/chart-model.md).

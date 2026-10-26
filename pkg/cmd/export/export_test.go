@@ -29,7 +29,7 @@ import (
 )
 
 // goldenSankey is the hand-derived worked example of the contract
-// (docs/sankey-contract.md). The pipeline has to reproduce it.
+// (docs/outputs/sankey.md). The pipeline has to reproduce it.
 func goldenSankey(t *testing.T) []byte {
 	t.Helper()
 	b, err := os.ReadFile(filepath.Join("..", "..", "..", "testdata", "sankey.golden.json"))

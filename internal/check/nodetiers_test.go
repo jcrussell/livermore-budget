@@ -80,7 +80,7 @@ func TestNodeTiersAreDeclaredIsFailable(t *testing.T) {
 			want: "its id form's is 1",
 		},
 		{
-			// docs/sankey-contract.md: "Do not coin new ones."
+			// docs/outputs/sankey.md: "Do not coin new ones."
 			name: "a coined id form",
 			damage: func(t *testing.T, g *project.Document) {
 				g.Nodes[nodeIndex(t, g, "revenue/")].ID = "programme/police"

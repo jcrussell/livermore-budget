@@ -32,7 +32,7 @@ extraction of every page the site cites — the pages `facts/index.json`
 publishes, including pages no chart draws — so a citation resolves with no third
 party; `fisc export --source-browse-url` cites a browsable copy of the
 repository instead. `<output>/facts/` carries the record store:
-[`fact-store-contract.md`](fact-store-contract.md).
+[`fact-store.md`](fact-store.md).
 
 ## Shape
 
@@ -145,7 +145,7 @@ tier 5 holds 7 (4 `expenditure/` plus `transfers/out`,
 `fund-balance/reserve-increase` and `fund-balance/contribution`). Tiers 1, 3 and
 4 are empty: pp.66-67 print each revenue category as one row and no fund or
 department axis. The drill-down's tiers are in
-[`general-fund-drilldown-contract.md`](general-fund-drilldown-contract.md).
+[`fund-flows.md`](fund-flows.md).
 
 The slug in every id is a `data/taxonomy.yaml` slug. Do not coin new ones:
 `ADDITION TO RESERVES` is

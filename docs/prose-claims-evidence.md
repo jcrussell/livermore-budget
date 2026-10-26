@@ -13,7 +13,7 @@ the 115 findings counted in
 
 The badge lane found the same wrong count — *"the other six fund groups"* —
 three times, in `internal/project/fundflows.go`, then `pkg/cmd/export/data.go`'s
-lede, then `docs/general-fund-drilldown-contract.md`, across three *consecutive*
+lede, then `docs/outputs/fund-flows.md`, across three *consecutive*
 passes, each of which believed it had finished. The caveats lane's *"250 words"*
 was false in six places at once.
 

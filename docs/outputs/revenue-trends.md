@@ -19,7 +19,7 @@ byte-identical files, one lying about the year it covers.
 printed figure and cites its fact by id, page, offset and token. Every key is
 present in declaration order, and no key is `null`: every series here sits under
 a numbered fund (the ACFR fund-balance documents publish `null` `fund`; see
-[`acfr-history-contract.md`](acfr-history-contract.md)).
+[`acfr-history.md`](acfr-history.md)).
 
 Money is a **signed** integer `amount_cents`. Nine points are negative: General
 Fund ERAF and RPTTF Reduction, four columns each, plus Prior Year - Unsecured in

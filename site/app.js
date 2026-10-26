@@ -87,7 +87,7 @@ export function shareOf(d) {
 
 /**
  * A form module: the only way this file reaches a form. It reads only its
- * own hints and computes no figure; see docs/chart-model.md.
+ * own hints and computes no figure; see docs/design/chart-model.md.
  * @typedef {{
  *   form: string,
  *   tiersOf(chart: FiscChart): number[],

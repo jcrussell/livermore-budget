@@ -44,7 +44,7 @@ const PrimaryProjection = project.PublishedProjection
 const IndexPath = "index.html"
 
 // dataDir is the output subdirectory holding projection JSON, part of the
-// published contract (docs/sankey-contract.md).
+// published contract (docs/outputs/sankey.md).
 const dataDir = "data"
 
 // PageTextDir is the output subdirectory holding the committed extraction of

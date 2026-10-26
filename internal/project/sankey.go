@@ -68,7 +68,7 @@ func LinkKinds() []LinkKind {
 const (
 	tierRevenueSource = 0
 	// tierRevenueLine is a printed revenue ROW of pp.127-140, parented to its
-	// category. See docs/sankey-contract.md for why tier 1 holds it.
+	// category. See docs/outputs/sankey.md for why tier 1 holds it.
 	tierRevenueLine    = 1
 	tierFundGroup      = 2
 	tierFund           = 3
@@ -78,7 +78,7 @@ const (
 
 // idFormTiers is the tier each node id form sits at, keyed by the prefix that
 // makes an id that form. A prefix not here is a coined form, which
-// docs/sankey-contract.md forbids.
+// docs/outputs/sankey.md forbids.
 var idFormTiers = map[string]int{
 	PrefixRevenue:      tierRevenueSource,
 	PrefixRevenueLine:  tierRevenueLine,
@@ -258,7 +258,7 @@ type labels interface {
 	FundGroup(name string) bool
 	// ConstraintTier is how tightly a fund's money is tied down, derived from
 	// pp.258-261; a node publishing one publishes a source note and rationale
-	// (docs/sankey-contract.md). "" for an unlisted fund is not the tier
+	// (docs/outputs/sankey.md). "" for an unlisted fund is not the tier
 	// "unknown".
 	ConstraintTier(fund int) string
 	// RestrictionNote is the sentence a constraint tier was read from, which is
@@ -361,7 +361,7 @@ type Node struct {
 	Tier  int    `json:"tier"`
 	// Parent and ConstraintTier are "" on every spine node, whose fund groups
 	// hold funds of several tiers. A node populating ConstraintTier sets
-	// SourceNote and Rationale (docs/sankey-contract.md).
+	// SourceNote and Rationale (docs/outputs/sankey.md).
 	Parent         string `json:"parent"`
 	ConstraintTier string `json:"constraint_tier"`
 	Role           string `json:"role"`
@@ -438,7 +438,7 @@ type Link struct {
 	// read from, documents ascending, pages ascending within each, each page
 	// once, never nil. Not redundant with FactIDs: ids move when a rule is
 	// revised, while (doc_id, page) is what the fact store's shard path is
-	// computed from (docs/fact-store-contract.md). A page locator, not the
+	// computed from (docs/outputs/fact-store.md). A page locator, not the
 	// offset triple: a link is an aggregate.
 	Locators []Source `json:"locators"`
 	Derived  bool     `json:"derived"`
@@ -526,7 +526,7 @@ type cell struct {
 // Document builds the graph without encoding it, so fisc verify can check the
 // structure without parsing back the JSON it is trying to validate.
 //
-// The switch below is the row-to-slug table of docs/sankey-contract.md written
+// The switch below is the row-to-slug table of docs/outputs/sankey.md written
 // out as code, one case per printed row family, and it is kept in one function
 // so that correspondence stays visible.
 func (s *sankey) Document(facts []fact.Fact, o Options) (*Document, error) {

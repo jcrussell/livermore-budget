@@ -39,7 +39,7 @@ whole for every page published. A `records` link is always site-relative; the
 page's `text` link goes absolute under `--source-browse-url`.
 
 A projection's links publish `locators`, page locators of the facts each link
-sums ([`sankey-contract.md`](sankey-contract.md#a-link-cites-its-facts-twice)).
+sums ([`sankey.md`](sankey.md#a-link-cites-its-facts-twice)).
 
 ## The shards
 

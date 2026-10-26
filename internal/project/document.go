@@ -390,7 +390,7 @@ func (l *locatorSet) merge(o *locatorSet) {
 // sources renders the set as the published shape: documents ascending, pages
 // ascending within each, each page once.
 //
-// It never returns nil. docs/sankey-contract.md requires every key present on
+// It never returns nil. docs/outputs/sankey.md requires every key present on
 // every object with no null, and an empty locator list would otherwise encode
 // as null the moment a caller built one from no facts.
 func (l *locatorSet) sources() []Source {

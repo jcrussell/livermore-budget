@@ -54,7 +54,7 @@ So the stitching, the auditing and the cross-checking of the fact store are
 Go's, and a figure the client shows is either one Go cited or a sum of such
 figures; a count or share over them is marked as the client's.
 
-Why, measured: [`docs/chart-model.md`](docs/chart-model.md).
+Why, measured: [`docs/design/chart-model.md`](docs/design/chart-model.md).
 
 ## Where to start
 
@@ -63,7 +63,7 @@ bd prime                          # workflow context, commands, and memories
 bd ready --exclude-type=byob,epic # claimable work; see "Issue tracking"
 ```
 
-- Read [`docs/extraction-substrate.md`](docs/extraction-substrate.md) before
+- Read [`docs/design/extraction-substrate.md`](docs/design/extraction-substrate.md) before
   touching extraction: what each substrate carries and which is a trap.
 - Read [`testdata/README.md`](testdata/README.md) before writing a parser. Every
   fixture exists for a named failure mode.
@@ -191,7 +191,7 @@ Go only — neither the PDFs nor Python are needed to build, test or verify.
 resolved by `internal/mapping` → `facts/facts.jsonl` (content-addressed facts
 carrying `doc_id / page / offset / token`) → `internal/project` → `dist/`.
 
-See `README.md` for the diagram and `docs/sankey-contract.md` for the output
+See `README.md` for the diagram and `docs/outputs/sankey.md` for the output
 contract.
 
 ## Issue tracking
@@ -552,7 +552,7 @@ Why, measured: [`docs/review-loop-evidence.md`](docs/review-loop-evidence.md).
   its own reviewed commit with `extractor_version` bumped.
 
 Why, measured:
-[`docs/extraction-substrate.md`](docs/extraction-substrate.md).
+[`docs/design/extraction-substrate.md`](docs/design/extraction-substrate.md).
 
 ## Non-interactive shell commands
 

@@ -205,7 +205,7 @@ func TestTheGraphMetadataKeyOrderIsFrozen(t *testing.T) {
 }
 
 // TestTheTrendsMetadataKeyOrderMatchesTheContract pins
-// docs/revenue-trends-contract.md against the code, the same way the golden file
+// docs/outputs/revenue-trends.md against the code, the same way the golden file
 // pins the spine's.
 func TestTheTrendsMetadataKeyOrderMatchesTheContract(t *testing.T) {
 	want := []string{

@@ -978,7 +978,7 @@ func (*constraintTierVocabulary) Run(_ context.Context, s *Subject) (Result, err
 	}
 
 	// AND THE DOCUMENT ITSELF MUST DISCLOSE, or the per-node notes are a
-	// provenance panel a reader has to know to open. docs/sankey-contract.md
+	// provenance panel a reader has to know to open. docs/outputs/sankey.md
 	// requires the sentence in metadata.caveats, and it is compared against
 	// project's own constant rather than against prose written twice: two
 	// authors agreeing is not the same claim as the document saying the thing.

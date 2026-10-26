@@ -162,13 +162,13 @@ City of Livermore.
 Issues live in [beads](https://github.com/gastownhall/beads): `bd ready` for
 available work, `bd prime` for the workflow. Agent-facing rules are in
 [`AGENTS.md`](AGENTS.md). Each published document has a contract under `docs/`:
-[`sankey-contract.md`](docs/sankey-contract.md) for the citywide spine,
-[`general-fund-drilldown-contract.md`](docs/general-fund-drilldown-contract.md)
+[`sankey.md`](docs/outputs/sankey.md) for the citywide spine,
+[`fund-flows.md`](docs/outputs/fund-flows.md)
 for the fund-and-division drill-down,
-[`revenue-trends-contract.md`](docs/revenue-trends-contract.md) for the per-fund
-revenue series, [`acfr-history-contract.md`](docs/acfr-history-contract.md) for
+[`revenue-trends.md`](docs/outputs/revenue-trends.md) for the per-fund
+revenue series, [`acfr-history.md`](docs/outputs/acfr-history.md) for
 the ACFR ten-year history, and
-[`fact-store-contract.md`](docs/fact-store-contract.md) for the record store.
+[`fact-store.md`](docs/outputs/fact-store.md) for the record store.
 
 The site publishes from the `pages-build` and `pages-deploy` jobs at the foot of
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml), on a push to `main` that

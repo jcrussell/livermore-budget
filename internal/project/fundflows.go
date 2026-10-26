@@ -43,7 +43,7 @@ func FundFlowsScopes() []string {
 // Major Category".
 const generalFund = 100
 
-// constraintTierCaveat is the disclosure docs/sankey-contract.md requires of any
+// constraintTierCaveat is the disclosure docs/outputs/sankey.md requires of any
 // document publishing a constraint tier, a constant so the check compares
 // against the same bytes.
 const constraintTierCaveat = "How tightly a fund's money is restricted is this site's " +

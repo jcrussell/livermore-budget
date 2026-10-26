@@ -105,7 +105,7 @@ the glance page and `flows.golden.html` the Sankey.
 
 | Fixture | Source | Why |
 |---|---|---|
-| `sankey.golden.json` | Budget Book pp. 66–67, FY2026 | The hand-derived worked example of [`docs/sankey-contract.md`](../docs/sankey-contract.md), which `TestSankeyReproducesGoldenFile` requires Go to reproduce byte for byte; regenerate it only with a rule cheap enough to check its diff by eye. |
+| `sankey.golden.json` | Budget Book pp. 66–67, FY2026 | The hand-derived worked example of [`docs/outputs/sankey.md`](../docs/outputs/sankey.md), which `TestSankeyReproducesGoldenFile` requires Go to reproduce byte for byte; regenerate it only with a rule cheap enough to check its diff by eye. |
 | `fund-flows.golden.json` | Budget Book pp. 127–140 + 167–170, FY2026 | **A capture of Go's output**, not a derivation, held line for line to what `buildProjections` builds by `TestTheFundFlowsFixtureIsTheDocumentTheSiteDraws`; check a recapture by re-deriving every link's locators and `value_cents` from `facts/facts.jsonl`. |
 | `index.golden.html` | Budget Book pp. 66–67 and pp. 85–125, both published years, over the client subset | The glance page over `clientSubset`, held to Go's bytes by `TestTheGlanceFixtureIsWhatGoWrites`. |
 | `flows.golden.html` | The spine page, both published years, over the client subset | The Sankey page whose DOM and `window.FISC_CONFIG` the client tests boot, held decoded and whole to what Go writes by `TestTheClientFixturesHoldWhatTheClientReads`. |
