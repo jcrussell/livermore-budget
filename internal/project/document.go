@@ -390,8 +390,8 @@ func (l *locatorSet) merge(o *locatorSet) {
 // sources renders the set as the published shape: documents ascending, pages
 // ascending within each, each page once.
 //
-// It never returns nil. The package doc requires every key present on every
-// object with no null, and an empty locator list would otherwise encode
+// It never returns nil. The package doc requires every key present and an
+// absent slice [], and an empty locator list would otherwise encode
 // as null the moment a caller built one from no facts.
 func (l *locatorSet) sources() []Source {
 	out := make([]Source, 0, len(l.pages))

@@ -2,16 +2,16 @@
 
 Each claim has one home. What a Go package does is in its doc comment
 (`go doc ./internal/project`, and so on); a published shape is in `schema/`; a
-rule an agent follows is in [`AGENTS.md`](../AGENTS.md). What is here is what
-none of those can hold: measurements against the city's documents, and design
-decisions that span packages.
+rule is in [`AGENTS.md`](../AGENTS.md). What is here is what none of those can
+hold: measurements, against the city's documents and against the code, that a
+reader would otherwise have to re-derive. These pages state no rule.
 
 ```mermaid
 flowchart TD
   readme["README.md<br/>what the site covers, how to build it"]
   agents["AGENTS.md<br/>rules for working on the tree"]
   index["docs/README.md"]
-  design["design/<br/>decisions that span packages"]
+  design["design/<br/>measurements behind rules that span packages"]
   outputs["outputs/<br/>each published document against the pages it reads"]
   godoc["package doc comments<br/>what the code does"]
   schema["schema/*.schema.json<br/>the shape of each published file"]
@@ -29,7 +29,7 @@ flowchart TD
 ## design/
 
 - [`chart-model.md`](design/chart-model.md) — the layers from fact to pixel,
-  what each may compute, and where Go stops and the client starts.
+  what each computes, and the measurements that placed the Go/client seam.
 - [`extraction-substrate.md`](design/extraction-substrate.md) — what poppler's
   page text and word geometry do and do not carry, measured on the three PDFs.
 

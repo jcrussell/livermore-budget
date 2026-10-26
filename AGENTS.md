@@ -190,8 +190,8 @@ Go only — neither the PDFs nor Python are needed to build, test or verify.
 resolved by `internal/mapping` → `facts/facts.jsonl` (content-addressed facts
 carrying `doc_id / page / offset / token`) → `internal/project` → `dist/`.
 
-See `README.md` for the diagram and `docs/outputs/sankey.md` for the output
-contract.
+See `README.md` for the diagram, `schema/` for the shape of every published
+file, and `docs/outputs/` for how each reconciles with the printed pages.
 
 ## Issue tracking
 

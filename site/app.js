@@ -100,11 +100,12 @@ export function shareOf(d) {
  * - canvas: the height render draws laid nodes on at ctx.room.
  * - render: writes the DOM, keyed, moving from ctx.before; returns what ends
  *   the motion now. paint repaints on a theme change.
- * - cents, share, reduction, crossTab, reductionNote, drawnNote, hairlines:
- *   what a laid mark means after this form drew it -- its signed figure, its
- *   share of what it is drawn among, whether its ribbons are printed
- *   reductions or a cross-tab total, and what the drawing did to it. Only the
- *   layout knows these, so the page asks the form.
+ * - cents, share, reduction, crossTab, reductionNote, drawnNote: what a laid
+ *   mark means after this form drew it -- its signed figure, its share of
+ *   what it is drawn among, whether its ribbons are printed reductions or a
+ *   cross-tab total, and what the drawing did to it. Only the layout knows
+ *   these, so the page asks the form.
+ * - hairlines: how many laid ribbons are drawn wider than their share.
  * @typedef {{
  *   form: string,
  *   tiersOf(chart: FiscChart): number[],

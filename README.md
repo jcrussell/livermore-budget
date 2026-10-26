@@ -34,8 +34,8 @@ Each schedule reconciles against something the city itself printed:
 | pp. 225–235 | every capital project, under the fund that pays for it | 2026 + 2027 adopted, 2028–2030 projected |
 | ACFR p. 41 | the General Fund's revenues, transfers, General Government divisions and fund balances | 2025 audited |
 | ACFR p. 121 | the General Fund's budget against its actuals: original, final and actual | 2025 |
-| ACFR p. 167 | fund balances, ten years | 2016–2025 audited |
-| ACFR p. 168 | changes in fund balances, ten years | 2016–2025 audited |
+| ACFR p. 167 | fund balances, ten years | 2016–2025, from the unaudited statistical section |
+| ACFR p. 168 | changes in fund balances, ten years | 2016–2025, from the unaudited statistical section |
 
 The spine gives the all-funds picture: $299,969,007 gross revenue and
 $254,095,412 gross expenditure in FY2026, over six fund groups whose printed
@@ -50,7 +50,7 @@ The site's pages are the views `data/views.yaml` declares, in nav order:
 | Bars | `ledger.html` | the same money as ranked bars |
 | Over time | `change.html` | ten years of what the governmental funds took in and spent (ACFR p168), beside the budget's four revenue columns |
 | Fund balances | `balances.html` | ten years of fund balances (ACFR p167) |
-| Departments | `department.html` | one department's funding and spending |
+| Departments | `department.html` | every department as a bar of the funds that pay for it; open one for what it spends |
 | Capital projects | `capital.html` | every capital project, under the fund that pays for it |
 | Debt | `debt.html` | debt service by issue, and what is owed through maturity |
 | Caveats | `caveats.html` | every limit on these figures, once, grouped by kind |

@@ -44,8 +44,8 @@ func FundFlowsScopes() []string {
 const generalFund = 100
 
 // constraintTierCaveat is the disclosure any document publishing a constraint
-// tier carries, since the tier is our reading and not a printed figure, a constant so the check compares
-// against the same bytes.
+// tier carries, since the tier is our reading and not a printed figure. It is
+// a constant so the check compares against the same bytes.
 const constraintTierCaveat = "How tightly a fund's money is restricted is this site's " +
 	"reading of the Description of Funds (Budget Book pp. 258-261), not a figure the city " +
 	"printed. Each fund shows the sentence it was read from. \"unknown\" means those pages " +

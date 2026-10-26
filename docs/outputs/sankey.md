@@ -173,7 +173,7 @@ refused by `fisc verify`, measured by mutation:
 | `amount_cents` corrected, token left as printed | `fact-token-reparses`: token `"16,796,010"` is $16,796,010.00 but the fact carries $16,546,010.00 |
 | `amount_cents` and token both corrected | `fact-offset-points-at-token`: p67 at offset 2548 is `"16,796,010"`, not `"16,546,010"` |
 
-`sankey-2027.json` carries the difference as a caveat; FY2026 ties everywhere.
+The FY2027 spine, in `fy2027-adopted.json`, carries the difference as a caveat; FY2026 ties everywhere.
 Three declared exceptions carry the $250,000 on different axes, so each is an
 independent witness: by fund group, by object category (pp.85-125 decompose the
 money by department, division and object with no fund dimension, and still

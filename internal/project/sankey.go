@@ -78,8 +78,7 @@ const (
 )
 
 // idFormTiers is the tier each node id form sits at, keyed by the prefix that
-// makes an id that form. A prefix not here is a coined form and is refused;
-// the slug after it is a data/taxonomy.yaml slug, never a new one.
+// makes an id that form. A prefix not here is a coined form and is refused.
 var idFormTiers = map[string]int{
 	PrefixRevenue:      tierRevenueSource,
 	PrefixRevenueLine:  tierRevenueLine,
@@ -531,8 +530,8 @@ type cell struct {
 // structure without parsing back the JSON it is trying to validate.
 //
 // The switch below is the row-to-slug table, over the mapping's categories,
-// written out as code, one case per printed row family, and it is kept in one function
-// so that correspondence stays visible.
+// written out as code, one case per printed row family, and it is kept in one
+// function so that correspondence stays visible.
 func (s *sankey) Document(facts []fact.Fact, o Options) (*Document, error) {
 	if err := o.validate(); err != nil {
 		return nil, fmt.Errorf("sankey options: %w", err)

@@ -204,9 +204,9 @@ func TestTheGraphMetadataKeyOrderIsFrozen(t *testing.T) {
 	}
 }
 
-// TestTheTrendsMetadataKeyOrderMatchesTheContract pins the series documents'
+// TestTheTrendsMetadataKeyOrderIsPinned pins the series documents'
 // metadata key order, as the golden file pins the spine's.
-func TestTheTrendsMetadataKeyOrderMatchesTheContract(t *testing.T) {
+func TestTheTrendsMetadataKeyOrderIsPinned(t *testing.T) {
 	want := []string{
 		"generated_by", "scope", "currency", "units",
 		"columns", "sources", "counts", "caveats",

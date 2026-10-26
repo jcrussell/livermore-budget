@@ -7,8 +7,9 @@
 //
 // A [Projection] takes facts and options and returns bytes; it does no I/O.
 //
-// Every key is present on every object, in declaration order — no omitempty,
-// no null. Absent strings are "", absent slices are []. The keys a document
+// Every key is present on every object, in declaration order — no omitempty.
+// Absent strings are "", absent slices are [], and no key is null except a
+// pointer field whose doc says when, such as [Series.Fund]. The keys a document
 // may omit are [Metadata.Headline], [Node.Balances] and either of
 // [NodeBalances]' two, each for the reason on its field.
 //
