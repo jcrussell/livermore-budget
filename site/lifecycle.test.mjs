@@ -521,31 +521,51 @@ describe("the view in the URL", () => {
     assert.deepEqual(said(document), []);
   });
 
+  // What parseHash cannot read whole, it refuses before any page state is
+  // touched. Mutation: let an unknown field through parseHash and its row
+  // reads as a view.
+  test("a hash parseHash cannot read whole is refused, naming why", async () => {
+    const { app } = await loadApp();
+    const key = NEWEST.path.replace(/\.json$/, "");
+    const cases = [
+      [`#y=${key}&open=fund-group/general`, "open"],
+      [`#y=${key}&min=1.5`, "1.5"],
+      ["#hide=fund-group/general", "no year"],
+      [`#y=${key}&zoom=2`, "zoom"],
+    ];
+    for (const [hash, names] of cases) {
+      const r = app.parseHash(hash);
+      assert.ok(r.kind === "refused" && r.why.includes(names), `${hash}: ${JSON.stringify(r)}`);
+    }
+  });
+
+  // What it reads but the page does not publish or offer, the page refuses
+  // with the banner and falls back to its opening view. One page restores
+  // each in turn; one boots from such a hash, so the URL is set back too.
   test("a hash naming a year, a node, a kind or a group the page does not publish or offer is refused with the banner, and the page shows its opening view", async (t) => {
     const key = NEWEST.path.replace(/\.json$/, "");
     const cases = [
       ["#y=fy1999-adopted", "fy1999-adopted"],
-      [`#y=${key}&open=fund-group/general`, "open"],
       [`#y=${key}&hidekind=no_such_kind`, "no_such_kind"],
       [`#y=${key}&hide=fund-group/no-such`, "fund-group/no-such"],
       [`#y=${key}&iso=dept/patrol`, "dept/patrol"],
-      [`#y=${key}&min=1.5`, "1.5"],
-      [`#hide=fund-group/general`, "no year"],
-      [`#y=${key}&zoom=2`, "zoom"],
       // A split of a node the root does not draw, and one the node lacks: no
       // guessing at the parent that would draw it, or at another split.
       [`#y=${key}&x=fund/100`, "fund/100"],
       [`#y=${key}&x=fund-group/general~no-such`, "no-such"],
     ];
+    const { app, document, window } = await bootAt(cases[0][0]);
+    assert.equal(window.location.hash, "#y=" + key, "a refused hash is left in the URL");
     for (const [hash, names] of cases) {
-      const { app, document, window } = await bootAt(hash);
+      app.clearRefusal();
+      await app.restoreView(hash);
+      await settle();
       const banners = said(document);
       t.diagnostic(`${hash}: ${banners[0] || "(no banner)"}`);
       assert.equal(banners.length, 1, `${hash} drew without a banner`);
       assert.ok(banners[0].includes(names), banners[0]);
       assert.deepEqual(view(app), opening, `${hash} did not show the opening view`);
       assert.ok(document.querySelectorAll("#chart g.node").length > 0, `${hash} drew no chart`);
-      assert.equal(window.location.hash, "#y=" + key);
     }
   });
 
