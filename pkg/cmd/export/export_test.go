@@ -23,20 +23,32 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/export"
 	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/internal/project/projecttest"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/pkg/iostreams"
 )
 
-// goldenSankey is the hand-derived worked example of the spine document. The
-// pipeline has to reproduce it.
+// goldenSankey is the published spine document over projecttest's
+// transcription of pp.66-67, FY2026, built in memory.
 func goldenSankey(t *testing.T) []byte {
 	t.Helper()
-	b, err := os.ReadFile(filepath.Join("..", "..", "..", "testdata", "sankey.golden.json"))
-	if err != nil {
-		t.Fatalf("read golden projection: %v", err)
+	for _, p := range project.Registry(projecttest.SpineLabels) {
+		if p.Name() != project.PublishedProjection {
+			continue
+		}
+		b, err := p.Build(projecttest.WithCIPLeg(projecttest.SpineFacts(projecttest.Year)), project.Options{
+			Columns: []project.Column{{FiscalYear: projecttest.Year, Basis: projecttest.Basis}},
+			Scopes:  []string{projecttest.Scope},
+			Version: projecttest.Version,
+		})
+		if err != nil {
+			t.Fatalf("build the spine: %v", err)
+		}
+		return b
 	}
-	return b
+	t.Fatalf("no %s projection is registered", project.PublishedProjection)
+	return nil
 }
 
 // goldenFunding is a department-funding document of the golden spine's column,
@@ -796,8 +808,10 @@ func TestExportRunReportsABuilderFailure(t *testing.T) {
 }
 
 // TestBuildProjectionsRunsThePipeline reads the committed facts/facts.jsonl
-// through the real projection against the hand-derived
-// testdata/sankey.golden.json; only generated_by may differ.
+// through the real projection, and requires its FY2026 spine to be the one
+// projecttest's hand transcription of pp.66-67 builds: only generated_by may
+// differ. A cell the extraction or a mapping reads differently from the
+// printed page is a difference here.
 func TestBuildProjectionsRunsThePipeline(t *testing.T) {
 	root := repoRootForTest(t)
 	got, err := buildProjections(root)
@@ -825,17 +839,17 @@ func TestBuildProjectionsRunsThePipeline(t *testing.T) {
 		t.Errorf("projection names (-want +got):\n%s", diff)
 	}
 
-	var built, golden map[string]any
+	var built, transcribed map[string]any
 	if err := json.Unmarshal(got["sankey"], &built); err != nil {
 		t.Fatalf("decode built projection: %v", err)
 	}
-	if err := json.Unmarshal(goldenSankey(t), &golden); err != nil {
-		t.Fatalf("decode golden: %v", err)
+	if err := json.Unmarshal(goldenSankey(t), &transcribed); err != nil {
+		t.Fatalf("decode the transcribed spine: %v", err)
 	}
 	delete(built["metadata"].(map[string]any), "generated_by")
-	delete(golden["metadata"].(map[string]any), "generated_by")
-	if diff := cmp.Diff(golden, built); diff != "" {
-		t.Errorf("the pipeline does not reproduce the golden file (-want +got):\n%s", diff)
+	delete(transcribed["metadata"].(map[string]any), "generated_by")
+	if diff := cmp.Diff(transcribed, built); diff != "" {
+		t.Errorf("the pipeline's spine is not the transcription's (-transcribed +built):\n%s", diff)
 	}
 }
 

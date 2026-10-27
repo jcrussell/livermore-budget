@@ -82,10 +82,11 @@ describe("the shipped modules hold no state", () => {
     // The renderer lays out with no page at all: the columns, the lookups and
     // d3 are its inputs, and a DOM is not among them.
     const core = await import(pathToFileURL(path.join(HERE, "core.js")).href);
-    const { loadD3, goldenGraph } = await import("./testlib.mjs");
+    const { loadD3, spineGraph } = await import("./testlib.mjs");
     loadD3();
     const tiers = [0, 2, 5];
-    const drawn = sankey.markContra(core.foldDocument(goldenGraph(), core.tierFrontier(goldenGraph(), tiers)));
+    const spine = await spineGraph();
+    const drawn = sankey.markContra(core.foldDocument(spine, core.tierFrontier(spine, tiers)));
     const groups = [...new Set(drawn.nodes.filter((n) => n.role === "fund_group").map((n) => n.id))].sort();
     const index = new Map(drawn.nodes.map((n) => [n.id, n]));
     assert.equal(typeof globalThis.document, "undefined", "no DOM is installed for the layout");

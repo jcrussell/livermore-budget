@@ -286,9 +286,9 @@ func TestScannableCoversWhatTheSiteAndTheToolingAreWrittenIn(t *testing.T) {
 			t.Errorf("scannable(%q) = false, want true", p)
 		}
 	}
-	// A golden carries a prose note citing a bead, so .json is in.
-	if !scannable("testdata/sankey.golden.json") {
-		t.Error(`scannable("testdata/sankey.golden.json") = false, want true`)
+	// A JSON fixture can carry a prose note citing a bead, so .json is in.
+	if !scannable("testdata/client/flows.config.json") {
+		t.Error(`scannable("testdata/client/flows.config.json") = false, want true`)
 	}
 	// The page fixtures are the city's own printed text and cannot carry a claim
 	// about this tracker.

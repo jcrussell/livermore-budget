@@ -93,7 +93,6 @@ writes at `<page>.html`, and `<page>.config.json` its config.
 
 | Fixture | Source | Why |
 |---|---|---|
-| `sankey.golden.json` | Budget Book pp. 66–67, FY2026 | The hand-derived worked example of the spine document ([`docs/outputs/sankey.md`](../docs/outputs/sankey.md)), which `TestSankeyReproducesGoldenFile` requires Go to reproduce byte for byte; regenerate it only with a rule cheap enough to check its diff by eye. |
 | `fund-flows.golden.json` | Budget Book pp. 127–140 + 167–170, FY2026 | **A capture of Go's output**, not a derivation, held line for line to what `buildProjections` builds by `TestTheFundFlowsFixtureIsTheDocumentTheSiteDraws`; check a recapture by re-deriving every link's locators and `value_cents` from `facts/facts.jsonl`. |
 | `client/{flows,department,ledger}.html` | None: hand-written | The DOM each page's modules bind and no prose, held to `schema/bindings.json` by `site/bindings.test.mjs`; Go holds every page it writes to the same file by `TestEveryPageCarriesTheDOMItsModulesBind`. |
 | `client/{index,change,capital,caveats}.html` | None: planted | The same, the page's data its tables: rows shaped for the mechanism each client test states (a tail to fold, a tie and a declared residual, a kind negative in one column, an absent cell, a caveat stated in two sections). No figure is the city's; that each bar's rows reach the whole Go prints is refused at the write, and the audited excess is held by `TestTheAuditedRevenueRowsLessTheSpendingRowsAreThePrintedExcess`. |

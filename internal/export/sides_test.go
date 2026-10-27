@@ -7,6 +7,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/export"
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/internal/project/projecttest"
 )
 
 // sidesExpansion is a FY2025-26 expansion schedule with roots at tiers 0, 2
@@ -35,7 +36,7 @@ func sidesExpansion(both bool) []byte {
 		`{"id":"expenditure/x","label":"X","tier":5,"role":"object_category"}],` +
 		`"links":[` + strings.Join(links, ",") + `],` +
 		`"splits":[{"node":"revenue/a","key":"lines","form":"extend","alternative":false,"side":"before"}],` +
-		`"metadata":{"generated_by":"testdata/sankey.golden.json (hand-derived, Wave 0)","fiscal_year":2026,"fiscal_year_label":"FY 2025-26",` +
+		`"metadata":{"generated_by":"` + projecttest.Version + `","fiscal_year":2026,"fiscal_year_label":"FY 2025-26",` +
 		`"basis":"adopted","scopes":["all-funds-gross"],"currency":"USD","units":"cents",` +
 		`"sources":[{"doc_id":"livermore-budget-fy2026-2027","pages":[66]}],` +
 		`"counts":{"facts":5,"nodes":6,"links":5},"caveats":[]}}`)

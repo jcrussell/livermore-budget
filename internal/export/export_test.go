@@ -23,21 +23,31 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/export"
 	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/internal/project/projecttest"
 	"github.com/jcrussell/livermore-budget/schema"
 	"github.com/jcrussell/livermore-budget/site"
 )
 
-// goldenPath is the frozen worked example of the sankey contract: real FY2026
-// figures with real fact ids.
-const goldenPath = "../../testdata/sankey.golden.json"
-
+// goldenSankey is the published spine document over projecttest's
+// transcription of pp.66-67, FY2026, built in memory.
 func goldenSankey(t *testing.T) []byte {
 	t.Helper()
-	b, err := os.ReadFile(goldenPath)
-	if err != nil {
-		t.Fatalf("read golden projection: %v", err)
+	for _, p := range project.Registry(projecttest.SpineLabels) {
+		if p.Name() != project.PublishedProjection {
+			continue
+		}
+		b, err := p.Build(projecttest.WithCIPLeg(projecttest.SpineFacts(projecttest.Year)), project.Options{
+			Columns: []project.Column{{FiscalYear: projecttest.Year, Basis: projecttest.Basis}},
+			Scopes:  []string{projecttest.Scope},
+			Version: projecttest.Version,
+		})
+		if err != nil {
+			t.Fatalf("build the spine: %v", err)
+		}
+		return b
 	}
-	return b
+	t.Fatalf("no %s projection is registered", project.PublishedProjection)
+	return nil
 }
 
 func budgetDocs() []export.Doc {

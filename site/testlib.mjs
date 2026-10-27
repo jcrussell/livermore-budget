@@ -159,9 +159,10 @@ export function columnFixture(stem) {
   return JSON.parse(readFileSync(join(repoRoot, "testdata", stem + ".column.json"), "utf8"));
 }
 
-/** The FY2026 spine as a projection document, testdata/sankey.golden.json. */
-export function goldenGraph() {
-  return JSON.parse(readFileSync(join(repoRoot, "testdata", "sankey.golden.json"), "utf8"));
+/** The FY2026 spine as the page draws it: the sankey schedule of its column. */
+export async function spineGraph() {
+  const core = await import(pathToFileURL(join(here, "core.js")).href);
+  return core.scheduleOf(columnFixture("fy2026-adopted"), "sankey");
 }
 
 /** Throws on an untaught query: answering false would silently stop testing. */

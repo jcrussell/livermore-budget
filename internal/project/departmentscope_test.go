@@ -1,7 +1,6 @@
 package project
 
 import (
-	"os"
 	"strings"
 	"testing"
 
@@ -79,10 +78,7 @@ func detailFacts(t *testing.T, scope string, withDepartment bool) []fact.Fact {
 // TestDepartmentDetailDoesNotEnterTheSpine: department detail joins the store
 // and the published spine document does not move by one byte.
 func TestDepartmentDetailDoesNotEnterTheSpine(t *testing.T) {
-	want, err := os.ReadFile(goldenPath)
-	if err != nil {
-		t.Fatalf("read golden: %v", err)
-	}
+	want := spineBytes(t)
 	all := append(withCIPLeg(t, spineFacts(t, testYear)), detailFacts(t, detailScope, true)...)
 
 	got, err := (&sankey{Labels: goldenLabels}).Build(all, testOptions())
@@ -90,9 +86,9 @@ func TestDepartmentDetailDoesNotEnterTheSpine(t *testing.T) {
 		t.Fatalf("Build: %v", err)
 	}
 	if string(got) != string(want) {
-		t.Errorf("Build with %d department facts added differs from %s; the detail is the "+
+		t.Errorf("Build with %d department facts added differs from the spine alone; the detail is the "+
 			"same money as the spine and must not reach the chart",
-			len(departmentWages), goldenPath)
+			len(departmentWages))
 	}
 
 	// And the one cell they would have landed on, named: still the spine's

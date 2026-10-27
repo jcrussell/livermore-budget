@@ -19,8 +19,8 @@
 // byte-identical output.
 //
 // Each document's published shape is a schema under schema/ (a graph's is
-// projection.schema.json, a series' series.schema.json), with the worked FY2026
-// spine in testdata/sankey.golden.json. What each document reads off the
+// projection.schema.json, a series' series.schema.json), and the FY2026 spine
+// transcribed by hand is projecttest's. What each document reads off the
 // printed pages, and how it reconciles with them, is under docs/outputs/.
 package project
 

@@ -1,7 +1,6 @@
 package project
 
 import (
-	"os"
 	"strings"
 	"testing"
 
@@ -61,10 +60,7 @@ func revenueDetailFacts(t *testing.T, scope string) []fact.Fact {
 // TestRevenueDetailDoesNotEnterTheSpine: revenue detail joins the store and the
 // published spine document does not move by one byte.
 func TestRevenueDetailDoesNotEnterTheSpine(t *testing.T) {
-	want, err := os.ReadFile(goldenPath)
-	if err != nil {
-		t.Fatalf("read golden: %v", err)
-	}
+	want := spineBytes(t)
 	all := append(withCIPLeg(t, spineFacts(t, testYear)), revenueDetailFacts(t, revenueScope)...)
 
 	got, err := (&sankey{Labels: goldenLabels}).Build(all, testOptions())
@@ -72,9 +68,9 @@ func TestRevenueDetailDoesNotEnterTheSpine(t *testing.T) {
 		t.Fatalf("Build: %v", err)
 	}
 	if string(got) != string(want) {
-		t.Errorf("Build with %d revenue detail facts added differs from %s; the detail is "+
+		t.Errorf("Build with %d revenue detail facts added differs from the spine alone; the detail is "+
 			"the same money as the spine and must not reach the chart",
-			len(p127PropertyTaxes), goldenPath)
+			len(p127PropertyTaxes))
 	}
 
 	g := buildGraph(t, all, testOptions())

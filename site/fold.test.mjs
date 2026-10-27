@@ -5,7 +5,7 @@ import { before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  loadApp, bootedApp, columnFixture, goldenGraph, pageFixture, publishedColumns, unmarkContra, expansionStates,
+  loadApp, bootedApp, columnFixture, spineGraph, pageFixture, publishedColumns, unmarkContra, expansionStates,
 } from "./testlib.mjs";
 
 /** A module drawing one tier set: the pinned config with the overview's tiers replaced. */
@@ -334,9 +334,9 @@ describe("foldDocument's clauses, on the miniature", () => {
 describe("the spine's fund groups", () => {
   test("the parent walk cannot move the spine, because the spine has no parents", async (t) => {
     const whole = await drawing([]);
-    const spine = goldenGraph();
+    const spine = await spineGraph();
     t.diagnostic(`all ${spine.nodes.length} spine nodes are parentless`);
-    assert.ok(spine.nodes.length > 0, "the spine golden carries no node, so no parent is walked");
+    assert.ok(spine.nodes.length > 0, "the spine carries no node, so no parent is walked");
     for (const n of spine.nodes) {
       assert.equal(n.parent, "", n.id);
       assert.equal(whole.fundGroupOf(n), whole.isFundGroup(n) ? n.id : "", n.id);

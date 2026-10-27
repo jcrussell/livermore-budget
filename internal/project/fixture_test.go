@@ -5,104 +5,35 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/project/projecttest"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
-// The fixture is the citywide spine, pp.66-67, as facts; testdata/sankey.golden.json
-// is its hand derivation (TestSankeyReproducesGoldenFile). Ids come from
-// fact.MakeID over the builder's tuple.
+// The fixture is the citywide spine, pp.66-67, as facts (projecttest), and the
+// cell builders a test states the rest of its input with.
 const (
-	testDoc   = "livermore-budget-fy2026-2027"
-	testScope = "all-funds-gross"
-	testYear  = 2026
-	testBasis = vocab.BasisAdopted
+	testDoc   = projecttest.Doc
+	testScope = projecttest.Scope
+	testYear  = projecttest.Year
+	testBasis = projecttest.Basis
 )
 
 // testColumn is the one column every single-column fixture prints.
 var testColumn = Column{FiscalYear: testYear, Basis: testBasis}
 
-// testOptions are the options the golden file was derived under.
+// testOptions are the options the spine document is built under.
 func testOptions() Options {
 	return Options{
 		Columns: []Column{{FiscalYear: testYear, Basis: testBasis}},
 		Scopes:  []string{testScope},
-		Version: "testdata/sankey.golden.json (hand-derived, Wave 0)",
+		Version: projecttest.Version,
 	}
-}
-
-// spineGroups is the fund-group column order of spineRows, left to right as
-// the two pages print them.
-var spineGroups = [6]string{
-	"general", "enterprise", "capital", "debt-service", "special-revenue", "internal-service",
-}
-
-// spinePage says which page carries a fund group's column: p66 carries the row
-// labels and the General Fund and Enterprise columns, p67 continues the same
-// rows for the other four with nothing but numbers.
-func spinePage(group string) int {
-	if group == "general" || group == "enterprise" {
-		return 66
-	}
-	return 67
-}
-
-// spineRow is one printed row of the schedule across all six columns. Every
-// cell is a fact, including the printed dashes, which earn no link.
-type spineRow struct {
-	kind     vocab.Kind
-	rule     string
-	category string
-	label    string
-	cents    [6]int64
-}
-
-var spineRows = []spineRow{
-	{vocab.KindRevenue, "spine-revenues", "taxes/property", "Property Taxes", [6]int64{6414376200, 0, 0, 0, 531565200, 0}},
-	{vocab.KindRevenue, "spine-revenues", "taxes/other", "Other Taxes", [6]int64{2380019600, 0, 0, 0, 17000000, 0}},
-	{vocab.KindRevenue, "spine-revenues", "intergovernmental", "Intergovernmental", [6]int64{432816400, 0, 818845300, 0, 682483500, 1884483400}},
-	{vocab.KindRevenue, "spine-revenues", "charges-for-services", "Charges for Services", [6]int64{613020700, 6225082400, 152942900, 0, 212929700, 0}},
-	{vocab.KindRevenue, "spine-revenues", "use-of-money-and-property", "Use of Money And Property", [6]int64{848816800, 483653700, 134600000, 0, 74113200, 12500000}},
-	{vocab.KindRevenue, "spine-revenues", "contributions-outsourced", "Contributions Outsourced", [6]int64{7636000, 0, 0, 0, 193400000, 0}},
-	{vocab.KindRevenue, "spine-revenues", "miscellaneous-revenue", "Miscellaneous Revenue", [6]int64{218070800, 42690000, 1608200000, 0, 1135064400, 0}},
-	{vocab.KindRevenue, "spine-revenues", "taxes/sales", "Sales Taxes", [6]int64{4108660600, 0, 0, 0, 0, 0}},
-	{vocab.KindRevenue, "spine-revenues", "fines-and-forfeitures", "Fines & Forfeitures", [6]int64{38650000, 0, 0, 0, 0, 0}},
-	{vocab.KindRevenue, "spine-revenues", "licenses-and-permits", "Licenses & Permits", [6]int64{725279900, 0, 0, 0, 0, 0}},
-	{vocab.KindExpenditure, "spine-expenditures", "wages-and-benefits", "Wages & Benefits", [6]int64{8180101100, 1606653600, 18620500, 0, 371671700, 597065400}},
-	{vocab.KindExpenditure, "spine-expenditures", "services-and-supplies", "Services & Supplies", [6]int64{6284979100, 3959324000, 87515000, 0, 1471493900, 1548918900}},
-	{vocab.KindExpenditure, "spine-expenditures", "capital-outlay", "Capital Outlay", [6]int64{0, 69990000, 0, 0, 60000000, 254702400}},
-	{vocab.KindExpenditure, "spine-expenditures", "debt-services", "Debt Services", [6]int64{0, 69405400, 0, 698459700, 23590500, 107050000}},
-	{vocab.KindTransferIn, "spine-transfers-in", "transfers/in", "TRANSFER IN:", [6]int64{48040000, 1324700000, 0, 698459700, 81400000, 0}},
-	{vocab.KindTransferOut, "spine-transfers-out", "transfers/out", "TRANSFER OUT:", [6]int64{1003779700, 1981314700, 2858474000, 0, 113705000, 4000000}},
-	{vocab.KindFundBalance, "spine-fund-balance", "fund-balance/reserve-increase", "ADDITION TO RESERVES", [6]int64{469942500, 0, 0, 0, 0, 0}},
-	// Signed as printed: the General Fund's FY2026 CHANGE IN WORKING CAPITAL
-	// is "(1,034,154)". Three of the six columns are negative, which is what
-	// makes the fund-balance/draw side of the decomposition testable here.
-	{vocab.KindFundBalance, "spine-fund-balance", "fund-balance/change", "CHANGE IN WORKING CAPITAL", [6]int64{-103415400, 389438400, -250021300, 0, 887494900, -614753300}},
-	// Stocks, not flows. They are facts the city printed and they must survive
-	// into facts.jsonl, but a balance carried into the year is not money moving
-	// and gets no link. Debt Service carries a literal $2.
-	{vocab.KindFundBalance, "spine-fund-balance", "fund-balance/beginning", "BEGINNING WORKING CAPITAL", [6]int64{176661300, 10339445000, 11071354500, 200, 7729007300, 2183726500}},
-	{vocab.KindFundBalance, "spine-fund-balance", "fund-balance/ending", "ENDING WORKING CAPITAL", [6]int64{73245900, 10728883400, 10821333200, 200, 8616502200, 1568973200}},
 }
 
 // spineFacts renders the fixture as facts for one fiscal year.
 func spineFacts(t *testing.T, year int) []fact.Fact {
 	t.Helper()
-	var out []fact.Fact
-	for _, r := range spineRows {
-		for i, cents := range r.cents {
-			out = append(out, cellSpec{
-				kind:     r.kind,
-				rule:     r.rule,
-				category: r.category,
-				label:    r.label,
-				group:    spineGroups[i],
-				cents:    cents,
-				year:     year,
-			}.fact(t))
-		}
-	}
-	return out
+	return projecttest.SpineFacts(year)
 }
 
 // cellSpec is one cell of a schedule, with everything that does not matter to
@@ -135,7 +66,7 @@ func (c cellSpec) fact(t *testing.T) fact.Fact {
 		c.label = c.category
 	}
 	if c.page == 0 {
-		c.page = spinePage(c.group)
+		c.page = projecttest.SpinePage(c.group)
 	}
 	f := printedFact(testDoc, c.rule, mapping.Row{Category: c.category}, c.label,
 		mapping.Column{FundGroup: c.group}, testScope, c.kind, Column{FiscalYear: c.year, Basis: testBasis},
@@ -144,35 +75,10 @@ func (c cellSpec) fact(t *testing.T) fact.Fact {
 	return f
 }
 
-// printedFact is one figure of a test document at a row and a column, its id
-// hashed from the same tuple the mapping engine hashes. Every fixture fact
-// is positive and in dollars until the caller says otherwise.
+// printedFact is projecttest.PrintedFact at column c.
 func printedFact(doc, rule string, row mapping.Row, label string, col mapping.Column, scope string,
 	kind vocab.Kind, c Column, cents int64) fact.Fact {
-	rowPath := fact.RowPath(row)
-	columnPath := fact.ColumnPath(col, scope)
-	f := fact.Fact{
-		ID:          fact.MakeID(doc, rule, rowPath, label, columnPath, c.FiscalYear, c.Basis),
-		DocID:       doc,
-		RuleID:      rule,
-		Kind:        kind,
-		Basis:       c.Basis,
-		Scope:       scope,
-		FiscalYear:  c.FiscalYear,
-		RowPath:     rowPath,
-		RowLabel:    label,
-		Category:    row.Category,
-		Department:  row.Department,
-		ColumnPath:  columnPath,
-		FundGroup:   col.FundGroup,
-		Sign:        vocab.SignPositive,
-		Units:       "dollars",
-		AmountCents: cents,
-	}
-	if col.Fund != 0 {
-		f.Fund = fact.FundNumber(col.Fund)
-	}
-	return f
+	return projecttest.PrintedFact(doc, rule, row, label, col, scope, kind, c.FiscalYear, c.Basis, cents)
 }
 
 // ruleFor is the rule id the spine uses for each kind. It is part of the fact
@@ -208,35 +114,7 @@ func facts(t *testing.T, specs ...cellSpec) []fact.Fact {
 
 // stubLabels stands in for internal/registry, keyed by data/taxonomy.yaml
 // category slug; fund names live in a second map.
-type stubLabels map[string]string
-
-func (s stubLabels) Label(slug string) (string, bool) {
-	l, ok := s[slug]
-	return l, ok
-}
-
-// FundName satisfies Labels. The spine names no fund, so every stub returns a
-// miss unless a test supplies stubFunds instead.
-func (stubLabels) FundName(int) (string, bool) { return "", false }
-
-// The four methods a fund- or department-keyed document needs; the spine keys
-// on neither, so they miss. FundType invents no parent edge.
-func (stubLabels) FundType(int) (string, bool)         { return "", false }
-func (stubLabels) FundGroup(string) bool               { return false }
-func (stubLabels) ConstraintTier(int) string           { return "" }
-func (stubLabels) RestrictionNote(int) string          { return "" }
-func (stubLabels) DivisionLabel(string) (string, bool) { return "", false }
-
-// DepartmentLabel answers nothing, as DivisionLabel does.
-func (stubLabels) DepartmentLabel(string) (string, bool) { return "", false }
-
-// LinesPrintedAs returns no line: the spine prints no revenue rows under its
-// categories.
-// stubLines supplies real answers where a test needs them.
-func (stubLabels) LinesPrintedAs(string, string, string) []string { return nil }
-
-// Terms answers no spelling, so no stub line is its category printed whole.
-func (stubLabels) Terms(string) []string { return nil }
+type stubLabels = projecttest.Labels
 
 // stubFunds is stubLabels with fund names attached, for the documents that key
 // on funds rather than on categories.
@@ -250,26 +128,8 @@ func (s stubFunds) FundName(number int) (string, bool) {
 	return n, ok
 }
 
-// goldenLabels is every category label data/taxonomy.yaml carries for the
-// spine, transcribed; builtinLabels answers for the rest.
-var goldenLabels = stubLabels{
-	"taxes/property":            "Property Taxes",
-	"taxes/sales":               "Sales Taxes",
-	"taxes/other":               "Other Taxes",
-	"licenses-and-permits":      "Licenses & Permits",
-	"fines-and-forfeitures":     "Fines & Forfeitures",
-	"intergovernmental":         "Intergovernmental",
-	"charges-for-services":      "Charges for Services",
-	"use-of-money-and-property": "Use of Money And Property",
-	"contributions-outsourced":  "Contributions Outsourced",
-	"miscellaneous-revenue":     "Miscellaneous Revenue",
-	"wages-and-benefits":        "Wages & Benefits",
-	"services-and-supplies":     "Services & Supplies",
-	"capital-outlay":            "Capital Outlay",
-	"debt-services":             "Debt Services",
-	"transfers/in":              "Transfers In",
-	"transfers/out":             "Transfers Out",
-}
+// goldenLabels is the spine's labels, transcribed.
+var goldenLabels = projecttest.SpineLabels
 
 // buildGraph builds with the golden labels and fails the test on error.
 func buildGraph(t *testing.T, fs []fact.Fact, o Options) *Document {

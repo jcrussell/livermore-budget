@@ -2,7 +2,6 @@ package project
 
 import (
 	"encoding/json"
-	"os"
 	"slices"
 	"strings"
 	"testing"
@@ -13,16 +12,12 @@ import (
 )
 
 // TestTheSpineEndpointsAreTheGoldensOwn holds the endpoint table to the
-// document it describes: every node of testdata/sankey.golden.json outside
-// the revenue and expenditure hierarchy is in the table, and nothing else is.
+// document it describes: every node of the spine document outside the
+// revenue and expenditure hierarchy is in the table, and nothing else is.
 func TestTheSpineEndpointsAreTheGoldensOwn(t *testing.T) {
-	raw, err := os.ReadFile(goldenPath)
-	if err != nil {
-		t.Fatalf("read golden: %v", err)
-	}
 	var doc Document
-	if err := json.Unmarshal(raw, &doc); err != nil {
-		t.Fatalf("decode golden: %v", err)
+	if err := json.Unmarshal(spineBytes(t), &doc); err != nil {
+		t.Fatalf("decode the spine: %v", err)
 	}
 	var drawn []string
 	for _, n := range doc.Nodes {
@@ -41,7 +36,7 @@ func TestTheSpineEndpointsAreTheGoldensOwn(t *testing.T) {
 	slices.Sort(drawn)
 	slices.Sort(declared)
 	if diff := cmp.Diff(drawn, declared); diff != "" {
-		t.Errorf("the golden's endpoints and the spine's flowEndpoints differ (-golden +declared):\n%s", diff)
+		t.Errorf("the spine document's endpoints and flowEndpoints differ (-drawn +declared):\n%s", diff)
 	}
 }
 

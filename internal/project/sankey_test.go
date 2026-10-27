@@ -3,8 +3,6 @@ package project
 import (
 	"bytes"
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -13,63 +11,79 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
+	"github.com/jcrussell/livermore-budget/internal/project/projecttest"
 	"github.com/jcrussell/livermore-budget/internal/registry"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
+	"github.com/jcrussell/livermore-budget/schema"
 )
 
-// goldenPath is the hand-derived worked example: real FY2026 figures read out
-// of the committed pp.66-67 artifacts, with real content-addressed fact ids.
-const goldenPath = "../../testdata/sankey.golden.json"
-
-// TestSankeyReproducesGoldenFile compares the decoded graph, then the bytes,
-// which alone catch key order, indent and HTML escaping.
-func TestSankeyReproducesGoldenFile(t *testing.T) {
-	wantBytes, err := os.ReadFile(goldenPath)
-	if err != nil {
-		t.Fatalf("read golden: %v", err)
-	}
-
-	// Bytes first, so a golden that no longer decodes still gets its rebuilt
-	// copy written before the decode below stops the test.
-	gotBytes, err := (&sankey{Labels: goldenLabels}).Build(withCIPLeg(t, spineFacts(t, testYear)), testOptions())
+// spineBytes is the published spine document over projecttest's
+// transcription of pp.66-67 and its one CIP leg: what every byte-level test
+// here builds against.
+func spineBytes(t *testing.T) []byte {
+	t.Helper()
+	b, err := (&sankey{Labels: goldenLabels}).Build(withCIPLeg(t, spineFacts(t, testYear)), testOptions())
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
-	if !bytes.Equal(gotBytes, wantBytes) {
-		rebuilt := filepath.Join("..", "..", "bin", "sankey.golden-rebuilt.json")
-		if werr := os.MkdirAll(filepath.Dir(rebuilt), 0o750); werr != nil {
-			t.Fatal(werr)
-		}
-		if werr := os.WriteFile(rebuilt, gotBytes, 0o600); werr != nil {
-			t.Fatal(werr)
-		}
-		t.Errorf("encoded bytes differ from %s (got %d bytes, want %d); regenerate with "+
-			"`cp -f bin/sankey.golden-rebuilt.json testdata/sankey.golden.json` and read the diff",
-			goldenPath, len(gotBytes), len(wantBytes))
-	}
+	return b
+}
 
-	var want Document
-	dec := json.NewDecoder(bytes.NewReader(wantBytes))
-	// A key in the golden file this package has no field for is a shape we
-	// are not implementing, not a key to skip.
+// TestTheSpineDocumentIsCanonicalAndItsLinksAreItsFacts: the spine document
+// decodes into Document with no key left over, answers
+// schema/projection.schema.json, is the same bytes on a second build with no
+// HTML escaped, and every link carries the sum of the facts it cites.
+// Mutation: encode with SetEscapeHTML(true) and "Licenses & Permits" is
+// escaped; add a cent to one link in Build and its facts no longer sum to it.
+func TestTheSpineDocumentIsCanonicalAndItsLinksAreItsFacts(t *testing.T) {
+	got := spineBytes(t)
+	if again := spineBytes(t); !bytes.Equal(got, again) {
+		t.Error("two builds of one spine differ")
+	}
+	if bytes.Contains(got, []byte(`\u0026`)) || !bytes.Contains(got, []byte("Licenses & Permits")) {
+		t.Error("the document escapes HTML; it is JSON for a client, not for a page")
+	}
+	var doc Document
+	dec := json.NewDecoder(bytes.NewReader(got))
+	// A key this package has no field for is a shape we are not implementing.
 	dec.DisallowUnknownFields()
-	if err = dec.Decode(&want); err != nil {
-		t.Fatalf("decode golden: %v", err)
+	if err := dec.Decode(&doc); err != nil {
+		t.Fatalf("decode: %v", err)
 	}
-
-	got := buildGraph(t, withCIPLeg(t, spineFacts(t, testYear)), testOptions())
-	if diff := cmp.Diff(want, *got); diff != "" {
-		t.Errorf("graph mismatch (-want +got):\n%s", diff)
+	var loose any
+	if err := json.Unmarshal(got, &loose); err != nil {
+		t.Fatal(err)
+	}
+	if err := schema.Validate(schema.Projection, loose); err != nil {
+		t.Errorf("the spine document does not answer %s: %v", schema.Projection, err)
+	}
+	byID := map[string]fact.Fact{}
+	for _, f := range withCIPLeg(t, spineFacts(t, testYear)) {
+		byID[f.ID] = f
+	}
+	if len(doc.Links) == 0 {
+		t.Fatal("the spine document draws no link, so nothing below is held")
+	}
+	for _, l := range doc.Links {
+		var cited []fact.Fact
+		for _, id := range l.FactIDs {
+			f, ok := byID[id]
+			if !ok {
+				t.Errorf("%s -> %s cites %s, which the spine does not carry", l.Source, l.Target, id)
+			}
+			cited = append(cited, f)
+		}
+		if len(cited) > 0 && !l.Derived && LinkCents(l.Source, l.Target, l.Repeats, cited) != l.ValueCents {
+			t.Errorf("%s -> %s carries %d and its facts come to %d", l.Source, l.Target, l.ValueCents,
+				LinkCents(l.Source, l.Target, l.Repeats, cited))
+		}
 	}
 }
 
-// withCIPLeg adds one p222 transfer to the CIP carrying FY2025-26's 38,086,737,
-// what the committed store's p222 legs sum to, which the spine's caveat reads.
+// withCIPLeg is projecttest.WithCIPLeg.
 func withCIPLeg(t *testing.T, facts []fact.Fact) []fact.Fact {
 	t.Helper()
-	leg := facts[0]
-	leg.ID, leg.Scope, leg.Kind, leg.AmountCents = "p222-leg", CIPFundingScope, vocab.KindTransferOut, 3808673700
-	return append(facts, leg)
+	return projecttest.WithCIPLeg(facts)
 }
 
 // TestFiscalYearFilter is the trap that no consistency check can catch: both

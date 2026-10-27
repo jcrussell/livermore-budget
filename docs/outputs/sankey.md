@@ -7,7 +7,8 @@ one document per adopted year, inside that year's column file
 (`fy2026-adopted.json`, `fy2027-adopted.json`). Its shape is
 `schema/projection.schema.json`; how it is built, where it is written and how
 node ids map to tiers are in `go doc -all -u ./internal/project`. The worked example is
-`testdata/sankey.golden.json`, real FY2026 figures with real fact ids.
+pp.66-67 transcribed by hand as facts in `internal/project/projecttest`, real
+FY2026 figures with real fact ids, which the pipeline's own spine is held to.
 
 ```mermaid
 flowchart LR
@@ -63,7 +64,7 @@ print; that drill-down is [`fund-flows.md`](fund-flows.md).
 - **A node's words are the page's.** p66 prints ADDITION TO RESERVES where the
   taxonomy, after p75's header, says "Reserve Increase / (Use)"; the node
   carries p66's.
-- **Counts.** In `testdata/sankey.golden.json`, the FY2026 spine alone, 120
+- **Counts.** In the transcribed FY2026 spine alone, 120
   facts are in scope: 58 cited by a link and 62 not, the zero cells and the
   stock rows. The published column carries more schedules, so its counts are
   larger.
