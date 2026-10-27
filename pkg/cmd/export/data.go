@@ -32,13 +32,13 @@ func buildAll(repoRoot string) (result, error) {
 	if err != nil {
 		return result{}, err
 	}
-	return buildFrom(repoRoot, raw, facts)
+	return buildFrom(repoRoot, raw, facts, structure.BudgetBookExceptions())
 }
 
 // buildFrom is buildAll over a store already read: raw must be facts as
 // fact.Write encodes them, which buildFactAssets asserts.
-func buildFrom(repoRoot string, raw []byte, facts []fact.Fact) (result, error) {
-	projections, err := buildProjectionsFrom(repoRoot, facts)
+func buildFrom(repoRoot string, raw []byte, facts []fact.Fact, exceptions []structure.Exception) (result, error) {
+	projections, err := buildProjectionsFrom(repoRoot, facts, exceptions)
 	if err != nil {
 		return result{}, err
 	}
@@ -52,6 +52,7 @@ func buildFrom(repoRoot string, raw []byte, facts []fact.Fact) (result, error) {
 		PageIndex:   assets.pageIndex(),
 		Downloads:   assets.downloads(),
 		RecordsBase: assets.recordsBase(),
+		Exceptions:  exceptions,
 	}, nil
 }
 
@@ -74,7 +75,7 @@ func readFactStore(repoRoot string) ([]byte, []fact.Fact, error) {
 }
 
 // buildProjectionsFrom is the pipeline itself, over facts already read.
-func buildProjectionsFrom(repoRoot string, facts []fact.Fact) (map[string][]byte, error) {
+func buildProjectionsFrom(repoRoot string, facts []fact.Fact, exceptions []structure.Exception) (map[string][]byte, error) {
 	// The label registry is loaded here and passed in: internal/project
 	// reaches it only through an interface it declares.
 	reg, err := loadRegistry(repoRoot)
@@ -88,7 +89,7 @@ func buildProjectionsFrom(repoRoot string, facts []fact.Fact) (map[string][]byte
 	version := build.Get().String()
 	out := map[string][]byte{}
 	builtAt := map[string]builtDoc{}
-	for _, p := range project.Registry(reg, structure.BudgetBookExceptions()) {
+	for _, p := range project.Registry(reg, exceptions) {
 		declared := p.Slices(facts, version)
 		for _, o := range declared {
 			stem, err := project.Stem(p.Name(), o, declared)

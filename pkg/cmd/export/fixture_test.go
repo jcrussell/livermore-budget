@@ -18,6 +18,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/export"
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/schema"
 )
 
@@ -86,7 +87,7 @@ func buildClientSubset(repoRoot string) (result, error) {
 	if err := fact.Write(&raw, subset); err != nil {
 		return result{}, err
 	}
-	return buildFrom(repoRoot, raw.Bytes(), subset)
+	return buildFrom(repoRoot, raw.Bytes(), subset, structure.BudgetBookExceptions())
 }
 
 // packagedBy is the footer's build stamp, blanked from the markup split returns.

@@ -82,7 +82,7 @@ func TestTheDepartmentPageDeclaresEveryDepartmentwideException(t *testing.T) {
 		}
 	}
 	var got []string
-	for _, h := range departmentsHeldApart() {
+	for _, h := range departmentsHeldApart(structure.BudgetBookExceptions()) {
 		if h.Reason == "" {
 			t.Errorf("%s in FY%d %s is held apart with no reason", h.Department, h.FiscalYear, h.Basis)
 		}
@@ -104,7 +104,7 @@ func TestTheDepartmentPageDeclaresEveryDepartmentwideException(t *testing.T) {
 // Maintenance's Transfers Out, ..." and this goes red.
 func TestTheHeldReasonIsTrueOfWhatThePageDraws(t *testing.T) {
 	var found bool
-	for _, h := range departmentsHeldApart() {
+	for _, h := range departmentsHeldApart(structure.BudgetBookExceptions()) {
 		if h.Department != "department/public-works" || h.FiscalYear != 2024 {
 			continue
 		}

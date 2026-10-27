@@ -8,6 +8,8 @@ import (
 	"slices"
 	"sync"
 	"testing"
+
+	"github.com/jcrussell/livermore-budget/internal/structure"
 )
 
 // The committed store's builds and exports are the same bytes for every test
@@ -23,7 +25,7 @@ var (
 		if err != nil {
 			return nil, err
 		}
-		return buildProjectionsFrom(repoRootOnce(), facts)
+		return buildProjectionsFrom(repoRootOnce(), facts, structure.BudgetBookExceptions())
 	})
 	siteOnce, clientOnce sync.Once
 	siteDir, clientDir   string
@@ -70,7 +72,7 @@ func buildProjections(repoRoot string) (map[string][]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		return buildProjectionsFrom(repoRoot, facts)
+		return buildProjectionsFrom(repoRoot, facts, structure.BudgetBookExceptions())
 	}
 	p, err := projOnce()
 	return cloneBytes(p), err

@@ -31,13 +31,13 @@ func departmentMembership(repoRoot string) ([]export.Department, error) {
 	return out, nil
 }
 
-// departmentsHeldApart is every cell where structure.BudgetBookExceptions
-// declares pp.85-125's upper block apart from its lower one at a department,
-// with the declaration's own reason, which the department page prints in
-// place of saying the two tie.
-func departmentsHeldApart() []export.HeldApart {
+// departmentsHeldApart is every cell where exceptions declare pp.85-125's
+// upper block apart from its lower one at a department, with the
+// declaration's own reason, which the department page prints in place of
+// saying the two tie.
+func departmentsHeldApart(exceptions []structure.Exception) []export.HeldApart {
 	var out []export.HeldApart
-	for _, e := range structure.ExceptionsOn(structure.BudgetBookExceptions(),
+	for _, e := range structure.ExceptionsOn(exceptions,
 		structure.CutDepartmentwide, structure.CutFundingSources, structure.LevelDepartment) {
 		for _, c := range e.Cells {
 			out = append(out, export.HeldApart{
@@ -51,13 +51,13 @@ func departmentsHeldApart() []export.HeldApart {
 	return out
 }
 
-// departmentsApartFromSpine is every column where structure.BudgetBookExceptions
-// declares pp.85-125's department rows apart from pp.66-67's citywide figure,
-// with the residual and reason the glance page prints. One entry per exception
-// and column.
-func departmentsApartFromSpine() ([]export.ApartFromSpine, error) {
+// departmentsApartFromSpine is every column where exceptions declare
+// pp.85-125's department rows apart from pp.66-67's citywide figure, with the
+// residual and reason the glance page prints. One entry per exception and
+// column.
+func departmentsApartFromSpine(exceptions []structure.Exception) ([]export.ApartFromSpine, error) {
 	var out []export.ApartFromSpine
-	for _, e := range structure.BudgetBookExceptions() {
+	for _, e := range exceptions {
 		if e.Cut != structure.CutFundingSources || e.Against != structure.CutSpine {
 			continue
 		}

@@ -24,6 +24,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/project/projecttest"
+	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/pkg/iostreams"
@@ -75,7 +76,7 @@ func goldenFunding(t *testing.T) (string, []byte) {
 	if len(stems) != 1 {
 		t.Fatalf("department-funding is published %d times over the spine's column, want once", len(stems))
 	}
-	apart, err := departmentsApartFromSpine()
+	apart, err := departmentsApartFromSpine(structure.BudgetBookExceptions())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -362,7 +363,9 @@ func TestEveryCaveatLinkLandsOnAnAnchorThatExists(t *testing.T) {
 	built := builtStemsForTest(t)
 	opts, _, _, _ := testOptions(t)
 	opts.RepoRoot = func() (string, error) { return repoRootForTest(t), nil }
-	opts.Build = func(string) (result, error) { return result{Projections: built}, nil }
+	opts.Build = func(string) (result, error) {
+		return result{Projections: built, Exceptions: structure.BudgetBookExceptions()}, nil
+	}
 	if err := exportRun(context.Background(), opts); err != nil {
 		t.Fatalf("exportRun: %v", err)
 	}

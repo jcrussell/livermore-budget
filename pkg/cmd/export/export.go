@@ -17,6 +17,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/export"
 	"github.com/jcrussell/livermore-budget/internal/repo"
+	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/pkg/iostreams"
 )
@@ -41,6 +42,10 @@ type result struct {
 	// RecordsBase maps doc id to the base a client appends pNNNN.jsonl to; the
 	// locator-to-URL rule is this package's.
 	RecordsBase map[string]string
+	// Exceptions are the cells declared not to tie that the projections were
+	// built under, and that the department and glance pages print as held
+	// apart: the committed corpus's for buildAll.
+	Exceptions []structure.Exception
 }
 
 // builder produces the projection documents, keyed by projection name, and any
@@ -241,7 +246,7 @@ func (o *Options) siteOptions(root string, built result) (export.Options, error)
 	if err != nil {
 		return export.Options{}, err
 	}
-	apartFromSpine, err := departmentsApartFromSpine()
+	apartFromSpine, err := departmentsApartFromSpine(built.Exceptions)
 	if err != nil {
 		return export.Options{}, err
 	}
@@ -265,7 +270,7 @@ func (o *Options) siteOptions(root string, built result) (export.Options, error)
 		// The department page's membership and the cells pp.85-125's two
 		// blocks are declared not to tie in.
 		Departments:          departments,
-		DepartmentsHeldApart: departmentsHeldApart(),
+		DepartmentsHeldApart: departmentsHeldApart(built.Exceptions),
 		// The columns where the department rows are declared apart from the
 		// spine's citywide figure, which the glance page prints.
 		DepartmentsApartFromSpine: apartFromSpine,

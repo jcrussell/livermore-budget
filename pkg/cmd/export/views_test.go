@@ -11,6 +11,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/export"
 	"github.com/jcrussell/livermore-budget/internal/registry"
+	"github.com/jcrussell/livermore-budget/internal/structure"
 )
 
 // committedViews is data/views.yaml as committed, and the registry its rows
@@ -168,7 +169,9 @@ func TestADeclarationFaultInAChartIsRefusedNotDropped(t *testing.T) {
 			if werr := os.WriteFile(path, []byte(strings.Replace(string(b), tc.old, tc.edit, 1)), 0o600); werr != nil {
 				t.Fatal(werr)
 			}
-			opts.Build = func(string) (result, error) { return result{Projections: built}, nil }
+			opts.Build = func(string) (result, error) {
+				return result{Projections: built, Exceptions: structure.BudgetBookExceptions()}, nil
+			}
 			err = exportRun(context.Background(), opts)
 			if err == nil {
 				t.Fatalf("exportRun wrote a site with %q in place of %q", tc.edit, tc.old)
