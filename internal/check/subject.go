@@ -383,7 +383,7 @@ func Load(o LoadOptions) (*Subject, error) {
 	s.UncheckedDocuments = uncheckedDocuments
 	s.IncompleteSeries = incompleteSeries
 	s.Vacancies = declaredVacuous
-	registry := project.Registry(reg)
+	registry := project.Registry(reg, s.Exceptions)
 	if s.Projections, s.ProjectionFailures, err = buildProjections(
 		registry, s.Facts, o.Version); err != nil {
 		return nil, err

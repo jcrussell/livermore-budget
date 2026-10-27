@@ -18,6 +18,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/registry"
 	"github.com/jcrussell/livermore-budget/internal/repo"
+	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
@@ -87,7 +88,7 @@ func buildProjectionsFrom(repoRoot string, facts []fact.Fact) (map[string][]byte
 	version := build.Get().String()
 	out := map[string][]byte{}
 	builtAt := map[string]builtDoc{}
-	for _, p := range project.Registry(reg) {
+	for _, p := range project.Registry(reg, structure.BudgetBookExceptions()) {
 		declared := p.Slices(facts, version)
 		for _, o := range declared {
 			stem, err := project.Stem(p.Name(), o, declared)

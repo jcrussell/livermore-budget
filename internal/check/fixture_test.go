@@ -333,7 +333,7 @@ func testSubject(t *testing.T, facts ...fact.Fact) *Subject {
 		facts = testFacts()
 	}
 	reg := testVocabulary(t)
-	registry := project.Registry(reg)
+	registry := project.Registry(reg, nil)
 	projections, failures, err := buildProjections(registry, facts, testVersion)
 	if err != nil {
 		t.Fatalf("build the fixture projections: %v", err)

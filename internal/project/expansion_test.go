@@ -23,7 +23,7 @@ func committedDocs(t *testing.T, year int) map[string]*Document {
 		t.Fatal(err)
 	}
 	out := map[string]*Document{}
-	for _, p := range Registry(store.reg) {
+	for _, p := range Registry(store.reg, structure.BudgetBookExceptions()) {
 		g, ok := p.(interface {
 			Projection
 			Document([]fact.Fact, Options) (*Document, error)

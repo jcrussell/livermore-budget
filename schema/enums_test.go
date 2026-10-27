@@ -88,7 +88,7 @@ func TestEverySharedEnumIsItsGoSet(t *testing.T) {
 // *project.DebtServiceDocument.
 func TestEveryProjectionNameEnumIsTheRegistry(t *testing.T) {
 	var graphs, series, debt []string
-	for _, p := range project.Registry(nil) {
+	for _, p := range project.Registry(nil, nil) {
 		switch p.(type) {
 		case interface {
 			Document([]fact.Fact, project.Options) (*project.Document, error)

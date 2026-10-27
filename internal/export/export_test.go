@@ -32,7 +32,7 @@ import (
 // transcription of pp.66-67, FY2026, built in memory.
 func goldenSankey(t *testing.T) []byte {
 	t.Helper()
-	for _, p := range project.Registry(projecttest.SpineLabels) {
+	for _, p := range project.Registry(projecttest.SpineLabels, nil) {
 		if p.Name() != project.PublishedProjection {
 			continue
 		}

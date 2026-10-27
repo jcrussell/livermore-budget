@@ -496,9 +496,10 @@ type Projection interface {
 }
 
 // Registry returns the projections a build emits, in a stable order, each
-// wired to l for its labels. l may be nil, falling back to slug-derived
-// labels; it is a parameter so a caller cannot silently forget it.
-func Registry(l labels) []Projection {
+// wired to l for its labels and to exceptions for the cells declared not to
+// tie. l may be nil, falling back to slug-derived labels; both are parameters
+// so a caller cannot silently forget either.
+func Registry(l labels, exceptions []structure.Exception) []Projection {
 	return []Projection{
 		&sankey{Labels: l},
 		&Trends{Labels: l},
@@ -508,7 +509,7 @@ func Registry(l labels) []Projection {
 		&transfersByFund{Labels: l},
 		&transfersByFund{Labels: l, Out: true},
 		&fundSourcesUses{Labels: l},
-		&expansion{Labels: l},
+		&expansion{Labels: l, Exceptions: exceptions},
 		&FundBalanceChanges{Labels: l},
 		&FundBalances{Labels: l},
 		&CIPProjects{Labels: l},

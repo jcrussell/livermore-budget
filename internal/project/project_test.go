@@ -82,7 +82,7 @@ func TestOptionsValidate(t *testing.T) {
 }
 
 func TestRegistry(t *testing.T) {
-	got := Registry(nil)
+	got := Registry(nil, nil)
 	// The names are asserted rather than the count alone, and in order: the
 	// first is the document the site opens on, and a registry that quietly
 	// reordered would move which document `fisc export` writes to data/sankey.json.
@@ -100,7 +100,7 @@ func TestRegistry(t *testing.T) {
 	}
 	// Two calls must not hand back the same instance: a caller that sets a
 	// label registry on one must not be configuring everybody else's.
-	if Registry(nil)[0] == got[0] {
+	if Registry(nil, nil)[0] == got[0] {
 		t.Error("got the same projection instance twice, want a fresh one per call")
 	}
 }

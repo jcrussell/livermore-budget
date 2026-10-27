@@ -250,6 +250,10 @@ func IsRemainder(id string) bool {
 // facts it cites, and the build refuses one that is not the exception's.
 type expansion struct {
 	Labels labels
+	// Exceptions are the cells the caller declares do not tie, the one source
+	// a remainder's existence is read from: structure.BudgetBookExceptions for
+	// the committed corpus, a fixture's own for a synthetic store.
+	Exceptions []structure.Exception
 }
 
 var _ Projection = (*expansion)(nil)
@@ -785,7 +789,7 @@ func unprintedChanges(changes map[string][]Link, col Column) error {
 // where every fund's change runs the group's way, with any difference from
 // pp.66-67 carried by a remainder an exception licenses; whole, on the
 // group's remainder, where they do not.
-func (*expansion) changeOf(st *stitch, rem *groupRemainders, spineLink Link, group string, funds []Link,
+func (e *expansion) changeOf(st *stitch, rem *groupRemainders, spineLink Link, group string, funds []Link,
 	fsuNodes map[string]Node, byID map[string]fact.Fact, col Column, addFund func(Node) error) error {
 	draw := spineLink.Source == NodeFundBalanceDraw
 	oneWay := len(funds) > 0
@@ -854,7 +858,7 @@ func (*expansion) changeOf(st *stitch, rem *groupRemainders, spineLink Link, gro
 	}
 	// The spine's ending balance differs from the funds' pages; the change
 	// differs by the same figure, a draw by its negation.
-	pin, ex, err := licensed(structure.CutFundBalanceFlows, structure.LevelFundGroupByCategory, col,
+	pin, ex, err := e.licensed(structure.CutFundBalanceFlows, structure.LevelFundGroupByCategory, col,
 		map[structure.Axis]string{
 			structure.AxisFundGroup: strings.TrimPrefix(group, PrefixFundGroup),
 			structure.AxisCategory:  CategoryFundBalanceEnding,
@@ -897,7 +901,7 @@ func (*expansion) changeOf(st *stitch, rem *groupRemainders, spineLink Link, gro
 // remainder.
 func (e *expansion) objectRemainders(st *stitch, rem *groupRemainders, spine *Document,
 	byID map[string]fact.Fact, col Column) error {
-	for _, ex := range structure.ExceptionsOn(structure.BudgetBookExceptions(), "fund-expenditures",
+	for _, ex := range structure.ExceptionsOn(e.Exceptions, "fund-expenditures",
 		structure.CutSpine, structure.LevelFundGroupByCategory) {
 		for _, p := range ex.Cells {
 			if p.Year != col.FiscalYear || p.Basis != string(col.Basis) {
@@ -962,7 +966,7 @@ func (*expansion) ownerGroup(st *stitch, id string) string {
 
 // divisionsAlternative stitches each object category's alternative split into
 // the divisions pp.85-125 print spending it, every fund together.
-func (*expansion) divisionsAlternative(st *stitch, ds, spine *Document, roots map[string]Node,
+func (e *expansion) divisionsAlternative(st *stitch, ds, spine *Document, roots map[string]Node,
 	byID map[string]fact.Fact, col Column) error {
 	dsNodes := map[string]Node{}
 	for _, n := range ds.Nodes {
@@ -988,7 +992,7 @@ func (*expansion) divisionsAlternative(st *stitch, ds, spine *Document, roots ma
 		l.Alternative = alternativeDivisions
 		st.links = append(st.links, l)
 	}
-	for _, ex := range structure.ExceptionsOn(structure.BudgetBookExceptions(), structure.CutDepartmentwide,
+	for _, ex := range structure.ExceptionsOn(e.Exceptions, structure.CutDepartmentwide,
 		structure.CutSpine, structure.LevelCategory) {
 		for _, p := range ex.Cells {
 			if p.Year != col.FiscalYear || p.Basis != string(col.Basis) {
@@ -1117,12 +1121,12 @@ func remainderLink(ids []string, byID map[string]fact.Fact, kind LinkKind) Link 
 
 // licensed is the one exception on (cut -> spine) at level pinning coords in
 // col, or an error naming why there is not exactly one.
-func licensed(cut string, at structure.Level, col Column, coords map[structure.Axis]string) (structure.Pin, structure.Exception, error) {
+func (e *expansion) licensed(cut string, at structure.Level, col Column, coords map[structure.Axis]string) (structure.Pin, structure.Exception, error) {
 	var found []struct {
 		p  structure.Pin
 		ex structure.Exception
 	}
-	for _, ex := range structure.ExceptionsOn(structure.BudgetBookExceptions(), cut, structure.CutSpine, at) {
+	for _, ex := range structure.ExceptionsOn(e.Exceptions, cut, structure.CutSpine, at) {
 		for _, p := range ex.Cells {
 			if p.Year != col.FiscalYear || p.Basis != string(col.Basis) || len(p.Coords) != len(coords) {
 				continue

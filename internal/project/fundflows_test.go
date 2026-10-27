@@ -9,6 +9,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
+	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 )
 
@@ -839,7 +840,7 @@ func TestNoRevenueLineReadsAsItsCategory(t *testing.T) {
 	for _, p := range []interface {
 		Projection
 		Document([]fact.Fact, Options) (*Document, error)
-	}{&fundFlows{Labels: store.reg}, &expansion{Labels: store.reg}} {
+	}{&fundFlows{Labels: store.reg}, &expansion{Labels: store.reg, Exceptions: structure.BudgetBookExceptions()}} {
 		for _, o := range p.Slices(store.facts, "revenue-line label test") {
 			d, err := p.Document(store.facts, o)
 			if err != nil {
