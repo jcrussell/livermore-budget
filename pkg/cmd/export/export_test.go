@@ -1738,50 +1738,6 @@ func TestStemRefusesADocumentWithNoColumns(t *testing.T) {
 	}
 }
 
-// TestTheFundFlowsFixtureIsTheDocumentTheSiteDraws holds the captured
-// testdata/fund-flows.golden.json to what buildProjections writes.
-func TestTheFundFlowsFixtureIsTheDocumentTheSiteDraws(t *testing.T) {
-	fixtureIsTheDocumentExported(t, project.FundFlowsProjection, "fund-flows.golden.json")
-}
-
-// fixtureIsTheDocumentExported compares one committed capture line for line
-// with what buildProjections writes at `stem`, metadata.generated_by aside.
-func fixtureIsTheDocumentExported(t *testing.T, stem, fixture string) {
-	t.Helper()
-	root := repoRootForTest(t)
-	built, err := buildProjections(root)
-	if err != nil {
-		t.Fatalf("buildProjections: %v", err)
-	}
-	got, ok := built[stem]
-	if !ok {
-		t.Fatalf("buildProjections did not build %q", stem)
-	}
-	want, err := os.ReadFile(filepath.Join(root, "testdata", fixture))
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
-
-	stamp := regexp.MustCompile(`"generated_by": "[^"]*"`)
-	blank := []byte(`"generated_by": ""`)
-	if diff := cmp.Diff(
-		strings.Split(string(stamp.ReplaceAll(want, blank)), "\n"),
-		strings.Split(string(stamp.ReplaceAll(got, blank)), "\n"),
-	); diff != "" {
-		// fisc export folds the document into its column and writes no file of
-		// its own, so the built bytes are written here with the fixture's stamp.
-		rebuilt := filepath.Join(root, "bin", strings.TrimSuffix(fixture, ".json")+"-rebuilt.json")
-		if err := os.MkdirAll(filepath.Dir(rebuilt), 0o750); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(rebuilt, stamp.ReplaceAll(got, stamp.Find(want)), 0o600); err != nil {
-			t.Fatal(err)
-		}
-		t.Errorf("testdata/%s is no longer what buildProjections builds at %s (-fixture +built); "+
-			"regenerate with `cp -f %s testdata/%s` and read the diff:\n%s", fixture, stem, rebuilt, fixture, diff)
-	}
-}
-
 // TestEveryServedStampIsTheExportsOwn holds one export's build stamps to each
 // other: the client refuses a column whose stamp is not its page's.
 func TestEveryServedStampIsTheExportsOwn(t *testing.T) {

@@ -24,6 +24,8 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/hint"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/project/projecttest"
+	"github.com/jcrussell/livermore-budget/internal/registry"
+	"github.com/jcrussell/livermore-budget/internal/synthcity"
 	"github.com/jcrussell/livermore-budget/schema"
 	"github.com/jcrussell/livermore-budget/site"
 )
@@ -47,6 +49,37 @@ func goldenSankey(t *testing.T) []byte {
 		return b
 	}
 	t.Fatalf("no %s projection is registered", project.PublishedProjection)
+	return nil
+}
+
+// cityFundFlows is synthcity.Default's FY2025-26 fund-flows document, built
+// in memory with the real registry under the city's own exceptions.
+func cityFundFlows(t *testing.T) []byte {
+	t.Helper()
+	reg, err := registry.Load(os.DirFS(filepath.Join("..", "..", "data")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	city, err := synthcity.Default().Facts(reg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range project.Registry(reg, city.Exceptions) {
+		if p.Name() != project.FundFlowsProjection {
+			continue
+		}
+		for _, o := range p.Slices(city.Facts, projecttest.Version) {
+			if o.Columns[0] != (project.Column{FiscalYear: 2026, Basis: projecttest.Basis}) {
+				continue
+			}
+			b, err := p.Build(city.Facts, o)
+			if err != nil {
+				t.Fatalf("build the city's fund-flows: %v", err)
+			}
+			return b
+		}
+	}
+	t.Fatal("the city builds no FY2025-26 fund-flows document")
 	return nil
 }
 

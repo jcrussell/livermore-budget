@@ -259,10 +259,7 @@ func drawsView(breaks func(*export.View)) export.View {
 // the overview's hints under the Sankey's key, its counts line is fund-flows'
 // and its description replaces the spine's.
 func TestAViewDrawsAnotherScheduleOfItsColumn(t *testing.T) {
-	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
-	if err != nil {
-		t.Fatalf("read fund-flows golden: %v", err)
-	}
+	fundFlows := cityFundFlows(t)
 	dir := t.TempDir()
 	if _, err := writeSite(export.Options{
 		Dir:         dir,
@@ -538,10 +535,7 @@ func TestASingleViewSiteListsNoViews(t *testing.T) {
 // package a set of pages it must not write. Each one would fail in the browser
 // and nowhere else.
 func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
-	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
-	if err != nil {
-		t.Fatalf("read fund-flows golden: %v", err)
-	}
+	fundFlows := cityFundFlows(t)
 	ok := export.View{Path: export.IndexPath, Nav: "Budget flows",
 		Template: export.SankeyTemplate, Overview: export.Chart{Form: export.SankeyForm, Sankey: &export.SankeyHints{}}, Projection: "sankey"}
 	cases := []struct {
@@ -1192,10 +1186,7 @@ func twoYearSankey(t *testing.T, view export.View, edit func(meta map[string]any
 // TestBothChartTemplatesAcceptYearStems pins the accepting half of
 // templateSpec.years: both chart templates render a page from a year list.
 func TestBothChartTemplatesAcceptYearStems(t *testing.T) {
-	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
-	if err != nil {
-		t.Fatalf("read fund-flows golden: %v", err)
-	}
+	fundFlows := cityFundFlows(t)
 	second := reyeared(t, goldenSankey(t), 2027, "FY 2026-27")
 
 	dir := t.TempDir()
@@ -1957,10 +1948,7 @@ func TestTheProvenancePageLinksBothHalvesOfEveryCitation(t *testing.T) {
 // <title id="chart-title"> on both chart templates to the config blob's
 // years[0].chart_title, the string the client repaints on a year switch.
 func TestTheChartsAccessibleNameIsTheYearViewsOwnString(t *testing.T) {
-	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
-	if err != nil {
-		t.Fatalf("read fund-flows golden: %v", err)
-	}
+	fundFlows := cityFundFlows(t)
 	second := reyeared(t, goldenSankey(t), 2027, "FY 2026-27")
 
 	dir := t.TempDir()
@@ -2005,10 +1993,7 @@ func TestTheChartsAccessibleNameIsTheYearViewsOwnString(t *testing.T) {
 // chartAndSpine writes the template that draws a chart: the spine's index.html.
 func chartAndSpine(t *testing.T) string {
 	t.Helper()
-	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
-	if err != nil {
-		t.Fatalf("read fund-flows golden: %v", err)
-	}
+	fundFlows := cityFundFlows(t)
 	dir := t.TempDir()
 	if _, err := writeSite(export.Options{
 		Dir:         dir,
