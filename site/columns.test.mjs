@@ -102,9 +102,9 @@ describe("a split stands its members on the side it declares", () => {
     const year = YEARS.find((y) => y.year === 2027);
     const planted = structuredClone(columnFixture(year.path.replace(/\.json$/, "")));
     const at = (id) => planted.nodes.findIndex((n) => n.id === id);
-    const group = at("fund-group/enterprise"), from = at("fund/610"), to = at("fund/600");
-    const leaf = "revenue-line/charges-for-services/charges-for-services -> fund/600 external";
-    const flow = "fund/610 -> fund/600 external";
+    const group = at("fund-group/enterprise"), from = at("fund/610"), to = at("fund/620");
+    const leaf = "revenue-line/charges-for-services/charges-for-services -> fund/620 external";
+    const flow = "fund/610 -> fund/620 external";
     const links = planted.schedules.expansion.links;
     const leg = links.find((l) => l.from === group && l.to === to && l.repeats === leaf);
     const moved = links.find((l) => l.from === at("revenue/charges-for-services") && l.to === group && l.repeats === leaf);

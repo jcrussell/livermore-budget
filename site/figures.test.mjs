@@ -3,7 +3,8 @@
 // test, never by app.js.
 //
 // A few figures are also written out literally, pinning the test's own
-// formatter: ERAF's as the city printed it, Property Taxes' as the sum of rows it printed.
+// formatter: ERAF's as the synthetic city prints it, Property Taxes' as the
+// sum of the rows it prints.
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -17,9 +18,12 @@ const PROPERTY = "revenue/taxes/property";
 /** A line of Property Taxes printed as a reduction: split, its ribbon runs into its category. */
 const ERAF = "revenue-line/taxes/property/eraf";
 
+// The synthetic city's General Fund Property Taxes (synthcity.Default): ERAF
+// printed as a $1,500,000 reduction of a $30,000,000 category in FY2025-26,
+// and FY2026-27 printing 110% of each.
 const YEARS = [
-  { stem: "sankey", column: "fy2026-adopted", eraf: "−$15,175,000", property: "$69,459,414" },
-  { stem: "sankey-2027", column: "fy2027-adopted", eraf: "−$15,857,875", property: "$72,891,844" },
+  { stem: "sankey", column: "fy2026-adopted", eraf: "−$1,500,000", property: "$30,000,000" },
+  { stem: "sankey-2027", column: "fy2027-adopted", eraf: "−$1,650,000", property: "$33,000,000" },
 ];
 
 /** The links of one schedule of a pinned column whose ends pass `match`. */

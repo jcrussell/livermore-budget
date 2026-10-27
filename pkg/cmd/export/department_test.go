@@ -19,15 +19,15 @@ import (
 var departmentFixtureColumns = []string{"fy2024-actual"}
 
 // TestTheDepartmentFixtureHoldsWhatTheClientReads pins
-// testdata/client/department.config.json and testdata/fy2024-actual.column.json
-// to what Go writes over the client subset, build stamps aside.
+// testdata/client/department.config.json and testdata/client/fy2024-actual.column.json
+// to what Go writes over the synthetic city, build stamps aside.
 func TestTheDepartmentFixtureHoldsWhatTheClientReads(t *testing.T) {
-	dir := clientExport(t)
+	dir := cityExport(t)
 	root := repoRootForTest(t)
 	holdConfig(t, dir, "department.html", departmentConfig)
 	files := map[string]string{}
 	for _, stem := range departmentFixtureColumns {
-		files[stem+".json"] = stem + ".column.json"
+		files[stem+".json"] = "client/" + stem + ".column.json"
 	}
 	leaveCopies(t, dir, files)
 	var fCfg map[string]any
@@ -44,13 +44,13 @@ func TestTheDepartmentFixtureHoldsWhatTheClientReads(t *testing.T) {
 		}
 	}
 	stamp, _ := fCfg["exported_by"].(string)
-	facts := storeByID(t)
+	facts := cityByID(t)
 	for _, stem := range departmentFixtureColumns {
 		servedCol, err := os.ReadFile(filepath.Join(dir, stem+".json")) // #nosec G304 -- the temp site.
 		if err != nil {
 			t.Fatal(err)
 		}
-		fixtureCol, err := os.ReadFile(filepath.Join(root, "testdata", stem+".column.json")) // #nosec G304 -- testdata/.
+		fixtureCol, err := os.ReadFile(filepath.Join(root, "testdata", "client", stem+".column.json")) // #nosec G304 -- testdata/.
 		if err != nil {
 			t.Errorf("%v", err)
 			continue

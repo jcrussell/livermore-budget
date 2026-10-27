@@ -537,7 +537,7 @@ describe("the filter line's names", () => {
   // earlier chart's qualifier.
   test("a name kept for a node filtered out from the menu goes with Reset, so a link filtering it out of another chart names it as that chart does", async (t) => {
     const { app, document } = await bootedApp();
-    await split(app, "revenue/licenses-and-permits", "revenue/taxes/property");
+    await split(app, "revenue/licenses-and-permits", "revenue/taxes/other");
     const id = "aggregate/tail/lines/revenue/licenses-and-permits";
     const chosen = app.laidNodes.find((n) => n.id === id);
     assert.ok(chosen !== undefined, `${id} is not drawn`);
@@ -560,7 +560,7 @@ describe("the filter line's names", () => {
   // first year's qualifier.
   test("a name kept for a node filtered out from the menu goes with a year switch, so a link keeping it filtered out names it as the new chart does", async (t) => {
     const { app, document } = await bootedApp();
-    await split(app, "revenue/licenses-and-permits", "revenue/taxes/property");
+    await split(app, "revenue/licenses-and-permits", "revenue/taxes/other");
     const id = "aggregate/tail/lines/revenue/licenses-and-permits";
     const chosen = app.laidNodes.find((n) => n.id === id);
     assert.ok(chosen !== undefined, `${id} is not drawn`);
@@ -583,7 +583,7 @@ describe("the filter line's names", () => {
   // the tail by the pre-filter chart's qualifier.
   test("a node shown alone is named on the filter line as the filtered chart draws it, when what is drawn changes its qualifier", async (t) => {
     const { app, document } = await bootedApp();
-    await split(app, "revenue/licenses-and-permits", "revenue/taxes/property");
+    await split(app, "revenue/licenses-and-permits", "revenue/taxes/other");
     const id = "aggregate/tail/lines/revenue/licenses-and-permits";
     const name = () => {
       const n = app.laidNodes.find((x) => x.id === id);

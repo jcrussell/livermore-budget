@@ -82,9 +82,10 @@ So the form's page module is `site/sides.js`, in the department page's
 pattern, and it computes every figure through one core function,
 `sideTree`: a root's figure is the sum of the folded ribbons joining it to
 what is outside it, a member's the sum of those joining it to its parent hub,
-each signed as the fold sums them. Measured over both pinned columns, the two
-sides sum to one figure at every frontier and every one of the 20 root
-splits ties to its members, two of them through printed reductions. The
+each signed as the fold sums them. Measured over the committed store's two
+adopted columns at 0d50fc20, the two sides sum to one figure at every
+frontier and every one of the 20 root splits ties to its members, two of
+them through printed reductions. The
 middle tier is no side: a fund group both takes in and pays out, and
 `validateSides` refuses it at the write.
 

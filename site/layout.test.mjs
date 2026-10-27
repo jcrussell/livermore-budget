@@ -62,11 +62,12 @@ function extentOverflow(graph) {
   return worst;
 }
 
-// The spine as the page lays it out, PINNED, so a change to nodeRank, the
-// seats or restackLinks that moves a ribbon shows here as a number.
+// The synthetic city's spine as the page lays it out, PINNED, so a change to
+// nodeRank, the seats or restackLinks that moves a ribbon shows here as a
+// number. It moves when synthcity.Default does, and with nothing else.
 const DRAWN = {
-  crossings: 195,
-  overlapDollars: 457434169,
+  crossings: 55,
+  overlapDollars: 73910000,
 };
 
 const usd = (n) => "$" + Math.round(n).toLocaleString();
@@ -462,10 +463,34 @@ describe("the chart's width as columns open", () => {
 /**
  * Same-word marks in one column, pinned per chart: the expansion hangs each
  * owner's row of a category under it, and a qualifier cannot tell them apart.
+ * The synthetic city's two Grant funds and Horizons truncate alike
+ * (fisc-yh3q, which empties this).
  */
 const ALIKE = {
-  "FY 2025-26": {},
-  "FY 2026-27": {},
+  "FY 2025-26": {
+    "everything by primary splits, drawn out, cold": '3 group(s), 6 mark(s): "Grant…nt Fund: Services & Supplies", "Grant…rant Fund", "Services…zons: Services & Supplies"',
+    "everything by primary splits, drawn out, from the root": '3 group(s), 6 mark(s): "Grant…nt Fund: Services & Supplies", "Grant…rant Fund", "Services…zons: Services & Supplies"',
+  },
+  "FY 2026-27": {
+    "everything by primary splits, drawn out, cold": '3 group(s), 6 mark(s): "Grant…nt Fund: Services & Supplies", "Grant…rant Fund", "Services…zons: Services & Supplies"',
+    "everything by primary splits, drawn out, from the root": '3 group(s), 6 mark(s): "Grant…nt Fund: Services & Supplies", "Grant…rant Fund", "Services…zons: Services & Supplies"',
+  },
+};
+
+/**
+ * Glyphs drawn over a neighbour's label, pinned per chart: the synthetic
+ * city's short General Fund marks beside the special revenue group's label
+ * (fisc-dnz0, which empties this).
+ */
+const GLYPHED = {
+  "FY 2025-26": {
+    "everything by primary splits, cold": ["revenue/use-of-money-and-property on fund-group/special-revenue"],
+    "everything by primary splits, drawn out, cold": ["revenue/contributions-outsourced on fund-group/special-revenue"],
+  },
+  "FY 2026-27": {
+    "everything by primary splits, cold": ["revenue/use-of-money-and-property on fund-group/special-revenue"],
+    "everything by primary splits, drawn out, cold": ["revenue/contributions-outsourced on fund-group/special-revenue"],
+  },
 };
 
 /** Stacked labels per chart, pinned not bounded: sankey.grow counts marks, not lines. */
@@ -589,10 +614,10 @@ for (const label of Object.keys(ALIKE)) {
 
     // Mutation: drop glyphPlacement's arm for a short interior rect and this
     // goes red, expenditure/capital-outlay's ⊖ on its own label.
-    test("no ⊕ or ⊖ is drawn over a label", (t) => {
+    test("the ⊕ and ⊖ drawn over a label are the ones pinned", (t) => {
       const detail = `${views} chart(s) walked, ${glyphs} glyph(s) drawn; ` + JSON.stringify(glyphed);
       t.diagnostic(detail);
-      assert.deepEqual({ drewGlyphs: glyphs > 0, glyphed }, { drewGlyphs: true, glyphed: {} }, detail);
+      assert.deepEqual({ drewGlyphs: glyphs > 0, glyphed }, { drewGlyphs: true, glyphed: GLYPHED[label] }, detail);
     });
 
     test("the labels stacked on one another are the ones pinned", (t) => {
@@ -698,31 +723,32 @@ describe("the focus indicator is painted as focus and not as text", () => {
 /**
  * Per year and frontier: slots, nodes and ribbons, the canvas and its
  * sub-pixel ribbons, and labels wider than their room (value in, flags
- * out). Pinned, not bounded: data/views.yaml's grow is read off these.
+ * out), over the synthetic city. Pinned, not bounded, so a change to the
+ * slots, the fold or the canvas shows here as a number.
  */
 const EXPANSION_CLAIMED = {
   "FY 2025-26": {
-    "root": { slots: "12/6/7", figures: "25 nodes, 58 ribbons; 820px canvas, 9 under 1px",
+    "root": { slots: "12/6/6", figures: "24 nodes, 36 ribbons; 820px canvas, 2 under 1px",
       labels: "0 wider than their room" },
-    "fund-group/general by funds": { slots: "12/6/1/23/7", figures: "49 nodes, 126 ribbons; 920px canvas, 17 under 1px",
+    "fund-group/general by funds": { slots: "12/6/1/25/6", figures: "50 nodes, 108 ribbons; 1000px canvas, 2 under 1px",
       labels: "0 wider than their room" },
-    "everything by primary splits": { slots: "73/12/6/36/23/7/43",
-      figures: "200 nodes, 345 ribbons; 2920px canvas, 44 under 1px",
+    "everything by primary splits": { slots: "37/12/6/17/25/6/31",
+      figures: "134 nodes, 206 ribbons; 1480px canvas, 15 under 1px",
       labels: "0 wider than their room" },
-    "everything by primary splits, every tail drawn out": { slots: "101/12/6/69/23/7/160",
-      figures: "378 nodes, 553 ribbons; 4800px canvas, 119 under 1px",
+    "everything by primary splits, every tail drawn out": { slots: "47/12/6/37/29/6/98",
+      figures: "235 nodes, 338 ribbons; 3920px canvas, 13 under 1px",
       labels: "0 wider than their room" },
   },
   "FY 2026-27": {
-    "root": { slots: "12/6/7", figures: "25 nodes, 58 ribbons; 820px canvas, 11 under 1px",
+    "root": { slots: "12/6/6", figures: "24 nodes, 36 ribbons; 820px canvas, 2 under 1px",
       labels: "0 wider than their room" },
-    "fund-group/general by funds": { slots: "12/6/1/23/7", figures: "49 nodes, 125 ribbons; 920px canvas, 19 under 1px",
+    "fund-group/general by funds": { slots: "12/6/1/25/6", figures: "50 nodes, 108 ribbons; 1000px canvas, 2 under 1px",
       labels: "0 wider than their room" },
-    "everything by primary splits": { slots: "73/12/6/37/23/7/42",
-      figures: "200 nodes, 344 ribbons; 2920px canvas, 52 under 1px",
+    "everything by primary splits": { slots: "37/12/6/18/25/6/31",
+      figures: "135 nodes, 208 ribbons; 1480px canvas, 15 under 1px",
       labels: "0 wider than their room" },
-    "everything by primary splits, every tail drawn out": { slots: "101/12/6/68/23/7/157",
-      figures: "374 nodes, 546 ribbons; 4800px canvas, 133 under 1px",
+    "everything by primary splits, every tail drawn out": { slots: "47/12/6/37/29/6/98",
+      figures: "235 nodes, 338 ribbons; 3920px canvas, 13 under 1px",
       labels: "0 wider than their room" },
   },
 };

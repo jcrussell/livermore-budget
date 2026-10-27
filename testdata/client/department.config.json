@@ -191,11 +191,6 @@
           "records": "facts/livermore-budget-fy2026-2027/pages/p0101.jsonl",
           "text": "extracted/livermore-budget-fy2026-2027/pages/p0101.txt"
         },
-        "102": {
-          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=102",
-          "records": "facts/livermore-budget-fy2026-2027/pages/p0102.jsonl",
-          "text": "extracted/livermore-budget-fy2026-2027/pages/p0102.txt"
-        },
         "105": {
           "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=105",
           "records": "facts/livermore-budget-fy2026-2027/pages/p0105.jsonl",
@@ -221,20 +216,10 @@
           "records": "facts/livermore-budget-fy2026-2027/pages/p0119.jsonl",
           "text": "extracted/livermore-budget-fy2026-2027/pages/p0119.txt"
         },
-        "120": {
-          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=120",
-          "records": "facts/livermore-budget-fy2026-2027/pages/p0120.jsonl",
-          "text": "extracted/livermore-budget-fy2026-2027/pages/p0120.txt"
-        },
         "124": {
           "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=124",
           "records": "facts/livermore-budget-fy2026-2027/pages/p0124.jsonl",
           "text": "extracted/livermore-budget-fy2026-2027/pages/p0124.txt"
-        },
-        "125": {
-          "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=125",
-          "records": "facts/livermore-budget-fy2026-2027/pages/p0125.jsonl",
-          "text": "extracted/livermore-budget-fy2026-2027/pages/p0125.txt"
         },
         "85": {
           "pdf": "https://www.livermoreca.gov/home/showpublisheddocument/12813#page=85",
@@ -280,8 +265,7 @@
       "sides": [
         {
           "department": "department/administrative-services",
-          "reason": "the two schedules print one total and round the rows under it differently in the FY2023-24 Actual column",
-          "ties": false
+          "ties": true
         },
         {
           "department": "department/city-attorney",
@@ -309,22 +293,19 @@
         },
         {
           "department": "department/innovation-and-economic-development",
-          "reason": "the two schedules print one total and round the rows under it differently in the FY2023-24 Actual column",
-          "ties": false
+          "ties": true
         },
         {
           "department": "department/library-department",
-          "reason": "the two schedules print one total and round the rows under it differently in the FY2023-24 Actual column",
-          "ties": false
+          "ties": true
         },
         {
           "department": "department/police-department",
-          "reason": "the two schedules print one total and round the rows under it differently in the FY2023-24 Actual column",
-          "ties": false
+          "ties": true
         },
         {
           "department": "department/public-works",
-          "reason": "Maintenance's Transfers Out is a declared residue in no cut, so the check compares the funding sources with the expenditure rows without it; counted with it, as the department page counts it, the two schedules still round the rows under one printed total differently",
+          "reason": "a department's Transfers Out, drawn as no expenditure inside its spending, and its two blocks held apart",
           "ties": false
         }
       ]

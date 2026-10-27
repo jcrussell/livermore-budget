@@ -16,19 +16,23 @@ import (
 // synthSubject is the Subject over synthcity.Default's facts, read with the
 // real registries. The document's structure is the Budget Book's, so its
 // splits, identities and restatements are; its exceptions, which pin the
-// committed corpus's figures, are the city's own, and it declares none.
+// committed corpus's figures, are the city's own, declared for its Gaps.
 func synthSubject(t *testing.T) *Subject {
 	t.Helper()
 	reg, err := registry.Load(os.DirFS(filepath.Join("..", "..", "data")))
 	if err != nil {
 		t.Fatal(err)
 	}
-	facts, err := synthcity.Default().Facts(reg)
+	city, err := synthcity.Default().Facts(reg)
 	if err != nil {
 		t.Fatal(err)
 	}
+	facts, exceptions := city.Facts, city.Exceptions
+	if err = structure.ValidateExceptions(exceptions); err != nil {
+		t.Fatalf("the city declares an exception structure refuses: %v", err)
+	}
 	fact.Sort(facts)
-	projections, failures, err := buildProjections(project.Registry(reg, nil), facts, testVersion)
+	projections, failures, err := buildProjections(project.Registry(reg, exceptions), facts, testVersion)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +42,8 @@ func synthSubject(t *testing.T) *Subject {
 		Splits:       structure.BudgetBookSplits(),
 		Identities:   structure.BudgetBookIdentities(),
 		Restatements: structure.BudgetBookRestatements(),
-		Residue:      fundBalanceResidue(),
+		Residue:      append(fundBalanceResidue(), city.Residue...),
+		Exceptions:   exceptions,
 	}
 }
 

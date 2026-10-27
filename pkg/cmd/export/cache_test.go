@@ -27,10 +27,10 @@ var (
 		}
 		return buildProjectionsFrom(repoRootOnce(), facts, structure.BudgetBookExceptions())
 	})
-	siteOnce, clientOnce sync.Once
-	siteDir, clientDir   string
-	siteErr, clientErr   error
-	repoRootOnce         = sync.OnceValue(func() string { root, _ := filepath.Abs(filepath.Join("..", "..", "..")); return root })
+	siteOnce     sync.Once
+	siteDir      string
+	siteErr      error
+	repoRootOnce = sync.OnceValue(func() string { root, _ := filepath.Abs(filepath.Join("..", "..", "..")); return root })
 )
 
 // TestMain makes the directory the shared exports live in, which outlives
@@ -111,10 +111,4 @@ func sharedExport(t *testing.T, once *sync.Once, dir *string, errp *error, name 
 func exportedSite(t *testing.T) string {
 	t.Helper()
 	return sharedExport(t, &siteOnce, &siteDir, &siteErr, "site", cachedBuildAll)
-}
-
-// clientExport is the site the client fixtures are taken from, written once.
-func clientExport(t *testing.T) string {
-	t.Helper()
-	return sharedExport(t, &clientOnce, &clientDir, &clientErr, "client", buildClientSubset)
 }

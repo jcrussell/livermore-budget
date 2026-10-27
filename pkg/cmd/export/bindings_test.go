@@ -201,13 +201,13 @@ func bindingFaults(page []byte, selectors []string) []string {
 }
 
 // TestEveryPageCarriesTheDOMItsModulesBind holds each page schema/bindings.json
-// names, as fisc export writes it over clientSubset, to its selectors and the
+// names, as fisc export writes it over the committed store, to its selectors and the
 // chrome's, and every other page Go writes to the chrome's.
 // Mutation: rename id="year-select" in site/chrome.html.tmpl and every page
 // binding it is refused.
 func TestEveryPageCarriesTheDOMItsModulesBind(t *testing.T) {
 	doc := readBindings(t)
-	dir := clientExport(t)
+	dir := exportedSite(t)
 	pages, err := filepath.Glob(filepath.Join(dir, "*.html"))
 	if err != nil {
 		t.Fatal(err)
@@ -236,7 +236,7 @@ func TestEveryPageCarriesTheDOMItsModulesBind(t *testing.T) {
 // export writes, and requires bindingFaults to name it.
 func TestTheBindingsCheckCanFail(t *testing.T) {
 	doc := readBindings(t)
-	page := []byte(readFile(t, clientExport(t), "flows.html"))
+	page := []byte(readFile(t, exportedSite(t), "flows.html"))
 	selectors := append(slices.Clone(doc.Chrome.Selectors), doc.Pages["flows.html"].Selectors...)
 	if faults := bindingFaults(page, selectors); len(faults) != 0 {
 		t.Fatalf("the unbroken page is refused, so no row below means anything: %v", faults)

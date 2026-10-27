@@ -306,12 +306,17 @@ export function isClamped(d) {
   return typeof d.clamped === "number";
 }
 
+/** Px two ribbon ends may differ by and be one width: float noise, not a taper. */
+export const TAPER_EPSILON = 1e-6;
+
 /**
+ * Ends differing by float noise are one width: a fund group and its one fund
+ * cut by ratios a few ulps apart draw no taper between them.
  * @param {LaidLink} d
  * @returns {boolean}
  */
 export function isTapered(d) {
-  return endWidth(d, "source") !== endWidth(d, "target");
+  return Math.abs(endWidth(d, "source") - endWidth(d, "target")) > TAPER_EPSILON;
 }
 
 /**

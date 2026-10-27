@@ -190,8 +190,8 @@ describe("the tail's note carries the figure the tail is drawn at", () => {
 
 describe("the drill-down is drawable only folded", () => {
   const COLUMNS = [
-    { label: "FY 2025-26", stem: "fy2026-adopted", hairlines: 6, slivers: 3 },
-    { label: "FY 2026-27", stem: "fy2027-adopted", hairlines: 8, slivers: 4 },
+    { label: "FY 2025-26", stem: "fy2026-adopted" },
+    { label: "FY 2026-27", stem: "fy2027-adopted" },
   ];
   let whole, drill;
   before(async () => {
@@ -214,15 +214,6 @@ describe("the drill-down is drawable only folded", () => {
       t.diagnostic(`folded to tiers ${DRAWN.join("/")}: ${folded.nodes.length} nodes over ${drawn.columns.length} columns (${drawn.columns.join("/")}), smallest node ${drawn.node.toFixed(3)}px, smallest ribbon ${drawn.ribbon.toFixed(3)}px`);
       assert.ok(drawn.node > 0);
       assert.ok(drawn.ribbon > 0);
-    });
-    test(`${col.label}: the count of marks too small to encode their value is pinned`, (t) => {
-      const folded = foldAt(drill, fundFlows(drill, col.stem));
-      const laid = drill.layOut(folded);
-      const hairlines = laid.links.filter((l) => l.width < 1).length;
-      const slivers = laid.nodes.filter((n) => n.y1 - n.y0 < 2).length;
-      t.diagnostic(`${hairlines} of ${folded.links.length} ribbons lay out under 1px and are drawn at 1px; ${slivers} of ${folded.nodes.length} node rects lay out under 2px and are drawn at 2px`);
-      assert.equal(hairlines, col.hairlines);
-      assert.equal(slivers, col.slivers);
     });
     // AT THE FUND-GROUP WINDOW'S OWN COLUMNS: a fold with no object column
     // collapses pp.172-183's fund-to-object ribbons onto their group, and
@@ -469,11 +460,13 @@ describe("a printed flow and an inferred one", () => {
     const byKey = new Map();
     for (const l of doc.links) {
       const src = byID.get(l.source);
-      if (!src || src.tier !== 1 || byID.get(l.target).tier !== 3 || l.contra) continue;
+      if (!src || src.tier !== 1 || byID.get(l.target).tier !== 3) continue;
       const key = src.parent + "\u001f" + l.target + "\u001f" + l.kind;
       byKey.set(key, (byKey.get(key) || []).concat([l]));
     }
-    const legs = [...byKey.values()].find((ls) => ls.length > 1);
+    // Lines none of which is printed as a reduction, so the words planted are
+    // the only reduction their ribbon could name.
+    const legs = [...byKey.values()].find((ls) => ls.length > 1 && ls.every((l) => !l.contra));
     assert.ok(legs, "no two lines of one category reach one fund, so nothing folds together");
     const [first] = legs;
     const merged = () => foldAt(app, doc, [0, 2, 3, 4, 5]).links

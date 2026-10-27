@@ -208,9 +208,9 @@ func TestEverySplitKeyHasItsMemberNoun(t *testing.T) {
 // TestAMemberNounNamingAFundIsSaidOfAFund: every qualified member of a split
 // whose noun names {fund} carries a fund number, over the column fixtures.
 func TestAMemberNounNamingAFundIsSaidOfAFund(t *testing.T) {
-	paths, err := filepath.Glob("../../testdata/*.column.json")
+	paths, err := filepath.Glob("../../testdata/client/*.column.json")
 	if err != nil || len(paths) == 0 {
-		t.Fatalf("no column fixture under testdata/ (%v), so this test reads nothing", err)
+		t.Fatalf("no column fixture under testdata/client/ (%v), so this test reads nothing", err)
 	}
 	type colNode struct {
 		ID    string `json:"id"`

@@ -576,7 +576,7 @@ describe("the trace", () => {
   test("hovering a member of an open hub lights only the sources whose leaves it repeats, and a source only the legs its leaves reach", async (t) => {
     const { app, document } = await bootedApp();
     const hub = "fund-group/special-revenue";
-    const member = "fund/210";
+    const member = "fund/200";
     await split(app, hub);
     const m = markOf(app, document, member);
     const key = (x) => x.source.id + ">" + x.target.id;
@@ -611,7 +611,7 @@ describe("the trace", () => {
   test("through two open hubs in a chain, a member's own ribbons on and back stay on the path, each hub narrowing by its own leaves", async (t) => {
     const { app, document } = await bootedApp();
     const hub = WORST;
-    const member = "fund/210";
+    const member = "fund/200";
     const next = "expenditure/wages-and-benefits";
     await split(app, hub, next);
     const key = (x) => x.source.id + ">" + x.target.id;
@@ -867,7 +867,7 @@ describe("the search box", () => {
     assert.ok(app.chooseSearch(folded, true), `${folded} was not revealed`);
     await settle();
     const tailed = app.expansions.slice();
-    const alternative = "dept/information-technology/capital-outlay";
+    const alternative = "dept/maintenance/capital-outlay";
     app.collapseAll();
     await settle();
     assert.ok(app.chooseSearch(alternative, true), `${alternative} was not revealed`);

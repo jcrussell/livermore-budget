@@ -672,7 +672,7 @@ describe("arms no committed column reaches", () => {
     // stand in carry no shared label of their own.
     const col = structuredClone(columnFixture(newest.fixture));
     const named = (id) => col.nodes.find((n) => n.id === id);
-    named("fund/640").label = named("fund/620").label;
+    named("fund/610").label = named("fund/620").label;
     const { app, document } = await bootedApp({ checkedStem: newest.stem, plan: { [newest.path]: { doc: col } } });
     app.expandAll();
     await settle();

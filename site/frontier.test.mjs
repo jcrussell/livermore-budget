@@ -13,7 +13,9 @@ import { columnFixture } from "./testlib.mjs";
 
 // `inferred`: printed cells the root draws inferred (none: Go's `completes`
 // keeps a remainder's set printed). `completing`: cells drawn whole at the
-// root, their remainder its own derived ribbon once the group opens.
+// root, their remainder its own derived ribbon once the group opens: the
+// synthetic city's one Gap, $250,000 of FY2026-27 internal service Services
+// & Supplies (synthcity.Default).
 const COLUMNS = [
   { label: "FY 2025-26", stem: "fy2026-adopted", inferred: [], completing: [] },
   { label: "FY 2026-27", stem: "fy2027-adopted", inferred: [],

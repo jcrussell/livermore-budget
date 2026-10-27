@@ -524,9 +524,14 @@ describe("every department is a bar of the funds that pay for it", () => {
     const column = structuredClone(columnFixture("fy2027-adopted"));
     const sched = column.schedules[config.funding];
     const paying = [...new Set(sched.links.map((l) => l.from))];
-    // Two more groups, each given one paying fund: eight in all, so three fold.
+    // Two more groups, each given one paying fund of a group that keeps
+    // another, so no group empties: eight in all, so three fold.
+    const parentOf = (node) => sched.nodes.find((n) => n.node === node).parent;
+    const shared = paying.filter((f) => paying.some((g) => g !== f && parentOf(g) === parentOf(f)));
+    const picks = [shared.at(-1), shared.find((f) => parentOf(f) !== parentOf(shared.at(-1)))];
+    assert.ok(picks.every((f) => f !== undefined), "the column has no two groups with two paying funds each to plant from");
     const moved = [];
-    for (const [i, from] of [[0, paying.at(-1)], [1, paying.at(-2)]]) {
+    for (const [i, from] of [[0, picks[0]], [1, picks[1]]]) {
       const id = `fund-group/probe-${i}`;
       column.nodes.push({ id, label: `Probe ${i}`, tier: 2, role: "fund_group" });
       sched.nodes.push({ node: column.nodes.length - 1 });

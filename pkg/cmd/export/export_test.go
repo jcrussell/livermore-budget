@@ -403,7 +403,7 @@ func TestEveryCaveatLinkLandsOnAnAnchorThatExists(t *testing.T) {
 // source list unconditionally -- the first arm goes red; drop p66 from
 // provenance.html's table and footer -- the second does.
 func TestTheSourcesPageListsEveryPageTheSankeyCites(t *testing.T) {
-	dir := clientExport(t)
+	dir := exportedSite(t)
 	read := func(name string) string {
 		t.Helper()
 		raw, err := os.ReadFile(filepath.Join(dir, name)) // #nosec G304 -- the temp site.

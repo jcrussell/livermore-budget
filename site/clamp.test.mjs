@@ -96,30 +96,16 @@ describe("a fund's mark is drawn no taller than its maximum", () => {
       for (const l of c.laid.links) {
         if (!l.source.clamped) { assert.equal(sankey.endWidth(l, "source"), l.width, `${c.label}: ${key(l)} at its source`); kept++; }
         if (!l.target.clamped) { assert.equal(sankey.endWidth(l, "target"), l.width, `${c.label}: ${key(l)} at its target`); kept++; }
-        assert.equal(sankey.isTapered(l), Boolean(l.source.clamped) !== Boolean(l.target.clamped) ||
-          (Boolean(l.source.clamped) && l.source.clamped !== l.target.clamped), `${c.label}: ${key(l)} tapers wrongly`);
+        // Tapered where its two ends are cut by ratios a visible width apart.
+        // Mutation: compare the end widths exactly in isTapered, and the
+        // synthetic city's General Fund and its one fund, cut by ratios ulps
+        // apart, taper.
+        const ratio = (n) => (sankey.isClamped(n) ? n.clamped : 1);
+        assert.equal(sankey.isTapered(l), Math.abs(ratio(l.source) - ratio(l.target)) * l.width > sankey.TAPER_EPSILON,
+          `${c.label}: ${key(l)} tapers wrongly`);
       }
     }
     t.diagnostic(`${kept} ribbon ends at a mark drawn whole, each at d3's width`);
-  });
-
-  // d3 packs the General Fund's group NODE_PADDING above the group under it,
-  // measured; the cut keeps that gap rather than opening the height it took.
-  test("a cut column closes up under the cut: the mark under each cut one sits NODE_PADDING below it", (t) => {
-    let under = 0;
-    for (const c of charts) {
-      for (const n of c.laid.nodes.filter((m) => m.clamped)) {
-        const column = c.laid.nodes.filter((m) => m.layer === n.layer).sort((a, b) => a.y0 - b.y0);
-        const gaps = column.slice(1).map((m, i) => +(m.y0 - column[i].y1).toFixed(6));
-        t.diagnostic(`${c.label}: ${n.id}'s column gaps ${gaps.join(", ") || "none, it stands alone"}`);
-        const next = column[column.indexOf(n) + 1];
-        if (!next) continue;
-        under++;
-        assert.ok(Math.abs(next.y0 - n.y1 - sankey.NODE_PADDING) <= 1e-6,
-          `${c.label}: ${next.id} sits ${next.y0 - n.y1}px under ${n.id}`);
-      }
-    }
-    assert.ok(under > 0, "no cut mark has one under it, so this proves nothing");
   });
 
   test("no ribbon is lost or drawn twice, and no mark leaves its column's canvas", () => {
@@ -194,6 +180,20 @@ test("a mark cut to nothing on a canvas too short for any is still drawn and sai
   assert.equal(sankey.clampNote(whole), "");
 });
 
+// The cut closes the column up under the cut mark by the height it took off,
+// keeping every gap d3 laid, and recentres the column where it stood.
+// Mutation: drop the move of the marks under the cut and the gap under it
+// opens by the height freed.
+test("a cut column closes up under the cut, keeping each gap d3 laid, and recentres", () => {
+  const mark = (id, y0, y1) => ({ id, role: "fund", tier: 3, layer: 1, x0: 0, x1: 10, y0, y1, sourceLinks: [], targetLinks: [] });
+  const [big, b, c] = [mark("fund/100", 0, 160), mark("fund/610", 190, 200), mark("fund/620", 220, 240)];
+  const centre = (ns) => (Math.min(...ns.map((n) => n.y0)) + Math.max(...ns.map((n) => n.y1))) / 2;
+  const before = centre([big, b, c]);
+  sankey.clampFunds({ nodes: [big, b, c], links: [] }, 0, 200);
+  assert.ok(sankey.isClamped(big), "the planted mark is not tall enough to cut");
+  assert.deepEqual({ under: b.y0 - big.y1, next: c.y0 - b.y1, centre: centre([big, b, c]) }, { under: 30, next: 20, centre: before });
+});
+
 // layOut clamps between 12 and height - 12, so a canvas under 24px hands
 // clampFunds a bottom above its top.
 // Mutation: drop the floor on clampFunds' most -- the mark's height and its
@@ -209,15 +209,19 @@ test("a canvas shorter than its margins cuts a mark to nothing, never below", ()
 });
 
 /**
- * The marks cut over the pinned columns, measured: the General Fund's group,
- * and fund/100 where the group opens into it. Everything open grows the
- * canvas (sankey.grow) past where any fund needs cutting.
+ * The marks cut over the synthetic city's columns: its General Fund, planted
+ * as most of every year's money (synthcity.Default), cut at the root, opened
+ * into its one fund, and with everything open.
  */
 const CUT = [
   "FY 2025-26, root: fund-group/general",
   "FY 2025-26, fund-group/general by funds: fund-group/general",
   "FY 2025-26, fund-group/general by funds: fund/100",
+  "FY 2025-26, everything by primary splits: fund-group/general",
+  "FY 2025-26, everything by primary splits: fund/100",
   "FY 2026-27, root: fund-group/general",
   "FY 2026-27, fund-group/general by funds: fund-group/general",
   "FY 2026-27, fund-group/general by funds: fund/100",
+  "FY 2026-27, everything by primary splits: fund-group/general",
+  "FY 2026-27, everything by primary splits: fund/100",
 ];

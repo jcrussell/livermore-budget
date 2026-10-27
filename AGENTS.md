@@ -492,10 +492,15 @@ rather than inferring from the code.
   m && m.__data__.id)`.
 - **A JavaScript test tests what the client does** — fitting, layout, class and
   label derivation, rendering, gestures, the year control, refusal banners — over
-  the fixtures under `testdata/`: the hand-derived spine golden, and the page
-  and columns Go exports from a declared subset of the store and holds to what
-  it writes there, not to its bytes. It never re-derives a figure Go emitted,
-  and it never parses Go source or an artifact Go already writes.
+  the fixtures under `testdata/client/`: DOM skeletons and planted pages held to
+  `schema/bindings.json`, and the configs and columns Go exports over the
+  synthetic city (`internal/synthcity`), held to what it writes there, not to
+  its bytes. It never re-derives a figure Go emitted, and it never parses Go
+  source or an artifact Go already writes.
+- **A shape a client test needs is planted in the synthetic city**, named with
+  the mechanism it is for, never looked for in the city's real data: the
+  client's fixtures move when Go or the spec does, not when Livermore's
+  figures do.
 - **A test imports the shipped `app.js`.** It holds no copy of a function and
   reads no source text. A test that needs a malformed artifact takes a
   `structuredClone` of a pinned one minus one stated key.

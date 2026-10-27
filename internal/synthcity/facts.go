@@ -58,9 +58,10 @@ type writer struct {
 	offsets map[int]int
 	// ending is each fund's closing balance in the column before, which is
 	// the one it opens this column with.
-	ending map[int]int64
-	out    []fact.Fact
-	err    error
+	ending     map[int]int64
+	out        []fact.Fact
+	exceptions []structure.Exception
+	err        error
 }
 
 func (w *writer) offset(page int) int {
@@ -120,6 +121,37 @@ func token(cents int64) string {
 	return s
 }
 
+// baseDivisionWages is what the General Fund pays in wages through a division
+// no fund's Spend names, so every division the department page draws spends.
+const baseDivisionWages = 500_000 * 100
+
+// baseDivisionSupplies is what the General Fund pays in Services & Supplies
+// through every division, so that object's split by division runs past its
+// cap and folds a tail beside the spine's remainder.
+const baseDivisionSupplies = 200_000 * 100
+
+// spendOf is f's Spend, and for the General Fund a base wage line in every
+// division nothing else spends through and a base supplies line in every one.
+func (c City) spendOf(f Fund) []Spend {
+	if f.Number != 100 {
+		return f.Spend
+	}
+	used := map[string]bool{}
+	for _, g := range c.Funds {
+		for _, s := range g.Spend {
+			used[s.Division] = true
+		}
+	}
+	out := slices.Clone(f.Spend)
+	for _, d := range c.Divisions {
+		if !used[d.Slug] {
+			out = append(out, Spend{d.Slug, wages, baseDivisionWages})
+		}
+		out = append(out, Spend{d.Slug, supplies, baseDivisionSupplies})
+	}
+	return out
+}
+
 // pct is the percentage of f's figures col prints: none outside f's Years,
 // where its rows print as dashes, as the Budget Book prints a fund's rows in
 // every column.
@@ -130,18 +162,46 @@ func (f Fund) pct(col Column) int64 {
 	return 0
 }
 
+// Built is the city as printed: its facts, and the declarations its planted
+// shapes need, which a pipeline over the city builds and checks under.
+type Built struct {
+	Facts      []fact.Fact
+	Exceptions []structure.Exception
+	Residue    []structure.Residue
+}
+
 // Facts is the city as every schedule a column draws prints it, over every
 // column of Columns.
-func (c City) Facts(names Names) ([]fact.Fact, error) {
+func (c City) Facts(names Names) (Built, error) {
 	w := &writer{offsets: map[int]int{}, ending: map[int]int64{}}
 	for _, col := range Columns {
 		w.col = col
 		c.column(w, names)
 		if w.err != nil {
-			return nil, w.err
+			return Built{}, w.err
 		}
 	}
-	return w.out, nil
+	var residue []structure.Residue
+	seen := map[string]bool{}
+	for _, d := range c.DivisionTransfers {
+		if rule := "dw-" + d.Division; !seen[rule] {
+			seen[rule] = true
+			residue = append(residue, structure.Residue{Scope: structure.ScopeDepartmentwideExpenditures,
+				Rule: rule, Kind: vocab.KindTransferOut, Reason: d.Why})
+		}
+	}
+	return Built{Facts: w.out, Exceptions: w.exceptions, Residue: residue}, nil
+}
+
+// gapOf is the cents pp.66-67 print over g's funds for category in col.
+func (c City) gapOf(col Column, g, category string) int64 {
+	var cents int64
+	for _, gap := range c.Gaps {
+		if gap.Year == col.Year && col.Spine && gap.Group == g && gap.Category == category {
+			cents += gap.Cents
+		}
+	}
+	return cents
 }
 
 // scaled is cents as col prints them.
@@ -191,6 +251,9 @@ func (c City) column(w *writer, names Names) {
 			fl[n].revenue += cents
 			w.add(rule, mapping.Row{Category: l.Category}, l.Label, mapping.Column{FundGroup: f.Group, Fund: n},
 				structure.ScopeRevenueByFund, vocab.KindRevenue, page, w.offset(page), cents)
+			if l.Cents < 0 {
+				w.out[len(w.out)-1].Sign = vocab.SignContra
+			}
 		}
 	}
 
@@ -248,7 +311,7 @@ func (c City) column(w *writer, names Names) {
 	var gfOrder []key
 	for _, n := range order {
 		f := funds[n]
-		for _, s := range f.Spend {
+		for _, s := range c.spendOf(f) {
 			d, ok := divisionOf[s.Division]
 			if !ok {
 				w.err = fmt.Errorf("synthcity: fund %d spends through %q, which the city declares no division for", n, s.Division)
@@ -301,6 +364,60 @@ func (c City) column(w *writer, names Names) {
 					vocab.KindExpenditure, page, w.offset(page), cents)
 			}
 		}
+	}
+	dwByDepartment := map[string]int64{}
+	for _, k := range divisionOrder {
+		dwByDepartment[divisionOf[k.division].Department] += divisionwide[k]
+	}
+	for _, d := range c.DivisionTransfers {
+		if d.Year != col.Year {
+			continue
+		}
+		div, ok := divisionOf[d.Division]
+		if !ok {
+			w.err = fmt.Errorf("synthcity: a division transfer names %q, which the city declares no division for", d.Division)
+			return
+		}
+		w.add("dw-"+d.Division, mapping.Row{Category: "transfers/out", Department: d.Division}, "Transfers Out",
+			mapping.Column{}, structure.ScopeDepartmentwideExpenditures, vocab.KindTransferOut, div.Page,
+			w.offset(div.Page), d.Cents)
+		fk := fkey{div.Department, d.Fund}
+		if _, seen := funding[fk]; !seen {
+			fundingOrder = append(fundingOrder, fk)
+		}
+		funding[fk] += d.Cents
+		var paid int64
+		for k, cents := range funding {
+			if k.department == div.Department {
+				paid += cents
+			}
+		}
+		present := func(cents int64) structure.Sum { return structure.Sum{Cents: cents, Present: true} }
+		w.exceptions = append(w.exceptions, structure.Exception{
+			Name: fmt.Sprintf("synthcity-%s-transfers-out-%d", d.Division, d.Year),
+			Cut:  structure.CutDepartmentwide, Against: structure.CutFundingSources, At: structure.LevelDepartment,
+			Cells: []structure.Pin{{Year: col.Year, Basis: string(col.Basis),
+				Coords: map[structure.Axis]string{structure.AxisDepartment: div.Department},
+				Cut:    present(dwByDepartment[div.Department]), Against: present(paid)}},
+			Residual: d.Cents, Printed: "synthcity.Default's DivisionTransfers, planted", Reason: d.Why, Bead: "fisc-fsoa.2",
+		})
+		// The fund's pp.186-209 Expenses are its object rows, and its funding
+		// of the department carries the transfer as well.
+		var byFund int64
+		for k, cents := range funding {
+			if k.fund == d.Fund {
+				byFund += cents
+			}
+		}
+		w.exceptions = append(w.exceptions, structure.Exception{
+			Name: fmt.Sprintf("synthcity-%s-transfers-out-%d-by-fund", d.Division, d.Year),
+			Cut:  structure.CutFundingSources, Against: structure.CutFundBalanceExpenses, At: structure.LevelFund,
+			Cells: []structure.Pin{{Year: col.Year, Basis: string(col.Basis),
+				Coords: map[structure.Axis]string{structure.AxisFundGroup: funds[d.Fund].Group,
+					structure.AxisFund: strconv.Itoa(d.Fund)},
+				Cut: present(byFund), Against: present(byFund - d.Cents)}},
+			Residual: -d.Cents, Printed: "synthcity.Default's DivisionTransfers, planted", Reason: d.Why, Bead: "fisc-fsoa.2",
+		})
 	}
 	for _, k := range divisionOrder {
 		page := divisionOf[k.division].Page
@@ -425,7 +542,7 @@ func (c City) column(w *writer, names Names) {
 	for _, r := range spineExpenditure {
 		for _, g := range spineGroups {
 			cell("spine-expenditures", r.category, r.label, g, vocab.KindExpenditure,
-				sum(g, func(n int) int64 { return fl[n].byObject[r.category] }))
+				sum(g, func(n int) int64 { return fl[n].byObject[r.category] })+c.gapOf(col, g, r.category))
 		}
 	}
 	for _, g := range spineGroups {
@@ -444,8 +561,65 @@ func (c City) column(w *writer, names Names) {
 		if gr := groups[g]; gr != nil {
 			b, e = gr.beginning, gr.ending
 		}
-		cell("spine-fund-balance", "fund-balance/change", "CHANGE IN WORKING CAPITAL", g, vocab.KindFundBalance, e-b)
+		var gap int64
+		for _, r := range spineExpenditure {
+			gap += c.gapOf(col, g, r.category)
+		}
+		cell("spine-fund-balance", "fund-balance/change", "CHANGE IN WORKING CAPITAL", g, vocab.KindFundBalance, e-b-gap)
 		cell("spine-fund-balance", "fund-balance/beginning", "BEGINNING WORKING CAPITAL", g, vocab.KindFundBalance, b)
-		cell("spine-fund-balance", "fund-balance/ending", "ENDING WORKING CAPITAL", g, vocab.KindFundBalance, e)
+		cell("spine-fund-balance", "fund-balance/ending", "ENDING WORKING CAPITAL", g, vocab.KindFundBalance, e-gap)
 	}
+	w.exceptions = append(w.exceptions, c.gapExceptions(col, fl, funds, order, w.ending)...)
+}
+
+// gapExceptions declares each Gap of col as the Budget Book declares its own:
+// the spine's cell against the funds' rows by object, by fund group and by
+// fund total, against pp.85-125 by object, and the ending balance the spine
+// carries it into. Every pin is the city's own sum.
+func (c City) gapExceptions(col Column, fl map[int]*flows, funds map[int]Fund, order []int,
+	endings map[int]int64) []structure.Exception {
+	present := func(cents int64) structure.Sum { return structure.Sum{Cents: cents, Present: true} }
+	var out []structure.Exception
+	for _, gap := range c.Gaps {
+		if gap.Year != col.Year || !col.Spine {
+			continue
+		}
+		var rows, everyFund, ending, expenses int64
+		for _, n := range order {
+			everyFund += fl[n].byObject[gap.Category]
+			if funds[n].Group == gap.Group {
+				rows += fl[n].byObject[gap.Category]
+				ending += endings[n]
+				expenses += fl[n].spend
+			}
+		}
+		name := fmt.Sprintf("synthcity-%s-%s-%d", gap.Group, gap.Category, gap.Year)
+		pin := func(coords map[structure.Axis]string, cut, against int64) []structure.Pin {
+			return []structure.Pin{{Year: col.Year, Basis: string(col.Basis), Coords: coords,
+				Cut: present(cut), Against: present(against)}}
+		}
+		byGroup := map[structure.Axis]string{structure.AxisFundGroup: gap.Group}
+		at := func(category string) map[structure.Axis]string {
+			return map[structure.Axis]string{structure.AxisFundGroup: gap.Group, structure.AxisCategory: category}
+		}
+		declared := func(n, cut, against string, level structure.Level, cells []structure.Pin, residual int64, same string) structure.Exception {
+			return structure.Exception{Name: n, Cut: cut, Against: against, At: level, Cells: cells,
+				Residual: residual, SameResidualAs: same, Printed: "synthcity.Default's Gaps, planted",
+				Reason: gap.Why, Bead: "fisc-fsoa.2"}
+		}
+		out = append(out,
+			declared(name+"-by-fund-group", structure.CutFundingSources, structure.CutSpine, structure.LevelFundGroup,
+				pin(byGroup, expenses, expenses+gap.Cents), gap.Cents, ""),
+			declared(name+"-by-fund", "fund-expenditures", structure.CutSpine, structure.LevelFundGroupByCategory,
+				pin(at(gap.Category), rows, rows+gap.Cents), gap.Cents, name+"-by-fund-group"),
+			declared(name+"-by-object", structure.CutDepartmentwide, structure.CutSpine, structure.LevelCategory,
+				pin(map[structure.Axis]string{structure.AxisCategory: gap.Category}, everyFund, everyFund+gap.Cents),
+				gap.Cents, name+"-by-fund-group"),
+			declared(name+"-by-fund-total", structure.CutFundBalanceExpenses, structure.CutSpine, structure.LevelFundGroup,
+				pin(byGroup, expenses, expenses+gap.Cents), gap.Cents, name+"-by-fund-group"),
+			declared(name+"-ending", structure.CutFundBalanceFlows, structure.CutSpine, structure.LevelFundGroupByCategory,
+				pin(at("fund-balance/ending"), ending, ending-gap.Cents), -gap.Cents, ""),
+		)
+	}
+	return out
 }

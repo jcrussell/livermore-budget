@@ -154,9 +154,9 @@ export function publishedColumns() {
   return pageFixture().config.years.map((y) => y.path.replace(/\.json$/, ""));
 }
 
-/** One published column as the page fetches it: testdata/<stem>.column.json. */
+/** One published column as the page fetches it: testdata/client/<stem>.column.json. */
 export function columnFixture(stem) {
-  return JSON.parse(readFileSync(join(repoRoot, "testdata", stem + ".column.json"), "utf8"));
+  return JSON.parse(readFileSync(join(repoRoot, "testdata", "client", stem + ".column.json"), "utf8"));
 }
 
 /** The FY2026 spine as the page draws it: the sankey schedule of its column. */

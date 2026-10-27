@@ -23,7 +23,7 @@ var (
 // Mutation: label capital's options with the fiscal year label alone rather
 // than through yearOptionOf -- capital.html's arms go red.
 func TestEveryPageLabelsAYearAlike(t *testing.T) {
-	dir := clientExport(t)
+	dir := exportedSite(t)
 	pages, err := filepath.Glob(filepath.Join(dir, "*.html"))
 	if err != nil || len(pages) == 0 {
 		t.Fatalf("the export wrote no pages: %v", err)
@@ -66,7 +66,7 @@ func TestEveryPageLabelsAYearAlike(t *testing.T) {
 // Mutation: drop data-years from "topbar" in site/chrome.html.tmpl, and every
 // per-year link goes red.
 func TestEachNavLinkListsTheYearsItsViewOffers(t *testing.T) {
-	dir := clientExport(t)
+	dir := exportedSite(t)
 	pages, err := filepath.Glob(filepath.Join(dir, "*.html"))
 	if err != nil || len(pages) == 0 {
 		t.Fatalf("the export wrote no pages: %v", err)
