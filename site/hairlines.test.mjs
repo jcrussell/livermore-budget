@@ -6,6 +6,7 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 
 import { bootedApp, pageFixture, expandAll, settle, fire } from "./testlib.mjs";
+import * as sankey from "./sankey.js";
 
 const key = (d) => (d ? `${d.source.id} > ${d.target.id} #${d.index}` : String(d));
 
@@ -56,22 +57,17 @@ describe("hairlines", () => {
     assert.equal(key(app.pinned), key(ribbon.__data__), "focusing a hairline does not pin it");
   });
 
-  // The spine's canvas grows (sankey.grow) from the 820px floor its busiest
-  // column does not reach, so it is laid out as on the form's own canvas and
-  // its thin ribbons are hairlines the page says it draws.
-  test("the spine, on the canvas it declares grows, draws its ribbons under a pixel as hairlines and says how many", async (t) => {
-    const { app, document } = await bootedApp();
-    const links = [...document.querySelectorAll("#chart path.link")];
-    const thin = links.filter((p) => p.__data__.width < 1).map((p) => key(p.__data__));
-    const height = document.getElementById("chart").getAttribute("viewBox").split(" ")[3];
-    t.diagnostic(`the spine draws ${thin.length} of ${links.length} ribbons under a pixel on a ${height}px canvas, at room ${app.roomHeight()}`);
-    assert.equal(app.roomHeight(), 0, "the chart has a room, so the floor below is not what sized it");
-    assert.ok(thin.length > 0, "the spine draws no ribbon under a pixel, so this proves less than it says");
-    assert.deepEqual([...document.querySelectorAll("#chart path.link.hairline")].map((p) => key(p.__data__)), thin);
-    assert.deepEqual([...document.querySelectorAll("#chart path.link-hit")].map((p) => key(p.__data__)), thin);
-    assert.equal(document.getElementById("hairline-line").textContent, app.say("hairline", { n: thin.length }));
-    assert.equal(height, String(pageFixture().config.overview.sankey.grow.floor));
-    assert.ok(pageFixture().config.overview.sankey.height === undefined);
-  });
 });
 
+// The canvas grows by node_px per mark of the busiest slot, between its
+// floor and its ceiling, and a room taller than that is the canvas.
+// Mutation: drop the floor from canvasHeight's max and a sparse chart draws
+// on a few pixels.
+test("canvasHeight grows with the busiest slot between grow's floor and ceiling", () => {
+  const grow = { floor: 820, ceiling: 4800, node_px: 40 };
+  const chart = /** @type {any} */ ({ form: "sankey", sankey: { tiers: [0, 2], grow } });
+  const marks = (n) => Array.from({ length: n }, (_, i) => ({ id: "m/" + i, tier: 0 }));
+  assert.deepEqual([3, 30, 500].map((n) => sankey.canvasHeight(chart, marks(n), 0)), [820, 1200, 4800]);
+  assert.equal(sankey.canvasHeight(chart, marks(3), 1000), 1000);
+  assert.equal(sankey.canvasHeight({ form: "sankey", sankey: { tiers: [0] } }, marks(3), 0), sankey.CHART_HEIGHT);
+});

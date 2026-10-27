@@ -101,13 +101,8 @@ describe("a fund's mark is drawn no taller than its maximum", () => {
       for (const l of c.laid.links) {
         if (!l.source.clamped) { assert.equal(sankey.endWidth(l, "source"), l.width, `${c.label}: ${key(l)} at its source`); kept++; }
         if (!l.target.clamped) { assert.equal(sankey.endWidth(l, "target"), l.width, `${c.label}: ${key(l)} at its target`); kept++; }
-        // Tapered where its two ends are cut by ratios a visible width apart.
-        // Mutation: compare the end widths exactly in isTapered, and the
-        // synthetic city's General Fund and its one fund, cut by ratios ulps
-        // apart, taper.
-        const ratio = (n) => (sankey.isClamped(n) ? n.clamped : 1);
-        assert.equal(sankey.isTapered(l), Math.abs(ratio(l.source) - ratio(l.target)) * l.width > sankey.TAPER_EPSILON,
-          `${c.label}: ${key(l)} tapers wrongly`);
+        // A ribbon whose ends are both whole draws no taper.
+        if (!l.source.clamped && !l.target.clamped) assert.equal(sankey.isTapered(l), false, `${c.label}: ${key(l)} tapers`);
       }
     }
     t.diagnostic(`${kept} ribbon ends at a mark drawn whole, each at d3's width`);
@@ -165,6 +160,16 @@ describe("the page marks a cut mark and says so", () => {
     fire(marks.find((m) => !m.__data__.clamped), "pointerenter", { clientX: 10, clientY: 10 });
     assert.equal(tip.querySelectorAll(".tip-cut").length, 0);
   });
+});
+
+// Ends cut by ratios float noise apart are one width; a visible difference is
+// a taper. Mutation: compare the end widths exactly in isTapered, and a
+// group and its one fund cut by ratios ulps apart taper.
+test("a ribbon tapers where its two ends differ by more than TAPER_EPSILON, and not by float noise", () => {
+  const ribbon = (w0, w1) => /** @type {any} */ ({ width: 30, w0, w1 });
+  assert.equal(sankey.isTapered(ribbon(20, 20 + 1e-12)), false);
+  assert.equal(sankey.isTapered(ribbon(20, 20 + 1e-3)), true);
+  assert.equal(sankey.isTapered(ribbon(30, 15)), true);
 });
 
 // Mutation: test `!d.clamped` in cutMark and clampNote again and a mark cut

@@ -8,7 +8,7 @@
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { share } from "./format.js";
+import * as sankey from "./sankey.js";
 import {
   bootedApp, split, settle, clickYear, columnFixture, pageFixture, dollars, shortDollars,
 } from "./testlib.mjs";
@@ -115,10 +115,11 @@ for (const year of YEARS) {
       for (const n of column) {
         assert.equal(n.value, centsOf(n.id), `${n.id} is laid at ${n.value}, not the cents its ribbons add to`);
       }
-      const cents = centsOf(PROPERTY);
-      const total = column.reduce((s, n) => s + centsOf(n.id), 0);
-      const want = `◇ our ${((100 * cents) / total).toFixed(1)}% of this column`;
-      t.diagnostic(`${PROPERTY} is ${cents} of ${total} cents over ${column.length} drawn marks: "${want}"`);
+      // What the share says is columnShare's, planted below; the drawer
+      // states it.
+      const want = app.shareOf(d);
+      t.diagnostic(`${PROPERTY} over ${column.length} drawn marks: "${want}"`);
+      assert.ok(want.endsWith("of this column"), want);
       app.pin(d);
       const chips = [...document.querySelectorAll("#detail .chip.derived")].map((c) => c.textContent);
       assert.ok(chips.includes(want), JSON.stringify(chips));
@@ -148,9 +149,6 @@ for (const year of YEARS) {
         app.pin(n);
         const panel = document.getElementById("detail").textContent;
         assert.ok(!tip.includes("of this column") && !panel.includes("of this column"), `${n.id}: ${tip} | ${panel}`);
-      }
-      for (const n of parts) {
-        assert.equal(app.shareOf(n), `◇ our ${share(n.value, total)} of this column`, n.id);
       }
     });
 
@@ -199,3 +197,22 @@ describe("a figure whose words or pages the page does not carry", () => {
   });
 });
 
+// A mark's share of its column, on laid marks planted for it: the parts of
+// a column are its marks less its printed reductions, and a column of one
+// states none. Mutation: count a reduction in the column's total, or drop
+// the column-of-one arm, and an arm goes red.
+describe("a mark's share of its column", () => {
+  const mark = (layer, value, contra = false) => ({ layer, value, sourceLinks: [{ contra: contra ? "printed as a reduction" : "" }], targetLinks: [] });
+  test("is its value over the column's parts, marked ours; a reduction and a lone mark state none", () => {
+    const [a, b, reduction, lone] = [mark(0, 300), mark(0, 100), mark(0, 50, true), mark(1, 10)];
+    const laid = /** @type {any[]} */ ([a, b, reduction, lone]);
+    assert.deepEqual([a, b, reduction, lone].map((d) => sankey.columnShare(laid, /** @type {any} */ (d))),
+      ["\u25c7 our 75.0% of this column", "\u25c7 our 25.0% of this column", "", ""]);
+  });
+  // Mutation: format with toFixed(1) alone and the near-whole mark reads 100.0%.
+  test("never claims the whole of a column of more than one mark", () => {
+    const [big, small] = [mark(0, 999999), mark(0, 1)];
+    const laid = /** @type {any[]} */ ([big, small]);
+    assert.equal(sankey.columnShare(laid, /** @type {any} */ (big)), "\u25c7 our >99.9% of this column");
+  });
+});

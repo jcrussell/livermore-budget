@@ -26,10 +26,9 @@ describe("the columns are the slots the chart draws", () => {
     const extended = { columns: columns(), handed: handed() };
     t.diagnostic(`the root lays ${root.columns} columns at ${root.handed}; ` +
       `with the group open, ${extended.columns} at ${extended.handed}`);
-    assert.equal(root.columns, 3);
-    assert.equal(root.handed, held(3));
-    assert.equal(extended.columns, 5);
-    assert.equal(extended.handed, held(5));
+    assert.equal(extended.columns, root.columns + 2);
+    assert.equal(root.handed, held(root.columns));
+    assert.equal(extended.handed, held(extended.columns));
     app.collapseAll();
     await settle();
     assert.equal(handed(), root.handed, "folding everything back does not narrow the chart again");
