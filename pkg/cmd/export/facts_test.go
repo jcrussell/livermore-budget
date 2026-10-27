@@ -560,15 +560,21 @@ func TestTheIndexNamesOnlyFilesTheSiteWrites(t *testing.T) {
 			name = "citing a remote copy"
 		}
 		t.Run(name, func(t *testing.T) {
-			io, _, _, _ := iostreams.Test()
-			dir := filepath.Join(t.TempDir(), "dist")
-			if err := exportRun(context.Background(), &Options{
-				IO:              io,
-				RepoRoot:        func() (string, error) { return root, nil },
-				OutputDir:       dir,
-				SourceBrowseURL: browse,
-			}); err != nil {
-				t.Fatalf("exportRun: %v", err)
+			// Shipping the page text is the shared export; citing a remote
+			// copy is an export of its own, over the same cached build.
+			dir := exportedSite(t)
+			if browse != "" {
+				io, _, _, _ := iostreams.Test()
+				dir = filepath.Join(t.TempDir(), "dist")
+				if err := exportRun(context.Background(), &Options{
+					IO:              io,
+					RepoRoot:        func() (string, error) { return root, nil },
+					Build:           cachedBuildAll,
+					OutputDir:       dir,
+					SourceBrowseURL: browse,
+				}); err != nil {
+					t.Fatalf("exportRun: %v", err)
+				}
 			}
 
 			b, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(factsIndexPath)))

@@ -931,14 +931,9 @@ func TestTheCommittedStemsAreUnchanged(t *testing.T) {
 // config's records links to the export's own output: the client opens each
 // verbatim, so a link to a file the export did not write is a broken citation.
 func TestEveryRecordsLinkTheConfigCarriesIsAShardTheExportWrote(t *testing.T) {
-	root := repoRootForTest(t)
-	opts, _, _, _ := testOptions(t)
-	opts.RepoRoot = func() (string, error) { return root, nil }
-	opts.Build = buildAll
-	if err := exportRun(context.Background(), opts); err != nil {
-		t.Fatalf("exportRun: %v", err)
-	}
-	page := readFile(t, opts.OutputDir, "flows.html")
+	// The shared export: this reads its output and writes nothing.
+	dir := exportedSite(t)
+	page := readFile(t, dir, "flows.html")
 	const open = "window.FISC_CONFIG = "
 	_, rest, ok := strings.Cut(page, open)
 	if !ok {
@@ -962,7 +957,7 @@ func TestEveryRecordsLinkTheConfigCarriesIsAShardTheExportWrote(t *testing.T) {
 				continue
 			}
 			shards++
-			if _, err := os.Stat(filepath.Join(opts.OutputDir, filepath.FromSlash(p.Records))); err != nil {
+			if _, err := os.Stat(filepath.Join(dir, filepath.FromSlash(p.Records))); err != nil {
 				t.Errorf("%s p%s links records %q, which the export did not write: %v", id, n, p.Records, err)
 			}
 		}
@@ -976,19 +971,14 @@ func TestEveryRecordsLinkTheConfigCarriesIsAShardTheExportWrote(t *testing.T) {
 // TestTheSitePublishesOneFilePerColumnAndNothingTwice pins `fisc export`'s file
 // set as typed literals; a document stating no year or basis ships as itself.
 func TestTheSitePublishesOneFilePerColumnAndNothingTwice(t *testing.T) {
-	root := repoRootForTest(t)
-	opts, _, _, _ := testOptions(t)
-	opts.RepoRoot = func() (string, error) { return root, nil }
-	opts.Build = buildAll
-	if err := exportRun(context.Background(), opts); err != nil {
-		t.Fatalf("exportRun: %v", err)
-	}
+	// The shared export: this reads its output and writes nothing.
+	dir := exportedSite(t)
 	var got []string
-	walkErr := filepath.WalkDir(opts.OutputDir, func(p string, d fs.DirEntry, err error) error {
+	walkErr := filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return err
 		}
-		rel, rerr := filepath.Rel(opts.OutputDir, p)
+		rel, rerr := filepath.Rel(dir, p)
 		if rerr != nil {
 			return rerr
 		}
@@ -1741,16 +1731,11 @@ func TestStemRefusesADocumentWithNoColumns(t *testing.T) {
 // TestEveryServedStampIsTheExportsOwn holds one export's build stamps to each
 // other: the client refuses a column whose stamp is not its page's.
 func TestEveryServedStampIsTheExportsOwn(t *testing.T) {
-	root := repoRootForTest(t)
-	opts, _, _, _ := testOptions(t)
-	opts.RepoRoot = func() (string, error) { return root, nil }
-	opts.Build = buildAll
-	if runErr := exportRun(context.Background(), opts); runErr != nil {
-		t.Fatalf("exportRun: %v", runErr)
-	}
+	// The shared export: this reads its output and writes nothing.
+	dir := exportedSite(t)
 	exported := regexp.MustCompile(`"exported_by":"([^"]*)"`)
 	stamps := map[string]string{}
-	walkErr := filepath.WalkDir(opts.OutputDir, func(path string, d fs.DirEntry, err error) error {
+	walkErr := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return err
 		}
@@ -1758,7 +1743,7 @@ func TestEveryServedStampIsTheExportsOwn(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		rel, _ := filepath.Rel(opts.OutputDir, path)
+		rel, _ := filepath.Rel(dir, path)
 		switch filepath.Ext(path) {
 		case ".html":
 			for _, m := range exported.FindAllSubmatch(b, -1) {
@@ -1815,17 +1800,11 @@ func mustViews(t *testing.T, built result) []export.View {
 // Mutation: make department.html's config carry the opening year's sources
 // alone, and the department rows on other years' pages go red.
 func TestEveryPageALinkCitesHasItsLinksInTheConfig(t *testing.T) {
-	root := repoRootForTest(t)
-	opts, _, _, _ := testOptions(t)
-	opts.RepoRoot = func() (string, error) { return root, nil }
-	var built result
-	opts.Build = func(root string) (result, error) {
-		r, buildErr := cachedBuildAll(root)
-		built = r
-		return r, buildErr
-	}
-	if err := exportRun(context.Background(), opts); err != nil {
-		t.Fatalf("exportRun: %v", err)
+	// The shared export, and the build it was written from.
+	dir := exportedSite(t)
+	built, err := cachedBuildAll(repoRootForTest(t))
+	if err != nil {
+		t.Fatal(err)
 	}
 	_, ix, err := export.ColumnsOf(built.Projections, "")
 	if err != nil {
@@ -1846,7 +1825,7 @@ func TestEveryPageALinkCitesHasItsLinksInTheConfig(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s: %v", v.Path, err)
 		}
-		page, err := os.ReadFile(filepath.Join(opts.OutputDir, v.Path))
+		page, err := os.ReadFile(filepath.Join(dir, v.Path))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1869,7 +1848,7 @@ func TestEveryPageALinkCitesHasItsLinksInTheConfig(t *testing.T) {
 			t.Fatalf("decode %s's config: %v", v.Path, err)
 		}
 		for _, y := range config.Years {
-			raw, err := os.ReadFile(filepath.Join(opts.OutputDir, filepath.FromSlash(y.Path)))
+			raw, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(y.Path)))
 			if err != nil {
 				t.Fatalf("read %s: %v", y.Path, err)
 			}
