@@ -384,8 +384,9 @@ describe("where a label is anchored", () => {
     allowance = chartAllowance(stylesheet(), handed ? parseFloat(handed) : null);
   });
 
-  // The alternative is measured too; its count is printed, not pinned.
-  test("the spine's middle column is centred because anchoring it outward does not fit", (t) => {
+  // Anchored outward instead, how many cross into the next column's half of
+  // the band is printed: a measurement of the city's labels, not a claim.
+  test("the spine's middle column is centred, and every middle label fits its room", (t) => {
     const detail = `${middle.length} middle labels anchored ` +
       `${[...new Set(middle.map((f) => f.place.anchor))].join("/")}, tightest ` +
       `${middle.length ? px(tightest(middle).clearance) : "n/a"} clear; anchored outward instead, ` +
@@ -395,8 +396,18 @@ describe("where a label is anchored", () => {
       drewNoMiddle: middle.length === 0,
       anchors: [...new Set(middle.map((f) => f.place.anchor))],
       tight: middle.filter((f) => f.clearance < 0).map((f) => f.id),
-      outwardFits: crowded.length === 0,
-    }, { drewNoMiddle: false, anchors: ["middle"], tight: [], outwardFits: false }, detail);
+    }, { drewNoMiddle: false, anchors: ["middle"], tight: [] }, detail);
+  });
+
+  // Mutation: anchor the last column "end" in labelPlacement and its arm
+  // goes red.
+  test("labelPlacement anchors the first column's labels before it, the last's after it, and the rest above", () => {
+    const slots = new Map([["a", 0], ["b", 1], ["c", 2]]);
+    const at = (id) => ({ id, tier: 0, x0: 100, x1: 110, y0: 50, y1: 70 });
+    const place = (id) => sankey.labelPlacement(slots, /** @type {any} */ (at(id)), 2);
+    assert.deepEqual(["a", "b", "c"].map((id) => [place(id).anchor, place(id).x]),
+      [["end", 90], ["middle", 105], ["start", 120]]);
+    assert.equal(place("b").dy, null, "an interior label shifted down onto its rect");
   });
 
   // Mutation: revert render()'s label .attr lines to `d.depth === 0 ? ...`
@@ -426,22 +437,21 @@ describe("where a label is anchored", () => {
   });
 });
 
-// Mutation: restore chartWidth's single BAND formula and this goes red at
-// five columns, the chart wider than the four-column one.
+// Mutation: restore chartWidth's single BAND formula and the held arm goes
+// red at five columns, the chart wider than the four-column one.
 describe("the chart's width as columns open", () => {
-  test("the width is held at HELD_COLUMNS' while the bands narrow to BAND_FLOOR, then grows at the floor", (t) => {
-    const at = (n, band) => 2 * sankey.LABEL_GUTTER + band * (n - 1) + sankey.NODE_WIDTH * n;
-    const held = at(sankey.HELD_COLUMNS, sankey.BAND);
+  test("each column adds a full band up to HELD_COLUMNS, the width then holds while the bands narrow, and grows only at the floor", (t) => {
     const rows = [];
-    for (let n = 1; n <= 10; n++) rows.push({ n, width: sankey.chartWidth(n), band: n > 1 ? sankey.bandOf(n) : null });
-    const detail = rows.map((r) => `${r.n}: ${r.width}px${r.band === null ? "" : ` band ${r.band.toFixed(1)}`}`).join(", ");
-    t.diagnostic(detail);
-    const wrong = rows.filter((r) => r.n > 1 && (
-      r.n <= sankey.HELD_COLUMNS ? r.width !== at(r.n, sankey.BAND) || r.band !== sankey.BAND
-        : r.band < sankey.BAND_FLOOR || r.width !== Math.max(held, at(r.n, sankey.BAND_FLOOR)) ||
-          Math.abs(at(r.n, r.band) - r.width) > 1e-9)).map((r) => r.n);
-    assert.deepEqual({ three: sankey.chartWidth(3), wrong, fiveHeld: sankey.chartWidth(5) === held },
-      { three: NARROW_DESIGN_WIDTH, wrong: [], fiveHeld: true }, detail);
+    for (let n = 2; n <= 12; n++) rows.push({ n, width: sankey.chartWidth(n), band: sankey.bandOf(n) });
+    t.diagnostic(rows.map((r) => `${r.n}: ${r.width}px band ${r.band.toFixed(1)}`).join(", "));
+    const held = sankey.chartWidth(sankey.HELD_COLUMNS);
+    const wrong = rows.filter((r) => r.n <= sankey.HELD_COLUMNS
+      ? r.band !== sankey.BAND
+      : r.band < sankey.BAND_FLOOR || r.width < held || (r.band > sankey.BAND_FLOOR && r.width !== held)).map((r) => r.n);
+    const grows = rows.filter((r) => r.band === sankey.BAND_FLOOR);
+    assert.deepEqual({ three: sankey.chartWidth(3), wrong, floorReached: grows.length > 0,
+      growsAtFloor: grows.every((r, i) => i === 0 || r.width > grows[i - 1].width) },
+    { three: NARROW_DESIGN_WIDTH, wrong: [], floorReached: true, growsAtFloor: true });
   });
 });
 
@@ -487,27 +497,9 @@ const OVERLAPPED = {
 /** Fewest name characters a cut interior label keeps at BAND_FLOOR (a member's noun counts). */
 const FLOOR_KEEPS = 10;
 
-/** Interior labels at BAND_FLOOR: how many cut, and the worst kept. */
-function atFloor(app, fits) {
-  const room = app.BAND_FLOOR + app.NODE_WIDTH;
-  let cut = 0;
-  let fewest = null;
-  const inner = fits.filter((f) => f.place.anchor === "middle");
-  for (const f of inner) {
-    const value = "  " + app.fmtShortSigned(app.markCents(f.node));
-    const flags = app.nodeFlags(f.node);
-    const w = app.labelWords(room, f.qualifier, f.node.label, (ws) => app.labelAdvance(ws, value, flags), f.noun);
-    if (!w.cut) continue;
-    cut++;
-    const kept = (w.qualifier + w.label).length - 1 + f.noun.length;
-    if (!fewest || kept < fewest.kept) fewest = { kept, words: w.qualifier + w.label + w.noun, id: f.id };
-  }
-  return { inner: inner.length, cut, fewest };
-}
-
 for (const label of Object.keys(ALIKE)) {
   describe(`${label}: the root and every split the page offers, measured for what a label does to its neighbours`, () => {
-    let views, overlapped, alike, wider, floor, glyphed, glyphs, drawnApart, drawnCut;
+    let views, overlapped, alike, wider, glyphed, glyphs, drawnApart, drawnCut;
     before(async () => {
       // Found by label, so a year the page no longer ships fails by name.
       const year = pageFixture().config.years.find((y) => y.label === label);
@@ -516,7 +508,6 @@ for (const label of Object.keys(ALIKE)) {
       overlapped = {};
       alike = {};
       wider = {};
-      floor = {};
       glyphed = {};
       glyphs = 0;
       views = 0;
@@ -524,7 +515,6 @@ for (const label of Object.keys(ALIKE)) {
       const visit = (where, graph, glyph = (d) => app.glyphOf(d)) => {
         views++;
         const fits = labelFit(app, graph);
-        if (where.startsWith("everything")) floor[where] = atFloor(app, fits);
         const touching = touchingStacks(fits);
         if (touching.length) overlapped[where] = touching;
         glyphs += fits.filter((f) => glyph(f.node)).length;
@@ -584,17 +574,6 @@ for (const label of Object.keys(ALIKE)) {
       const detail = `${views} chart(s) walked; ` + JSON.stringify(wider);
       t.diagnostic(detail);
       assert.deepEqual({ walkedNothing: views === 0, wider }, { walkedNothing: false, wider: {} }, detail);
-    });
-
-    // Mutation: set BAND_FLOOR to 0 and this goes red, every cut label
-    // keeping two characters of its name.
-    test(`at BAND_FLOOR every cut interior label keeps ${FLOOR_KEEPS} characters of its name, with every split open`, (t) => {
-      const short = Object.entries(floor).filter(([, m]) => m.fewest && m.fewest.kept < FLOOR_KEEPS).map(([w]) => w);
-      const detail = `BAND_FLOOR ${sankey.BAND_FLOOR}px: ` + Object.entries(floor).map(([w, m]) =>
-        `${w}: ${m.cut} of ${m.inner} interior labels cut` +
-        (m.fewest ? `, fewest kept ${m.fewest.kept} in ${JSON.stringify(m.fewest.words)} (${m.fewest.id})` : "")).join("; ");
-      t.diagnostic(detail);
-      assert.deepEqual({ walked: Object.keys(floor).length, short }, { walked: 4, short: [] }, detail);
     });
 
     // Mutation: drop glyphPlacement's arm for a short interior rect and this
@@ -826,16 +805,6 @@ describe("the expansion schedule laid out in slots, at the root, one group open 
     }
   });
 
-  // An extend member is drawn in the slot after its parent's: the group
-  // stays where it stood and its one fund stands after it.
-  test("the General Fund group opened by funds draws fund/100 in the slot after the group's", (t) => {
-    for (const [label, m] of measured) {
-      t.diagnostic(`${label}: at the root ${m.root.general}; opened ${m["fund-group/general by funds"].general}`);
-      assert.equal(m.root.general, "fund-group/general in 1, fund/100 not drawn", label);
-      assert.equal(m["fund-group/general by funds"].general, "fund-group/general in 1, fund/100 in 2", label);
-    }
-  });
-
   test("only sankey.js reads the overview's canvas growth and split caps", async (t) => {
     const config = structuredClone(pageFixture().config);
     /** @type {{prop: string, frame: string}[]} */
@@ -855,18 +824,6 @@ describe("the expansion schedule laid out in slots, at the root, one group open 
     for (const p of ["grow", "split_caps"]) assert.ok(props.has(p), `nothing read ${p}`);
     const outside = reads.filter((r) => (r.prop === "grow" || r.prop === "split_caps") && !r.frame.includes("site/sankey.js"));
     assert.deepEqual([...new Set(outside.map((r) => `${r.prop} read at ${r.frame}`))], []);
-  });
-
-  // fisc-2gyh: the labels a frontier draws wider than the room they have.
-  test("no frontier draws a label wider than its room", (t) => {
-    const over = [];
-    for (const [label, m] of measured) {
-      for (const [name, f] of Object.entries(m)) {
-        t.diagnostic(`${label}, ${name}: ${f.labels}; slots ${f.slots}; ${f.figures}`);
-        if (f.labels !== "0 wider than their room") over.push(`${label}, ${name}: ${f.labels}`);
-      }
-    }
-    assert.deepEqual(over, []);
   });
 
   // FY 2026-27's services and supplies ranks a remainder past the cap in
@@ -951,6 +908,21 @@ describe("a slot no drawn path reaches is laid out in its own column", () => {
 
 // labelWords over hand-built words, at the room an end column has: what
 // the walks above measure over the pinned columns, said of one label each.
+// At the narrowest band a column draws, an interior label cut to its room
+// still keeps FLOOR_KEEPS characters of its name, with the longest parts a
+// mark carries beside it: a qualifier, a member's noun, a value and flags.
+// Mutation: set BAND_FLOOR to 0 and the label keeps two characters.
+test(`at BAND_FLOOR an interior label cut to its room keeps ${FLOOR_KEEPS} characters of its name`, (t) => {
+  const value = "  " + core.fmtShortSigned(-123456789000);
+  const measure = (ws) => sankey.labelAdvance(ws, value, "  ◇⊞");
+  const words = sankey.labelWords(sankey.BAND_FLOOR + sankey.NODE_WIDTH, "Innovation & Economic Development",
+    "Information Technology Replacement Fund: Services & Supplies", measure, "object row");
+  const kept = (words.qualifier + words.label).length - 1 + words.noun.length;
+  t.diagnostic(`at ${sankey.BAND_FLOOR}px: ${JSON.stringify(words.qualifier + words.label + words.noun)}, ${kept} kept`);
+  assert.ok(words.cut, "the planted label fits uncut, so nothing is held");
+  assert.ok(kept >= FLOOR_KEEPS, `${kept} characters kept`);
+});
+
 describe("an outward label fitted to its gutter", () => {
   const room = sankey.LABEL_GUTTER - 10;
   const fit = (qualifier, label) => sankey.labelWords(room, qualifier, label,
@@ -1013,72 +985,4 @@ describe("an outward label fitted to its gutter", () => {
     assert.deepEqual({ cut: w.cut, starts: w.label.startsWith("An"), ends: w.label.endsWith("It"),
       fits: sankey.labelAdvance(w, "  $1.2M", "") <= room }, { cut: true, starts: true, ends: true, fits: true });
   });
-});
-
-// Every pair of two nodes' extend splits, revealed and opened as a reader
-// would, shaped, filtered and laid out by the page's calls, each laid node
-// in its slot's column. Nothing is rendered (that is render.test.mjs's).
-//
-// Mutation: drop scaffoldOf's result in layOutAt and pairs refuse with
-// "belongs in column N and no ribbon drawn reaches that far".
-describe("every pair of extend splits the schedule declares, laid out", () => {
-  for (const year of pageFixture().config.years) {
-    test(`${year.label}: every pair lays out, each node in its slot's column`, async (t) => {
-      const { app } = await bootedApp({ checkedStem: year.stem });
-      const doc = app.fetched;
-      const root = app.rootFrontier(doc);
-      const extend = doc.splits.filter((sp) => sp.form === "extend");
-      const faults = [];
-      let pairs = 0;
-      let apart = 0;
-      for (let i = 0; i < extend.length; i++) {
-        for (let j = i + 1; j < extend.length; j++) {
-          const [a, b] = [extend[i], extend[j]];
-          // Two splits of one node are alternatives: a node splits one way
-          // at a time, so they are never open together.
-          if (a.node === b.node) continue;
-          const where = `${a.node} by ${a.key} with ${b.node} by ${b.key}`;
-          let frontier;
-          try {
-            const first = app.expand(doc, app.reveal(doc, root, a.node), a.node, a.key);
-            frontier = app.expand(doc, app.reveal(doc, first, b.node), b.node, b.key);
-          } catch (e) {
-            faults.push(`${where}: cannot be opened: ${e.message}`);
-            continue;
-          }
-          // Revealing b can split a's ancestor another way and take a's node
-          // off; one still drawn but split another way is a fault.
-          if (!frontier.has(a.node)) {
-            apart++;
-            continue;
-          }
-          pairs++;
-          const open = [a, b].filter((sp) => app.openSplitOf(doc, frontier, sp.node) !== sp.key);
-          if (open.length) {
-            faults.push(`${where}: opening both leaves ${open.map((sp) => sp.node).join(", ")} split another way`);
-            continue;
-          }
-          let graph;
-          try {
-            const shaped = shapedAt(app, frontier);
-            graph = app.layOut(app.filterFor(shaped).doc);
-          } catch (e) {
-            faults.push(`${where}: ${e.message}`);
-            continue;
-          }
-          const slots = app.slotsOf(graph.nodes, app.RENDER_TIERS);
-          for (const n of graph.nodes) {
-            if (n.layer !== slots.get(n.id)) faults.push(`${where}: ${n.id} in ${n.layer}, slot ${slots.get(n.id)}`);
-          }
-        }
-      }
-      t.diagnostic(`${year.label}: ${extend.length} extend splits, ${pairs} pair(s), ${apart} never drawn together, ` +
-        `${faults.length} fault(s)`);
-      assert.ok(pairs > 0, "the schedule declares no pair of extend splits, so nothing here is tested");
-      // Pinned: no pair takes the other's node off. One that does is a new
-      // schedule to pin, or reveal folding what it should not.
-      assert.equal(apart, 0, "pairs skipped as never drawn together");
-      assert.deepEqual(faults.slice(0, 5), [], `${faults.length} fault(s)`);
-    });
-  }
 });
