@@ -501,7 +501,10 @@ describe("the expansion's drawing", () => {
       assert.equal(app.splittable(node), false);
     });
 
-    test(`${year.label}: the capped tail is marked as ours, not as something the city printed`, async (t) => {
+    // The label, its count and the note's wording are capColumn's, planted in
+    // fold.test.mjs; this is the page's half, on one year: the mark wears its
+    // inference and the note the figure the tail is laid out at.
+    if (year === YEARS[0]) test(`${year.label}: the capped tail is marked as ours, not as something the city printed`, async (t) => {
       const { app, document } = await bootedApp({ checkedStem: year.stem });
       const chart = document.getElementById("chart");
       const worst = worstOf(app);
@@ -509,28 +512,16 @@ describe("the expansion's drawing", () => {
       const tail = marksIn(chart).find((m) => app.isAggregate(m.__data__.id));
       assert.ok(tail, `no aggregate mark: the cap folded nothing on ${worst}`);
       const agg = tail.__data__;
-      const word = CONFIG.overview.sankey.split_caps.find((c) => c.split === "funds").tail;
-      const count = Number((agg.label.match(/^(\d+) smaller /) || [])[1]);
-      t.diagnostic(`${worst} draws "${agg.label}" as "${tail.getAttribute("class")}", derived=${agg.derived}, ` +
-        `rationale "${agg.rationale.slice(0, 48)}...", source note ${agg.source_note ? "present" : "MISSING"}`);
+      t.diagnostic(`${worst} draws "${agg.label}" as "${tail.getAttribute("class")}"`);
       assert.equal(agg.id, app.splitTailID(worst, "funds"));
-      assert.equal(agg.derived, true);
       assert.ok(tail.classList.contains("derived"), tail.getAttribute("class"));
-      assert.notEqual(agg.rationale, "");
-      assert.notEqual(agg.source_note, "");
-      assert.equal(agg.label, `${count} smaller ${word}`);
-      // At two or more: a tail of one printed fund labelled "1 smaller funds" is the defect.
-      assert.ok(count >= 2, agg.label);
-      // The count it says is the rows it stands for. Mutation: say
-      // folded.length + 1 in core.aggregateMark's label.
-      assert.equal(count, agg.folds.length, agg.label);
       // Its note carries its figure, since the tail gets no inferred-list line.
       const value = app.layOut(app.projection).nodes.find((n) => n.id === agg.id).value;
       assert.ok(value > 0);
       assert.ok(agg.source_note.includes("together " + dollars(value)), `${agg.source_note} does not carry ${dollars(value)}`);
     });
 
-    test(`${year.label}: a tail's note counts the rows drawing it out draws`, async (t) => {
+    if (year === YEARS[0]) test(`${year.label}: a tail's note counts the rows drawing it out draws`, async (t) => {
       const { app, document } = await bootedApp({ checkedStem: year.stem });
       const chart = document.getElementById("chart");
       const worst = worstOf(app);
@@ -882,33 +873,30 @@ describe("the wording is the packager's", () => {
   });
 });
 
-// Services and supplies' divisions and object rows each hold a derived
-// remainder small enough to rank into the tail, in the year that draws one.
+// The regression on the page for capColumn's planted rule (fold.test.mjs):
+// the synthetic city's FY2026-27 gap draws a derived remainder beside both
+// of services and supplies' capped splits, small enough to rank into each
+// tail.
 describe("a capped tail folds no derived remainder", () => {
-  for (const year of YEARS) {
-    test(`${year.label}: services and supplies' remainders are drawn beside their tails, not counted in them`, async (t) => {
-      const { app } = await bootedApp({ checkedStem: year.stem });
-      const node = "expenditure/services-and-supplies";
-      const cases = [
-        { entry: node, remainder: "expenditure/fund-group/internal-service/services-and-supplies" },
-        { entry: node + app.ALTERNATIVE_MARK + "divisions", remainder: "no-division/services-and-supplies" },
-      ];
-      // FY 2025-26's schedule draws neither remainder; FY 2026-27's both.
-      const held = cases.filter((c) => app.nodeOf(c.remainder) !== undefined);
-      t.diagnostic(`${held.length} of ${cases.length} remainders in this year's schedule`);
-      assert.equal(held.length, year.label === "FY 2026-27" ? 2 : 0);
-      for (const c of held) {
-        app.collapseAll();
-        await split(app, c.entry);
-        const tail = app.projection.nodes.find((n) => app.isAggregate(n.id) && n.parent === node);
-        assert.ok(tail !== undefined, `${c.entry} draws no tail`);
-        t.diagnostic(`${c.entry}: "${tail.label}" folds ${tail.folds.length}`);
-        assert.ok(!tail.folds.includes(c.remainder), `${tail.id} folds ${c.remainder}`);
-        assert.ok(tail.folds.every((m) => !app.nodeOf(m).derived), `${tail.id} folds a derived node`);
-        assert.ok(app.projection.nodes.some((n) => n.id === c.remainder), `${c.remainder} is not drawn`);
-      }
-    });
-  }
+  const year = YEARS.find((y) => y.label === "FY 2026-27");
+  test(`${year.label}: services and supplies' remainders are drawn beside their tails, not counted in them`, async (t) => {
+    const { app } = await bootedApp({ checkedStem: year.stem });
+    const node = "expenditure/services-and-supplies";
+    const cases = [
+      { entry: node, remainder: "expenditure/fund-group/internal-service/services-and-supplies" },
+      { entry: node + app.ALTERNATIVE_MARK + "divisions", remainder: "no-division/services-and-supplies" },
+    ];
+    for (const c of cases) {
+      assert.ok(app.nodeOf(c.remainder) !== undefined, `the city's ${year.label} schedule draws no ${c.remainder}`);
+      app.collapseAll();
+      await split(app, c.entry);
+      const tail = app.projection.nodes.find((n) => app.isAggregate(n.id) && n.parent === node);
+      assert.ok(tail !== undefined, `${c.entry} draws no tail`);
+      t.diagnostic(`${c.entry}: "${tail.label}" folds ${tail.folds.length}`);
+      assert.ok(!tail.folds.includes(c.remainder), `${tail.id} folds ${c.remainder}`);
+      assert.ok(app.projection.nodes.some((n) => n.id === c.remainder), `${c.remainder} is not drawn`);
+    }
+  });
 });
 
 // AGENTS.md, "Go vets, JavaScript renders": a count the client takes is

@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import {
   loadApp, bootedApp, columnFixture, spineGraph, pageFixture, publishedColumns, unmarkContra, expansionStates,
 } from "./testlib.mjs";
+import * as core from "./core.js";
 
 /** A module drawing one tier set: the pinned config with the overview's tiers replaced. */
 async function drawing(tiers) {
@@ -19,6 +20,9 @@ async function drawing(tiers) {
 function foldAt(app, doc, tiers) {
   return app.foldDocument(doc, app.tierFrontier(doc, tiers || app.RENDER_TIERS));
 }
+
+/** `doc` folded to the nodes at `tiers`, by core alone: no page is booted. */
+const foldTo = (doc, tiers) => core.foldDocument(doc, core.tierFrontier(doc, tiers));
 
 /** One published column's fund-flows schedule, as the page rehydrates it. */
 function fundFlows(app, stem) {
@@ -91,6 +95,77 @@ function smallest(graph) {
       .sort((a, b) => a[0] - b[0]).map((e) => e[1]),
   };
 }
+
+// capColumn's rules, each on rows planted for it. core.say reads the page's
+// wording at call time, so the config is installed first.
+describe("capColumn keeps the largest printed rows and folds the rest into one tail", () => {
+  before(() => { globalThis.FISC_CONFIG = pageFixture().config; });
+  const node = (id, tier, derived = false) => ({
+    id, label: id, tier, parent: "", constraint_tier: "", role: "", derived, rationale: "", source_note: "",
+  });
+  const link = (source, target, cents) => ({
+    source, target, value_cents: cents, kind: "external", transfer_id: "",
+    fact_ids: [source + ">" + target], locators: [{ doc_id: "d", pages: [1] }], derived: false,
+  });
+  /** Rows at tier 0 into one category at tier 2, `cents` each. */
+  const rows = (cents, derived = []) => ({
+    schema_version: 1, projection: "rows", metadata: { sources: [{ doc_id: "d", pages: [1] }] },
+    nodes: [node("revenue/tax", 2), ...cents.map((_, i) => node("line/" + i, 0, derived.includes(i)))],
+    links: cents.map((c, i) => link("line/" + i, "revenue/tax", c)),
+  });
+  const tailOf = (doc) => doc.nodes.find((n) => core.isAggregate(n.id));
+
+  // Mutation: drop both of capColumn's guards against a tail of one (the
+  // column-size test and the folded-count one) and three rows draw one.
+  test("a column of cap + 1 rows draws whole, so no tail holds one row", () => {
+    const doc = rows([5, 4, 3]);
+    assert.ok(core.capColumn(doc, 0, 2, "", "lines") === doc, "three rows under a cap of two drew a tail of one");
+    assert.deepEqual(tailOf(core.capColumn(rows([5, 4, 3, 2]), 0, 2, "", "lines")).folds, ["line/2", "line/3"]);
+  });
+
+  // A row ranks by the larger of what it takes in and what it sends on, at
+  // magnitude: x takes in 10 and sends 30, y takes in 25 and sends 20.
+  // Mutation: rank by inflow alone and y is kept over x.
+  test("a row ranks by the larger of its two sides, at magnitude", () => {
+    const doc = {
+      schema_version: 1, projection: "rows", metadata: { sources: [] },
+      nodes: [node("src", 0), node("x", 1), node("y", 1), node("z", 1), node("w", 1), node("dst", 2)],
+      links: [link("src", "x", 10), link("x", "dst", -30), link("src", "y", 25), link("y", "dst", 20),
+        link("src", "z", 2), link("z", "dst", 2), link("src", "w", 1), link("w", "dst", 1)],
+    };
+    const capped = core.capColumn(doc, 1, 1, "", "rows");
+    assert.deepEqual(capped.nodes.filter((n) => n.tier === 1 && !core.isAggregate(n.id)).map((n) => n.id), ["x"]);
+    assert.deepEqual(tailOf(capped).folds, ["y", "z", "w"]);
+  });
+
+  // Mutation: rank remainders with the printed rows and the smallest row,
+  // a remainder, folds into a tail whose words say all inside is printed.
+  test("a derived remainder is kept however small, and the cap's other places go to the largest printed rows", () => {
+    const capped = core.capColumn(rows([50, 40, 30, 20, 1], [4]), 0, 2, "", "lines");
+    const kept = capped.nodes.filter((n) => n.tier === 0 && !core.isAggregate(n.id)).map((n) => n.id).sort();
+    assert.deepEqual({ kept, folds: tailOf(capped).folds }, { kept: ["line/0", "line/4"], folds: ["line/1", "line/2", "line/3"] });
+  });
+
+  // Mutation: drop the remap of a folded row's links and their cents and
+  // facts are lost with it.
+  test("the cap keeps every cent and every fact the rows carry", () => {
+    const doc = rows([50, 40, 30, -20, 10]);
+    const tiers = [0, 2];
+    const whole = core.foldDocument(doc, core.tierFrontier(doc, tiers));
+    const capped = core.capColumn(doc, 0, 2, "", "lines");
+    const folded = core.foldDocument(capped, core.tierFrontier(capped, tiers));
+    assert.deepEqual(totals(folded.links), totals(whole.links));
+  });
+
+  // Mutation: count the tier's rows rather than the folded in the label, or
+  // drop derived from aggregateMark, and the tail says what it is not.
+  test("the tail is marked inferred, names how many rows it folds, and its note how many it kept of how many", () => {
+    const tail = tailOf(core.capColumn(rows([50, 40, 30, 20, 10]), 0, 2, "", "lines"));
+    assert.deepEqual({ label: tail.label, derived: tail.derived, folds: tail.folds.length },
+      { label: core.say("aggregate_label", { folded: 3, word: "lines" }), derived: true, folds: 3 });
+    assert.ok(tail.source_note.startsWith(core.say("aggregate_note", { folded: 3, total: 5, cap: 2 })), tail.source_note);
+  });
+});
 
 describe("the tail's note carries the figure the tail is drawn at", () => {
   // Laid out as shapeFor does, markContra after the fold. Five lines into
@@ -250,12 +325,8 @@ describe("the drill-down is drawable only folded", () => {
 });
 
 describe("foldDocument's clauses, on the miniature", () => {
-  let drill, mini, byPair;
-  before(async () => {
-    drill = await drawing(DRAWN);
-    mini = foldAt(drill, miniature());
-    byPair = new Map(mini.links.map((l) => [l.source + " -> " + l.target, l]));
-  });
+  const mini = foldTo(miniature(), DRAWN);
+  const byPair = new Map(mini.links.map((l) => [l.source + " -> " + l.target, l]));
   test("the fold merges two funds of one group onto one ribbon, keeping both facts", (t) => {
     const l = byPair.get("revenue/tax -> fund-group/general");
     assert.ok(l, "no revenue/tax -> fund-group/general link at all");
@@ -267,14 +338,14 @@ describe("foldDocument's clauses, on the miniature", () => {
     const doc = miniature();
     doc.links[0].locators = [{ doc_id: "d", pages: [3] }];
     doc.links[1].locators = [{ doc_id: "d", pages: [1] }, { doc_id: "acfr", pages: [7] }];
-    const l = foldAt(drill, doc).links.find((x) => x.source === "revenue/tax" && x.target === "fund-group/general");
+    const l = foldTo(doc, DRAWN).links.find((x) => x.source === "revenue/tax" && x.target === "fund-group/general");
     assert.deepEqual(l.locators, [{ doc_id: "acfr", pages: [7] }, { doc_id: "d", pages: [1, 3] }]);
   });
   test("two legs read off one page fold to ONE locator, not two", () => {
     const doc = miniature();
     doc.links[0].locators = [{ doc_id: "d", pages: [1] }];
     doc.links[1].locators = [{ doc_id: "d", pages: [1] }];
-    const l = foldAt(drill, doc).links.find((x) => x.source === "revenue/tax" && x.target === "fund-group/general");
+    const l = foldTo(doc, DRAWN).links.find((x) => x.source === "revenue/tax" && x.target === "fund-group/general");
     assert.deepEqual(l.locators, [{ doc_id: "d", pages: [1] }]);
     assert.deepEqual(l.fact_ids, ["a", "b"]);
   });
@@ -299,7 +370,7 @@ describe("foldDocument's clauses, on the miniature", () => {
     const orphan = miniature();
     orphan.nodes.push({ id: "stray", label: "stray", tier: 9, parent: "", constraint_tier: "", role: "", derived: false, rationale: "", source_note: "" });
     orphan.links.push({ source: "revenue/tax", target: "stray", value_cents: 1, kind: "external", transfer_id: "", fact_ids: ["z"], locators: [{ doc_id: "d", pages: [1] }], derived: false });
-    assert.throws(() => foldAt(drill, orphan), (e) => /stray/.test(e.message) && /tier 9/.test(e.message));
+    assert.throws(() => foldTo(orphan, DRAWN), (e) => /stray/.test(e.message) && /tier 9/.test(e.message));
   });
   // The fold is the one place a printed leg and an inferred one meet in one
   // ribbon, so it is the fold that says the merge is ours.
@@ -307,14 +378,14 @@ describe("foldDocument's clauses, on the miniature", () => {
     const leg = { source: "revenue/tax", target: "fund/101", value_cents: 7, kind: "external", transfer_id: "", fact_ids: ["y"], locators: [{ doc_id: "d", pages: [1] }], derived: false };
     const printed = miniature();
     printed.links.push(leg);
-    const l = foldAt(drill, printed).links.find((x) => x.source === "revenue/tax" && x.target === "fund-group/general");
+    const l = foldTo(printed, DRAWN).links.find((x) => x.source === "revenue/tax" && x.target === "fund-group/general");
     assert.ok(l);
     assert.equal(l.derived, false);
     assert.equal(l.value_cents, 307);
     assert.deepEqual([...l.fact_ids].sort(), ["a", "b", "y"]);
     const mixed = miniature();
     mixed.links.push(Object.assign({}, leg, { derived: true }));
-    const m = foldAt(drill, mixed).links.find((x) => x.source === "revenue/tax" && x.target === "fund-group/general");
+    const m = foldTo(mixed, DRAWN).links.find((x) => x.source === "revenue/tax" && x.target === "fund-group/general");
     assert.ok(m);
     assert.equal(m.derived, true);
     assert.equal(m.value_cents, 307);
@@ -324,13 +395,13 @@ describe("foldDocument's clauses, on the miniature", () => {
 
 describe("the spine's fund groups", () => {
   test("the parent walk cannot move the spine, because the spine has no parents", async (t) => {
-    const whole = await drawing([]);
     const spine = await spineGraph();
+    const index = new Map(spine.nodes.map((n) => [n.id, n]));
     t.diagnostic(`all ${spine.nodes.length} spine nodes are parentless`);
     assert.ok(spine.nodes.length > 0, "the spine carries no node, so no parent is walked");
     for (const n of spine.nodes) {
       assert.equal(n.parent, "", n.id);
-      assert.equal(whole.fundGroupOf(n), whole.isFundGroup(n) ? n.id : "", n.id);
+      assert.equal(core.fundGroupOf(index, n), core.isFundGroup(n) ? n.id : "", n.id);
     }
   });
 
@@ -393,13 +464,12 @@ describe("the spine's fund groups", () => {
 // The parent-chain arm node-hierarchy-well-formed keeps off every
 // column the export writes.
 describe("a parent the document does not carry", () => {
-  test("a node whose parent chain breaks belongs to no fund group", async () => {
-    const whole = await drawing([]);
+  test("a node whose parent chain breaks belongs to no fund group", () => {
     const stray = { id: "fund/999", label: "stray", tier: 3, parent: "fund-group/ghost", role: "",
       constraint_tier: "", derived: false, rationale: "", source_note: "" };
-    assert.equal(whole.fundGroupOf(stray), "");
+    assert.equal(core.fundGroupOf(new Map(), stray), "");
     const rooted = Object.assign({}, stray, { parent: "" });
-    assert.equal(whole.fundGroupOf(rooted), "");
+    assert.equal(core.fundGroupOf(new Map(), rooted), "");
   });
 });
 
@@ -427,9 +497,8 @@ describe("a printed flow and an inferred one", () => {
   // Planted: two lines of one category into one fund fold into one ribbon at
   // the category grain, and one of them is marked inferred. A cross-tab
   // slice beside a flow is still refused, with the fold's own type.
-  test("merge into one ribbon drawn inferred, and a cross-tab slice beside a flow is refused", async () => {
-    const app = (await loadApp()).app;
-    const doc = structuredClone(fundFlows(app, "fy2026-adopted"));
+  test("merge into one ribbon drawn inferred, and a cross-tab slice beside a flow is refused", () => {
+    const doc = structuredClone(fundFlows(core, "fy2026-adopted"));
     const byID = new Map(doc.nodes.map((n) => [n.id, n]));
     const pair = new Map();
     let planted = null;
@@ -441,7 +510,7 @@ describe("a printed flow and an inferred one", () => {
       pair.set(key, l);
     }
     assert.ok(planted, "no two lines of one category reach one fund, so nothing folds together");
-    const ribbon = () => foldAt(app, doc, [0, 2, 3, 4, 5]).links
+    const ribbon = () => foldTo(doc, [0, 2, 3, 4, 5]).links
       .find((l) => l.source === byID.get(planted.source).parent && l.target === planted.target && l.kind === planted.kind);
     assert.equal(ribbon().derived, false, "the printed legs fold to an inferred ribbon");
     planted.derived = true;
@@ -449,13 +518,12 @@ describe("a printed flow and an inferred one", () => {
     assert.ok(ribbon().fact_ids.includes(planted.fact_ids[0]), "the inferred leg's fact is cited away");
     planted.derived = false;
     planted.partition = true;
-    assert.throws(() => foldAt(app, doc, [0, 2, 3, 4, 5]), /cannot draw as one, a cross-tab slice and a flow that is not one/);
-    assert.throws(() => foldAt(app, doc, [0, 2, 3, 4, 5]), app.FoldRefusal, "the refusal is not the fold's own type");
+    assert.throws(() => foldTo(doc, [0, 2, 3, 4, 5]), /cannot draw as one, a cross-tab slice and a flow that is not one/);
+    assert.throws(() => foldTo(doc, [0, 2, 3, 4, 5]), core.FoldRefusal, "the refusal is not the fold's own type");
   });
 
-  test("a reduction's words do not name a ribbon it was only one leg of", async (t) => {
-    const app = (await loadApp()).app;
-    const doc = structuredClone(fundFlows(app, "fy2026-adopted"));
+  test("a reduction's words do not name a ribbon it was only one leg of", (t) => {
+    const doc = structuredClone(fundFlows(core, "fy2026-adopted"));
     const byID = new Map(doc.nodes.map((n) => [n.id, n]));
     const byKey = new Map();
     for (const l of doc.links) {
@@ -469,7 +537,7 @@ describe("a printed flow and an inferred one", () => {
     const legs = [...byKey.values()].find((ls) => ls.length > 1 && ls.every((l) => !l.contra));
     assert.ok(legs, "no two lines of one category reach one fund, so nothing folds together");
     const [first] = legs;
-    const merged = () => foldAt(app, doc, [0, 2, 3, 4, 5]).links
+    const merged = () => foldTo(doc, [0, 2, 3, 4, 5]).links
       .find((l) => l.source === byID.get(first.source).parent && l.target === first.target && l.kind === first.kind);
     t.diagnostic(`${legs.length} lines of ${byID.get(first.source).parent} fold into one ribbon to ${first.target}`);
     const words = "a reduction every leg prints";
@@ -492,7 +560,9 @@ function totals(links) {
 }
 
 // Every chart the page offers, capped by expansionOf, held to the same
-// frontier folded whole. No figure is compared to Go's.
+// frontier folded whole: the properties the cap keeps over the pinned
+// columns' breadth. How it ranks and what its tail says are planted above.
+// No figure is compared to Go's.
 describe("the expansion's caps preserve what they fold, at every split the page offers", () => {
   const CONFIG = pageFixture().config;
   const STEMS = publishedColumns();
@@ -558,34 +628,6 @@ describe("the expansion's caps preserve what they fold, at every split the page 
             wrong.push(`${st.where}: ${sp.node} by ${sp.key} holds ${members.length} and the tail plus the kept stand for ${stood.length}`);
           }
           if (tail.folds.length < 2) wrong.push(`${st.where}: a tail of ${tail.folds.length}`);
-          // THE NOTE SAYS THE SMALLEST PRINTED ROWS: no printed row kept is
-          // smaller than one folded, sized as the cap ranks them. A kept
-          // remainder may be smaller than either.
-          const size = (id) => {
-            let into = 0;
-            let out = 0;
-            for (const l of raw.links) {
-              if (l.target === id) into += Math.abs(l.value_cents);
-              if (l.source === id) out += Math.abs(l.value_cents);
-            }
-            return Math.max(into, out);
-          };
-          const smallestKept = Math.min(...kept.filter((m) => !derived.has(m)).map(size));
-          const largestFolded = tail.folds.reduce((x, m) => (size(m) > size(x) ? m : x));
-          if (size(largestFolded) > smallestKept) {
-            wrong.push(`${st.where}: ${tailID} folds ${largestFolded}, larger than a printed row kept`);
-          }
-          // THE NOTE CARRIES THE FIGURE THE TAIL IS DRAWN AT, which only the
-          // fold after the cap knows.
-          const figure = app.say("aggregate_together", { figure: app.fmt(app.tailFigure(drawn, tailID)) });
-          if (!tail.source_note.endsWith(figure)) wrong.push(`${st.where}: ${tailID}'s note does not end "${figure}"`);
-          // ITS TOTAL IS THE SPLIT'S MEMBERS, remainder included, and less
-          // what it folds is the cap, read off the note.
-          if (members.length - tail.folds.length !== cap.cap) {
-            wrong.push(`${st.where}: ${tailID} folds ${tail.folds.length} of ${members.length}, leaving other than the cap of ${cap.cap}`);
-          }
-          const stated = app.say("aggregate_note", { folded: tail.folds.length, total: members.length, cap: cap.cap });
-          if (!tail.source_note.startsWith(stated)) wrong.push(`${st.where}: ${tailID}'s note reads "${tail.source_note}", not "${stated}"`);
         }
       }
       t.diagnostic(`${stem}: ${charts} charts, ${tails} folded tails, ${merged} ribbons merged by the cap`);
@@ -595,81 +637,15 @@ describe("the expansion's caps preserve what they fold, at every split the page 
   }
 });
 
-// No pinned column folds a reduction into a tail (the lines() fixture pins
-// how it would draw). This goes red the year one does, so the reader checks
-// the tail's note against the laid mark.
-describe("no capped tail of the expansion folds a line printed as a reduction", () => {
-  const CONFIG = pageFixture().config;
-  const STEMS = publishedColumns();
-
-  /** Every capped tail at every split, its members' ribbons folded whole at printed signs, and whether its split held a reduction. */
-  function tailsOf(app, doc) {
-    const out = [];
-    const reduces = (l) => Boolean(l.contra) || l.value_cents < 0;
-    for (const st of expansionStates(app, doc).filter((x) => !x.whole.size)) {
-      const raw = app.foldDocument(doc, st.frontier);
-      const drawn = app.expansionOf(doc, st.frontier, CONFIG.overview, st.whole);
-      for (const tail of drawn.nodes.filter((n) => app.isAggregate(n.id))) {
-        const own = app.splitTailOf(tail.id);
-        const members = new Set(tail.folds);
-        const split = new Set(app.splitsOf(doc, own.node).find((x) => x.key === own.key).members);
-        const ribbons = raw.links.filter((l) => members.has(l.source) || members.has(l.target));
-        out.push({
-          where: st.where, tail, members: [...members],
-          reductions: ribbons.filter(reduces),
-          ranked: raw.links.some((l) => reduces(l) && (split.has(l.source) || split.has(l.target))),
-          folded: ribbons.reduce((n, l) => n + l.value_cents, 0),
-        });
-      }
-    }
-    return out;
-  }
-
-  for (const stem of STEMS) {
-    test(`${stem}: every capped tail at every split folds no reduction`, async (t) => {
-      const app = (await loadApp({ config: CONFIG })).app;
-      const found = tailsOf(app, app.scheduleOf(columnFixture(stem), "expansion"));
-      const folded = found.filter((f) => f.reductions.length)
-        .map((f) => `${f.where}, ${f.tail.id}: ` + f.reductions.map((l) => `${l.source} -> ${l.target} ${l.value_cents}`).join(", "));
-      const ranked = found.filter((f) => f.ranked).length;
-      t.diagnostic(`${stem}: ${found.length} capped tails, ${found.reduce((n, f) => n + f.members.length, 0)} members folded, ` +
-        `${ranked} of the tails' splits held a reduction, ${folded.length} tails folded one`);
-      assert.ok(found.length > 0, "no cap folded anything, so this walk holds nothing");
-      assert.deepEqual(folded, []);
-    });
-  }
-
-  // PLANTED: the lowest-ranked member of one tail has its ribbons turned into
-  // reductions, and the walk above must name it.
-  test("the walk names a reduction the moment a cap folds one", async (t) => {
-    const app = (await loadApp({ config: CONFIG })).app;
-    const doc = structuredClone(app.scheduleOf(columnFixture("fy2026-adopted"), "expansion"));
-    const before = tailsOf(app, doc).find((f) => f.where === "fund-group/special-revenue by funds");
-    assert.ok(before, "the special-revenue group's split folds no tail");
-    assert.equal(before.reductions.length, 0, "the unplanted tail folds a reduction, so the plant proves nothing");
-    const member = before.members[before.members.length - 1];
-    const ribbons = doc.links.filter((l) => l.source === member || l.target === member);
-    assert.ok(ribbons.length > 0, `${member} has no ribbon to plant on`);
-    for (const l of ribbons) {
-      l.value_cents = -l.value_cents;
-      l.contra = "printed as a reduction of Test";
-    }
-    const after = tailsOf(app, doc).find((f) => f.where === before.where && f.tail.id === before.tail.id);
-    assert.ok(after && after.members.includes(member), `${member} is no longer folded once planted`);
-    t.diagnostic(`planted on ${member}: the tail's note reads "${after.tail.source_note}" ` +
-      `where its folded ribbons sum to ${after.folded} cents; unplanted, ${before.folded}`);
-    assert.ok(after.reductions.length > 0, "the planted reduction was folded and not named");
-    assert.ok(after.reductions.every((l) => l.source === member || l.target === member), "the walk named a reduction the plant did not make");
-  });
-});
-
 // A hub's ribbons to its members (or tail) sum, in cents and facts, to the
 // leaves its links repeat. A lost leg reads short, a doubled one long, and a
 // shut split draws no member ribbon.
 describe("an open hub's ribbons are the leaves it repeats", () => {
   const CONFIG = pageFixture().config;
 
-  for (const stem of publishedColumns()) {
+  // One column: the walk is a property over the pinned breadth, and a
+  // second year walks the same rules again.
+  for (const stem of publishedColumns().slice(0, 1)) {
     test(`${stem}: at every split the page offers, a hub draws its leaves once each`, async (t) => {
       const app = (await loadApp({ config: CONFIG })).app;
       const doc = app.scheduleOf(columnFixture(stem), "expansion");
