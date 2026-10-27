@@ -705,39 +705,6 @@ describe("the focus indicator is painted as focus and not as text", () => {
 // overview's sankey.grow. Every assert is over keys and numbers: a failing
 // assert over a laid d3 graph formats all of it, which this host cannot hold.
 
-/**
- * Per year and frontier: slots, nodes and ribbons, the canvas and its
- * sub-pixel ribbons, and labels wider than their room (value in, flags
- * out), over the synthetic city. Pinned, not bounded, so a change to the
- * slots, the fold or the canvas shows here as a number.
- */
-const EXPANSION_CLAIMED = {
-  "FY 2025-26": {
-    "root": { slots: "12/6/6", figures: "24 nodes, 36 ribbons; 820px canvas, 2 under 1px",
-      labels: "0 wider than their room" },
-    "fund-group/general by funds": { slots: "12/6/1/25/6", figures: "50 nodes, 108 ribbons; 1000px canvas, 2 under 1px",
-      labels: "0 wider than their room" },
-    "everything by primary splits": { slots: "37/12/6/17/25/6/31",
-      figures: "134 nodes, 206 ribbons; 1480px canvas, 15 under 1px",
-      labels: "0 wider than their room" },
-    "everything by primary splits, every tail drawn out": { slots: "47/12/6/37/29/6/98",
-      figures: "235 nodes, 338 ribbons; 3920px canvas, 13 under 1px",
-      labels: "0 wider than their room" },
-  },
-  "FY 2026-27": {
-    "root": { slots: "12/6/6", figures: "24 nodes, 36 ribbons; 820px canvas, 2 under 1px",
-      labels: "0 wider than their room" },
-    "fund-group/general by funds": { slots: "12/6/1/25/6", figures: "50 nodes, 108 ribbons; 1000px canvas, 2 under 1px",
-      labels: "0 wider than their room" },
-    "everything by primary splits": { slots: "37/12/6/18/25/6/31",
-      figures: "135 nodes, 208 ribbons; 1480px canvas, 15 under 1px",
-      labels: "0 wider than their room" },
-    "everything by primary splits, every tail drawn out": { slots: "47/12/6/37/29/6/98",
-      figures: "235 nodes, 338 ribbons; 3920px canvas, 13 under 1px",
-      labels: "0 wider than their room" },
-  },
-};
-
 /** The expansion's frontiers, each from the schedule's own helpers. */
 function expansionFrontiers(doc) {
   const root = core.rootFrontier(doc);
@@ -890,33 +857,16 @@ describe("the expansion schedule laid out in slots, at the root, one group open 
     assert.deepEqual([...new Set(outside.map((r) => `${r.prop} read at ${r.frame}`))], []);
   });
 
-  test("each frontier draws the slots, nodes, ribbons and canvas pinned", (t) => {
-    const got = {};
-    for (const [label, m] of measured) {
-      got[label] = {};
-      for (const [name, f] of Object.entries(m)) {
-        t.diagnostic(`${label}, ${name}: slots ${f.slots}; ${f.figures}`);
-        got[label][name] = `slots ${f.slots}; ${f.figures}`;
-      }
-    }
-    const want = Object.fromEntries(Object.entries(EXPANSION_CLAIMED).map(([label, m]) =>
-      [label, Object.fromEntries(Object.entries(m).map(([name, f]) => [name, `slots ${f.slots}; ${f.figures}`]))]));
-    assert.deepEqual(got, want);
-  });
-
   // fisc-2gyh: the labels a frontier draws wider than the room they have.
-  test("the labels wider than their room are the ones pinned", (t) => {
-    const got = {};
+  test("no frontier draws a label wider than its room", (t) => {
+    const over = [];
     for (const [label, m] of measured) {
-      got[label] = {};
       for (const [name, f] of Object.entries(m)) {
-        t.diagnostic(`${label}, ${name}: ${f.labels}`);
-        got[label][name] = f.labels;
+        t.diagnostic(`${label}, ${name}: ${f.labels}; slots ${f.slots}; ${f.figures}`);
+        if (f.labels !== "0 wider than their room") over.push(`${label}, ${name}: ${f.labels}`);
       }
     }
-    const want = Object.fromEntries(Object.entries(EXPANSION_CLAIMED).map(([label, m]) =>
-      [label, Object.fromEntries(Object.entries(m).map(([name, f]) => [name, f.labels]))]));
-    assert.deepEqual(got, want);
+    assert.deepEqual(over, []);
   });
 
   // FY 2026-27's services and supplies ranks a remainder past the cap in

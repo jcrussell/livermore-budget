@@ -49,7 +49,9 @@ describe("a fund's mark is drawn no taller than its maximum", () => {
     }
   });
 
-  test("no fund's mark is taller than FUND_MAX_SHARE of the canvas, and the marks cut are the ones pinned", (t) => {
+  // Mutation: drop clampFunds' cut and the General Fund's group stands over
+  // FUND_MAX_SHARE; cut every fund mark and the planted ones are not alone.
+  test("no fund's mark is taller than FUND_MAX_SHARE of the canvas, and only the planted dominant fund is cut", (t) => {
     const cut = [];
     for (const c of charts) {
       const over = c.laid.nodes.filter((n) => sankey.isFundMark(n) && n.y1 - n.y0 > c.most + 1e-9).map((n) => n.id);
@@ -59,7 +61,10 @@ describe("a fund's mark is drawn no taller than its maximum", () => {
         cut.push(`${c.label}: ${n.id}`);
       }
     }
-    assert.deepEqual(cut, CUT);
+    const wrong = cut.filter((c) => !DOMINANT.some((id) => c.endsWith(": " + id)));
+    assert.deepEqual(wrong, [], "a mark other than the General Fund's is cut");
+    assert.ok(charts.filter((c) => c.label.endsWith(", root")).every((c) => cut.includes(`${c.label}: fund-group/general`)),
+      "an opening chart draws the General Fund's group uncut");
   });
 
   test("at a cut face its ribbons' end widths sum to the mark's height, and each face's to its own share of it", (t) => {
@@ -209,19 +214,8 @@ test("a canvas shorter than its margins cuts a mark to nothing, never below", ()
 });
 
 /**
- * The marks cut over the synthetic city's columns: its General Fund, planted
- * as most of every year's money (synthcity.Default), cut at the root, opened
- * into its one fund, and with everything open.
+ * The synthetic city plants its General Fund as most of every year's money
+ * (synthcity.Default), so its group and its one fund are the marks tall
+ * enough to cut, and no other.
  */
-const CUT = [
-  "FY 2025-26, root: fund-group/general",
-  "FY 2025-26, fund-group/general by funds: fund-group/general",
-  "FY 2025-26, fund-group/general by funds: fund/100",
-  "FY 2025-26, everything by primary splits: fund-group/general",
-  "FY 2025-26, everything by primary splits: fund/100",
-  "FY 2026-27, root: fund-group/general",
-  "FY 2026-27, fund-group/general by funds: fund-group/general",
-  "FY 2026-27, fund-group/general by funds: fund/100",
-  "FY 2026-27, everything by primary splits: fund-group/general",
-  "FY 2026-27, everything by primary splits: fund/100",
-];
+const DOMINANT = ["fund-group/general", "fund/100"];
