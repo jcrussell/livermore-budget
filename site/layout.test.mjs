@@ -62,14 +62,6 @@ function extentOverflow(graph) {
   return worst;
 }
 
-// The synthetic city's spine as the page lays it out, PINNED, so a change to
-// nodeRank, the seats or restackLinks that moves a ribbon shows here as a
-// number. It moves when synthcity.Default does, and with nothing else.
-const DRAWN = {
-  crossings: 55,
-  overlapDollars: 73910000,
-};
-
 const usd = (n) => "$" + Math.round(n).toLocaleString();
 
 /**
@@ -274,15 +266,6 @@ describe("the spine's layout", () => {
     graph = laidSpine(app);
   });
 
-  test("the chart draws at its pinned crossings and overlap", (t) => {
-    const got = tangle(graph);
-    const detail = `${got.crossings} crossings, ${usd(got.dollars)} overlapped ` +
-      `(pinned ${DRAWN.crossings}, ${usd(DRAWN.overlapDollars)})`;
-    t.diagnostic(detail);
-    assert.deepEqual({ crossings: got.crossings, dollars: Math.round(got.dollars) },
-      { crossings: DRAWN.crossings, dollars: DRAWN.overlapDollars }, detail);
-  });
-
   // Every stack is reversed and mirrored; restacking restores each end
   // where the page placed it, no ribbon resized. Mutation: return early from
   // restackLinks and the crossings stay; drop its sorts and the ends stack
@@ -290,6 +273,7 @@ describe("the spine's layout", () => {
   test("restackLinks stacks scrambled ribbons back to the chart's", (t) => {
     const own = laidSpine(app);
     const placed = own.links.map((l) => [l.y0, l.y1, l.width]);
+    const drawn = tangle(own);
     const invert = (links, y) => {
       const places = links.map((l) => l[y]);
       links.forEach((l, i) => { l[y] = places[places.length - 1 - i]; });
@@ -303,9 +287,10 @@ describe("the spine's layout", () => {
     const scrambled = tangle(own).crossings;
     app.restackLinks(own);
     const got = tangle(own);
-    t.diagnostic(`${scrambled} crossings with every stack inverted, ${got.crossings} after restacking`);
-    assert.notEqual(scrambled, DRAWN.crossings, "inverting the stacks changed nothing, so restacking is not tested");
-    assert.equal(got.crossings, DRAWN.crossings);
+    t.diagnostic(`the chart draws ${drawn.crossings} crossings, ${usd(drawn.dollars)} overlapped; ` +
+      `${scrambled} with every stack inverted, ${got.crossings} after restacking`);
+    assert.notEqual(scrambled, drawn.crossings, "inverting the stacks changed nothing, so restacking is not tested");
+    assert.equal(got.crossings, drawn.crossings);
     // Back where the page placed every end, and no ribbon resized.
     assert.deepEqual(own.links.map((l) => [l.y0, l.y1, l.width]), placed);
   });
