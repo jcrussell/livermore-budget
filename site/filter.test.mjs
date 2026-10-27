@@ -6,6 +6,7 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 
 import { bootedApp, expansionStates, shapedAt, split, settle, clickYear, fire, pageFixture, refusals, dollars } from "./testlib.mjs";
+import * as core from "./core.js";
 
 const CONFIG = pageFixture().config;
 const YEARS = CONFIG.years;
@@ -628,8 +629,9 @@ describe("a node filter hiding a contra cell of a ribbon", () => {
 // a filter hiding the wrong ones. Mutation: test only a ribbon's source
 // against hidden groups, or its kind against the group set, and an arm goes red.
 describe("a group or kind filter on a planted chart", () => {
-  test("hides exactly the ribbons it names", async () => {
-    const { app } = await bootedApp();
+  test("hides exactly the ribbons it names", () => {
+    globalThis.FISC_CONFIG = pageFixture().config;
+    const app = core;
     const node = (id) => ({ id, label: id, kind: "x", tier: 0 });
     const link = (source, target, kind, value_cents) => ({ source, target, kind, value_cents, fact_ids: [`f-${source}-${target}`] });
     const doc = {

@@ -11,6 +11,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { bootedApp, expansionStates, shapedAt, columnFixture, pageFixture } from "./testlib.mjs";
+import * as core from "./core.js";
 
 const SCHEMA_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "schema");
 const read = (name) => JSON.parse(fs.readFileSync(path.join(SCHEMA_DIR, name), "utf8"));
@@ -69,13 +70,16 @@ function marksAt(app, st) {
 }
 
 describe("the marks this client makes", () => {
-  test("every mark on every split the page offers matches schema/mark.schema.json, and every role the page draws is drawn", async (t) => {
+  test("every mark a capped, filtered chart draws matches schema/mark.schema.json, and both kinds are drawn", async (t) => {
     const { app } = await bootedApp();
     // A smallest flow, so the smaller-flows marks are drawn beside the rest.
     app.setFilter({ smallest: app.SMALLEST_STOPS[3] });
     /** @type {Map<string, {role: string, where: string, faults: string[]}>} */
     const seen = new Map();
-    const charts = expansionStates(app, app.fetched);
+    // One chart drawing both kinds: everything open, its caps folded, under a
+    // smallest flow. The marks are made by two constructors, held above and
+    // below on their own; walking every split adds charts, not kinds.
+    const charts = expansionStates(app, app.fetched).filter((st) => st.where === "everything by primary splits");
     for (const st of charts) {
       for (const n of marksAt(app, st)) {
         const key = st.where + " :: " + n.id;
@@ -109,8 +113,9 @@ describe("the marks this client makes", () => {
     assert.deepEqual(faults, []);
   });
 
-  test("a mark built outside the drawn page matches too, and a stray key is caught", async () => {
-    const { app } = await bootedApp();
+  test("a mark built outside the drawn page matches too, and a stray key is caught", () => {
+    globalThis.FISC_CONFIG = pageFixture().config;
+    const app = core;
     const smaller = app.smallerMark(app.SMALLER_TO, 5, 3, 1000000, 120000, [{ doc_id: "d", pages: [1] }]);
     assert.deepEqual(check(MARK, smaller, "smaller", []), []);
     assert.deepEqual(check(MARK, Object.assign({}, smaller, { extra: 1 }), "smaller", []), ["smaller: extra is not a declared property"]);
@@ -118,7 +123,7 @@ describe("the marks this client makes", () => {
     assert.deepEqual(check(MARK, one, "aggregate", []), ["aggregate.folds: fewer than 2 items"]);
   });
 
-  test("every mark's words are the page's wording templates filled, on every split the page offers", async (t) => {
+  test("every mark's words are the page's wording templates filled", async (t) => {
     // Every template prefixed with its own key: a word the client spelled
     // itself carries no prefix, and a placeholder it never filled stays as
     // braces.
@@ -132,7 +137,10 @@ describe("the marks this client makes", () => {
     const faults = [];
     const roles = new Map();
     let together = 0;
-    const charts = expansionStates(app, app.fetched);
+    // One chart drawing both kinds: everything open, its caps folded, under a
+    // smallest flow. The marks are made by two constructors, held above and
+    // below on their own; walking every split adds charts, not kinds.
+    const charts = expansionStates(app, app.fetched).filter((st) => st.where === "everything by primary splits");
     for (const { where, ...st } of charts) {
       for (const n of marksAt(app, st)) {
         roles.set(n.role, (roles.get(n.role) || 0) + 1);

@@ -4,6 +4,7 @@
 
 import { describe, test, before } from "node:test";
 import assert from "node:assert/strict";
+import * as core from "./core.js";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
@@ -843,7 +844,8 @@ describe("the wording is the packager's", () => {
   test("say fills a placeholder with the value, and a {name:one|many} with the value and the word its count picks", async () => {
     const config = structuredClone(pageFixture().config);
     config.wording.counts = "{links:flow|flows} over {nodes:node|nodes}; {unfilled} stays";
-    const { app } = await bootedApp({ config });
+    globalThis.FISC_CONFIG = config;
+    const app = core;
     assert.equal(app.say("counts", { links: 1, nodes: 2 }), "1 flow over 2 nodes; {unfilled} stays");
     assert.equal(app.say("counts", { links: 3, nodes: 1 }), "3 flows over 1 node; {unfilled} stays");
     assert.equal(app.say("fold_back"), config.wording.fold_back);

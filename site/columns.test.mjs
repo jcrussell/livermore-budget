@@ -7,6 +7,7 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 
 import { bootedApp, split, settle, pageFixture, columnFixture, refusals } from "./testlib.mjs";
+import * as sankey from "./sankey.js";
 
 const YEARS = pageFixture().config.years;
 
@@ -67,7 +68,7 @@ describe("a split stands its members on the side it declares", () => {
   // between standing after it, and the linkless copy's line stands after
   // its source.
   test("a source's members, and theirs, stand before it; a group's after it; whatever links run between them", async () => {
-    const { app } = await bootedApp();
+    const app = sankey;
     for (const doc of [sources(), Object.assign(sources(), { links: [] })]) {
       const slots = app.expansionSlots(doc, [0, 2]);
       const at = Object.fromEntries(slots);
@@ -81,7 +82,7 @@ describe("a split stands its members on the side it declares", () => {
   // between, and the line is placed after its source with nothing saying so;
   // drop the back refusal and the line's part stands in its source's slot.
   test("a split declaring no side, or a member opening back toward its grandparent, is refused", async () => {
-    const { app } = await bootedApp();
+    const app = sankey;
     for (const side of [undefined, "left"]) {
       const none = sources();
       none.splits[0] = Object.assign({}, none.splits[0], { side });
@@ -148,7 +149,7 @@ describe("an extend chain has the slots its root has on its side", () => {
   // Mutation: say SLOT_DEPTH as the limit, as if a chain had every slot of
   // its column on each side, and this goes red.
   test("four slots after its root and five before, and a chain past them is refused saying so", async (t) => {
-    const { app } = await bootedApp();
+    const app = sankey;
     assert.equal(app.expansionSlots(chain(4, true), [0, 2]).size, 5);
     assert.equal(app.expansionSlots(chain(5, false), [0, 2]).size, 6);
     let after = "";
