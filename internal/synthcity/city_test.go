@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"go.yaml.in/yaml/v3"
@@ -73,7 +74,8 @@ func splitCaps(t *testing.T) map[string]int {
 // that drops one goes red here and not as a client test asserting nothing.
 // Mutation: drop ERAF from the General Fund's lines and the contra arm goes
 // red; drop the Gap and its exceptions arm does; raise the lines cap in
-// data/views.yaml to 14 and the long-category arm does.
+// data/views.yaml to 14 and the long-category arm does; print the special
+// revenue funds in FY2024 only and the funds arm does.
 func TestEveryPlantedShapeIsPrinted(t *testing.T) {
 	b := built(t)
 	caps := splitCaps(t)
@@ -96,6 +98,15 @@ func TestEveryPlantedShapeIsPrinted(t *testing.T) {
 		}
 		return out
 	}
+	funds := func(fs []fact.Fact) []int {
+		var out []int
+		for _, f := range fs {
+			if f.Fund != nil && !slices.Contains(out, *f.Fund) {
+				out = append(out, *f.Fund)
+			}
+		}
+		return out
+	}
 	years := func(fs []fact.Fact) []int {
 		var out []int
 		for _, f := range fs {
@@ -114,8 +125,10 @@ func TestEveryPlantedShapeIsPrinted(t *testing.T) {
 			return f.Sign == vocab.SignContra && f.AmountCents < 0 && f.Scope == structure.ScopeRevenueByFund &&
 				f.Category == "taxes/property"
 		}))) == 2},
-		{"a special revenue group longer than the funds cap names", len(slices.DeleteFunc(slices.Clone(Default().Funds),
-			func(f Fund) bool { return f.Group != "special-revenue" })) > caps["funds"]},
+		{"a special revenue group longer than the funds cap names in FY2026", len(funds(of(func(f fact.Fact) bool {
+			return f.FundGroup == "special-revenue" && f.Scope == structure.ScopeRevenueByFund &&
+				f.Kind == vocab.KindRevenue && f.AmountCents != 0 && f.FiscalYear == 2026
+		}))) > caps["funds"]},
 		{"General Fund transfers to more receivers than the receivers cap names", len(labels(of(func(f fact.Fact) bool {
 			return f.Scope == structure.ScopeTransfersByFund && f.Kind == vocab.KindTransferOut && fund(f, 100) && f.AmountCents != 0
 		}))) > caps["receivers"]},
@@ -138,7 +151,9 @@ func TestEveryPlantedShapeIsPrinted(t *testing.T) {
 			return f.Scope == structure.ScopeDepartmentwideExpenditures && f.Kind == vocab.KindTransferOut
 		})), []int{2024})},
 		{"a declared gap, held apart five ways", len(slices.DeleteFunc(slices.Clone(b.Exceptions),
-			func(e structure.Exception) bool { return e.Residual != 25000000 && e.Residual != -25000000 })) == 5},
+			func(e structure.Exception) bool {
+				return !strings.HasPrefix(e.Name, "synthcity-internal-service-services-and-supplies-2027-")
+			})) == 5},
 	} {
 		if !c.ok {
 			t.Errorf("synthcity.Default prints no %s", c.shape)

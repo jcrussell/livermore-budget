@@ -634,7 +634,9 @@ describe("a node filter hiding a contra cell of a ribbon", () => {
 // a filter hiding the wrong ones. Mutation: test only a ribbon's source
 // against hidden groups, or its kind against the group set, and an arm goes red.
 describe("a group or kind filter on a planted chart", () => {
-  test("hides exactly the ribbons it names", () => {
+  test("hides exactly the ribbons it names", (t) => {
+    const saved = globalThis.FISC_CONFIG;
+    t.after(() => { globalThis.FISC_CONFIG = saved; });
     globalThis.FISC_CONFIG = pageFixture().config;
     const app = core;
     const node = (id) => ({ id, label: id, kind: "x", tier: 0 });

@@ -113,7 +113,9 @@ describe("the marks this client makes", () => {
     assert.deepEqual(faults, []);
   });
 
-  test("a mark built outside the drawn page matches too, and a stray key is caught", () => {
+  test("a mark built outside the drawn page matches too, and a stray key is caught", (t) => {
+    const saved = globalThis.FISC_CONFIG;
+    t.after(() => { globalThis.FISC_CONFIG = saved; });
     globalThis.FISC_CONFIG = pageFixture().config;
     const app = core;
     const smaller = app.smallerMark(app.SMALLER_TO, 5, 3, 1000000, 120000, [{ doc_id: "d", pages: [1] }]);

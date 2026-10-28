@@ -68,21 +68,23 @@ var corpusChecks = map[string]string{
 	"fact-revenue-lines-resolve":         "every data/taxonomy.yaml line being printed by some fact",
 	"published-projection-built":         "the ACFR, CIP and debt documents the site publishes",
 	"fund-groups-are-their-printed-rows": "the group summary rows pp.186-209 print, read off page text",
+	"source-pdfs-match-both-records":     "the source PDFs, which only --full reads",
 }
 
 // TestTheSyntheticCityPassesEveryCheckThatReadsIt: over synthcity.Default
-// every check passes, or is vacuous, or reads only the corpus (corpusChecks);
+// every check passes, or is vacuous, or reads only the corpus (corpusChecks),
+// each of which names a check; a skip is excused only by name;
 // and the checks that hold the projections to their facts each find
 // something to hold. That is what makes the city a Budget Book the pipeline
 // would accept, and not a set of figures it happens to draw.
 // Mutation: add a cent to every fund's beginning balance without its ending
 // and fund-balance-identity fails; drop a transfer's receiving leg and the
-// projections refuse to build.
+// projections refuse to build; drop source-pdfs-match-both-records from
+// corpusChecks and its skip goes red.
 func TestTheSyntheticCityPassesEveryCheckThatReadsIt(t *testing.T) {
 	rep := runChecks(t, synthSubject(t))
 	for _, res := range rep.Results {
-		if _, ok := corpusChecks[res.CheckID]; ok || res.Status == StatusPass ||
-			res.Status == StatusVacuous || res.Status == StatusSkipped {
+		if _, ok := corpusChecks[res.CheckID]; ok || res.Status == StatusPass || res.Status == StatusVacuous {
 			continue
 		}
 		t.Errorf("%s %s over %d", res.CheckID, res.Status, res.Subjects)
@@ -107,6 +109,7 @@ func TestTheSyntheticCityPassesEveryCheckThatReadsIt(t *testing.T) {
 	}
 	var excused []string
 	for id := range corpusChecks {
+		resultFor(t, rep, id)
 		excused = append(excused, id)
 	}
 	slices.Sort(excused)

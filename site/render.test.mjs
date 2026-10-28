@@ -814,9 +814,11 @@ describe("the classes the client sets and the rules the stylesheet carries", () 
 // Every sentence the client composes is a config wording template that say()
 // fills, so a reworded config is followed on the page.
 describe("the wording is the packager's", () => {
-  test("say fills a placeholder with the value, and a {name:one|many} with the value and the word its count picks", async () => {
+  test("say fills a placeholder with the value, and a {name:one|many} with the value and the word its count picks", async (t) => {
     const config = structuredClone(pageFixture().config);
     config.wording.counts = "{links:flow|flows} over {nodes:node|nodes}; {unfilled} stays";
+    const saved = globalThis.FISC_CONFIG;
+    t.after(() => { globalThis.FISC_CONFIG = saved; });
     globalThis.FISC_CONFIG = config;
     const app = core;
     assert.equal(app.say("counts", { links: 1, nodes: 2 }), "1 flow over 2 nodes; {unfilled} stays");
