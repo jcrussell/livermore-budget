@@ -501,7 +501,7 @@ type Projection interface {
 // so a caller cannot silently forget either.
 func Registry(l labels, exceptions []structure.Exception) []Projection {
 	return []Projection{
-		&sankey{Labels: l},
+		&sankey{Labels: l, Exceptions: exceptions},
 		&Trends{Labels: l},
 		&fundFlows{Labels: l},
 		&departmentSpending{Labels: l},

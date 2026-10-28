@@ -713,9 +713,9 @@ type stitchedCut struct {
 }
 
 // stitchedCuts is every document the stitch reads, each once.
-func stitchedCuts(l labels) []stitchedCut {
+func stitchedCuts(l labels, exceptions []structure.Exception) []stitchedCut {
 	return []stitchedCut{
-		{&sankey{Labels: l}, Options{Scopes: []string{PublishedScope}}},
+		{&sankey{Labels: l, Exceptions: exceptions}, Options{Scopes: []string{PublishedScope}}},
 		{&fundFlows{Labels: l}, Options{Scopes: FundFlowsScopes()}},
 		{&transfersByFund{Labels: l}, Options{Scopes: TransfersByFundScopes()}},
 		{&transfersByFund{Labels: l, Out: true}, Options{Scopes: TransfersOutScopes(), Kinds: transferKinds}},
@@ -728,7 +728,7 @@ func stitchedCuts(l labels) []stitchedCut {
 // schedule of a column is stitched from, in the order the stitch reads them.
 func ExpansionStitches() []string {
 	var out []string
-	for _, c := range stitchedCuts(nil) {
+	for _, c := range stitchedCuts(nil, nil) {
 		out = append(out, c.p.Name())
 	}
 	return out
@@ -737,7 +737,7 @@ func ExpansionStitches() []string {
 // cuts builds each document the stitch reads, over the same column.
 func (e *expansion) cuts(facts []fact.Fact, o Options) (map[string]*Document, error) {
 	out := map[string]*Document{}
-	for _, part := range stitchedCuts(e.Labels) {
+	for _, part := range stitchedCuts(e.Labels, e.Exceptions) {
 		opts := part.opts
 		opts.Columns = o.Columns
 		opts.Version = o.Version

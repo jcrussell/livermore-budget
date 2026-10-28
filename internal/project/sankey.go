@@ -488,6 +488,10 @@ type sankey struct {
 	// Labels supplies the city's own words for a category slug. Optional: nil
 	// degrades to a readable slug.
 	Labels labels
+	// Exceptions are the build's declarations, which a contested total's
+	// figures are read from: an entry naming none of them is not this
+	// build's.
+	Exceptions []structure.Exception
 }
 
 var _ Projection = (*sankey)(nil)
@@ -680,7 +684,7 @@ func (s *sankey) Document(facts []fact.Fact, o Options) (*Document, error) {
 	}
 	// caveats() is conditional on the graph, so a caveat can name a node a
 	// different column carries and this one does not.
-	cavs, err := caveats(h, col, links, toCIP(facts, col))
+	cavs, err := caveats(h, col, links, toCIP(facts, col), s.Exceptions)
 	if err != nil {
 		return nil, err
 	}
@@ -1036,8 +1040,8 @@ var (
 // printed. The caveat is emitted only when the graph draws Published;
 // TestContestedTotalsAreStillContested keeps an entry from going stale.
 type contestedTotal struct {
-	// Exception names the structure.BudgetBookExceptions entry the figures
-	// are read from.
+	// Exception names the entry of the build's exceptions the figures are
+	// read from: one of structure.BudgetBookExceptions.
 	Exception string
 	Column    Column
 	FundGroup string
@@ -1088,8 +1092,17 @@ func ContestedTotals() ([]contestedTotal, error) {
 var resolvedContestedTotals = sync.OnceValues(resolveContestedTotals)
 
 func resolveContestedTotals() ([]contestedTotal, error) {
+	return contestedTotalsOver(structure.BudgetBookExceptions(), true)
+}
+
+// contestedTotalsOver is each declared entry with its figures read from the
+// exception it names in exceptions. An entry naming no exception there errs
+// when all is set, and is otherwise not this build's: the Budget Book's
+// declarations are held to every entry by ContestedTotals, a build under
+// another city's to none of them.
+func contestedTotalsOver(exceptions []structure.Exception, all bool) ([]contestedTotal, error) {
 	byName := map[string]structure.Exception{}
-	for _, e := range structure.BudgetBookExceptions() {
+	for _, e := range exceptions {
 		byName[e.Name] = e
 	}
 	reference, err := referenceCut()
@@ -1099,6 +1112,9 @@ func resolveContestedTotals() ([]contestedTotal, error) {
 	out := make([]contestedTotal, 0, len(contestedTotals))
 	for _, c := range contestedTotals {
 		e, ok := byName[c.Exception]
+		if !ok && !all {
+			continue
+		}
 		if !ok {
 			return nil, fmt.Errorf("project: contested total names exception %q, which is not declared", c.Exception)
 		}
@@ -1141,7 +1157,7 @@ func GroupExpenditure(links []Link, fundGroup string) int64 {
 // service charges in a document that has none would be misdirection, the
 // transfer caveat quotes figures it can only get from the graph, and a contested
 // total that this document does not draw is not this document's problem.
-func caveats(h Headline, col Column, links []Link, cip cipTransfers) ([]Caveat, error) {
+func caveats(h Headline, col Column, links []Link, cip cipTransfers, exceptions []structure.Exception) ([]Caveat, error) {
 	out := make([]Caveat, 0, 5)
 
 	if h.InternalTransferInCents != 0 || h.InternalTransferOutCents != 0 {
@@ -1153,7 +1169,7 @@ func caveats(h Headline, col Column, links []Link, cip cipTransfers) ([]Caveat, 
 			break
 		}
 	}
-	contested, err := ContestedTotals()
+	contested, err := contestedTotalsOver(exceptions, false)
 	if err != nil {
 		return nil, err
 	}

@@ -13,6 +13,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/project/projecttest"
 	"github.com/jcrussell/livermore-budget/internal/registry"
+	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/internal/vocab"
 	"github.com/jcrussell/livermore-budget/schema"
 )
@@ -811,6 +812,37 @@ func contestedFY2027(t *testing.T) contestedTotal {
 			"single fisc-av0w entry and a second one needs its own tests", len(all))
 	}
 	return all[0]
+}
+
+// TestAContestedTotalIsTheBuildsDeclarations: the same graph is disclosed
+// as contested under the Budget Book's exceptions and is not under a city's
+// that declares no such entry, so a build is read under the one list it was
+// handed.
+// Mutation: resolve caveats' contested totals over
+// structure.BudgetBookExceptions and the city arm carries the caveat.
+func TestAContestedTotalIsTheBuildsDeclarations(t *testing.T) {
+	c := contestedFY2027(t)
+	links := []Link{
+		{Source: PrefixFundGroup + c.FundGroup, Target: PrefixExpenditure + "services-and-supplies",
+			ValueCents: c.Published},
+	}
+	for _, tc := range []struct {
+		name       string
+		exceptions []structure.Exception
+		want       bool
+	}{
+		{"the Budget Book's", structure.BudgetBookExceptions(), true},
+		{"a city's declaring no contested total", []structure.Exception{}, false},
+	} {
+		cavs, err := caveats(Headline{}, c.Column, links, cipTransfers{}, tc.exceptions)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := slices.ContainsFunc(cavs, func(cv Caveat) bool { return cv.ID == "contested-total-"+c.FundGroup })
+		if got != tc.want {
+			t.Errorf("under %s exceptions the contested caveat is carried %t, want %t", tc.name, got, tc.want)
+		}
+	}
 }
 
 func TestContestedCaveatIsEmittedOnlyForTheColumnThatDrawsIt(t *testing.T) {
