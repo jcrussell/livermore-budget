@@ -186,7 +186,7 @@ func testOptions(t *testing.T) (*Options, *iostreams.IOStreams, func() string, f
 		RepoRoot:  func() (string, error) { return root, nil },
 		OutputDir: filepath.Join(t.TempDir(), "dist"),
 		Build: func(string) (result, error) {
-			return result{Projections: goldenProjections(t)}, nil
+			return result{Projections: goldenProjections(t), Exceptions: structure.BudgetBookExceptions()}, nil
 		},
 	}
 	return opts, io, out.String, errOut.String
@@ -352,6 +352,35 @@ func TestExportRunWritesASiteAndSaysHowToServeIt(t *testing.T) {
 	}
 	if strings.Contains(out(), "python3") {
 		t.Error("the serve instruction is chatter and belongs on ErrOut")
+	}
+}
+
+// TestABuildThatNeverSaidItsExceptionsIsRefused: the department and glance
+// pages print what the build's exceptions hold apart, so a build carrying
+// none at all is refused rather than read as holding nothing apart. Its
+// control is the same build with an empty list.
+// Mutation: drop siteOptions' nil guard and the nil arm exports.
+func TestABuildThatNeverSaidItsExceptionsIsRefused(t *testing.T) {
+	built := builtStemsForTest(t)
+	for _, tc := range []struct {
+		name       string
+		exceptions []structure.Exception
+		refused    bool
+	}{
+		{"nil", nil, true},
+		{"empty", []structure.Exception{}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			opts, _, _, _ := testOptions(t)
+			opts.RepoRoot = func() (string, error) { return repoRootForTest(t), nil }
+			opts.Build = func(string) (result, error) {
+				return result{Projections: built, Exceptions: tc.exceptions}, nil
+			}
+			err := exportRun(context.Background(), opts)
+			if refused := err != nil && strings.Contains(err.Error(), "carries no exceptions"); refused != tc.refused {
+				t.Errorf("exportRun over %s exceptions returned %v, want refused %t", tc.name, err, tc.refused)
+			}
+		})
 	}
 }
 
@@ -636,7 +665,7 @@ func TestExportRunRefusesAnUnreachableDocumentBeforeTouchingTheSite(t *testing.T
 	opts.Build = func(string) (result, error) {
 		built := goldenProjections(t)
 		built[stem] = doc
-		return result{Projections: built}, nil
+		return result{Projections: built, Exceptions: structure.BudgetBookExceptions()}, nil
 	}
 
 	opts.Clean = true
@@ -1400,7 +1429,9 @@ func TestOpensIntoJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 		t.Error("dropping the SECOND year's expansion must not undeclare the Sankey's chart")
 	}
 	opts, _, _, _ := testOptions(t)
-	opts.Build = func(string) (result, error) { return result{Projections: short}, nil }
+	opts.Build = func(string) (result, error) {
+		return result{Projections: short, Exceptions: structure.BudgetBookExceptions()}, nil
+	}
 	if err := exportRun(context.Background(), opts); err == nil {
 		t.Error("exportRun accepted a spine whose second year has no expansion")
 	} else if !strings.Contains(err.Error(), `carries none`) {
@@ -1462,7 +1493,9 @@ func TestADocumentOutsideTheColumnItIsPublishedForIsRefused(t *testing.T) {
 		t.Fatal("opensInto drops the Sankey's chart, so the refusal below is no evidence")
 	}
 	opts, _, _, _ := testOptions(t)
-	opts.Build = func(string) (result, error) { return result{Projections: elsewhere}, nil }
+	opts.Build = func(string) (result, error) {
+		return result{Projections: elsewhere, Exceptions: structure.BudgetBookExceptions()}, nil
+	}
 	if err := exportRun(context.Background(), opts); err == nil {
 		t.Error("exportRun accepted a spine whose opening column carries no expansion")
 	} else if !strings.Contains(err.Error(), "carries none") {
@@ -1539,7 +1572,7 @@ func TestTheIndexIsRefusedByNameWithoutItsRead(t *testing.T) {
 
 	opts, _, _, _ := testOptions(t)
 	opts.Build = func(string) (result, error) {
-		return result{Projections: map[string][]byte{"sankey": goldenSankey(t)}}, nil
+		return result{Projections: map[string][]byte{"sankey": goldenSankey(t)}, Exceptions: structure.BudgetBookExceptions()}, nil
 	}
 	err = exportRun(context.Background(), opts)
 	if err == nil || !strings.Contains(err.Error(), project.DepartmentFundingProjection+" was not built") {

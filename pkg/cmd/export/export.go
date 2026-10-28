@@ -232,6 +232,11 @@ nothing.`,
 // data/views.yaml declares, and everything the packager reads beside them.
 func (o *Options) siteOptions(root string, built result) (export.Options, error) {
 	projections := built.Projections
+	// Nil is a build that never said, not one that declares nothing: the
+	// department and glance pages would print nothing held apart.
+	if built.Exceptions == nil {
+		return export.Options{}, errors.New("the build carries no exceptions; one declaring none carries an empty list")
+	}
 
 	docs, err := loadDocs(root)
 	if err != nil {

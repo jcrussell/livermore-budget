@@ -1,7 +1,7 @@
 // fold.test.mjs — capColumn and foldDocument, and the expansion as the page
 // caps it at every split. Every figure is held to the unfolded schedule.
 
-import { before, describe, test } from "node:test";
+import { after, before, describe, test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
@@ -97,9 +97,12 @@ function smallest(graph) {
 }
 
 // capColumn's rules, each on rows planted for it. core.say reads the page's
-// wording at call time, so the config is installed first.
+// wording at call time, so the config is installed first, and the global put
+// back after, so no later describe reads it.
 describe("capColumn keeps the largest printed rows and folds the rest into one tail", () => {
+  const saved = globalThis.FISC_CONFIG;
   before(() => { globalThis.FISC_CONFIG = pageFixture().config; });
+  after(() => { globalThis.FISC_CONFIG = saved; });
   const node = (id, tier, derived = false) => ({
     id, label: id, tier, parent: "", constraint_tier: "", role: "", derived, rationale: "", source_note: "",
   });
