@@ -146,7 +146,9 @@ function faultsOf(app, doc, state, where) {
 // everything open with every tail drawn out, which between them hide, merge
 // and cut along cells. Walking every split adds charts, not arms.
 describe("drawn plus hidden is the chart", () => {
-  for (const year of YEARS.slice(0, 1)) {
+  // Every year: only FY2027 declares the city's planted gap, so its
+  // remainder ribbon is filtered in no other.
+  for (const year of YEARS) {
     test(`${year.label}: at a sample of filters, no ribbon, cent or fact is lost, duplicated or invented`, async (t) => {
       const { app } = await bootedApp({ checkedStem: year.stem });
       const faults = [];

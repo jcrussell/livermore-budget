@@ -643,9 +643,9 @@ describe("the expansion's caps preserve what they fold, at every split the page 
 describe("an open hub's ribbons are the leaves it repeats", () => {
   const CONFIG = pageFixture().config;
 
-  // One column: the walk is a property over the pinned breadth, and a
-  // second year walks the same rules again.
-  for (const stem of publishedColumns().slice(0, 1)) {
+  // Every column: only FY2027's declares the city's planted gap, so its
+  // remainder split is walked in no other.
+  for (const stem of publishedColumns()) {
     test(`${stem}: at every split the page offers, a hub draws its leaves once each`, async (t) => {
       const app = (await loadApp({ config: CONFIG })).app;
       const doc = app.scheduleOf(columnFixture(stem), "expansion");

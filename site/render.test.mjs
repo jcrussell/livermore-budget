@@ -145,8 +145,9 @@ for (const year of YEARS) {
 // wages-by-divisions split is refused here.
 test("every declared split, drawn alone from the root with what reveals it, draws rather than refuses", async (t) => {
   let drawn = 0;
-  // One year: the second declares the same kinds of split again.
-  for (const year of YEARS.slice(0, 1)) {
+  // Every year: only FY2027 declares the city's planted gap, so its
+  // remainder split is drawn in no other.
+  for (const year of YEARS) {
     const { app, document } = await bootedApp({ checkedStem: year.stem });
     const refused = [];
     for (const sp of app.fetched.splits) {
