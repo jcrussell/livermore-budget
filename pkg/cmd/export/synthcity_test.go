@@ -2,25 +2,20 @@ package export
 
 import (
 	"bytes"
-	"slices"
 	"sync"
 	"testing"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/internal/synthcity"
 )
 
-// cityScopes are the schedules synthcity prints; every other scope of the
-// committed store is kept, so the site's other documents still build.
-func cityScopes() []string {
-	return append(project.ExpansionScopes(), project.DepartmentFundingScopes()...)
-}
-
 // buildSynthCityFacts is synthcity.Default's facts in place of the committed
-// store's for the schedules a column draws, and the store's for the rest,
-// with the exceptions the city declares.
+// store's for every scope the city prints, and the store's for the rest, so
+// the site's other documents still build, with the exceptions the city
+// declares. The scopes are read off the city's facts: a scope it prints that
+// the store also keeps would otherwise mix Livermore's figures into the
+// city's, under the same ids.
 func buildSynthCityFacts(repoRoot string) ([]fact.Fact, []structure.Exception, error) {
 	reg, err := loadRegistry(repoRoot)
 	if err != nil {
@@ -35,11 +30,17 @@ func buildSynthCityFacts(repoRoot string) ([]fact.Fact, []structure.Exception, e
 	if err != nil {
 		return nil, nil, err
 	}
-	scopes := cityScopes()
+	scopes := map[string]bool{}
+	for _, f := range facts {
+		scopes[f.Scope] = true
+	}
 	for _, f := range store {
-		if !slices.Contains(scopes, f.Scope) {
+		if !scopes[f.Scope] {
 			facts = append(facts, f)
 		}
+	}
+	if err := fact.CheckUniqueIDs(facts); err != nil {
+		return nil, nil, err
 	}
 	fact.Sort(facts)
 	return facts, exceptions, nil

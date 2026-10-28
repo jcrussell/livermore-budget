@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { JSDOM } from "jsdom";
-import { repoRoot } from "./testlib.mjs";
+import { repoRoot, withConfig } from "./testlib.mjs";
 
 const BINDINGS = JSON.parse(readFileSync(join(repoRoot, "schema", "bindings.json"), "utf8"));
 
@@ -65,4 +65,14 @@ test("the skeleton check names a binding a skeleton lost", () => {
   assert.ok(ledger.includes(from));
   assert.ok(missing("ledger.html", ledger.replace(from, "")).includes("template#ledger-row .bar-value"),
     "a template's part dropped");
+});
+
+// Mutation: a string replacement in withConfig expands the `$'`, and an
+// unescaped `<` ends the script at the `</script>`.
+test("a config splices into its skeleton verbatim", () => {
+  const config = { wording: "$' and $& and </script><!--" };
+  const html = withConfig(`<p>a</p><script type="application/json" id="c"></script><p>b</p>`, "c", config);
+  const doc = new JSDOM(html).window.document;
+  assert.deepEqual(JSON.parse(doc.getElementById("c").textContent), config);
+  assert.equal(doc.querySelectorAll("p").length, 2);
 });

@@ -44,7 +44,8 @@ func seriesSums(t *testing.T, raw []byte, kind string) map[string]int64 {
 // summed less its expenditure rows summed is the excess of revenues over
 // expenditures the report prints, to the cent. The rows are the page's and
 // the excess a printed figure, so no difference is computed on the page.
-// Mutation: drop a revenue series from the document and its columns miss.
+// Mutation: drop a revenue series, or a column's excess, from the document
+// and its columns miss.
 func TestTheAuditedRevenueRowsLessTheSpendingRowsAreThePrintedExcess(t *testing.T) {
 	built, err := cachedBuildAll(repoRootForTest(t))
 	if err != nil {
@@ -59,15 +60,19 @@ func TestTheAuditedRevenueRowsLessTheSpendingRowsAreThePrintedExcess(t *testing.
 	if len(excess) < 2 {
 		t.Fatalf("the document prints the excess in %d columns, so nothing below holds the sums to it", len(excess))
 	}
-	for _, col := range slices.Sorted(maps.Keys(excess)) {
+	cols := maps.Clone(excess)
+	maps.Copy(cols, revenue)
+	maps.Copy(cols, spending)
+	for _, col := range slices.Sorted(maps.Keys(cols)) {
 		r, rok := revenue[col]
 		s, sok := spending[col]
-		if !rok || !sok {
-			t.Errorf("%s prints an excess and no revenue or no expenditure rows", col)
+		e, eok := excess[col]
+		if !rok || !sok || !eok {
+			t.Errorf("%s: revenue rows %t, expenditure rows %t, a printed excess %t; a column the page charts has all three", col, rok, sok, eok)
 			continue
 		}
-		if r-s != excess[col] {
-			t.Errorf("%s: revenue rows %d less expenditure rows %d is %d, and the report prints %d", col, r, s, r-s, excess[col])
+		if r-s != e {
+			t.Errorf("%s: revenue rows %d less expenditure rows %d is %d, and the report prints %d", col, r, s, r-s, e)
 		}
 	}
 	t.Logf("%d columns, each revenue less spending equal to the printed excess", len(excess))

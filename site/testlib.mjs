@@ -116,10 +116,21 @@ function clientConfig(name) {
  */
 export function configuredPage(name, id) {
   const skeleton = readFileSync(join(repoRoot, "testdata", "client", name + ".html"), "utf8");
+  const config = clientConfig(name);
+  return { html: withConfig(skeleton, id, config, name), config };
+}
+
+/**
+ * `skeleton` with `config` in its empty `<script id>`. A function replacer,
+ * so a `$&` or `$'` in the config is not a substitution pattern, and `<`
+ * escaped as Go's encoder escapes it, so a `</script>` in a string does not
+ * end the script.
+ */
+export function withConfig(skeleton, id, config, name = "page") {
   const empty = `<script type="application/json" id="${id}"></script>`;
   if (!skeleton.includes(empty)) throw new Error(`the ${name} skeleton carries no empty ${id}`);
-  const config = clientConfig(name);
-  return { html: skeleton.replace(empty, empty.replace("></", ">" + JSON.stringify(config) + "</")), config };
+  const json = JSON.stringify(config).replace(/</g, "\\u003c");
+  return skeleton.replace(empty, () => empty.replace("></", () => ">" + json + "</"));
 }
 
 /** A fresh jsdom over `html`, at `url` when given, with `module` imported and booted on its document. */
