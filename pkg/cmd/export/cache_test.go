@@ -60,6 +60,7 @@ func cachedBuildAll(repoRoot string) (result, error) {
 	r.PageIndex = slices.Clone(r.PageIndex)
 	r.Downloads = slices.Clone(r.Downloads)
 	r.RecordsBase = maps.Clone(r.RecordsBase)
+	r.Exceptions = slices.Clone(r.Exceptions)
 	return r, nil
 }
 

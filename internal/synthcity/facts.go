@@ -190,7 +190,8 @@ func (c City) Facts(names Names) (Built, error) {
 				Rule: rule, Kind: vocab.KindTransferOut, Reason: d.Why})
 		}
 	}
-	return Built{Facts: w.out, Exceptions: w.exceptions, Residue: residue}, nil
+	// Never nil: a city declaring no exception declares an empty list.
+	return Built{Facts: w.out, Exceptions: append([]structure.Exception{}, w.exceptions...), Residue: residue}, nil
 }
 
 // gapOf is the cents pp.66-67 print over g's funds for category in col.

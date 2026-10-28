@@ -183,3 +183,23 @@ func TestTheCitysTotalsAreTheSpecs(t *testing.T) {
 		t.Errorf("the spine's FY2025-26 revenue is %d cents and the spec's lines sum to %d", got, want)
 	}
 }
+
+// TestACityDeclaringNoExceptionSaysSo: a city with no Gap and no division
+// transfer declares an empty list, not nil, which an export refuses as a
+// build that never said.
+// Mutation: return w.exceptions from Facts and it is nil.
+func TestACityDeclaringNoExceptionSaysSo(t *testing.T) {
+	reg, err := registry.Load(os.DirFS(filepath.Join("..", "..", "data")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := Default()
+	c.Gaps, c.DivisionTransfers = nil, nil
+	b, err := c.Facts(reg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b.Exceptions == nil || len(b.Exceptions) != 0 {
+		t.Errorf("a city declaring no exception carries %#v, want an empty list", b.Exceptions)
+	}
+}
