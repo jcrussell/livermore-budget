@@ -1345,8 +1345,7 @@ details > summary {
 .caveat-page > p,
 .detail p,
 .apparatus > p,
-.apparatus > ul,
-footer > p {
+.apparatus > ul {
   max-width: var(--measure);
 }
 
@@ -1411,6 +1410,11 @@ footer {
 
 footer ul {
   padding-left: 18px;
+}
+
+/* One centred line across the frame, not the prose measure. */
+footer > p {
+  text-align: center;
 }
 
 /* A link in the footer's line breaks before or after itself, never inside:
