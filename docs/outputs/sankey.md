@@ -10,30 +10,11 @@ node ids map to tiers are in `go doc -all -u ./internal/project`. The worked exa
 pp.66-67 transcribed by hand as facts in `internal/project/projecttest`, real
 FY2026 figures with real fact ids, which the pipeline's own spine is held to.
 
-```mermaid
-flowchart LR
-  subgraph t0["tier 0: where it comes from"]
-    rev["revenue/category ×10"]
-    tin["transfers/in"]
-    draw["fund-balance/draw"]
-  end
-  subgraph t2["tier 2: fund groups"]
-    fg["fund-group/type ×6"]
-  end
-  subgraph t5["tier 5: where it goes"]
-    exp["expenditure/object ×4"]
-    tout["transfers/out"]
-    res["fund-balance/reserve-increase"]
-    con["fund-balance/contribution"]
-  end
-  rev --> fg
-  tin --> fg
-  draw -. derived .-> fg
-  fg --> exp
-  fg --> tout
-  fg --> res
-  fg -. derived .-> con
-```
+The spine draws three tiers. Tier 0 is where the money comes from: the ten
+revenue categories, transfers in and the fund-balance draw. Tier 2 is the six
+fund groups. Tier 5 is where it goes: the four object categories, transfers
+out, reserve increases and the fund-balance contribution. The draw and the
+contribution are derived.
 
 Tiers 1, 3 and 4 are empty on the spine: pp.66-67 print each revenue category
 as one row, and no fund or department axis. The page's chart opens these nodes

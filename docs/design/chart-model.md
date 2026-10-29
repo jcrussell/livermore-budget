@@ -4,30 +4,6 @@ Evidence for the rule in AGENTS.md, "Go vets, JavaScript renders": what each
 layer between a printed figure and a pixel may compute, and the measurements
 that fixed the seams.
 
-```mermaid
-flowchart TD
-  facts["Facts<br/>facts/facts.jsonl"]
-  structure["Structure<br/>internal/structure"]
-  projection["Projection<br/>internal/project"]
-  column["Column<br/>internal/export"]
-  decl["Declarations<br/>data/views.yaml"]
-  core["Client core<br/>site/core.js"]
-  form["Form renderer<br/>site/sankey.js"]
-  facts --> structure --> projection --> column --> core
-  decl --> column
-  core --> form
-  subgraph go["Go: vets and cites"]
-    structure
-    projection
-    column
-    decl
-  end
-  subgraph js["JavaScript: sums and draws"]
-    core
-    form
-  end
-```
-
 ## Seven layers, each computing only what the one below cannot
 
 | Layer | Where | May compute | Crosses the seam as |

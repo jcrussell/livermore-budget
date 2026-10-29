@@ -22,24 +22,13 @@ The link-by-link shape, and why the middle links are emitted rather than left
 to the client, is the `fundFlows` doc comment (`go doc -u ./internal/project
 fundFlows`). In outline:
 
-```mermaid
-flowchart LR
-  cat["tier 0<br/>revenue category,<br/>transfers in"]
-  line["tier 1<br/>revenue line"]
-  grp["tier 2<br/>fund group"]
-  fund["tier 3<br/>fund"]
-  div["tier 4<br/>General Fund division"]
-  gfobj["tier 5<br/>division × object"]
-  fobj["tier 5<br/>fund × object"]
-
-  line -- "rolled up, per kind" --> cat
-  line -- "per fund" --> fund
-  cat -- "transfers in, per fund" --> fund
-  grp -- "rolled up" --> fund
-  fund -- "General Fund only" --> div
-  div --> gfobj
-  fund -- "every other fund" --> fobj
-```
+- tier 0, revenue category and transfers in, rolled up from tier 1 per kind
+- tier 1, revenue line, reaching each fund
+- tier 2, fund group, rolled up into its funds
+- tier 3, fund, taking transfers in from tier 0
+- tier 4, General Fund division, for the General Fund only
+- tier 5, object category, under a division for the General Fund and under
+  the fund itself for every other fund
 
 The grain is mixed because the pages are: pp.167-170 cover the General Fund
 alone, so every other fund reaches its object categories with no division
