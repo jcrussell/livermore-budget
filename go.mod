@@ -1,6 +1,6 @@
 module github.com/jcrussell/livermore-budget
 
-go 1.25.0
+go 1.26.0
 
 // The language floor above is 1.25.0; this pins the toolchain that builds it,
 // so the binary CI scans with govulncheck is the binary CI builds. Bump it when
@@ -12,7 +12,7 @@ require (
 	github.com/google/jsonschema-go v0.4.3
 	github.com/spf13/cobra v1.10.2
 	go.yaml.in/yaml/v3 v3.0.5
-	golang.org/x/net v0.58.0
+	golang.org/x/net v0.62.0
 )
 
 require (
